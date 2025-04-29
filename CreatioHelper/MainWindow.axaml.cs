@@ -250,9 +250,9 @@ public partial class MainWindow : Window
     private async void AddServer_Click(object? sender, RoutedEventArgs e)
     {
         var window = new AddServerWindow();
-        var newServer = await window.ShowDialog<ServerInfo>(this);
+        var newServer = await window.ShowDialog<ServerInfo?>(this);
 
-        if (DataContext is MainWindowViewModel vm)
+        if (newServer != null && DataContext is MainWindowViewModel vm)
         {
             if (vm.ServerList.All(s => s.Name != newServer.Name))
             {
@@ -278,7 +278,7 @@ public partial class MainWindow : Window
             };
 
             var editWindow = new AddServerWindow(clone);
-            var updated = await editWindow.ShowDialog<ServerInfo>(this);
+            var updated = await editWindow.ShowDialog<ServerInfo?>(this);
 
             // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
             if (updated == null) return;

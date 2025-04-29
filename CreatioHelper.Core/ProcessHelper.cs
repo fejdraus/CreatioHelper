@@ -1,5 +1,4 @@
-﻿#nullable enable
-using System;
+﻿using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -18,7 +17,7 @@ namespace CreatioHelper.Core
             Run(exePath, arguments, output, Path.GetDirectoryName(exePath));
         }
 
-        public static void Run(string exePath, string arguments, IOutputWriter output, string? workingDirectory)
+        public static void Run(string exePath, string arguments, IOutputWriter output, string workingDirectory)
         {
             if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
             ArgumentNullException.ThrowIfNull(arguments);

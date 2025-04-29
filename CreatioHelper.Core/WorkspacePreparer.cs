@@ -6,17 +6,12 @@ using System.Xml;
 
 namespace CreatioHelper.Core
 {
-    public class WorkspacePreparer
+    public class WorkspacePreparer(IOutputWriter output)
     {
-        private readonly IOutputWriter _output;
-        private string? _workspaceConsoleExePath;
+        private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
+        private string _workspaceConsoleExePath;
 
-        public WorkspacePreparer(IOutputWriter output)
-        {
-            _output = output ?? throw new ArgumentNullException(nameof(output));
-        }
-
-        public void Prepare(string? sitePath)
+        public void Prepare(string sitePath)
         {
             _output.WriteLine("Starting WorkspaceConsole preparation...");
 
@@ -30,8 +25,8 @@ namespace CreatioHelper.Core
             string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Web.Common.dll");
             string consoleDllPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.Common.dll");
 
-            string? appDllVersion = GetDllVersion(appDllPath);
-            string? consoleDllVersion = GetDllVersion(consoleDllPath);
+            string appDllVersion = GetDllVersion(appDllPath);
+            string consoleDllVersion = GetDllVersion(consoleDllPath);
 
             if (appDllVersion == null || consoleDllVersion == null)
                 return;
@@ -47,17 +42,17 @@ namespace CreatioHelper.Core
             if (!CheckRequiredConfigFiles(sitePath))
                 return;
 
-            string connectionStringsConfig = Path.Combine(sitePath, "ConnectionStrings.config");
-            string? connectionString = GetDatabaseConnectionString(connectionStringsConfig);
+            var connectionStringsConfig = Path.Combine(sitePath, "ConnectionStrings.config");
+            var connectionString = GetDatabaseConnectionString(connectionStringsConfig);
             if (connectionString == null)
                 return;
 
-            string webConfigPath = Path.Combine(sitePath, "Web.config");
-            (string? useStaticFileContent, string? fileDesignModeEnabled) = ReadWebConfigSettings(webConfigPath);
+            var webConfigPath = Path.Combine(sitePath, "Web.config");
+            var (useStaticFileContent, fileDesignModeEnabled) = ReadWebConfigSettings(webConfigPath);
             if (useStaticFileContent == null || fileDesignModeEnabled == null)
                 return;
 
-            string consoleConfigPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe.config");
+            var consoleConfigPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe.config");
             UpdateWorkspaceConsoleConfig(consoleConfigPath, connectionString, useStaticFileContent, fileDesignModeEnabled);
 
             GrantAccessViaIcacls(connectionStringsConfig, "R");
@@ -73,7 +68,7 @@ namespace CreatioHelper.Core
             return _workspaceConsoleExePath ??= Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe");
         }
 
-        private string? GetDllVersion(string dllPath)
+        private string GetDllVersion(string dllPath)
         {
             if (string.IsNullOrEmpty(dllPath)) throw new ArgumentNullException(nameof(dllPath));
 
@@ -108,7 +103,7 @@ namespace CreatioHelper.Core
             return true;
         }
 
-        private string? GetDatabaseConnectionString(string configPath)
+        private string GetDatabaseConnectionString(string configPath)
         {
             if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
 
@@ -119,18 +114,18 @@ namespace CreatioHelper.Core
                 : null;
         }
 
-        private (string? UseStaticFileContent, string? FileDesignModeEnabled) ReadWebConfigSettings(string webConfigPath)
+        private (string UseStaticFileContent, string? FileDesignModeEnabled) ReadWebConfigSettings(string webConfigPath)
         {
             if (string.IsNullOrEmpty(webConfigPath)) throw new ArgumentNullException(nameof(webConfigPath));
 
             var xmlDoc = new XmlDocument();
             xmlDoc.Load(webConfigPath);
 
-            string? useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement elem1
+            var useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement elem1
                 ? elem1.GetAttribute("value")
                 : null;
 
-            string? fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement elem2
+            var fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement elem2
                 ? elem2.GetAttribute("enabled")
                 : null;
 
@@ -140,9 +135,9 @@ namespace CreatioHelper.Core
         private void UpdateWorkspaceConsoleConfig(string configPath, string connectionString, string useStaticFileContent, string fileDesignModeEnabled)
         {
             if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
-            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
-            if (useStaticFileContent == null) throw new ArgumentNullException(nameof(useStaticFileContent));
-            if (fileDesignModeEnabled == null) throw new ArgumentNullException(nameof(fileDesignModeEnabled));
+            ArgumentNullException.ThrowIfNull(connectionString);
+            ArgumentNullException.ThrowIfNull(useStaticFileContent);
+            ArgumentNullException.ThrowIfNull(fileDesignModeEnabled);
 
             var xmlDoc = new XmlDocument();
             xmlDoc.Load(configPath);
@@ -169,12 +164,12 @@ namespace CreatioHelper.Core
             if (string.IsNullOrEmpty(batchFileName)) throw new ArgumentNullException(nameof(batchFileName));
             if (string.IsNullOrEmpty(targetFileRelativePath)) throw new ArgumentNullException(nameof(targetFileRelativePath));
 
-            string? consoleDir = Path.GetDirectoryName(GetWorkspaceConsoleExePath(sitePath));
+            var consoleDir = Path.GetDirectoryName(GetWorkspaceConsoleExePath(sitePath));
             if (consoleDir == null)
                 return;
 
-            string targetFilePath = Path.Combine(consoleDir, targetFileRelativePath);
-            string batchFilePath = Path.Combine(consoleDir, batchFileName);
+            var targetFilePath = Path.Combine(consoleDir, targetFileRelativePath);
+            var batchFilePath = Path.Combine(consoleDir, batchFileName);
 
             if (File.Exists(targetFilePath))
             {
@@ -205,14 +200,12 @@ namespace CreatioHelper.Core
                     CreateNoWindow = true
                 });
 
-                if (process != null)
-                {
-                    process.OutputDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine(e.Data); };
-                    process.ErrorDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine($"[ERROR] {e.Data}"); };
-                    process.BeginOutputReadLine();
-                    process.BeginErrorReadLine();
-                    process.WaitForExit();
-                }
+                if (process == null) return;
+                process.OutputDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine(e.Data); };
+                process.ErrorDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine($"[ERROR] {e.Data}"); };
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                process.WaitForExit();
             }
             finally
             {
@@ -255,11 +248,11 @@ namespace CreatioHelper.Core
                 return;
             }
 
-            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
                 return;
 
-            string tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
+            var tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
             if (Directory.Exists(tempPackagesPath))
             {
                 try
@@ -273,11 +266,11 @@ namespace CreatioHelper.Core
                 }
             }
 
-            string logPath = Path.Combine(consoleDir, "WSCLog");
-            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
-            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+            var logPath = Path.Combine(consoleDir, "WSCLog");
+            var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
 
-            string arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
 
             ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
@@ -295,15 +288,15 @@ namespace CreatioHelper.Core
                 return;
             }
 
-            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
                 return;
 
-            string logPath = Path.Combine(consoleDir, "WSCLog");
-            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
-            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+            var logPath = Path.Combine(consoleDir, "WSCLog");
+            var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
 
-            string arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
 
             _output.WriteLine("Starting RebuildWorkspace...");
             ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);

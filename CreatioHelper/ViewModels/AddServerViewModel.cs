@@ -4,9 +4,9 @@ using CreatioHelper.Core;
 
 namespace CreatioHelper.ViewModels;
 
-public class AddServerViewModel : INotifyPropertyChanged
+public class AddServerViewModel(ServerInfo? server = null) : INotifyPropertyChanged
 {
-    public ServerInfo Server { get; }
+    public ServerInfo Server { get; } = server ?? new ServerInfo();
 
     public string ServerName
     {
@@ -30,11 +30,6 @@ public class AddServerViewModel : INotifyPropertyChanged
     {
         get => Server.PoolName;
         set { Server.PoolName = value; OnPropertyChanged(); }
-    }
-
-    public AddServerViewModel(ServerInfo? server = null)
-    {
-        Server = server ?? new ServerInfo();
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

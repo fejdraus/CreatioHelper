@@ -20,17 +20,15 @@ namespace CreatioHelper.Core
             string arguments = $"\"{sourceDir}\" \"{destDir}\" /e /purge /NFL /NDL /NJH /NJS";
             output.WriteLine($"[DEBUG][{server.Name}] Starting copy from {sourceDir} to {destDir}");
 
-            using var process = new Process
+            using var process = new Process();
+            process.StartInfo = new ProcessStartInfo
             {
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "robocopy",
-                    Arguments = arguments,
-                    UseShellExecute = false,
-                    RedirectStandardOutput = false,
-                    RedirectStandardError = false,
-                    CreateNoWindow = true
-                }
+                FileName = "robocopy",
+                Arguments = arguments,
+                UseShellExecute = false,
+                RedirectStandardOutput = false,
+                RedirectStandardError = false,
+                CreateNoWindow = true
             };
 
             try

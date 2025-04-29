@@ -6,24 +6,18 @@ using System.Threading.Tasks;
 namespace CreatioHelper.Core.Services
 {
     [SupportedOSPlatform("windows")]
-    public class RemoteIisManager : IRemoteIisManager
+    public class RemoteIisManager(string serverName, IOutputWriter output) : IRemoteIisManager
     {
-        private readonly string _serverName;
-        private readonly IOutputWriter _output;
+        private readonly string _serverName = serverName ?? throw new ArgumentNullException(nameof(serverName));
+        private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
 
         private bool IsLocal => string.Equals(_serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
-
-        public RemoteIisManager(string serverName, IOutputWriter output)
-        {
-            _serverName = serverName ?? throw new ArgumentNullException(nameof(serverName));
-            _output = output ?? throw new ArgumentNullException(nameof(output));
-        }
 
         public async Task<bool> StopAppPoolAsync(string poolName)
         {
             if (string.IsNullOrEmpty(poolName)) throw new ArgumentNullException(nameof(poolName));
 
-            string currentState = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
+            var currentState = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
             if (currentState == "Started")
             {
                 _output.WriteLine($"[INFO] Stopping app pool {poolName} on {_serverName}");
@@ -38,7 +32,7 @@ namespace CreatioHelper.Core.Services
         {
             if (string.IsNullOrEmpty(siteName)) throw new ArgumentNullException(nameof(siteName));
 
-            string siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
+            var siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
             if (siteStatus == "Started")
             {
                 _output.WriteLine($"[INFO] Stopping site {siteName} on {_serverName}");
@@ -53,7 +47,7 @@ namespace CreatioHelper.Core.Services
         {
             if (string.IsNullOrEmpty(poolName)) throw new ArgumentNullException(nameof(poolName));
 
-            string poolStatus = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
+            var poolStatus = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
             if (poolStatus == "Stopped")
             {
                 _output.WriteLine($"[INFO] Starting app pool {poolName} on {_serverName}");
@@ -68,7 +62,7 @@ namespace CreatioHelper.Core.Services
         {
             if (string.IsNullOrEmpty(siteName)) throw new ArgumentNullException(nameof(siteName));
 
-            string siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
+            var siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
             if (siteStatus == "Stopped")
             {
                 _output.WriteLine($"[INFO] Starting site {siteName} on {_serverName}");
@@ -85,7 +79,7 @@ namespace CreatioHelper.Core.Services
 
             try
             {
-                string command = IsLocal
+                var command = IsLocal
                     ? $"Import-Module WebAdministration; {script}"
                     : $"Invoke-Command -ComputerName '{_serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
 
@@ -106,13 +100,15 @@ namespace CreatioHelper.Core.Services
                     return false;
                 }
 
-                string outputText = await process.StandardOutput.ReadToEndAsync();
-                string errorText = await process.StandardError.ReadToEndAsync();
+                var outputText = await process.StandardOutput.ReadToEndAsync();
+                var errorText = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
 
                 if (!string.IsNullOrWhiteSpace(outputText))
+                {
                     _output.WriteLine($"[PS] {outputText.Trim()}");
-
+                }
+                
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
                     _output.WriteLine($"[PS-ERROR] {errorText.Trim()}");
@@ -128,17 +124,17 @@ namespace CreatioHelper.Core.Services
             }
         }
 
-        private async Task<string?> GetStateAsync(bool isPool, string expression)
+        private async Task<string> GetStateAsync(bool isPool, string expression)
         {
             if (string.IsNullOrEmpty(expression)) throw new ArgumentNullException(nameof(expression));
 
             try
             {
-                string script = isPool
+                var script = isPool
                     ? $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).Value"
                     : $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).State";
 
-                string command = IsLocal
+                var command = IsLocal
                     ? $"Import-Module WebAdministration; {script}"
                     : $"Invoke-Command -ComputerName '{_serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
 
@@ -159,8 +155,8 @@ namespace CreatioHelper.Core.Services
                     return null;
                 }
 
-                string outputText = await process.StandardOutput.ReadToEndAsync();
-                string errorText = await process.StandardError.ReadToEndAsync();
+                var outputText = await process.StandardOutput.ReadToEndAsync();
+                var errorText = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
 
                 if (!string.IsNullOrWhiteSpace(outputText))
@@ -175,7 +171,7 @@ namespace CreatioHelper.Core.Services
                 if (string.IsNullOrWhiteSpace(outputText))
                     return null;
 
-                string[] lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
                 return lines[^1]; // Последняя строка содержит состояние
             }
             catch (Exception ex)
@@ -191,9 +187,9 @@ namespace CreatioHelper.Core.Services
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
 
-            for (int attempt = 1; attempt <= 12; attempt++)
+            for (var attempt = 1; attempt <= 12; attempt++)
             {
-                string? currentState = await GetStateAsync(isPool, query);
+                var currentState = await GetStateAsync(isPool, query);
                 if (string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase))
                 {
                     _output.WriteLine($"[INFO] {name} reached desired state: {desiredState}");
