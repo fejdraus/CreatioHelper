@@ -1,0 +1,17 @@
+﻿{
+  "SitePath": null,
+  "SelectedIisSiteName": "Site1",
+  "PackagesPath": "C:\\Users\\fejdraus\\Desktop\\db",
+  "PackagesToDeleteBefore": "Samarasoft.SqlConsole",
+  "PackagesToDeleteAfter": "",
+  "ServerList": [
+    {
+      "Name": "fejdraus",
+      "NetworkPath": "R:\\testHelper\\site2",
+      "SiteName": "Site2",
+      "PoolName": "Site2"
+    }
+  ],
+  "IsIisMode": true,
+  "IsServerPanelVisible": true
+}

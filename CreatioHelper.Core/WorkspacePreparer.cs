@@ -1,0 +1,367 @@
+﻿using System;
+using System.Diagnostics;
+using System.IO;
+using System.Runtime.InteropServices;
+using System.Xml;
+
+namespace CreatioHelper.Core
+{
+    public class WorkspacePreparer
+    {
+        private readonly IOutputWriter _output;
+        private string? _workspaceConsoleExePath;
+
+        public WorkspacePreparer(IOutputWriter output)
+        {
+            _output = output ?? throw new ArgumentNullException(nameof(output));
+        }
+
+        public void Prepare(string? sitePath)
+        {
+            _output.WriteLine("Starting WorkspaceConsole preparation...");
+
+            if (string.IsNullOrWhiteSpace(sitePath) || !Directory.Exists(sitePath))
+            {
+                _output.WriteLine("❌ SitePath is not provided or does not exist.");
+                return;
+            }
+
+            sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Web.Common.dll");
+            string consoleDllPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.Common.dll");
+
+            string? appDllVersion = GetDllVersion(appDllPath);
+            string? consoleDllVersion = GetDllVersion(consoleDllPath);
+
+            if (appDllVersion == null || consoleDllVersion == null)
+                return;
+
+            if (appDllVersion != consoleDllVersion)
+            {
+                _output.WriteLine("Version mismatch detected:");
+                _output.WriteLine($"- Application: {appDllVersion}");
+                _output.WriteLine($"- WorkspaceConsole: {consoleDllVersion}");
+                return;
+            }
+
+            if (!CheckRequiredConfigFiles(sitePath))
+                return;
+
+            string connectionStringsConfig = Path.Combine(sitePath, "ConnectionStrings.config");
+            string? connectionString = GetDatabaseConnectionString(connectionStringsConfig);
+            if (connectionString == null)
+                return;
+
+            string webConfigPath = Path.Combine(sitePath, "Web.config");
+            (string? useStaticFileContent, string? fileDesignModeEnabled) = ReadWebConfigSettings(webConfigPath);
+            if (useStaticFileContent == null || fileDesignModeEnabled == null)
+                return;
+
+            string consoleConfigPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe.config");
+            UpdateWorkspaceConsoleConfig(consoleConfigPath, connectionString, useStaticFileContent, fileDesignModeEnabled);
+
+            GrantAccessViaIcacls(connectionStringsConfig, "R");
+            GrantAccessViaIcacls(webConfigPath, "R");
+            GrantAccessViaIcacls(consoleConfigPath, "F");
+
+            ExecuteModifiedBatchIfNeeded(sitePath, "PrepareWorkspaceConsole.x64.bat", Path.Combine("Bin", "Roslyn", "VBCSCompiler.exe"));
+        }
+
+        private string GetWorkspaceConsoleExePath(string sitePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+            return _workspaceConsoleExePath ??= Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe");
+        }
+
+        private string? GetDllVersion(string dllPath)
+        {
+            if (string.IsNullOrEmpty(dllPath)) throw new ArgumentNullException(nameof(dllPath));
+
+            if (!File.Exists(dllPath))
+            {
+                _output.WriteLine($"DLL not found: {dllPath}");
+                return null;
+            }
+            return FileVersionInfo.GetVersionInfo(dllPath).FileVersion;
+        }
+
+        private bool CheckRequiredConfigFiles(string sitePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+            string[] configFiles =
+            [
+                Path.Combine(sitePath, "ConnectionStrings.config"),
+                Path.Combine(sitePath, "Web.config"),
+                Path.Combine(sitePath, "Terrasoft.WebApp", "Web.config"),
+                Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe.config")
+            ];
+
+            foreach (string file in configFiles)
+            {
+                if (!File.Exists(file))
+                {
+                    _output.WriteLine($"Missing required config file: {file}");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private string? GetDatabaseConnectionString(string configPath)
+        {
+            if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
+
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(configPath);
+            return xmlDoc.SelectSingleNode("/connectionStrings/add[@name='db']") is XmlElement element
+                ? element.GetAttribute("connectionString")
+                : null;
+        }
+
+        private (string? UseStaticFileContent, string? FileDesignModeEnabled) ReadWebConfigSettings(string webConfigPath)
+        {
+            if (string.IsNullOrEmpty(webConfigPath)) throw new ArgumentNullException(nameof(webConfigPath));
+
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(webConfigPath);
+
+            string? useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement elem1
+                ? elem1.GetAttribute("value")
+                : null;
+
+            string? fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement elem2
+                ? elem2.GetAttribute("enabled")
+                : null;
+
+            return (useStaticFileContent, fileDesignModeEnabled);
+        }
+
+        private void UpdateWorkspaceConsoleConfig(string configPath, string connectionString, string useStaticFileContent, string fileDesignModeEnabled)
+        {
+            if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
+            if (connectionString == null) throw new ArgumentNullException(nameof(connectionString));
+            if (useStaticFileContent == null) throw new ArgumentNullException(nameof(useStaticFileContent));
+            if (fileDesignModeEnabled == null) throw new ArgumentNullException(nameof(fileDesignModeEnabled));
+
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(configPath);
+
+            if (xmlDoc.SelectSingleNode("/configuration/connectionStrings/add[@name='db']") is XmlElement dbNode)
+                dbNode.SetAttribute("connectionString", connectionString);
+
+            if (xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement staticContentNode)
+                staticContentNode.SetAttribute("value", useStaticFileContent);
+
+            if (xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement designModeNode)
+                designModeNode.SetAttribute("enabled", fileDesignModeEnabled);
+
+            if (xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode)
+                quartzNode.SetAttribute("isActive", "true");
+
+            xmlDoc.Save(configPath);
+            _output.WriteLine("Updated WorkspaceConsole configuration file.");
+        }
+
+        private void ExecuteModifiedBatchIfNeeded(string sitePath, string batchFileName, string targetFileRelativePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+            if (string.IsNullOrEmpty(batchFileName)) throw new ArgumentNullException(nameof(batchFileName));
+            if (string.IsNullOrEmpty(targetFileRelativePath)) throw new ArgumentNullException(nameof(targetFileRelativePath));
+
+            string? consoleDir = Path.GetDirectoryName(GetWorkspaceConsoleExePath(sitePath));
+            if (consoleDir == null)
+                return;
+
+            string targetFilePath = Path.Combine(consoleDir, targetFileRelativePath);
+            string batchFilePath = Path.Combine(consoleDir, batchFileName);
+
+            if (File.Exists(targetFilePath))
+            {
+                _output.WriteLine("Target file exists. Skipping batch execution.");
+                return;
+            }
+
+            if (!File.Exists(batchFilePath))
+            {
+                _output.WriteLine("Batch file not found. Skipping.");
+                return;
+            }
+
+            string originalBatchContent = File.ReadAllText(batchFilePath);
+            string modifiedBatchContent = originalBatchContent.Replace("pause", "REM pause");
+            File.WriteAllText(batchFilePath, modifiedBatchContent);
+
+            try
+            {
+                using var process = Process.Start(new ProcessStartInfo
+                {
+                    FileName = "cmd.exe",
+                    Arguments = $"/c \"{batchFileName}\"",
+                    WorkingDirectory = consoleDir,
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                });
+
+                if (process != null)
+                {
+                    process.OutputDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine(e.Data); };
+                    process.ErrorDataReceived += (_, e) => { if (e.Data != null) _output.WriteLine($"[ERROR] {e.Data}"); };
+                    process.BeginOutputReadLine();
+                    process.BeginErrorReadLine();
+                    process.WaitForExit();
+                }
+            }
+            finally
+            {
+                File.WriteAllText(batchFilePath, originalBatchContent);
+            }
+        }
+
+        private void GrantAccessViaIcacls(string filePath, string permission)
+        {
+            if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
+            if (string.IsNullOrEmpty(permission)) throw new ArgumentNullException(nameof(permission));
+
+            if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                _output.WriteLine($"Skipping access grant for non-Windows OS: {filePath}");
+                return;
+            }
+
+            if (!File.Exists(filePath))
+            {
+                _output.WriteLine($"File not found: {filePath}");
+                return;
+            }
+
+            string userName = Environment.UserName;
+            ProcessHelper.Run("icacls", $"\"{filePath}\" /grant \"{userName}\":{permission}", _output);
+        }
+
+        public void InstallFromRepository(string sitePath, string packagesPath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+            if (string.IsNullOrEmpty(packagesPath)) throw new ArgumentNullException(nameof(packagesPath));
+
+            packagesPath = packagesPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+            if (!File.Exists(consoleExePath))
+            {
+                _output.WriteLine($"Executable not found: {consoleExePath}");
+                return;
+            }
+
+            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            if (consoleDir == null)
+                return;
+
+            string tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
+            if (Directory.Exists(tempPackagesPath))
+            {
+                try
+                {
+                    Directory.Delete(tempPackagesPath, true);
+                }
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[ERROR] Failed to delete temp directory '{tempPackagesPath}': {ex.Message}");
+                    return;
+                }
+            }
+
+            string logPath = Path.Combine(consoleDir, "WSCLog");
+            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+
+            string arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+
+            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+        }
+
+        public void RebuildWorkspace(string sitePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+            sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+            if (!File.Exists(consoleExePath))
+            {
+                _output.WriteLine($"Executable not found: {consoleExePath}");
+                return;
+            }
+
+            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            if (consoleDir == null)
+                return;
+
+            string logPath = Path.Combine(consoleDir, "WSCLog");
+            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+
+            string arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+
+            _output.WriteLine("Starting RebuildWorkspace...");
+            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+        }
+
+        public void BuildConfiguration(string sitePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+            sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+            if (!File.Exists(consoleExePath))
+            {
+                _output.WriteLine($"Executable not found: {consoleExePath}");
+                return;
+            }
+
+            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            if (consoleDir == null)
+                return;
+
+            string logPath = Path.Combine(consoleDir, "WSCLog");
+            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+
+            string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -destinationPath=\"{webAppPath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+
+            _output.WriteLine("Starting BuildConfiguration...");
+            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+        }
+
+        public void DeletePackages(string sitePath, string packageList)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+            if (string.IsNullOrEmpty(packageList)) throw new ArgumentNullException(nameof(packageList));
+
+            sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+            if (!File.Exists(consoleExePath))
+            {
+                _output.WriteLine($"[ERROR] WorkspaceConsole not found: {consoleExePath}");
+                return;
+            }
+
+            string? consoleDir = Path.GetDirectoryName(consoleExePath);
+            if (consoleDir == null)
+                return;
+
+            string logPath = Path.Combine(consoleDir, "DeleteLog");
+            string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+
+            string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+
+            _output.WriteLine($"Deleting packages: {packageList}");
+            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+        }
+    }
+}

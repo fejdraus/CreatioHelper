@@ -1,0 +1,167 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
+        xmlns:core1="clr-namespace:CreatioHelper.Core;assembly=CreatioHelper.Core"
+        x:Class="CreatioHelper.MainWindow"
+        x:Name="MainRoot"
+        x:DataType="vm:MainWindowViewModel"
+        Width="800" Height="670"
+        MinWidth="740" MinHeight="400"
+        Title="Creatio Helper"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid ColumnDefinitions="*,Auto">
+        <!-- Левая часть: основной UI -->
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
+            <!-- Source selection -->
+            <StackPanel Grid.Row="0" Spacing="10">
+                <TextBlock Text="Site path source:" />
+                <StackPanel x:Name="SiteSourcePanel" Orientation="Horizontal" Margin="0,0,0,5">
+                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" />
+                    <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource"
+                                 Margin="15,0,0,0" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Folder Mode -->
+            <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5">
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" Margin="0,0,5,0" />
+                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Click="BrowseSitePath_Click" />
+                </Grid>
+            </StackPanel>
+
+            <!-- IIS Mode -->
+            <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5">
+                <ComboBox x:Name="IisSitesComboBox"
+                          HorizontalAlignment="Stretch"
+                          ItemsSource="{Binding IisSites}"
+                          SelectedItem="{Binding SelectedIisSite}" />
+            </StackPanel>
+
+            <!-- PackagesPath -->
+            <StackPanel Grid.Row="3" Margin="0,0,0,5">
+                <TextBlock Text="Packages Path:" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
+                             Margin="0,0,5,0" />
+                    <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
+                            Click="BrowsePackagesPath_Click" />
+                </Grid>
+            </StackPanel>
+
+            <!-- Delete packages (before / after) -->
+            <Grid Grid.Row="4" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" Margin="0,5,0,5">
+                <TextBlock Grid.Column="0" Text="Delete packages before install:" Margin="0,0,5,2" />
+                <TextBlock Grid.Row="0" Grid.Column="2" Text="Delete packages after install:" Margin="0,0,0,2" />
+
+                <TextBox Grid.Row="1" Grid.Column="0"
+                         x:Name="PackagesToDeleteBeforeTextBox"
+                         Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
+
+                <TextBox Grid.Row="1" Grid.Column="2"
+                         x:Name="PackagesToDeleteAfterTextBox"
+                         Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
+            </Grid>
+
+            <!-- Launch -->
+            <Grid Grid.Row="5" ColumnDefinitions="Auto,*,*" Margin="0,10,0,10">
+                <!-- Start button on the left -->
+                <Button x:Name="StartButton"
+                        Grid.Column="0"
+                        Content="Start"
+                        Click="StartButton_Click"
+                        Width="120" />
+                
+                <!-- Stop button next to Start -->
+                <Button x:Name="StopButtonAndKillWorkspaceConsole"
+                        Grid.Column="1"
+                        Content="Stop and kill WSC"
+                        Click="StopButton_Click"
+                        Width="160"
+                        Margin="10,0,0,0" />
+
+                <!-- Servers button on the right -->
+                <Button x:Name="ServerPanelButton"
+                        Grid.Column="2"
+                        HorizontalAlignment="Right"
+                        Width="120"
+                        Content="{Binding ServerPanelButtonText}"
+                        Command="{Binding ToggleServerPanelCommand}"
+                        IsVisible="{Binding IsWindows}" />
+            </Grid>
+
+            <!-- Conclusion -->
+            <ScrollViewer Grid.Row="6" x:Name="LogScrollViewer">
+                <TextBox x:Name="OutputTextBox"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         VerticalAlignment="Stretch"
+                         HorizontalAlignment="Stretch"
+                         VerticalContentAlignment="Top"
+                         IsReadOnly="True" />
+            </ScrollViewer>
+
+        </Grid>
+
+        <!-- Right side: opening panel -->
+        <Border Grid.Column="1"
+                Width="300"
+                Background="{DynamicResource ThemeBackgroundBrush}"
+                BorderBrush="{DynamicResource ThemeBorderBrush}"
+                BorderThickness="1"
+                Padding="10"
+                IsVisible="{Binding IsServerPanelVisible}">
+            <Grid x:Name="ServerPanelStack" RowDefinitions="Auto,*">
+                <!-- Верх: кнопка Add и заголовок -->
+                <StackPanel Grid.Row="0" Spacing="10">
+                    <Button Content="Add"
+                            HorizontalAlignment="Stretch"
+                            HorizontalContentAlignment="Center"
+                            Click="AddServer_Click" />
+                    <TextBlock Text="Target servers path:" />
+                </StackPanel>
+
+                <!-- Низ: растягивающийся список серверов с прокруткой -->
+                <ScrollViewer Grid.Row="1"
+                              VerticalScrollBarVisibility="Auto"
+                              HorizontalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding ServerList}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core1:ServerInfo">
+                                <StackPanel Orientation="Vertical" Margin="0,0,0,10" >
+                                    <StackPanel Orientation="Horizontal" Spacing="5">
+                                        <Button Content="✖"
+                                                Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveServerCommand, FallbackValue={x:Null}}"
+                                                CommandParameter="{Binding .}" />
+                                        <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="200" ToolTip.Tip="{Binding NetworkPath}"
+                                                   PointerPressed="ServerName_DoubleClick" />
+                                    </StackPanel>
+                                    
+                                    <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="260">
+                                        <Run Text="Network path: " />
+                                        <Run Text="{Binding NetworkPath}" />
+                                    </TextBlock>
+                                    
+                                    <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="260">
+                                        <Run Text="Site name: " />
+                                        <Run Text="{Binding SiteName}" />
+                                    </TextBlock>
+
+                                    <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="260">
+                                        <Run Text="Pool name: " />
+                                        <Run Text="{Binding PoolName}" />
+                                    </TextBlock>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
