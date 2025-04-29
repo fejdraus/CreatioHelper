@@ -18,13 +18,13 @@
         <PackageReference Condition="'$(Configuration)' == 'Debug'" Include="Avalonia.Diagnostics" Version="11.2.7" />
         <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
         <PackageReference Include="MessageBox.Avalonia" Version="3.2.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-      <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
+        <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
     </ItemGroup>
     <ItemGroup>
         <AvaloniaXaml Include="Views\*.axaml" />
+    </ItemGroup>
+    <ItemGroup>
+      <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
     </ItemGroup>
     <ItemGroup>
       <None Update="settings.json">
