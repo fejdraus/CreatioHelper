@@ -24,7 +24,7 @@ namespace CreatioHelper.Core
                 string json = File.ReadAllText(SettingsFile);
                 return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Логирование исключения может быть добавлено здесь
                 return new AppSettings();
@@ -38,7 +38,7 @@ namespace CreatioHelper.Core
                 string json = JsonSerializer.Serialize(settings, JsonOptions);
                 File.WriteAllText(SettingsFile, json);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
                 // Логирование исключения может быть добавлено здесь
             }

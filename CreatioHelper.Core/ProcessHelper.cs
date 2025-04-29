@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Text;
@@ -11,8 +12,8 @@ namespace CreatioHelper.Core
         public static void Run(string exePath, string arguments, IOutputWriter output)
         {
             if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
-            if (arguments == null) throw new ArgumentNullException(nameof(arguments));
-            if (output == null) throw new ArgumentNullException(nameof(output));
+            ArgumentNullException.ThrowIfNull(arguments);
+            ArgumentNullException.ThrowIfNull(output);
 
             Run(exePath, arguments, output, Path.GetDirectoryName(exePath));
         }
@@ -20,8 +21,8 @@ namespace CreatioHelper.Core
         public static void Run(string exePath, string arguments, IOutputWriter output, string? workingDirectory)
         {
             if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
-            if (arguments == null) throw new ArgumentNullException(nameof(arguments));
-            if (output == null) throw new ArgumentNullException(nameof(output));
+            ArgumentNullException.ThrowIfNull(arguments);
+            ArgumentNullException.ThrowIfNull(output);
 
             var startInfo = new ProcessStartInfo
             {
@@ -36,7 +37,8 @@ namespace CreatioHelper.Core
                 StandardErrorEncoding = Encoding.GetEncoding(866)
             };
 
-            using var process = new Process { StartInfo = startInfo };
+            using var process = new Process();
+            process.StartInfo = startInfo;
             process.OutputDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
@@ -57,8 +59,8 @@ namespace CreatioHelper.Core
         public static async Task<int> RunAsync(string exePath, string arguments, IOutputWriter output, string? workingDirectory = null)
         {
             if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
-            if (arguments == null) throw new ArgumentNullException(nameof(arguments));
-            if (output == null) throw new ArgumentNullException(nameof(output));
+            ArgumentNullException.ThrowIfNull(arguments);
+            ArgumentNullException.ThrowIfNull(output);
 
             var startInfo = new ProcessStartInfo
             {
@@ -73,7 +75,8 @@ namespace CreatioHelper.Core
                 StandardErrorEncoding = Encoding.GetEncoding(866)
             };
 
-            using var process = new Process { StartInfo = startInfo };
+            using var process = new Process();
+            process.StartInfo = startInfo;
             process.OutputDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))

@@ -10,6 +10,8 @@ namespace CreatioHelper;
 public partial class AddServerWindow : Window
 {
     private ServerInfo ViewModel => (ServerInfo)DataContext!;
+    
+    public AddServerWindow() : this(null) { }
 
     public AddServerWindow(ServerInfo? existing = null)
     {
