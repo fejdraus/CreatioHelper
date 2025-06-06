@@ -6,82 +6,98 @@ using System.Threading.Tasks;
 namespace CreatioHelper.Core.Services
 {
     [SupportedOSPlatform("windows")]
-    public class RemoteIisManager(string serverName, IOutputWriter output) : IRemoteIisManager
+    public class RemoteIisManager(IOutputWriter output) : IRemoteIisManager
     {
-        private readonly string _serverName = serverName ?? throw new ArgumentNullException(nameof(serverName));
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
 
-        private bool IsLocal => string.Equals(_serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        private bool IsLocal(string serverName) => string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
 
-        public async Task<bool> StopAppPoolAsync(string poolName)
+        public async Task<bool> StopAppPoolAsync(ServerInfo server)
         {
-            if (string.IsNullOrEmpty(poolName)) throw new ArgumentNullException(nameof(poolName));
+            if (!OperatingSystem.IsWindows())
+            {
+                _output.WriteLine("[ERROR] Pool management is only available on Windows.");
+                return false;
+            }
 
-            var currentState = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
+            if (string.IsNullOrWhiteSpace(server.PoolName))
+            {
+                _output.WriteLine($"[ERROR] Pool name is not specified for server '{server.Name}'.");
+                return false;
+            }
+
+            var currentState = await GetStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
             if (currentState == "Started")
             {
-                _output.WriteLine($"[INFO] Stopping app pool {poolName} on {_serverName}");
-                if (!await ExecuteScriptAsync($"Stop-WebAppPool -Name '{poolName}'"))
+                if (!await ExecuteScriptAsync(server.Name, $"Stop-WebAppPool -Name '{server.PoolName}'"))
                     return false;
             }
-
-            return await WaitForStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"App pool {poolName}");
+            return await WaitForStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'", "Stopped", $"App pool {server.PoolName}");
         }
 
-        public async Task<bool> StopWebsiteAsync(string siteName)
+        public async Task<bool> StopWebsiteAsync(ServerInfo server)
         {
-            if (string.IsNullOrEmpty(siteName)) throw new ArgumentNullException(nameof(siteName));
+            if (!OperatingSystem.IsWindows())
+            {
+                _output.WriteLine("[ERROR] Pool management is only available on Windows.");
+                return false;
+            }
+            
+            if (string.IsNullOrWhiteSpace(server.SiteName))
+            {
+                _output.WriteLine($"[ERROR] Site name is not specified for server '{server.Name}'.");
+                return false;
+            }
 
-            var siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
+            var siteStatus = await GetStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'");
             if (siteStatus == "Started")
             {
-                _output.WriteLine($"[INFO] Stopping site {siteName} on {_serverName}");
-                if (!await ExecuteScriptAsync($"Stop-Website -Name '{siteName}'"))
+                if (!await ExecuteScriptAsync(server.Name, $"Stop-Website -Name '{server.SiteName}'"))
                     return false;
             }
 
-            return await WaitForStateAsync(false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}");
+            return await WaitForStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'", "Stopped", $"Website {server.SiteName}");
         }
 
-        public async Task<bool> StartAppPoolAsync(string poolName)
+        public async Task<bool> StartAppPoolAsync(ServerInfo server)
         {
-            if (string.IsNullOrEmpty(poolName)) throw new ArgumentNullException(nameof(poolName));
+            if (string.IsNullOrEmpty(server.PoolName)) throw new ArgumentNullException(nameof(server.PoolName));
 
-            var poolStatus = await GetStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'");
+            var poolStatus = await GetStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
             if (poolStatus == "Stopped")
             {
-                _output.WriteLine($"[INFO] Starting app pool {poolName} on {_serverName}");
-                if (!await ExecuteScriptAsync($"Start-WebAppPool -Name '{poolName}'"))
+                //_output.WriteLine($"[INFO] Starting app pool {server.PoolName} on {_serverName}");
+                if (!await ExecuteScriptAsync(server.Name, $"Start-WebAppPool -Name '{server.PoolName}'"))
                     return false;
             }
 
-            return await WaitForStateAsync(true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"App pool {poolName}");
+            return await WaitForStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'", "Started", $"App pool {server.PoolName}");
         }
 
-        public async Task<bool> StartWebsiteAsync(string siteName)
+        public async Task<bool> StartWebsiteAsync(ServerInfo server)
         {
-            if (string.IsNullOrEmpty(siteName)) throw new ArgumentNullException(nameof(siteName));
+            if (string.IsNullOrEmpty(server.SiteName)) throw new ArgumentNullException(nameof(server.SiteName));
 
-            var siteStatus = await GetStateAsync(false, $"Get-Website -Name '{siteName}'");
+            var siteStatus = await GetStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'");
             if (siteStatus == "Stopped")
             {
-                _output.WriteLine($"[INFO] Starting site {siteName} on {_serverName}");
-                if (!await ExecuteScriptAsync($"Start-Website -Name '{siteName}'"))
+                //_output.WriteLine($"[INFO] Starting site {server.SiteName} on {_serverName}");
+                if (!await ExecuteScriptAsync(server.Name, $"Start-Website -Name '{server.SiteName}'"))
                     return false;
             }
 
-            return await WaitForStateAsync(false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}");
+            return await WaitForStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'", "Started", $"Website {server.SiteName}");
         }
 
-        private async Task<bool> ExecuteScriptAsync(string script)
+        private async Task<bool> ExecuteScriptAsync(string serverName, string script)
         {
             if (string.IsNullOrEmpty(script)) throw new ArgumentNullException(nameof(script));
 
             try
             {
-                var command = IsLocal
+                var command = IsLocal(serverName)
                     ? $"Import-Module WebAdministration; {script}"
-                    : $"Invoke-Command -ComputerName '{_serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
+                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -100,14 +116,14 @@ namespace CreatioHelper.Core.Services
                     return false;
                 }
 
-                var outputText = await process.StandardOutput.ReadToEndAsync();
+                //var outputText = await process.StandardOutput.ReadToEndAsync();
                 var errorText = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
 
-                if (!string.IsNullOrWhiteSpace(outputText))
+                /*if (!string.IsNullOrWhiteSpace(outputText))
                 {
                     _output.WriteLine($"[PS] {outputText.Trim()}");
-                }
+                }*/
                 
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
@@ -124,7 +140,7 @@ namespace CreatioHelper.Core.Services
             }
         }
 
-        private async Task<string> GetStateAsync(bool isPool, string expression)
+        private async Task<string> GetStateAsync(string serverName, bool isPool, string expression)
         {
             if (string.IsNullOrEmpty(expression)) throw new ArgumentNullException(nameof(expression));
 
@@ -134,9 +150,9 @@ namespace CreatioHelper.Core.Services
                     ? $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).Value"
                     : $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).State";
 
-                var command = IsLocal
+                var command = IsLocal(serverName)
                     ? $"Import-Module WebAdministration; {script}"
-                    : $"Invoke-Command -ComputerName '{_serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
+                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
 
                 var startInfo = new ProcessStartInfo
                 {
@@ -158,21 +174,24 @@ namespace CreatioHelper.Core.Services
                 var outputText = await process.StandardOutput.ReadToEndAsync();
                 var errorText = await process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync();
-
-                if (!string.IsNullOrWhiteSpace(outputText))
-                    _output.WriteLine($"[PS] {outputText.Trim()}");
-
+    
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
-                    _output.WriteLine($"[PS-ERROR] {errorText.Trim()}");
+                    _output.WriteLine($"[PS-ERROR] Check the name of the pool");
                     return null;
                 }
-
+                
+                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
+                if (lines.Length < 3)
+                {
+                    _output.WriteLine($"[PS-ERROR] Check the name of the site");
+                    return null;
+                }
+                
                 if (string.IsNullOrWhiteSpace(outputText))
                     return null;
-
-                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
-                return lines[^1]; // Последняя строка содержит состояние
+                
+                return  lines[2];
             }
             catch (Exception ex)
             {
@@ -181,27 +200,70 @@ namespace CreatioHelper.Core.Services
             }
         }
 
-        private async Task<bool> WaitForStateAsync(bool isPool, string query, string desiredState, string name)
+        private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string query, string desiredState, string name)
         {
             if (string.IsNullOrEmpty(query)) throw new ArgumentNullException(nameof(query));
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
 
-            for (var attempt = 1; attempt <= 12; attempt++)
+            string currentState;
+            do
             {
-                var currentState = await GetStateAsync(isPool, query);
+                currentState = await GetStateAsync(serverName, isPool, query);
                 if (string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase))
                 {
-                    _output.WriteLine($"[INFO] {name} reached desired state: {desiredState}");
+                    //_output.WriteLine($"[INFO] {name} reached desired state: {desiredState}");
                     return true;
                 }
 
                 _output.WriteLine($"[WAIT] {name} current state: {currentState ?? "unknown"}, waiting...");
                 await Task.Delay(5000);
             }
+            while (!string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
 
-            _output.WriteLine($"[ERROR] {name} did not reach state {desiredState} within expected time.");
-            return false;
+            return true;
+        }
+        
+        public async Task GetAppPoolStatusAsync(ServerInfo server)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(server.PoolName))
+                {
+                    var poolStatus = await GetStateAsync(server.Name,true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
+                    server.PoolStatus = poolStatus ?? "Error";
+                }
+                else
+                {
+                    server.PoolStatus = "Pool name is empty";
+                }
+            }
+            catch (Exception ex)
+            {
+                server.PoolStatus = "Error";
+                _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name}': {ex.Message}");
+            }
+        }
+
+        public async Task GetWebsiteStatusAsync(ServerInfo server)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(server.SiteName))
+                {
+                    var siteStatus = await GetStateAsync(server.Name,false, $"Get-Website -Name '{server.SiteName}'");
+                    server.SiteStatus = siteStatus ?? "Error";
+                }
+                else
+                {
+                    server.SiteStatus = "Site name is empty";
+                }
+            }
+            catch (Exception ex)
+            {
+                server.SiteStatus = "Error";
+                _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name}': {ex.Message}");
+            }
         }
     }
 }

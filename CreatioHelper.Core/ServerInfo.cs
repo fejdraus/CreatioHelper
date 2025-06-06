@@ -9,7 +9,9 @@ namespace CreatioHelper.Core
         private string _networkPath = string.Empty;
         private string _siteName = string.Empty;
         private string _poolName = string.Empty;
-
+        private string _poolStatus = "Unknown";
+        private string _siteStatus = "Unknown";
+        private bool _isStatusLoading;
         public string Name
         {
             get => _name;
@@ -57,6 +59,45 @@ namespace CreatioHelper.Core
                 if (_poolName != value)
                 {
                     _poolName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        
+        public string PoolStatus
+        {
+            get => _poolStatus;
+            set
+            {
+                if (_poolStatus != value)
+                {
+                    _poolStatus = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public string SiteStatus
+        {
+            get => _siteStatus;
+            set
+            {
+                if (_siteStatus != value)
+                {
+                    _siteStatus = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsStatusLoading
+        {
+            get => _isStatusLoading;
+            set
+            {
+                if (_isStatusLoading != value)
+                {
+                    _isStatusLoading = value;
                     OnPropertyChanged();
                 }
             }

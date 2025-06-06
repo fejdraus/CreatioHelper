@@ -7,9 +7,21 @@
   "ServerList": [
     {
       "Name": "fejdraus",
+      "NetworkPath": "R:\\testHelper\\site1",
+      "SiteName": "Site1",
+      "PoolName": "Site1"
+    },
+    {
+      "Name": "fejdraus",
       "NetworkPath": "R:\\testHelper\\site2",
       "SiteName": "Site2",
       "PoolName": "Site2"
+    },
+    {
+      "Name": "fejdraus",
+      "NetworkPath": "R:\\testHelper\\site3",
+      "SiteName": "Site3",
+      "PoolName": "Site3"
     }
   ],
   "IsIisMode": true,

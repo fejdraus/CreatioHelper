@@ -8,74 +8,41 @@ namespace CreatioHelper.Core
 {
     public static class ProcessHelper
     {
-        public static void Run(string exePath, string arguments, IOutputWriter output)
+        private static readonly Job Job = new();
+        
+        public static int Run(string exePath, string arguments, IOutputWriter output)
         {
-            if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
-            ArgumentNullException.ThrowIfNull(arguments);
-            ArgumentNullException.ThrowIfNull(output);
-
-            Run(exePath, arguments, output, Path.GetDirectoryName(exePath));
+            var workingDirectory = Path.GetDirectoryName(exePath);
+            return Run(exePath, arguments, output, workingDirectory);
         }
 
-        public static void Run(string exePath, string arguments, IOutputWriter output, string workingDirectory)
+        public static int Run(string exePath, string arguments, IOutputWriter output, string? workingDirectory)
         {
-            if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
+            if (string.IsNullOrWhiteSpace(exePath)) 
+                throw new ArgumentNullException(nameof(exePath));
             ArgumentNullException.ThrowIfNull(arguments);
             ArgumentNullException.ThrowIfNull(output);
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = exePath,
-                Arguments = arguments,
-                WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                StandardOutputEncoding = Encoding.GetEncoding(866),
-                StandardErrorEncoding = Encoding.GetEncoding(866)
-            };
-
-            using var process = new Process();
-            process.StartInfo = startInfo;
-            process.OutputDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                    output.WriteLine(e.Data);
-            };
-            process.ErrorDataReceived += (_, e) =>
-            {
-                if (!string.IsNullOrEmpty(e.Data))
-                    output.WriteLine($"[ERROR] {e.Data}");
-            };
-
-            process.Start();
-            process.BeginOutputReadLine();
-            process.BeginErrorReadLine();
+            var process = StartAndReturn(exePath, arguments, output, workingDirectory);
+            Job.AddProcess(process.Handle);
             process.WaitForExit();
+            return process.ExitCode;
         }
 
-        public static async Task<int> RunAsync(string exePath, string arguments, IOutputWriter output, string? workingDirectory = null)
+        private static Process StartAndReturn(string exePath, string arguments, IOutputWriter output, string? workingDirectory = null)
         {
-            if (string.IsNullOrEmpty(exePath)) throw new ArgumentNullException(nameof(exePath));
-            ArgumentNullException.ThrowIfNull(arguments);
-            ArgumentNullException.ThrowIfNull(output);
-
             var startInfo = new ProcessStartInfo
             {
-                FileName = exePath,
-                Arguments = arguments,
-                WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
+                FileName               = exePath,
+                Arguments              = arguments,
+                WorkingDirectory       = workingDirectory ?? Environment.CurrentDirectory,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
+                RedirectStandardError  = true,
+                UseShellExecute        = false,
+                CreateNoWindow         = true,
                 StandardOutputEncoding = Encoding.GetEncoding(866),
-                StandardErrorEncoding = Encoding.GetEncoding(866)
+                StandardErrorEncoding  = Encoding.GetEncoding(866)
             };
-
-            using var process = new Process();
-            process.StartInfo = startInfo;
+            var process = new Process { StartInfo = startInfo };
             process.OutputDataReceived += (_, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
@@ -86,13 +53,10 @@ namespace CreatioHelper.Core
                 if (!string.IsNullOrEmpty(e.Data))
                     output.WriteLine($"[ERROR] {e.Data}");
             };
-
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
-            await Task.Run(() => process.WaitForExit());
-            await Task.Delay(200);
-            return process.ExitCode;
+            return process;
         }
     }
 }

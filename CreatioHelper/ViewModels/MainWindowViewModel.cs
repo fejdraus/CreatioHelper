@@ -4,10 +4,14 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Numerics;
+using System.Threading.Tasks;
+using Avalonia.Threading;
 using Microsoft.Web.Administration;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CreatioHelper.Core;
+using CreatioHelper.Core.Services;
 
 namespace CreatioHelper.ViewModels;
 
@@ -15,11 +19,14 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly bool _isInitializing;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
-
-    public MainWindowViewModel()
+    private readonly ServerStatusService _statusService;
+    private readonly IRemoteIisManager _remoteIisManager;
+    private const int MaxLogEntries = 1000;
+    public MainWindowViewModel(IOutputWriter output)
     {
+        _statusService = new ServerStatusService(output);
         _isInitializing = true;
-
+        _remoteIisManager = new RemoteIisManager(output);
         var settings = AppSettingsService.SettingsFileExists()
             ? AppSettingsService.Load()
             : new AppSettings
@@ -98,6 +105,15 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private bool _isServerPanelVisible;
+    
+    [ObservableProperty]
+    private bool _isAutoScrollEnabled = true;
+    
+    [ObservableProperty]
+    private bool _isWrapTextEnabled = true;
+    
+    [ObservableProperty]
+    private ObservableCollection<string> _logEntries = new();
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
     public ObservableCollection<ServerInfo> ServerList { get; } = new();
@@ -124,11 +140,108 @@ public partial class MainWindowViewModel : ObservableObject
         if (ServerList.Contains(server))
             ServerList.Remove(server);
     }
+    
     [RelayCommand]
     private void ToggleServerPanel()
     {
         IsServerPanelVisible = !IsServerPanelVisible;
     }
+    
+    [RelayCommand]
+    private async Task RefreshServerStatus(ServerInfo server)
+    {
+        await _statusService.RefreshServerStatusAsync(server);
+    }
+    
+    [RelayCommand]
+    private async Task RefreshAllServersStatus()
+    {
+        if (ServerList.Count == 0) return;
+        await _statusService.RefreshMultipleServersStatusAsync(ServerList.ToArray());
+    }
+    
+    [RelayCommand]
+    private async Task StopPool(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StopAppPoolAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartPool(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StartAppPoolAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopSite(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StopWebsiteAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+    
+    [ObservableProperty]
+    private bool _isServerControlsEnabled = true;
+    
+    [ObservableProperty]
+    private bool _shouldScrollToEnd;
+
+    [RelayCommand]
+    private async Task StartSite(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StartWebsiteAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+    
+    public void AddLogEntry(string entry)
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            // Ограничиваем количество записей
+            if (LogEntries.Count >= MaxLogEntries)
+            {
+                // Удаляем старые записи (первые 20%)
+                var toRemove = MaxLogEntries / 5;
+                for (int i = 0; i < toRemove; i++)
+                {
+                    LogEntries.RemoveAt(0);
+                }
+            }
+        
+            LogEntries.Add(entry);
+        
+            OnPropertyChanged(nameof(ShouldScrollToEnd));
+        }, DispatcherPriority.Background);;
+    }
+    
+    partial void OnIsAutoScrollEnabledChanged(bool value)
+    {
+        // Если юзер вручную включил автоскролл — можно сразу прокрутить в конец:
+        if (value && LogEntries.Count > 0)
+            OnPropertyChanged(nameof(ShouldScrollToEnd));
+    }
+    
+    public void ClearLog()
+    {
+        Dispatcher.UIThread.Post(() =>
+        {
+            LogEntries.Clear();
+        }, DispatcherPriority.Background);
+    }
+
     partial void OnIsFolderModeChanged(bool value)
     {
         OnPropertyChanged(nameof(IsIisMode));
@@ -156,19 +269,21 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
                 var appVdir = app?.VirtualDirectories["/"];
-                var rootVdir = site.Applications["/"]?.VirtualDirectories["/"];
+                var rootApp = site.Applications["/"];
+                var rootVdir = rootApp?.VirtualDirectories["/"];
 
                 string sitePath = rootVdir?.PhysicalPath ?? "";
                 string appPath = appVdir?.PhysicalPath ?? "";
+                string poolName = rootApp?.ApplicationPoolName ?? "";
 
-                if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath))
+                if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
                     continue;
 
                 if (!File.Exists(Path.Combine(appPath, "Web.config"))) continue;
                 if (!File.Exists(Path.Combine(sitePath, "ConnectionStrings.config"))) continue;
                 if (!File.Exists(Path.Combine(sitePath, "Web.config"))) continue;
 
-                IisSites.Add(new IisSiteInfo { Name = site.Name, Path = sitePath });
+                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName });
             }
 
             if (IisSites.Count > 0)
@@ -176,7 +291,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            IisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "" });
+            IisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "", PoolName = "" });
         }
     }
 

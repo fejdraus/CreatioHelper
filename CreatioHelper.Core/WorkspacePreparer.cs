@@ -173,13 +173,11 @@ namespace CreatioHelper.Core
 
             if (File.Exists(targetFilePath))
             {
-                _output.WriteLine("Target file exists. Skipping batch execution.");
                 return;
             }
 
             if (!File.Exists(batchFilePath))
             {
-                _output.WriteLine("Batch file not found. Skipping.");
                 return;
             }
 
@@ -213,7 +211,7 @@ namespace CreatioHelper.Core
             }
         }
 
-        private void GrantAccessViaIcacls(string filePath, string permission)
+        private int GrantAccessViaIcacls(string filePath, string permission)
         {
             if (string.IsNullOrEmpty(filePath)) throw new ArgumentNullException(nameof(filePath));
             if (string.IsNullOrEmpty(permission)) throw new ArgumentNullException(nameof(permission));
@@ -221,20 +219,20 @@ namespace CreatioHelper.Core
             if (!RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
                 _output.WriteLine($"Skipping access grant for non-Windows OS: {filePath}");
-                return;
+                return 0;
             }
 
             if (!File.Exists(filePath))
             {
                 _output.WriteLine($"File not found: {filePath}");
-                return;
+                return 0;
             }
 
             string userName = Environment.UserName;
-            ProcessHelper.Run("icacls", $"\"{filePath}\" /grant \"{userName}\":{permission}", _output);
+            return ProcessHelper.Run("icacls", $"\"{filePath}\" /grant \"{userName}\":{permission}", _output);
         }
 
-        public void InstallFromRepository(string sitePath, string packagesPath)
+        public int InstallFromRepository(string sitePath, string packagesPath)
         {
             if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
             if (string.IsNullOrEmpty(packagesPath)) throw new ArgumentNullException(nameof(packagesPath));
@@ -245,12 +243,12 @@ namespace CreatioHelper.Core
             if (!File.Exists(consoleExePath))
             {
                 _output.WriteLine($"Executable not found: {consoleExePath}");
-                return;
+                return 0;
             }
 
             var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
-                return;
+                return 0;
 
             var tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
             if (Directory.Exists(tempPackagesPath))
@@ -262,7 +260,7 @@ namespace CreatioHelper.Core
                 catch (Exception ex)
                 {
                     _output.WriteLine($"[ERROR] Failed to delete temp directory '{tempPackagesPath}': {ex.Message}");
-                    return;
+                    return 0;
                 }
             }
 
@@ -271,11 +269,10 @@ namespace CreatioHelper.Core
             var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
 
             var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
-
-            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+            return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
-
-        public void RebuildWorkspace(string sitePath)
+        
+        public int RegenerateSchemaSources(string sitePath)
         {
             if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
 
@@ -285,12 +282,39 @@ namespace CreatioHelper.Core
             if (!File.Exists(consoleExePath))
             {
                 _output.WriteLine($"Executable not found: {consoleExePath}");
-                return;
+                return 0;
             }
 
             var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
-                return;
+                return 0;
+
+            var logPath = Path.Combine(consoleDir, "WSCLog");
+            var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
+            var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
+
+            var arguments = $"-operation=\"RegenerateSchemaSources\" -workspaceName=\"Default\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+
+            _output.WriteLine("Starting Regenerate Schema Sources...");
+            return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+        }
+
+        public int RebuildWorkspace(string sitePath)
+        {
+            if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+            sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+            if (!File.Exists(consoleExePath))
+            {
+                _output.WriteLine($"Executable not found: {consoleExePath}");
+                return 0;
+            }
+
+            var consoleDir = Path.GetDirectoryName(consoleExePath);
+            if (consoleDir == null)
+                return 0;
 
             var logPath = Path.Combine(consoleDir, "WSCLog");
             var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
@@ -298,11 +322,11 @@ namespace CreatioHelper.Core
 
             var arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
 
-            _output.WriteLine("Starting RebuildWorkspace...");
-            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+            _output.WriteLine("Starting Rebuild Workspace...");
+            return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
 
-        public void BuildConfiguration(string sitePath)
+        public int BuildConfiguration(string sitePath)
         {
             if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
 
@@ -312,12 +336,12 @@ namespace CreatioHelper.Core
             if (!File.Exists(consoleExePath))
             {
                 _output.WriteLine($"Executable not found: {consoleExePath}");
-                return;
+                return 0;
             }
 
             string? consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
-                return;
+                return 0;
 
             string logPath = Path.Combine(consoleDir, "WSCLog");
             string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
@@ -325,11 +349,11 @@ namespace CreatioHelper.Core
 
             string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -destinationPath=\"{webAppPath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
 
-            _output.WriteLine("Starting BuildConfiguration...");
-            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+            _output.WriteLine("Starting Build Configuration...");
+            return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
 
-        public void DeletePackages(string sitePath, string packageList)
+        public int DeletePackages(string sitePath, string packageList)
         {
             if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
             if (string.IsNullOrEmpty(packageList)) throw new ArgumentNullException(nameof(packageList));
@@ -340,12 +364,12 @@ namespace CreatioHelper.Core
             if (!File.Exists(consoleExePath))
             {
                 _output.WriteLine($"[ERROR] WorkspaceConsole not found: {consoleExePath}");
-                return;
+                return 0;
             }
 
             string? consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
-                return;
+                return 0;
 
             string logPath = Path.Combine(consoleDir, "DeleteLog");
             string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
@@ -354,7 +378,7 @@ namespace CreatioHelper.Core
             string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
 
             _output.WriteLine($"Deleting packages: {packageList}");
-            ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
+            return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
     }
 }

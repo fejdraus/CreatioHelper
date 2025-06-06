@@ -6,5 +6,20 @@
 
     <Application.Styles>
         <FluentTheme />
+        <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
     </Application.Styles>
+     <Application.Resources>
+         <ResourceDictionary>
+             <ResourceDictionary.ThemeDictionaries>
+                 <ResourceDictionary x:Key="Light">
+                     <SolidColorBrush x:Key="TextEditorBackgroundBrush">White</SolidColorBrush>
+                     <SolidColorBrush x:Key="TextEditorForegroundBrush">Black</SolidColorBrush>
+                 </ResourceDictionary>
+                 <ResourceDictionary x:Key="Dark">
+                     <SolidColorBrush x:Key="TextEditorBackgroundBrush">#1E1E1E</SolidColorBrush>
+                     <SolidColorBrush x:Key="TextEditorForegroundBrush">#D4D4D4</SolidColorBrush>
+                 </ResourceDictionary>
+             </ResourceDictionary.ThemeDictionaries>
+         </ResourceDictionary>
+     </Application.Resources>
 </Application>

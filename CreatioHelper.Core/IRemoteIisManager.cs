@@ -4,9 +4,9 @@ namespace CreatioHelper.Core
 {
     public interface IRemoteIisManager
     {
-        Task<bool> StopAppPoolAsync(string poolName);
-        Task<bool> StopWebsiteAsync(string siteName);
-        Task<bool> StartAppPoolAsync(string poolName);
-        Task<bool> StartWebsiteAsync(string siteName);
+        Task<bool> StopAppPoolAsync(ServerInfo server);
+        Task<bool> StopWebsiteAsync(ServerInfo server);
+        Task<bool> StartAppPoolAsync(ServerInfo server);
+        Task<bool> StartWebsiteAsync(ServerInfo server);
     }
 }

@@ -18,7 +18,7 @@ namespace CreatioHelper.Core
                 throw new PlatformNotSupportedException("Robocopy is available only on Windows");
 
             string arguments = $"\"{sourceDir}\" \"{destDir}\" /e /purge /NFL /NDL /NJH /NJS";
-            output.WriteLine($"[DEBUG][{server.Name}] Starting copy from {sourceDir} to {destDir}");
+            output.WriteLine($"[INFO][{server.Name}] Starting copy from {sourceDir} to {destDir}");
 
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
@@ -36,11 +36,7 @@ namespace CreatioHelper.Core
                 process.Start();
                 output.WriteLine($"[INFO][{server.Name}] File copying in progress...");
 
-                while (!process.HasExited)
-                {
-                    output.WriteLine($"[INFO][{server.Name}] File copying still in progress...");
-                    await Task.Delay(1000, cancellationToken);
-                }
+                await WaitForExitAsync(process, cancellationToken);
 
                 int exitCode = process.ExitCode;
                 if (exitCode >= 8)
@@ -48,7 +44,7 @@ namespace CreatioHelper.Core
                 else if (exitCode > 1)
                     output.WriteLine($"[WARN][{server.Name}] Robocopy completed with warning: Code {exitCode}");
                 else
-                    output.WriteLine($"[DEBUG][{server.Name}] Copying completed from {sourceDir} to {destDir}");
+                    output.WriteLine($"[INFO][{server.Name}] Copying completed from {sourceDir} to {destDir}");
 
                 return exitCode;
             }
@@ -67,6 +63,15 @@ namespace CreatioHelper.Core
             {
                 output.WriteLine($"[ERROR][{server.Name}] Exception during copying: {ex.Message}");
                 return -2;
+            }
+        }
+        
+        private static async Task WaitForExitAsync(Process process, CancellationToken cancellationToken)
+        {
+            while (!process.HasExited)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await Task.Delay(100, cancellationToken);
             }
         }
     }

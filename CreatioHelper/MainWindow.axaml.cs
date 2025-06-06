@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -13,25 +12,63 @@ using Avalonia.Threading;
 using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.ViewModels;
+using System.ComponentModel;
 
-namespace CreatioHelper;
-
-public partial class MainWindow : Window
+namespace CreatioHelper
 {
-    private bool _isBusy;
-    private CancellationTokenSource? _cancellationTokenSource;
-
-    public MainWindow()
+    public partial class MainWindow : Window
     {
-        InitializeComponent();
-        DataContext = new MainWindowViewModel();
-        Closing += OnMainWindowClosing;
-    }
+        private bool _isBusy;
+        private CancellationTokenSource? _cancellationTokenSource;
+        private readonly BufferingOutputWriter _writer;
+        private readonly MainWindowViewModel _viewModel;
 
-    private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
-    {
-        if (_isBusy)
+        public MainWindow()
         {
+            InitializeComponent();
+            _writer = new BufferingOutputWriter(line =>
+            {
+                _viewModel?.AddLogEntry(line);
+            });
+            _viewModel = new MainWindowViewModel(_writer);
+            DataContext = _viewModel;
+            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            Closing += OnMainWindowClosing;
+        }
+
+        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(MainWindowViewModel.ShouldScrollToEnd))
+            {
+                string nl = Environment.NewLine;
+                var allText = string.Join(nl, _viewModel.LogEntries);
+                Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    LogTextEditor.Text = allText;
+                    if (_viewModel.IsAutoScrollEnabled)
+                    {
+                        var caretPos = 0;
+                        if (_viewModel.IsWrapTextEnabled)
+                        {
+                            caretPos = LogTextEditor.Text.Length;
+                        }
+                        else
+                        {
+                            var lastNewlineIndex = allText.LastIndexOf(nl, StringComparison.Ordinal);
+                            if (lastNewlineIndex >= 0)
+                            {
+                                caretPos = lastNewlineIndex + nl.Length;
+                            }
+                        }
+                        LogTextEditor.CaretOffset = caretPos;
+                        LogTextEditor.TextArea.Caret.BringCaretToView();
+                    }
+                }, DispatcherPriority.Render);
+            }
+        }
+        private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
+        {
+            if (!_isBusy) return;
             e.Cancel = true;
             var warningWindow = new CloseWarningWindow
             {
@@ -40,297 +77,413 @@ public partial class MainWindow : Window
             };
             await warningWindow.ShowDialog(this);
         }
-    }
 
-    private void SetControlsEnabled(bool isEnabled)
-    {
-        ServerPanelStack.IsEnabled = isEnabled;
-        StartButton.IsEnabled = isEnabled;
-        ServerPanelButton.IsEnabled = isEnabled;
-        SiteSourcePanel.IsEnabled = isEnabled;
-        IisSitesComboBox.IsEnabled = isEnabled;
-        SitePathTextBox.IsEnabled = isEnabled;
-        PackagesPathTextBox.IsEnabled = isEnabled;
-        PackagesToDeleteBeforeTextBox.IsEnabled = isEnabled;
-        PackagesToDeleteAfterTextBox.IsEnabled = isEnabled;
-        BrowseSiteButton.IsEnabled = isEnabled;
-        BrowsePackagesButton.IsEnabled = isEnabled;
-        StopButtonAndKillWorkspaceConsole.IsEnabled = !isEnabled;
-    }
-    
-    private async Task StartButton_ClickAsync()
-    {
-        OutputTextBox.Text = "";
-
-        if (DataContext is not MainWindowViewModel viewModel)
+        private void SetControlsEnabled(bool isEnabled)
         {
-            OutputTextBox.Text = "Unable to resolve DataContext.";
-            return;
+            StartButton.IsEnabled = isEnabled;
+            ServerPanelButton.IsEnabled = isEnabled;
+            SiteSourcePanel.IsEnabled = isEnabled;
+            IisSitesComboBox.IsEnabled = isEnabled;
+            SitePathTextBox.IsEnabled = isEnabled;
+            PackagesPathTextBox.IsEnabled = isEnabled;
+            PackagesToDeleteBeforeTextBox.IsEnabled = isEnabled;
+            PackagesToDeleteAfterTextBox.IsEnabled = isEnabled;
+            BrowseSiteButton.IsEnabled = isEnabled;
+            BrowsePackagesButton.IsEnabled = isEnabled;
+            AddServerButton.IsEnabled = isEnabled;
+            if (DataContext is MainWindowViewModel viewModel)
+            {
+                viewModel.IsServerControlsEnabled = isEnabled;
+            }
         }
 
-        if (!TryValidateInputs(viewModel, out var sitePath, out var siteName))
-            return;
-
-        string packagesPath = PackagesPathTextBox.Text ?? "";
-        string packagesBefore = PackagesToDeleteBeforeTextBox.Text?.Trim() ?? "";
-        string packagesAfter = PackagesToDeleteAfterTextBox.Text?.Trim() ?? "";
-        var serverList = viewModel.ServerList.ToArray();
-        
-        _cancellationTokenSource = new CancellationTokenSource();
-        var cancellationToken = _cancellationTokenSource.Token;
-
-        var writer = new BufferingOutputWriter(line =>
+        private async Task StartButton_ClickAsync()
         {
-            Dispatcher.UIThread.Post(() =>
+            StopButtonAndKillWorkspaceConsole.IsEnabled = false;
+
+            if (DataContext is not MainWindowViewModel viewModel)
             {
-                OutputTextBox.Text += line + Environment.NewLine;
-                OutputTextBox.CaretIndex = OutputTextBox.Text.Length;
-                LogScrollViewer.Offset = new Vector(0, LogScrollViewer.Extent.Height);
-            });
-        });
+                _writer.WriteLine("Unable to resolve DataContext.");
+                return;
+            }
 
-        var preparer = new WorkspacePreparer(writer);
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
+            // Очищаем лог перед новой операцией
+            viewModel.ClearLog();
+
+            if (!TryValidateInputs(viewModel, out var sitePath) || sitePath == null)
+            {
+                return;
+            }
+            string packagesPath = PackagesPathTextBox.Text ?? "";
+            string packagesBefore = PackagesToDeleteBeforeTextBox.Text?.Trim() ?? "";
+            string packagesAfter = PackagesToDeleteAfterTextBox.Text?.Trim() ?? "";
+            var serverList = viewModel.ServerList.ToArray();
+            _cancellationTokenSource = new CancellationTokenSource();
+            var cancellationToken = _cancellationTokenSource.Token;
+            var preparer = new WorkspacePreparer(_writer);
             _isBusy = true;
             StartButton.Content = "In process...";
             SetControlsEnabled(false);
-        });
 
-        await Task.Run(async () =>
-        {
-            try
+            await Task.Run(async () =>
             {
-                writer.WriteLine("Prepare WorkspaceConsole ...");
-                preparer.Prepare(sitePath);
-                
-                if (cancellationToken.IsCancellationRequested)
-                    return;
-                
-                if (sitePath != null && siteName != null)
+                try
                 {
-                    RemoteIisManager? manager = null;
+                    _writer.WriteLine("Prepare WorkspaceConsole ...");
+                    preparer.Prepare(sitePath);
+
+                    if (cancellationToken.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
                     if (OperatingSystem.IsWindows())
                     {
-                        manager = new RemoteIisManager(Environment.MachineName, writer);
-                        if(!await manager.StopAppPoolAsync(siteName) || !await manager.StopWebsiteAsync(siteName)) return;
-                    }
-                    
-                    if (!string.IsNullOrWhiteSpace(packagesBefore))
-                    {
-                        writer.WriteLine("Deleting packages BEFORE installation...");
-                        if (!cancellationToken.IsCancellationRequested) preparer.DeletePackages(sitePath, packagesBefore);
-                        if (!cancellationToken.IsCancellationRequested) preparer.RebuildWorkspace(sitePath);
-                        if (!cancellationToken.IsCancellationRequested) preparer.BuildConfiguration(sitePath);
-                    }
-                    
-                    if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
-                    {
-                        writer.WriteLine("Start installation packages...");
-                        if (!cancellationToken.IsCancellationRequested) preparer.InstallFromRepository(sitePath, packagesPath);
-                        if (!cancellationToken.IsCancellationRequested) preparer.RebuildWorkspace(sitePath);
-                        if (!cancellationToken.IsCancellationRequested) preparer.BuildConfiguration(sitePath);
-                    }
-
-                    if (!string.IsNullOrWhiteSpace(packagesAfter))
-                    {
-                        writer.WriteLine("Deleting packages AFTER installation...");
-                        if (!cancellationToken.IsCancellationRequested) preparer.DeletePackages(sitePath, packagesAfter);
-                        if (!cancellationToken.IsCancellationRequested) preparer.RebuildWorkspace(sitePath);
-                        if (!cancellationToken.IsCancellationRequested) preparer.BuildConfiguration(sitePath);
-                    }
-
-                    if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
-                    {
-                        var syncService = new RemoteSynchronizationService(writer);
-                        if (!cancellationToken.IsCancellationRequested)
+                        var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
+                        var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
+                        var localServerInfo = new ServerInfo
                         {
-                            var syncStatus = await syncService.SynchronizeAsync(siteName, sitePath, serverList.ToList());
-                            writer.WriteLine(syncStatus
-                                ? "[OK] All servers are successfully synchronized."
-                                : "[ERROR] Failed to synchronize servers.");
+                            Name = Environment.MachineName,
+                            PoolName = poolName,
+                            SiteName = siteName
+                        };
+                        var manager = new RemoteIisManager(_writer);
+                        if (localServerInfo.PoolName != null)
+                        {
+                            await manager.StopAppPoolAsync(localServerInfo);
+                        }
+                        if (localServerInfo.SiteName != null)
+                        {
+                            await manager.StopWebsiteAsync(localServerInfo);
+                        }
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            StopButtonAndKillWorkspaceConsole.IsEnabled = true;
+                        });
+
+                        if (!string.IsNullOrWhiteSpace(packagesBefore))
+                        {
+                            _writer.WriteLine("Deleting packages BEFORE installation...");
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.DeletePackages(sitePath, packagesBefore);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Deleting packages failed.");
+                                    return;
+                                }
+                            }
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.RebuildWorkspace(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                    return;
+                                }
+                            }
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.BuildConfiguration(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Building configuration failed.");
+                                    return;
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
+                        {
+                            _writer.WriteLine("Start installation packages...");
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.InstallFromRepository(sitePath, packagesPath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Failed to install packages.");
+                                    return;
+                                }
+                            }
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.RebuildWorkspace(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                    return;
+                                }
+                            }
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.BuildConfiguration(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Building configuration failed.");
+                                    return;
+                                }
+                            }
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(packagesAfter))
+                        {
+                            _writer.WriteLine("Deleting packages AFTER installation...");
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.DeletePackages(sitePath, packagesAfter);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Deleting packages failed.");
+                                    return;
+                                }
+                            }
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.RebuildWorkspace(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                    return;
+                                }
+                            }
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.BuildConfiguration(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Building configuration failed.");
+                                    return;
+                                }
+                            }
+                        }
+
+                        if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
+                        {
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                StopButtonAndKillWorkspaceConsole.IsEnabled = false;
+                            });
+                            var syncService = new RemoteSynchronizationService(_writer);
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var syncStatus = await syncService.SynchronizeAsync(sitePath, serverList.ToList(),
+                                    cancellationToken);
+                                if (syncStatus)
+                                {
+                                    _writer.WriteLine("[OK] All servers are successfully synchronized.");
+                                }
+                                else
+                                {
+                                     _writer.WriteLine("[ERROR] Failed to synchronize servers.");
+                                     return;
+                                }
+                            }
+                            await Dispatcher.UIThread.InvokeAsync(() =>
+                            {
+                                StopButtonAndKillWorkspaceConsole.IsEnabled = true;
+                            });
+                        }
+
+                        if (string.IsNullOrWhiteSpace(packagesPath) &&
+                            string.IsNullOrWhiteSpace(packagesBefore) &&
+                            string.IsNullOrWhiteSpace(packagesAfter) &&
+                            !viewModel.IsServerPanelVisible)
+                        {
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.RegenerateSchemaSources(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Failed to regenerate schema sources.");
+                                    return;
+                                }
+                            }
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.RebuildWorkspace(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                    return;
+                                }
+                            }
+
+                            if (!cancellationToken.IsCancellationRequested)
+                            {
+                                var result = preparer.BuildConfiguration(sitePath);
+                                if (result != 0)
+                                {
+                                    _writer.WriteLine("[ERROR] Building configuration failed.");
+                                    return;
+                                }
+                            }
+                        }
+
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            StopButtonAndKillWorkspaceConsole.IsEnabled = false;
+                        });
+                        if (localServerInfo.PoolName != null)
+                        {
+                            await manager.StartAppPoolAsync(localServerInfo);
+                        }
+                        if (localServerInfo.SiteName != null)
+                        {
+                            await manager.StartWebsiteAsync(localServerInfo);
                         }
                     }
-
-                    if (string.IsNullOrWhiteSpace(packagesPath) &&
-                        string.IsNullOrWhiteSpace(packagesBefore) &&
-                        string.IsNullOrWhiteSpace(packagesAfter) &&
-                        !viewModel.IsServerPanelVisible)
-                    {
-                        if (!cancellationToken.IsCancellationRequested) preparer.RebuildWorkspace(sitePath);
-                        if (!cancellationToken.IsCancellationRequested) preparer.BuildConfiguration(sitePath);
-                    }
-                    
-                    if (OperatingSystem.IsWindows() && manager != null)
-                    {
-                        await manager.StartAppPoolAsync(siteName);
-                        await manager.StartWebsiteAsync(siteName);
-                    }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                catch (OperationCanceledException)
                 {
-                    OutputTextBox.Text += "[INFO] Operation was cancelled." + Environment.NewLine;
-                });
-            }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                    _writer.WriteLine("[INFO] Operation was cancelled.");
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        StopButtonAndKillWorkspaceConsole.IsEnabled = true;
+                    });
+                }
+                catch (Exception ex)
                 {
-                    OutputTextBox.Text += $"[ERROR] {ex.Message}" + Environment.NewLine;
-                });
-            }
-        }).ContinueWith(_ =>
+                    _writer.WriteLine($"[ERROR] {ex.Message}");
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        StopButtonAndKillWorkspaceConsole.IsEnabled = true;
+                    });
+                }
+                finally
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _isBusy = false;
+                        StartButton.Content = "Start";
+                        SetControlsEnabled(true);
+                        StopButtonAndKillWorkspaceConsole.IsEnabled = true;
+                    });
+                }
+            }, cancellationToken);
+        }
+
+        private bool TryValidateInputs(MainWindowViewModel viewModel, out string? sitePath)
         {
-            Dispatcher.UIThread.Post(() =>
+            sitePath = viewModel.IsIisMode
+                ? viewModel.SelectedIisSite?.Path
+                : SitePathTextBox.Text;
+
+            if (string.IsNullOrWhiteSpace(sitePath))
             {
-                _isBusy = false;
-                StartButton.Content = "Start";
-                SetControlsEnabled(true);
+                _writer.WriteLine("The path to the site is not indicated.");
+                return false;
+            }
+
+            return true;
+        }
+
+        private async void BrowseSitePath_Click(object? sender, RoutedEventArgs e)
+        {
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+            {
+                Title = "Select Site Path",
+                AllowMultiple = false
             });
-        });
-    }
-
-    private bool TryValidateInputs(MainWindowViewModel viewModel, out string? sitePath, out string? siteName)
-    {
-        sitePath = viewModel.IsIisMode
-            ? viewModel.SelectedIisSite?.Path
-            : SitePathTextBox.Text;
-        siteName = viewModel.IsIisMode
-            ? viewModel.SelectedIisSite?.Name
-            : Path.GetFileName(sitePath);
-
-        if (string.IsNullOrWhiteSpace(sitePath))
-        {
-            OutputTextBox.Text += "The path to the site is not indicated.\n";
-            return false;
-        }
-
-        if (string.IsNullOrWhiteSpace(siteName))
-        {
-            OutputTextBox.Text += "Failed to get the site name.\n";
-            return false;
-        }
-
-        return true;
-    }
-
-    private async void BrowseSitePath_Click(object? sender, RoutedEventArgs e)
-    {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Select Site Path",
-            AllowMultiple = false
-        });
-
-        if (folders.Count > 0)
-        {
+            if (folders.Count <= 0) return;
             var path = folders[0].Path.LocalPath;
             SitePathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
         }
-    }
 
-    private async void BrowsePackagesPath_Click(object? sender, RoutedEventArgs e)
-    {
-        var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        private async void BrowsePackagesPath_Click(object? sender, RoutedEventArgs e)
         {
-            Title = "Select Packages Path",
-            AllowMultiple = false
-        });
-
-        if (folders.Count > 0)
-        {
-            var path = folders[0].Path.LocalPath;
-            PackagesPathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        }
-    }
-
-    private async void AddServer_Click(object? sender, RoutedEventArgs e)
-    {
-        var window = new AddServerWindow();
-        var newServer = await window.ShowDialog<ServerInfo?>(this);
-
-        if (newServer != null && DataContext is MainWindowViewModel vm)
-        {
-            if (vm.ServerList.All(s => s.Name != newServer.Name))
+            var folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
-                vm.ServerList.Add(newServer);
-            }
-            else
+                Title = "Select Packages Path",
+                AllowMultiple = false
+            });
+            if (folders.Count > 0)
             {
-                // показать предупреждение при необходимости
+                var path = folders[0].Path.LocalPath;
+                PackagesPathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             }
         }
-    }
 
-    private async void ServerName_DoubleClick(object? sender, PointerPressedEventArgs e)
-    {
-        if (e.ClickCount == 2 && sender is TextBlock { DataContext: ServerInfo server })
+        private async void AddServer_Click(object? sender, RoutedEventArgs e)
         {
-            var clone = new ServerInfo
+            var window = new AddServerWindow();
+            var newServer = await window.ShowDialog<ServerInfo?>(this);
+
+            if (newServer != null && DataContext is MainWindowViewModel vm)
             {
-                Name = server.Name,
-                NetworkPath = server.NetworkPath,
-                SiteName = server.SiteName,
-                PoolName = server.PoolName
-            };
-
-            var editWindow = new AddServerWindow(clone);
-            var updated = await editWindow.ShowDialog<ServerInfo?>(this);
-
-            // ReSharper disable once ConditionIsAlwaysTrueOrFalseAccordingToNullableAPIContract
-            if (updated == null) return;
-            server.Name = updated.Name;
-            server.NetworkPath = updated.NetworkPath;
-            server.SiteName = updated.SiteName;
-            server.PoolName = updated.PoolName;
-        }
-    }
-
-    private async void StartButton_Click(object? sender, RoutedEventArgs e)
-    {
-        await StartButton_ClickAsync();
-    }
-
-    private void StopButton_Click(object? sender, RoutedEventArgs e)
-    {
-        // Cancel the ongoing operation
-        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
-        {
-            _cancellationTokenSource.Cancel();
-            OutputTextBox.Text += "[INFO] Cancelling operations..." + Environment.NewLine;
-        }
-        
-        // Kill any running WorkspaceConsole processes
-        if (OperatingSystem.IsWindows())
-        {
-            try
-            {
-                var processes = Process.GetProcessesByName("Terrasoft.Tools.WorkspaceConsole");
-                if (processes.Length > 0)
+                if (vm.ServerList.All(s => s.Name != newServer.Name))
                 {
-                    foreach (var process in processes)
-                    {
-                        process.Kill();
-                    }
-                    OutputTextBox.Text += $"[INFO] Terminated {processes.Length} WorkspaceConsole processes." + Environment.NewLine;
+                    vm.ServerList.Add(newServer);
                 }
                 else
                 {
-                    OutputTextBox.Text += "[INFO] No WorkspaceConsole processes found to terminate." + Environment.NewLine;
+                    // ...
                 }
             }
-            catch (Exception ex)
+        }
+
+        private async void ServerName_DoubleClick(object? sender, PointerPressedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm && !vm.IsServerControlsEnabled)
+                return;  
+            if (e.ClickCount == 2 && sender is TextBlock { DataContext: ServerInfo server })
             {
-                OutputTextBox.Text += $"[ERROR] Failed to terminate WorkspaceConsole processes: {ex.Message}" + Environment.NewLine;
+                var clone = new ServerInfo
+                {
+                    Name = server.Name,
+                    NetworkPath = server.NetworkPath,
+                    SiteName = server.SiteName,
+                    PoolName = server.PoolName
+                };
+                var editWindow = new AddServerWindow(clone);
+                var updated = await editWindow.ShowDialog<ServerInfo?>(this);
+                if (updated == null) return;
+                server.Name = updated.Name;
+                server.NetworkPath = updated.NetworkPath;
+                server.SiteName = updated.SiteName;
+                server.PoolName = updated.PoolName;
             }
         }
-        
-        // Reset UI state if needed
-        _isBusy = false;
-        StartButton.Content = "Start";
-        SetControlsEnabled(true);
+
+        private async void StartButton_Click(object? sender, RoutedEventArgs e)
+        {
+            await StartButton_ClickAsync();
+        }
+
+        private void StopButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
+            {
+                _cancellationTokenSource.Cancel();
+                _writer.WriteLine("[INFO] Cancelling operations...");
+            }
+            if (OperatingSystem.IsWindows())
+            {
+                try
+                {
+                    var processes = Process.GetProcessesByName("Terrasoft.Tools.WorkspaceConsole");
+                    if (processes.Length > 0)
+                    {
+                        foreach (var process in processes)
+                            process.Kill();
+                        _writer.WriteLine($"[INFO] Terminated {processes.Length} WorkspaceConsole processes.");
+                    }
+                    else
+                    {
+                        _writer.WriteLine("[INFO] No WorkspaceConsole processes found to terminate.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _writer.WriteLine($"[ERROR] Failed to terminate WorkspaceConsole processes: {ex.Message}");
+                }
+            }
+            _isBusy = false;
+            StartButton.Content = "Start";
+            SetControlsEnabled(true);
+        }
     }
 }
