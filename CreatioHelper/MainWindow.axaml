@@ -7,7 +7,7 @@
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
         Width="800" Height="670"
-        MinWidth="740" MinHeight="400"
+        MinWidth="800" MinHeight="400"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -34,7 +34,7 @@
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5">
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" Margin="0,0,5,0"/>
-                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Click="BrowseSitePath_Click" Margin="5,0,0,0"/>
+                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Click="BrowseSitePath_Click" Margin="5,0,0,0" Height="32"/>
                 </Grid>
             </StackPanel>
 
@@ -53,7 +53,7 @@
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
-                            Click="BrowsePackagesPath_Click" Margin="5,0,0,0"/>
+                            Click="BrowsePackagesPath_Click" Margin="5,0,0,0" Height="32"/>
                 </Grid>
             </StackPanel>
 
@@ -88,14 +88,16 @@
                         Grid.Column="0"
                         Content="Start"
                         Click="StartButton_Click"
-                        Width="120" />
+                        Width="140" 
+                        Height="32"/>
 
                 <!-- Stop and kill WSC button -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
                         Click="StopButton_Click"
-                        Width="160"
+                        Width="140"
+                        Height="32"
                         Margin="10,0,0,0" />
 
                 <!-- Пустая «звездочка» (Grid.Column="2") для выравнивания -->
@@ -107,6 +109,7 @@
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"
                         Width="120"
+                        Height="32"
                         HorizontalAlignment="Right" />
             </Grid>
 
@@ -154,11 +157,13 @@
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             Click="AddServer_Click" 
+                            Height="32"
                             IsEnabled="{Binding IsServerControlsEnabled}"/>
                     <Button Content="Refresh All Status"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
                             Command="{Binding RefreshAllServersStatusCommand}"
+                            Height="32"
                             IsVisible="{Binding IsWindows}" />
                     <TextBlock Text="Target servers path:" />
                 </StackPanel>
@@ -213,22 +218,26 @@
                                         <Button Content="Start Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartPoolCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
+                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                Width="70"/>
                                         <Button Content="Stop Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StopPoolCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
+                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                Width="70"/>
                                     </StackPanel>
                                     
                                     <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,2,0,0">
                                         <Button Content="Start Site" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartSiteCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
+                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                Width="70"/>
                                         <Button Content="Stop Site" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StopSiteCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
+                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                Width="70"/>
                                     </StackPanel>
                                 </StackPanel>
                             </DataTemplate>
