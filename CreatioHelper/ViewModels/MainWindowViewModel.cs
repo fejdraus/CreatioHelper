@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Numerics;
+using System.Reflection;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Microsoft.Web.Administration;
@@ -22,6 +22,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
     private const int MaxLogEntries = 1000;
+    private Version _sitePathWithVersion = new();
     public MainWindowViewModel(IOutputWriter output)
     {
         _statusService = new ServerStatusService(output);
@@ -75,6 +76,12 @@ public partial class MainWindowViewModel : ObservableObject
         };
 
         _isInitializing = false;
+    }
+    
+    public Version SitePathWithVersion
+    {
+        get => _sitePathWithVersion;
+        set => SetProperty(ref _sitePathWithVersion, value);
     }
 
     public bool IsWindows => OperatingSystem.IsWindows();
@@ -271,23 +278,33 @@ public partial class MainWindowViewModel : ObservableObject
                 var appVdir = app?.VirtualDirectories["/"];
                 var rootApp = site.Applications["/"];
                 var rootVdir = rootApp?.VirtualDirectories["/"];
-
                 string sitePath = rootVdir?.PhysicalPath ?? "";
                 string appPath = appVdir?.PhysicalPath ?? "";
                 string poolName = rootApp?.ApplicationPoolName ?? "";
-
                 if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
+                {
                     continue;
-
-                if (!File.Exists(Path.Combine(appPath, "Web.config"))) continue;
-                if (!File.Exists(Path.Combine(sitePath, "ConnectionStrings.config"))) continue;
-                if (!File.Exists(Path.Combine(sitePath, "Web.config"))) continue;
-
-                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName });
+                }
+                if (!File.Exists(Path.Combine(appPath, "Web.config")))
+                {
+                    continue;
+                }
+                if (!File.Exists(Path.Combine(sitePath, "ConnectionStrings.config")))
+                {
+                    continue;
+                }
+                if (!File.Exists(Path.Combine(sitePath, "Web.config")))
+                {
+                    continue;
+                }
+                var assemblyName = GetAppAssembly.GetAppVersion(appPath);
+                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName });
             }
 
             if (IisSites.Count > 0)
+            {
                 SelectedIisSite = IisSites[0];
+            }
         }
         catch (Exception ex)
         {

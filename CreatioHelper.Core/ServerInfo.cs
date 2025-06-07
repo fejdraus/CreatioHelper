@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
 namespace CreatioHelper.Core
@@ -9,6 +10,7 @@ namespace CreatioHelper.Core
         private string _networkPath = string.Empty;
         private string _siteName = string.Empty;
         private string _poolName = string.Empty;
+        private Version _appVersion = new();
         private string _poolStatus = "Unknown";
         private string _siteStatus = "Unknown";
         private bool _isStatusLoading;
@@ -85,6 +87,19 @@ namespace CreatioHelper.Core
                 if (_siteStatus != value)
                 {
                     _siteStatus = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        
+        public Version AppVersion
+        {
+            get => _appVersion;
+            set
+            {
+                if (_appVersion != value)
+                {
+                    _appVersion = value;
                     OnPropertyChanged();
                 }
             }

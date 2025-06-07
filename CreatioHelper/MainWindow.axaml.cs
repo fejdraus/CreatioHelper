@@ -137,15 +137,22 @@ namespace CreatioHelper
                         return;
                     }
 
-                    if (OperatingSystem.IsWindows())
+                    if (OperatingSystem.IsWindows() && (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(SitePathTextBox.Text)))
                     {
                         var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
                         var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
+                        var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : _viewModel.SitePathWithVersion;
+                        if (appVersion < new Version(7, 12, 0, 0))
+                        {
+                            _writer.WriteLine("[ERROR] Creatio application not found.");
+                            return;
+                        }
                         var localServerInfo = new ServerInfo
                         {
                             Name = Environment.MachineName,
                             PoolName = poolName,
-                            SiteName = siteName
+                            SiteName = siteName,
+                            AppVersion = appVersion
                         };
                         var manager = new RemoteIisManager(_writer);
                         if (localServerInfo.PoolName != null)
@@ -161,7 +168,7 @@ namespace CreatioHelper
                             StopButtonAndKillWorkspaceConsole.IsEnabled = true;
                         });
 
-                        if (!string.IsNullOrWhiteSpace(packagesBefore))
+                        if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
                         {
                             _writer.WriteLine("Deleting packages BEFORE installation...");
                             if (!cancellationToken.IsCancellationRequested)
@@ -227,7 +234,7 @@ namespace CreatioHelper
                             }
                         }
 
-                        if (!string.IsNullOrWhiteSpace(packagesAfter))
+                        if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
                         {
                             _writer.WriteLine("Deleting packages AFTER installation...");
                             if (!cancellationToken.IsCancellationRequested)
@@ -389,8 +396,23 @@ namespace CreatioHelper
                 AllowMultiple = false
             });
             if (folders.Count <= 0) return;
-            var path = folders[0].Path.LocalPath;
-            SitePathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            var uri = folders[0].Path;
+            if (uri.IsAbsoluteUri)
+            {
+                var path = uri.LocalPath;
+                SitePathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var version = GetAppAssembly.GetAppVersion(path);
+                if (version == new Version())
+                {
+                    _writer.WriteLine("[ERROR] Creatio application not found.");
+                }
+                _viewModel.SitePathWithVersion = version;
+            }
+            else
+            {
+                _writer.WriteLine("[ERROR] Selected path is not an absolute URI.");
+            }
+            
         }
 
         private async void BrowsePackagesPath_Click(object? sender, RoutedEventArgs e)
@@ -402,8 +424,16 @@ namespace CreatioHelper
             });
             if (folders.Count > 0)
             {
-                var path = folders[0].Path.LocalPath;
-                PackagesPathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                var uri = folders[0].Path;
+                if (uri.IsAbsoluteUri)
+                {
+                    var path = uri.LocalPath;
+                    PackagesPathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                }
+                else
+                {
+                    _writer.WriteLine("[ERROR] Selected path is not an absolute URI.");
+                }
             }
         }
 

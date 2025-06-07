@@ -12,6 +12,7 @@
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <core1:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
+        <core1:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
@@ -58,6 +59,14 @@
 
             <!-- Row 4: Delete packages before / after -->
             <Grid Grid.Row="4" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" Margin="0,0,0,5">
+                <Grid.IsVisible>
+                    <MultiBinding Converter="{StaticResource DeleteAppVersionToVisibilityConverter}" TargetNullValue="False">
+                        <Binding Path="IsIisMode"/>
+                        <Binding Path="IsFolderMode"/>
+                        <Binding Path="SelectedIisSite.Version"/>
+                        <Binding Path="SitePathWithVersion"/>
+                    </MultiBinding>
+                </Grid.IsVisible>
                 <TextBlock Grid.Column="0" Text="Delete packages before install:" Margin="0,0,5,2" />
                 <TextBlock Grid.Row="0" Grid.Column="2" Text="Delete packages after install:" Margin="0,0,0,2" />
 

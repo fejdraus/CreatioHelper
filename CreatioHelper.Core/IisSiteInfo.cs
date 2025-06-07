@@ -1,4 +1,6 @@
-﻿namespace CreatioHelper.Core
+﻿using System;
+
+namespace CreatioHelper.Core
 {
     public class IisSiteInfo
     {
@@ -7,7 +9,7 @@
 
         public string Path { get; set; } = string.Empty;
         public string PoolName { get; set; } = string.Empty;
-
+        public Version Version { get; set; } = new();
         public override string ToString() => Name;
     }
 }
