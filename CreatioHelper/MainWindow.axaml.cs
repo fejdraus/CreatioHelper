@@ -127,10 +127,11 @@ namespace CreatioHelper
 
             await Task.Run(async () =>
             {
+                var quartzIsActiveOriginal = true;
                 try
                 {
                     _writer.WriteLine("Prepare WorkspaceConsole ...");
-                    preparer.Prepare(sitePath);
+                    preparer.Prepare(sitePath, out quartzIsActiveOriginal);
 
                     if (cancellationToken.IsCancellationRequested)
                     {
@@ -369,6 +370,10 @@ namespace CreatioHelper
                         SetControlsEnabled(true);
                         StopButtonAndKillWorkspaceConsole.IsEnabled = true;
                     });
+                    if (!quartzIsActiveOriginal)
+                    {
+                        preparer.UpdateOutConfig(Path.Combine(sitePath, "Web.config"), quartzIsActiveOriginal);   
+                    }
                 }
             }, cancellationToken);
         }

@@ -11,10 +11,10 @@ namespace CreatioHelper.Core
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
         private string _workspaceConsoleExePath;
 
-        public void Prepare(string sitePath)
+        public void Prepare(string sitePath, out bool quartzIsActiveOriginal)
         {
             _output.WriteLine("Starting WorkspaceConsole preparation...");
-
+            quartzIsActiveOriginal = true;
             if (string.IsNullOrWhiteSpace(sitePath) || !Directory.Exists(sitePath))
             {
                 _output.WriteLine("❌ SitePath is not provided or does not exist.");
@@ -22,7 +22,7 @@ namespace CreatioHelper.Core
             }
 
             sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Web.Common.dll");
+            string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Common.dll");
             string consoleDllPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.Common.dll");
 
             string appDllVersion = GetDllVersion(appDllPath);
@@ -48,7 +48,9 @@ namespace CreatioHelper.Core
                 return;
 
             var webConfigPath = Path.Combine(sitePath, "Web.config");
-            var (useStaticFileContent, fileDesignModeEnabled) = ReadWebConfigSettings(webConfigPath);
+            var (useStaticFileContent, fileDesignModeEnabled, quartzIsActive) = ReadWebConfigSettings(webConfigPath);
+            UpdateOutConfig(webConfigPath, true);
+            quartzIsActiveOriginal = quartzIsActive;
             if (useStaticFileContent == null || fileDesignModeEnabled == null)
                 return;
 
@@ -114,22 +116,26 @@ namespace CreatioHelper.Core
                 : null;
         }
 
-        private (string UseStaticFileContent, string? FileDesignModeEnabled) ReadWebConfigSettings(string webConfigPath)
+        private (string UseStaticFileContent, string FileDesignModeEnabled, bool quartzIsActive) ReadWebConfigSettings(string webConfigPath)
         {
             if (string.IsNullOrEmpty(webConfigPath)) throw new ArgumentNullException(nameof(webConfigPath));
 
             var xmlDoc = new XmlDocument();
             xmlDoc.Load(webConfigPath);
 
-            var useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement elem1
-                ? elem1.GetAttribute("value")
+            var useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement useStaticFileContentValue
+                ? useStaticFileContentValue.GetAttribute("value")
                 : null;
 
-            var fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement elem2
-                ? elem2.GetAttribute("enabled")
+            var fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement fileDesignModeNode
+                ? fileDesignModeNode.GetAttribute("enabled")
+                : null;
+            
+            var quartzIsActive = xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode
+                ? quartzNode.GetAttribute("isActive")
                 : null;
 
-            return (useStaticFileContent, fileDesignModeEnabled);
+            return (useStaticFileContent, fileDesignModeEnabled, quartzIsActive != null && bool.Parse(quartzIsActive));
         }
 
         private void UpdateWorkspaceConsoleConfig(string configPath, string connectionString, string useStaticFileContent, string fileDesignModeEnabled)
@@ -153,6 +159,21 @@ namespace CreatioHelper.Core
 
             if (xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode)
                 quartzNode.SetAttribute("isActive", "true");
+
+            xmlDoc.Save(configPath);
+            _output.WriteLine("Updated WorkspaceConsole configuration file.");
+        }
+        
+        public void UpdateOutConfig(string configPath, bool quartzIsActive)
+        {
+            if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
+            ArgumentNullException.ThrowIfNull(quartzIsActive);
+
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(configPath);
+
+            if (xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode)
+                quartzNode.SetAttribute("isActive", quartzIsActive.ToString().ToLowerInvariant());
 
             xmlDoc.Save(configPath);
             _output.WriteLine("Updated WorkspaceConsole configuration file.");
