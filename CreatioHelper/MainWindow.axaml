@@ -124,6 +124,11 @@
                           IsChecked="{Binding IsWrapTextEnabled, Mode=TwoWay}"
                           VerticalAlignment="Center"
                           Margin="10,0,0,0"/>
+                <CheckBox x:Name="LogToFileCheckBox"
+                          Content="Log To File"
+                          IsChecked="{Binding IsLogToFileEnabled, Mode=TwoWay}"
+                          VerticalAlignment="Center"
+                          Margin="10,0,0,0"/>
             </StackPanel>
 
             <!-- Row 7: ListBox с логом (звездочка «*» растягивает на всё оставшееся место) -->

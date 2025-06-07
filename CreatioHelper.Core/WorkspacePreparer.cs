@@ -1,4 +1,5 @@
-﻿using System;
+﻿#nullable enable
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -9,7 +10,6 @@ namespace CreatioHelper.Core
     public class WorkspacePreparer(IOutputWriter output)
     {
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
-        private string _workspaceConsoleExePath;
 
         public void Prepare(string sitePath, out bool quartzIsActiveOriginal)
         {
@@ -25,8 +25,8 @@ namespace CreatioHelper.Core
             string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Common.dll");
             string consoleDllPath = Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.Common.dll");
 
-            string appDllVersion = GetDllVersion(appDllPath);
-            string consoleDllVersion = GetDllVersion(consoleDllPath);
+            string? appDllVersion = GetDllVersion(appDllPath);
+            string? consoleDllVersion = GetDllVersion(consoleDllPath);
 
             if (appDllVersion == null || consoleDllVersion == null)
                 return;
@@ -67,10 +67,10 @@ namespace CreatioHelper.Core
         private string GetWorkspaceConsoleExePath(string sitePath)
         {
             if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
-            return _workspaceConsoleExePath ??= Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe");
+            return Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.exe");
         }
 
-        private string GetDllVersion(string dllPath)
+        private string? GetDllVersion(string dllPath)
         {
             if (string.IsNullOrEmpty(dllPath)) throw new ArgumentNullException(nameof(dllPath));
 
@@ -105,7 +105,7 @@ namespace CreatioHelper.Core
             return true;
         }
 
-        private string GetDatabaseConnectionString(string configPath)
+        private string? GetDatabaseConnectionString(string configPath)
         {
             if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
 
@@ -116,7 +116,7 @@ namespace CreatioHelper.Core
                 : null;
         }
 
-        private (string UseStaticFileContent, string FileDesignModeEnabled, bool quartzIsActive) ReadWebConfigSettings(string webConfigPath)
+        private (string? UseStaticFileContent, string? FileDesignModeEnabled, bool quartzIsActive) ReadWebConfigSettings(string webConfigPath)
         {
             if (string.IsNullOrEmpty(webConfigPath)) throw new ArgumentNullException(nameof(webConfigPath));
 

@@ -121,6 +121,9 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private ObservableCollection<string> _logEntries = new();
+    
+    [ObservableProperty]
+    private bool _isLogToFileEnabled;
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
     public ObservableCollection<ServerInfo> ServerList { get; } = new();

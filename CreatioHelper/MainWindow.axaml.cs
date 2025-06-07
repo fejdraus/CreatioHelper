@@ -22,6 +22,7 @@ namespace CreatioHelper
         private CancellationTokenSource? _cancellationTokenSource;
         private readonly BufferingOutputWriter _writer;
         private readonly MainWindowViewModel _viewModel;
+        private string _logFilePath = "log.txt";
 
         public MainWindow()
         {
@@ -29,6 +30,10 @@ namespace CreatioHelper
             _writer = new BufferingOutputWriter(line =>
             {
                 _viewModel?.AddLogEntry(line);
+                if (_viewModel?.IsLogToFileEnabled == true)
+                {
+                    AppendLogToFile(line);
+                }
             });
             _viewModel = new MainWindowViewModel(_writer);
             DataContext = _viewModel;
@@ -519,6 +524,18 @@ namespace CreatioHelper
             _isBusy = false;
             StartButton.Content = "Start";
             SetControlsEnabled(true);
+        }
+        
+        private void AppendLogToFile(string logEntry)
+        {
+            try
+            {
+                File.AppendAllText(_logFilePath, logEntry + Environment.NewLine);
+            }
+            catch (Exception ex)
+            {
+                _writer.WriteLine($"[ERROR] Failed to write to log file: {ex.Message}");
+            }
         }
     }
 }
