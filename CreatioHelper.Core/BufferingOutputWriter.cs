@@ -15,7 +15,7 @@ namespace CreatioHelper.Core
 
         public void WriteLine(string line)
         {
-            _writeAction(line);
+            _writeAction(string.Concat(DateTime.Now, " ", line));
         }
     }
 }

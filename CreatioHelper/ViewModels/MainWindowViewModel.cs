@@ -38,7 +38,6 @@ public partial class MainWindowViewModel : ObservableObject
         LoadIisSites();
         ApplySettings(settings);
 
-        // Подписываем существующие элементы
         foreach (var server in ServerList)
         {
             var handler = new PropertyChangedEventHandler((_, _) => SaveSettings());
@@ -46,7 +45,6 @@ public partial class MainWindowViewModel : ObservableObject
             server.PropertyChanged += handler;
         }
 
-        // Подписка на добавление/удаление
         ServerList.CollectionChanged += (_, e) =>
         {
             if (e.NewItems != null)
@@ -117,7 +115,7 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isAutoScrollEnabled = true;
     
     [ObservableProperty]
-    private bool _isWrapTextEnabled = true;
+    private bool _isWrapTextEnabled;
     
     [ObservableProperty]
     private ObservableCollection<string> _logEntries = new();

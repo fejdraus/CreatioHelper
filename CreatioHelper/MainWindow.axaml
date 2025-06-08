@@ -140,7 +140,7 @@
                     FontFamily="Cascadia Code,Consolas,Monospace"
                     FontSize="12"
                     IsReadOnly="True"
-                    WordWrap="True"
+                    WordWrap="{Binding IsWrapTextEnabled}"
                     HorizontalScrollBarVisibility="{Binding IsWrapTextEnabled, Converter={StaticResource BoolToScrollBarVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto"/>
             </Border>

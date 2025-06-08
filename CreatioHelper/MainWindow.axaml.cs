@@ -13,6 +13,7 @@ using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.ViewModels;
 using System.ComponentModel;
+using Avalonia.VisualTree;
 
 namespace CreatioHelper
 {
@@ -56,6 +57,10 @@ namespace CreatioHelper
                         if (_viewModel.IsWrapTextEnabled)
                         {
                             caretPos = LogTextEditor.Text.Length;
+                            LogTextEditor.CaretOffset = caretPos;
+                            int line   = LogTextEditor.TextArea.Caret.Line;
+                            int column = LogTextEditor.TextArea.Caret.Column;
+                            LogTextEditor.ScrollTo(line, column);
                         }
                         else
                         {
@@ -64,9 +69,10 @@ namespace CreatioHelper
                             {
                                 caretPos = lastNewlineIndex + nl.Length;
                             }
+                            LogTextEditor.CaretOffset = caretPos;
+                            LogTextEditor.TextArea.Caret.BringCaretToView();
                         }
-                        LogTextEditor.CaretOffset = caretPos;
-                        LogTextEditor.TextArea.Caret.BringCaretToView();
+                        
                     }
                 }, DispatcherPriority.Render);
             }
@@ -530,7 +536,7 @@ namespace CreatioHelper
         {
             try
             {
-                File.AppendAllText(_logFilePath, logEntry + Environment.NewLine);
+                File.AppendAllText(_logFilePath, string.Concat(DateTime.Now, " ", logEntry) + Environment.NewLine);
             }
             catch (Exception ex)
             {
