@@ -151,6 +151,7 @@ namespace CreatioHelper
 
                     if (OperatingSystem.IsWindows() && (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(SitePathTextBox.Text)))
                     {
+                        var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
                         var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
                         var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
                         var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : _viewModel.SitePathWithVersion;
@@ -341,6 +342,16 @@ namespace CreatioHelper
                                 }
                             }
                         }
+                        
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            var redisManager = new RedisManager(_writer, sitePath);
+                            var redisStatus = redisManager.CheckStatus();
+                            if (redisStatus)
+                            {
+                                redisManager.Clear();
+                            }
+                        });
 
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {

@@ -6,6 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using System.Xml;
 using Avalonia.Threading;
 using Microsoft.Web.Administration;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -23,8 +24,10 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IRemoteIisManager _remoteIisManager;
     private const int MaxLogEntries = 1000;
     private Version _sitePathWithVersion = new();
+    private IOutputWriter _output;
     public MainWindowViewModel(IOutputWriter output)
     {
+        _output = output;
         _statusService = new ServerStatusService(output);
         _isInitializing = true;
         _remoteIisManager = new RemoteIisManager(output);
@@ -36,11 +39,11 @@ public partial class MainWindowViewModel : ObservableObject
             };
 
         LoadIisSites();
-        ApplySettings(settings);
+        ApplyServerSettings(settings);
 
         foreach (var server in ServerList)
         {
-            var handler = new PropertyChangedEventHandler((_, _) => SaveSettings());
+            var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
             _serverHandlers[server] = handler;
             server.PropertyChanged += handler;
         }
@@ -51,7 +54,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 foreach (ServerInfo item in e.NewItems)
                 {
-                    var handler = new PropertyChangedEventHandler((_, _) => SaveSettings());
+                    var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
                     _serverHandlers[item] = handler;
                     item.PropertyChanged += handler;
                 }
@@ -70,7 +73,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
 
             if (!_isInitializing)
-                SaveSettings();
+                SaveServerSettings();
         };
 
         _isInitializing = false;
@@ -253,20 +256,20 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnIsFolderModeChanged(bool value)
     {
         OnPropertyChanged(nameof(IsIisMode));
-        SaveSettings();
+        SaveServerSettings();
     }
 
     partial void OnIsServerPanelVisibleChanged(bool value)
     {
         OnPropertyChanged(nameof(ServerPanelButtonText));
-        SaveSettings();
+        SaveServerSettings();
     }
 
-    partial void OnPackagesPathChanged(string? value) => SaveSettings();
-    partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveSettings();
-    partial void OnPackagesToDeleteAfterChanged(string? value) => SaveSettings();
-    partial void OnSitePathChanged(string? value) => SaveSettings();
-    partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveSettings();
+    partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
+    partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
+    partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
+    partial void OnSitePathChanged(string? value) => SaveServerSettings();
+    partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
 
     private void LoadIisSites()
     {
@@ -282,6 +285,7 @@ public partial class MainWindowViewModel : ObservableObject
                 string sitePath = rootVdir?.PhysicalPath ?? "";
                 string appPath = appVdir?.PhysicalPath ?? "";
                 string poolName = rootApp?.ApplicationPoolName ?? "";
+                var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
                 if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
                 {
                     continue;
@@ -290,7 +294,7 @@ public partial class MainWindowViewModel : ObservableObject
                 {
                     continue;
                 }
-                if (!File.Exists(Path.Combine(sitePath, "ConnectionStrings.config")))
+                if (!File.Exists(connectionStrings))
                 {
                     continue;
                 }
@@ -299,7 +303,7 @@ public partial class MainWindowViewModel : ObservableObject
                     continue;
                 }
                 var assemblyName = GetAppAssembly.GetAppVersion(appPath);
-                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName });
+                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
             }
 
             if (IisSites.Count > 0)
@@ -313,7 +317,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void ApplySettings(AppSettings settings)
+    private void ApplyServerSettings(AppSettings settings)
     {
         SitePath = settings.SitePath;
         PackagesPath = settings.PackagesPath;
@@ -335,7 +339,7 @@ public partial class MainWindowViewModel : ObservableObject
             ServerList.Add(server);
     }
 
-    private void SaveSettings()
+    private void SaveServerSettings()
     {
         if (_isInitializing || !AppSettingsService.SettingsFileExists())
             return;
