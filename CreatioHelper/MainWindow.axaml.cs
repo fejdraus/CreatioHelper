@@ -151,7 +151,6 @@ namespace CreatioHelper
 
                     if (OperatingSystem.IsWindows() && (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(SitePathTextBox.Text)))
                     {
-                        var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
                         var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
                         var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
                         var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : _viewModel.SitePathWithVersion;
@@ -171,10 +170,12 @@ namespace CreatioHelper
                         if (localServerInfo.PoolName != null)
                         {
                             await manager.StopAppPoolAsync(localServerInfo);
+                            _writer.WriteLine("[INFO] Main Pool stopped.");
                         }
                         if (localServerInfo.SiteName != null)
                         {
                             await manager.StopWebsiteAsync(localServerInfo);
+                            _writer.WriteLine("[INFO] Main Website stopped.");
                         }
                         await Dispatcher.UIThread.InvokeAsync(() =>
                         {
@@ -360,10 +361,12 @@ namespace CreatioHelper
                         if (localServerInfo.PoolName != null)
                         {
                             await manager.StartAppPoolAsync(localServerInfo);
+                            _writer.WriteLine("[INFO] Main Pool is running.");
                         }
                         if (localServerInfo.SiteName != null)
                         {
                             await manager.StartWebsiteAsync(localServerInfo);
+                            _writer.WriteLine("[INFO] Main Website is running.");
                         }
                     }
                 }
