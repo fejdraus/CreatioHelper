@@ -60,6 +60,48 @@ namespace CreatioHelper
             Closing += OnMainWindowClosing;
         }
         
+        protected override void OnLoaded(RoutedEventArgs e)
+        {
+            base.OnLoaded(e);
+            SetupLogTextEditorContextMenu();
+        }
+
+        private void SetupLogTextEditorContextMenu()
+        {
+            if (LogTextEditor != null)
+            {
+                var contextMenu = new ContextMenu();
+                
+                var copyMenuItem = new MenuItem
+                {
+                    Header = "Copy"
+                };
+                copyMenuItem.Click += (s, e) => 
+                {
+                    if (LogTextEditor.TextArea.Selection.Length > 0)
+                    {
+                        LogTextEditor.Copy();
+                    }
+                };
+                var clearLogMenuItem = new MenuItem
+                {
+                    Header = "Clear Log"
+                };
+                clearLogMenuItem.Click += (s, e) => 
+                {
+                    if (LogTextEditor.Document != null)
+                    {
+                        _viewModel.ClearLog();
+                        LogTextEditor.Clear();
+                    }
+                };
+                contextMenu.Items.Add(copyMenuItem);
+                contextMenu.Items.Add(new Separator());
+                contextMenu.Items.Add(clearLogMenuItem);
+                LogTextEditor.ContextMenu = contextMenu;
+            }
+        }
+        
         private void SitePathTextBox_TextChanged(object? sender, TextChangedEventArgs e)
         {
             if (sender is TextBox textBox && !string.IsNullOrWhiteSpace(textBox.Text))
