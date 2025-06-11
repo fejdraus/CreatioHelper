@@ -37,10 +37,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 IsIisMode = true
             };
-
-        LoadIisSites();
-        ApplyServerSettings(settings);
-
+        LoadIisSites(settings);
         foreach (var server in ServerList)
         {
             var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
@@ -271,45 +268,54 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSitePathChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
 
-    private void LoadIisSites()
+    private void LoadIisSites(AppSettings? settings)
     {
         try
         {
-            using var manager = new ServerManager();
-            foreach (var site in manager.Sites)
+            Dispatcher.UIThread.Post(() =>
             {
-                var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
-                var appVdir = app?.VirtualDirectories["/"];
-                var rootApp = site.Applications["/"];
-                var rootVdir = rootApp?.VirtualDirectories["/"];
-                string sitePath = rootVdir?.PhysicalPath ?? "";
-                string appPath = appVdir?.PhysicalPath ?? "";
-                string poolName = rootApp?.ApplicationPoolName ?? "";
-                var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
-                if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
+                using var manager = new ServerManager();
+                var sites = manager.Sites.ToList();
+                IisSites.Clear();
+            
+                if (sites.Count == 0)
                 {
-                    continue;
+                    IisSites.Add(new IisSiteInfo { Name = "[No IIS sites found]", Path = "", PoolName = "" });
+                    return;
                 }
-                if (!File.Exists(Path.Combine(appPath, "Web.config")))
+            
+                foreach (var site in manager.Sites)
                 {
-                    continue;
+                    var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
+                    var appVdir = app?.VirtualDirectories["/"];
+                    var rootApp = site.Applications["/"];
+                    var rootVdir = rootApp?.VirtualDirectories["/"];
+                    string sitePath = rootVdir?.PhysicalPath ?? "";
+                    string appPath = appVdir?.PhysicalPath ?? "";
+                    string poolName = rootApp?.ApplicationPoolName ?? "";
+                    var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
+                    if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
+                    {
+                        continue;
+                    }
+                    if (!File.Exists(Path.Combine(appPath, "Web.config")))
+                    {
+                        continue;
+                    }
+                    if (!File.Exists(connectionStrings))
+                    {
+                        continue;
+                    }
+                    if (!File.Exists(Path.Combine(sitePath, "Web.config")))
+                    {
+                        continue;
+                    }
+                    var assemblyName = GetAppAssembly.GetAppVersion(appPath);
+                    IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
                 }
-                if (!File.Exists(connectionStrings))
-                {
-                    continue;
-                }
-                if (!File.Exists(Path.Combine(sitePath, "Web.config")))
-                {
-                    continue;
-                }
-                var assemblyName = GetAppAssembly.GetAppVersion(appPath);
-                IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
-            }
-
-            if (IisSites.Count > 0)
-            {
-                SelectedIisSite = IisSites[0];
-            }
+                if (settings != null) ApplyServerSettings(settings);
+            });
+            
         }
         catch (Exception ex)
         {
@@ -327,8 +333,11 @@ public partial class MainWindowViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(settings.SelectedIisSiteName))
         {
             var match = IisSites.FirstOrDefault(x => x.Name == settings.SelectedIisSiteName);
-            if (match != null)
-                SelectedIisSite = match;
+            SelectedIisSite = match ?? (IisSites.Count > 0 ? IisSites[0] : null);
+        }
+        else if (IisSites.Count > 0)
+        {
+            SelectedIisSite = IisSites[0];
         }
 
         IsFolderMode = !settings.IsIisMode;

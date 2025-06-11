@@ -31,32 +31,40 @@ namespace CreatioHelper.Core
 
         private static Process StartAndReturn(string exePath, string arguments, IOutputWriter output, string? workingDirectory = null)
         {
-            var startInfo = new ProcessStartInfo
+            var process = new Process();
+            var encoding = OperatingSystem.IsWindows() 
+                ? Encoding.GetEncoding("cp866")
+                : Encoding.UTF8;
+            process.StartInfo = new ProcessStartInfo
             {
-                FileName               = exePath,
-                Arguments              = arguments,
-                WorkingDirectory       = workingDirectory ?? Environment.CurrentDirectory,
+                FileName = exePath,
+                Arguments = arguments,
+                WorkingDirectory = workingDirectory ?? Environment.CurrentDirectory,
                 RedirectStandardOutput = true,
-                RedirectStandardError  = true,
-                UseShellExecute        = false,
-                CreateNoWindow         = true,
-                StandardOutputEncoding = Encoding.GetEncoding(866),
-                StandardErrorEncoding  = Encoding.GetEncoding(866)
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                StandardOutputEncoding = encoding,
+                StandardErrorEncoding  = encoding
             };
-            var process = new Process { StartInfo = startInfo };
-            process.OutputDataReceived += (_, e) =>
+            process.OutputDataReceived += (sender, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
-                    output.WriteLine(e.Data);
+                {
+                    Task.Run(() => output.WriteLine(e.Data));
+                }
             };
-            process.ErrorDataReceived += (_, e) =>
+            process.ErrorDataReceived += (sender, e) =>
             {
                 if (!string.IsNullOrEmpty(e.Data))
-                    output.WriteLine($"[ERROR] {e.Data}");
+                {
+                    Task.Run(() => output.WriteLine($"[ERROR] {e.Data}"));
+                }
             };
             process.Start();
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
+    
             return process;
         }
     }

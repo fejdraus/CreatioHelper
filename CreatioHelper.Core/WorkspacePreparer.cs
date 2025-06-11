@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml;
 
@@ -269,8 +270,9 @@ namespace CreatioHelper.Core
 
             var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
+            {
                 return 0;
-
+            }
             var tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
             if (Directory.Exists(tempPackagesPath))
             {
@@ -284,12 +286,11 @@ namespace CreatioHelper.Core
                     return 0;
                 }
             }
-
-            var logPath = Path.Combine(consoleDir, "WSCLog");
+            var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+            var logPath = Path.Combine(appDirectory, "WSCLog");
+            _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
-            var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
-
-            var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
             return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
         
@@ -305,17 +306,13 @@ namespace CreatioHelper.Core
                 _output.WriteLine($"Executable not found: {consoleExePath}");
                 return 0;
             }
-
             var consoleDir = Path.GetDirectoryName(consoleExePath);
-            if (consoleDir == null)
-                return 0;
-
-            var logPath = Path.Combine(consoleDir, "WSCLog");
+            var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+            var logPath = Path.Combine(appDirectory, "WSCLog");
+            _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
             var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
-
             var arguments = $"-operation=\"RegenerateSchemaSources\" -workspaceName=\"Default\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
-
             _output.WriteLine("Starting Regenerate Schema Sources...");
             return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
@@ -335,14 +332,15 @@ namespace CreatioHelper.Core
 
             var consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
+            {
                 return 0;
-
-            var logPath = Path.Combine(consoleDir, "WSCLog");
+            }
+            var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+            var logPath = Path.Combine(appDirectory, "WSCLog");
+            _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
             var configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
-
             var arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
-
             _output.WriteLine("Starting Rebuild Workspace...");
             return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
@@ -362,14 +360,15 @@ namespace CreatioHelper.Core
 
             string? consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
+            {
                 return 0;
-
-            string logPath = Path.Combine(consoleDir, "WSCLog");
+            }
+            var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+            string logPath = Path.Combine(appDirectory, "WSCLog");
+            _output.WriteLine($"Path to log file: {logPath}");
             string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
             string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
-
-            string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -destinationPath=\"{webAppPath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
-
+            string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -destinationPath=\"{webAppPath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
             _output.WriteLine("Starting Build Configuration...");
             return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }
@@ -390,14 +389,15 @@ namespace CreatioHelper.Core
 
             string? consoleDir = Path.GetDirectoryName(consoleExePath);
             if (consoleDir == null)
+            {
                 return 0;
-
-            string logPath = Path.Combine(consoleDir, "DeleteLog");
+            }
+            var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+            string logPath = Path.Combine(appDirectory, "WSCLog");
+            _output.WriteLine($"Path to log file: {logPath}");
             string webAppPath = Path.Combine(sitePath, "Terrasoft.WebApp");
             string configPath = Path.Combine(webAppPath, "Terrasoft.Configuration");
-
             string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
-
             _output.WriteLine($"Deleting packages: {packageList}");
             return ProcessHelper.Run(consoleExePath, arguments, _output, consoleDir);
         }

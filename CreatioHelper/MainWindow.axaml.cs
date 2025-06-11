@@ -28,53 +28,98 @@ namespace CreatioHelper
         public MainWindow()
         {
             InitializeComponent();
+            LogTextEditor.TextArea.TextView.LineTransformers.Add(
+                new LogLineColorizer()
+            );
             _writer = new BufferingOutputWriter(line =>
             {
-                _viewModel?.AddLogEntry(line);
-                if (_viewModel?.IsLogToFileEnabled == true)
+                if (Dispatcher.UIThread.CheckAccess())
                 {
-                    AppendLogToFile(line);
+                    _viewModel?.AddLogEntry(line);
+                    if (_viewModel?.IsLogToFileEnabled == true)
+                    {
+                        AppendLogToFile(line);
+                    }
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        _viewModel?.AddLogEntry(line);
+                        if (_viewModel?.IsLogToFileEnabled == true)
+                        {
+                            AppendLogToFile(line);
+                        }
+                    });
                 }
             });
             _viewModel = new MainWindowViewModel(_writer);
             DataContext = _viewModel;
             _viewModel.PropertyChanged += ViewModel_PropertyChanged;
+            SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
         }
+        
+        private void SitePathTextBox_TextChanged(object? sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox textBox && !string.IsNullOrWhiteSpace(textBox.Text))
+            {
+                try
+                {
+                    var path = textBox.Text.Trim();
+                    if (Directory.Exists(path))
+                    {
+                        var version = GetAppAssembly.GetAppVersion(path);
+                        _viewModel.SitePathWithVersion = version;
+                    }
+                }
+                catch
+                {
+                    _viewModel.SitePathWithVersion = new Version();
+                }
+            }
+            else
+            {
+                _viewModel.SitePathWithVersion = new Version();
+            }
+        }
+
 
         private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(MainWindowViewModel.ShouldScrollToEnd))
             {
-                string nl = Environment.NewLine;
-                var allText = string.Join(nl, _viewModel.LogEntries);
-                Dispatcher.UIThread.InvokeAsync(() =>
+                Dispatcher.UIThread.Post(UpdateLogDisplay, DispatcherPriority.Render);
+            }
+        }
+        
+        private void UpdateLogDisplay()
+        {
+            string nl = Environment.NewLine;
+            var allText = string.Join(nl, _viewModel.LogEntries);
+    
+            LogTextEditor.Text = allText;
+            if (_viewModel.IsAutoScrollEnabled)
+            {
+                var caretPos = 0;
+                if (_viewModel.IsWrapTextEnabled)
                 {
-                    LogTextEditor.Text = allText;
-                    if (_viewModel.IsAutoScrollEnabled)
+                    caretPos = LogTextEditor.Text.Length;
+                    LogTextEditor.CaretOffset = caretPos;
+                    int line = LogTextEditor.TextArea.Caret.Line;
+                    int column = LogTextEditor.TextArea.Caret.Column;
+                    LogTextEditor.ScrollTo(line, column);
+                }
+                else
+                {
+                    var lastNewlineIndex = allText.LastIndexOf(nl, StringComparison.Ordinal);
+                    if (lastNewlineIndex >= 0)
                     {
-                        var caretPos = 0;
-                        if (_viewModel.IsWrapTextEnabled)
-                        {
-                            caretPos = LogTextEditor.Text.Length;
-                            LogTextEditor.CaretOffset = caretPos;
-                            int line   = LogTextEditor.TextArea.Caret.Line;
-                            int column = LogTextEditor.TextArea.Caret.Column;
-                            LogTextEditor.ScrollTo(line, column);
-                        }
-                        else
-                        {
-                            var lastNewlineIndex = allText.LastIndexOf(nl, StringComparison.Ordinal);
-                            if (lastNewlineIndex >= 0)
-                            {
-                                caretPos = lastNewlineIndex + nl.Length;
-                            }
-                            LogTextEditor.CaretOffset = caretPos;
-                            LogTextEditor.TextArea.Caret.BringCaretToView();
-                        }
-                        
+                        caretPos = lastNewlineIndex + nl.Length;
                     }
-                }, DispatcherPriority.Render);
+                    LogTextEditor.CaretOffset = caretPos;
+                    LogTextEditor.TextArea.Caret.BringCaretToView();
+                }
             }
         }
         private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
@@ -431,18 +476,11 @@ namespace CreatioHelper
             {
                 var path = uri.LocalPath;
                 SitePathTextBox.Text = path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-                var version = GetAppAssembly.GetAppVersion(path);
-                if (version == new Version())
-                {
-                    _writer.WriteLine("[ERROR] Creatio application not found.");
-                }
-                _viewModel.SitePathWithVersion = version;
             }
             else
             {
                 _writer.WriteLine("[ERROR] Selected path is not an absolute URI.");
             }
-            
         }
 
         private async void BrowsePackagesPath_Click(object? sender, RoutedEventArgs e)
