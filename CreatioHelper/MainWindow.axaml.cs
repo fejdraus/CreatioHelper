@@ -35,31 +35,44 @@ namespace CreatioHelper
             {
                 if (Dispatcher.UIThread.CheckAccess())
                 {
-                    _viewModel?.AddLogEntry(line);
-                    if (_viewModel?.IsLogToFileEnabled == true)
-                    {
-                        AppendLogToFile(line);
-                    }
+                    AddLogTextLine(line);
                 }
                 else
                 {
                     Dispatcher.UIThread.Post(() =>
                     {
-                        _viewModel?.AddLogEntry(line);
-                        if (_viewModel?.IsLogToFileEnabled == true)
-                        {
-                            AppendLogToFile(line);
-                        }
+                        AddLogTextLine(line);
                     });
                 }
             });
             _viewModel = new MainWindowViewModel(_writer);
             DataContext = _viewModel;
-            _viewModel.PropertyChanged += ViewModel_PropertyChanged;
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
         }
-        
+
+        private void AddLogTextLine(string line)
+        {
+            var doc = LogTextEditor.Document;
+            var nl = doc.TextLength > 0 ? Environment.NewLine : "";
+            doc.Insert(doc.TextLength, nl + line);
+            const int maxLines = 1000;
+            const int removeBatch = 200;
+            if (doc.LineCount > maxLines)
+            {
+                var first = doc.GetLineByNumber(1);
+                var last = doc.GetLineByNumber(removeBatch);
+                int lengthToRemove = (last.Offset + last.TotalLength) - first.Offset;
+                doc.Remove(first.Offset, lengthToRemove);
+            }
+            var updateLogDisplay = new UpdateLogDisplay();
+            updateLogDisplay.ScrollToBottom(_viewModel.IsAutoScrollEnabled, _viewModel.IsWrapTextEnabled, LogTextEditor);
+            if (_viewModel.IsLogToFileEnabled)
+            {
+                AppendLogToFile(line);
+            }
+        }
+
         protected override void OnLoaded(RoutedEventArgs e)
         {
             base.OnLoaded(e);
@@ -123,45 +136,6 @@ namespace CreatioHelper
             else
             {
                 _viewModel.SitePathWithVersion = new Version();
-            }
-        }
-
-
-        private void ViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(MainWindowViewModel.ShouldScrollToEnd))
-            {
-                Dispatcher.UIThread.Post(UpdateLogDisplay, DispatcherPriority.Render);
-            }
-        }
-        
-        private void UpdateLogDisplay()
-        {
-            string nl = Environment.NewLine;
-            var allText = string.Join(nl, _viewModel.LogEntries);
-    
-            LogTextEditor.Text = allText;
-            if (_viewModel.IsAutoScrollEnabled)
-            {
-                var caretPos = 0;
-                if (_viewModel.IsWrapTextEnabled)
-                {
-                    caretPos = LogTextEditor.Text.Length;
-                    LogTextEditor.CaretOffset = caretPos;
-                    int line = LogTextEditor.TextArea.Caret.Line;
-                    int column = LogTextEditor.TextArea.Caret.Column;
-                    LogTextEditor.ScrollTo(line, column);
-                }
-                else
-                {
-                    var lastNewlineIndex = allText.LastIndexOf(nl, StringComparison.Ordinal);
-                    if (lastNewlineIndex >= 0)
-                    {
-                        caretPos = lastNewlineIndex + nl.Length;
-                    }
-                    LogTextEditor.CaretOffset = caretPos;
-                    LogTextEditor.TextArea.Caret.BringCaretToView();
-                }
             }
         }
         private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)

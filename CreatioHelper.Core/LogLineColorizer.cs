@@ -14,7 +14,7 @@ public class LogLineColorizer : DocumentColorizingTransformer
     {
         var text = CurrentContext.Document.GetText(line);
         if (text.IndexOf("[WARNING]", StringComparison.OrdinalIgnoreCase) >= 0 
-            || text.IndexOf("warning", StringComparison.OrdinalIgnoreCase) >= 0)
+            || text.IndexOf(" warning ", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             ChangeLinePart(
                 line.Offset, 
@@ -24,7 +24,7 @@ public class LogLineColorizer : DocumentColorizingTransformer
                 });
         }
         else if (text.IndexOf("[ERROR]", StringComparison.OrdinalIgnoreCase) >= 0
-                 || text.IndexOf("error", StringComparison.OrdinalIgnoreCase) >= 0)
+                 || text.IndexOf(" error ", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             ChangeLinePart(
                 line.Offset, 

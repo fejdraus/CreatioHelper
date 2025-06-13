@@ -200,9 +200,6 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isServerControlsEnabled = true;
-    
-    [ObservableProperty]
-    private bool _shouldScrollToEnd;
 
     [RelayCommand]
     private async Task StartSite(ServerInfo server)
@@ -212,34 +209,6 @@ public partial class MainWindowViewModel : ObservableObject
         {
             await _statusService.RefreshServerStatusAsync(server);
         }
-    }
-    
-    public void AddLogEntry(string entry)
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            // Ограничиваем количество записей
-            if (LogEntries.Count >= MaxLogEntries)
-            {
-                // Удаляем старые записи (первые 20%)
-                var toRemove = MaxLogEntries / 5;
-                for (int i = 0; i < toRemove; i++)
-                {
-                    LogEntries.RemoveAt(0);
-                }
-            }
-        
-            LogEntries.Add(entry);
-        
-            OnPropertyChanged(nameof(ShouldScrollToEnd));
-        }, DispatcherPriority.Background);;
-    }
-    
-    partial void OnIsAutoScrollEnabledChanged(bool value)
-    {
-        // Если юзер вручную включил автоскролл — можно сразу прокрутить в конец:
-        if (value && LogEntries.Count > 0)
-            OnPropertyChanged(nameof(ShouldScrollToEnd));
     }
     
     public void ClearLog()
