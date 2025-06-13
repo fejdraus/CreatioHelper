@@ -4,9 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using System.Xml;
 using Avalonia.Threading;
 using Microsoft.Web.Administration;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -22,7 +20,6 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
     private readonly ServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
-    private const int MaxLogEntries = 1000;
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
     public MainWindowViewModel(IOutputWriter output)
@@ -118,9 +115,6 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isWrapTextEnabled;
     
     [ObservableProperty]
-    private ObservableCollection<string> _logEntries = new();
-    
-    [ObservableProperty]
     private bool _isLogToFileEnabled;
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
@@ -209,14 +203,6 @@ public partial class MainWindowViewModel : ObservableObject
         {
             await _statusService.RefreshServerStatusAsync(server);
         }
-    }
-    
-    public void ClearLog()
-    {
-        Dispatcher.UIThread.Post(() =>
-        {
-            LogEntries.Clear();
-        }, DispatcherPriority.Background);
     }
 
     partial void OnIsFolderModeChanged(bool value)

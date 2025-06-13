@@ -12,8 +12,6 @@ using Avalonia.Threading;
 using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.ViewModels;
-using System.ComponentModel;
-using Avalonia.VisualTree;
 
 namespace CreatioHelper
 {
@@ -23,7 +21,7 @@ namespace CreatioHelper
         private CancellationTokenSource? _cancellationTokenSource;
         private readonly BufferingOutputWriter _writer;
         private readonly MainWindowViewModel _viewModel;
-        private string _logFilePath = "log.txt";
+        private const string LogFilePath = "log.txt";
 
         public MainWindow()
         {
@@ -89,7 +87,7 @@ namespace CreatioHelper
                 {
                     Header = "Copy"
                 };
-                copyMenuItem.Click += (s, e) => 
+                copyMenuItem.Click += (_, _) => 
                 {
                     if (LogTextEditor.TextArea.Selection.Length > 0)
                     {
@@ -100,12 +98,11 @@ namespace CreatioHelper
                 {
                     Header = "Clear Log"
                 };
-                clearLogMenuItem.Click += (s, e) => 
+                clearLogMenuItem.Click += (_, _) => 
                 {
                     if (LogTextEditor.Document != null)
                     {
-                        _viewModel.ClearLog();
-                        LogTextEditor.Clear();
+                        ClearLog();
                     }
                 };
                 contextMenu.Items.Add(copyMenuItem);
@@ -169,6 +166,11 @@ namespace CreatioHelper
             }
         }
 
+        protected virtual void ClearLog()
+        {
+            LogTextEditor.Text = string.Empty;
+        }
+
         private async Task StartButton_ClickAsync()
         {
             StopButtonAndKillWorkspaceConsole.IsEnabled = false;
@@ -178,10 +180,7 @@ namespace CreatioHelper
                 _writer.WriteLine("Unable to resolve DataContext.");
                 return;
             }
-
-            // Очищаем лог перед новой операцией
-            viewModel.ClearLog();
-
+            ClearLog();
             if (!TryValidateInputs(viewModel, out var sitePath) || sitePath == null)
             {
                 return;
@@ -604,7 +603,7 @@ namespace CreatioHelper
         {
             try
             {
-                File.AppendAllText(_logFilePath, string.Concat(DateTime.Now, " ", logEntry) + Environment.NewLine);
+                File.AppendAllText(LogFilePath, string.Concat(DateTime.Now, " ", logEntry) + Environment.NewLine);
             }
             catch (Exception ex)
             {

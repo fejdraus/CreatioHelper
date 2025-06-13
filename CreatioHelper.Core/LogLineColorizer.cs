@@ -13,7 +13,7 @@ public class LogLineColorizer : DocumentColorizingTransformer
     protected override void ColorizeLine(DocumentLine line)
     {
         var text = CurrentContext.Document.GetText(line);
-        if (text.IndexOf("[WARNING]", StringComparison.OrdinalIgnoreCase) >= 0 
+        if (text.IndexOf("[WARN]", StringComparison.OrdinalIgnoreCase) >= 0 
             || text.IndexOf(" warning ", StringComparison.OrdinalIgnoreCase) >= 0)
         {
             ChangeLinePart(
