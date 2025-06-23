@@ -13,11 +13,17 @@ public class MonitoringHub : Hub
         _logger = logger;
         _monitoringService = monitoringService;
     }
+    
+    public override async Task OnConnectedAsync()
+    {
+        _logger.LogInformation("🔥 WebSocket client CONNECTED: {ConnectionId}", Context.ConnectionId);
+        await base.OnConnectedAsync();
+    }
 
     public async Task JoinGroup(string groupName)
     {
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
-        _logger.LogInformation("Connection {ConnectionId} joined group {GroupName}", 
+        _logger.LogInformation("➕ Connection {ConnectionId} joined group {GroupName}", 
             Context.ConnectionId, groupName);
     }
 
@@ -46,7 +52,8 @@ public class MonitoringHub : Hub
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        _logger.LogInformation("Connection {ConnectionId} disconnected", Context.ConnectionId);
+        _logger.LogInformation("❌ WebSocket client DISCONNECTED: {ConnectionId}, Reason: {Exception}", 
+            Context.ConnectionId, exception?.Message ?? "Normal disconnect");
         await base.OnDisconnectedAsync(exception);
     }
 }

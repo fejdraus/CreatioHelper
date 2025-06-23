@@ -1,7 +1,6 @@
 using Microsoft.AspNetCore.SignalR;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Agent.Services.Windows;
-using CreatioHelper.Agent.Models;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -10,7 +9,7 @@ public class MonitoringService : BackgroundService
     private readonly IHubContext<MonitoringHub> _hubContext;
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<MonitoringService> _logger;
-    private readonly List<ServerRequest> _monitoredServers = new();
+    private readonly List<ServerRequest> _monitoredServers = [];
 
     public MonitoringService(
         IHubContext<MonitoringHub> hubContext,
@@ -45,11 +44,15 @@ public class MonitoringService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        _logger.LogInformation("MonitoringService started!");
+    
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 await MonitorServers();
+                await BroadcastWebServerOverview();
+            
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
             catch (Exception ex)
@@ -59,63 +62,21 @@ public class MonitoringService : BackgroundService
             }
         }
     }
-
-    private async Task MonitorServers()
+    
+    public async Task BroadcastWebServerOverview()
     {
-        ServerRequest[] serversToMonitor;
-        lock (_monitoredServers)
-        {
-            serversToMonitor = _monitoredServers.ToArray();
-        }
-
-        if (serversToMonitor.Length == 0)
-            return;
-
         using var scope = _serviceProvider.CreateScope();
-        var statusService = scope.ServiceProvider.GetService<IisStatusService>();
-        
-        if (statusService == null)
+        var webServerFactory = scope.ServiceProvider.GetService<IWebServerServiceFactory>();
+    
+        if (webServerFactory == null || !webServerFactory.IsWebServerSupported())
             return;
 
         try
         {
-            var statuses = await statusService.GetMultipleServersStatusAsync(serversToMonitor);
-            
-            // Отправляем статус всем подключенным клиентам
-            await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
-            
-            // Логируем только изменения статуса
-            foreach (var status in statuses)
-            {
-                if (!status.IsHealthy)
-                {
-                    _logger.LogWarning("Server {SiteName} is unhealthy: Site={SiteStatus}, Pool={PoolStatus}", 
-                        status.SiteName, status.SiteStatus, status.PoolStatus);
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error monitoring servers");
-        }
-    }
-    
-    public async Task BroadcastIisOverview()
-    {
-        if (!OperatingSystem.IsWindows())
-            return;
-
-        using var scope = _serviceProvider.CreateScope();
-        var iisManager = scope.ServiceProvider.GetService<IisManagerService>();
-    
-        if (iisManager == null)
-            return;
-
-        try
-        {
-            var sitesTask = iisManager.GetAllSitesAsync();
-            var appPoolsTask = iisManager.GetAllAppPoolsAsync();
+            var webServerService = webServerFactory.CreateWebServerService();
         
+            var sitesTask = webServerService.GetAllSitesAsync();
+            var appPoolsTask = webServerService.GetAllAppPoolsAsync();
             await Task.WhenAll(sitesTask, appPoolsTask);
         
             var sites = await sitesTask;
@@ -124,6 +85,7 @@ public class MonitoringService : BackgroundService
             var overview = new
             {
                 ServerName = Environment.MachineName,
+                Platform = GetPlatformName(),
                 Timestamp = DateTime.UtcNow,
                 Sites = sites,
                 AppPools = appPools,
@@ -136,12 +98,65 @@ public class MonitoringService : BackgroundService
                 }
             };
         
-            // Отправляем обзор всем подключенным клиентам
-            await _hubContext.Clients.Group("iis-overview").SendAsync("IisOverviewUpdate", overview);
+            await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error broadcasting IIS overview");
+            _logger.LogError(ex, "Error broadcasting web server overview");
+        }
+    }
+    
+    private string GetPlatformName()
+    {
+        using var scope = _serviceProvider.CreateScope();
+        var platformService = scope.ServiceProvider.GetService<IPlatformService>();
+    
+        return platformService?.GetPlatform() switch
+        {
+            PlatformType.Windows => "Windows/IIS",
+            PlatformType.Linux => "Linux/Systemd", 
+            PlatformType.MacOS => "macOS/Launchd",
+            _ => "Unknown"
+        };
+    }
+
+    private async Task MonitorServers()
+    {
+        ServerRequest[] serversToMonitor;
+        lock (_monitoredServers)
+        {
+            serversToMonitor = _monitoredServers.ToArray();
+        }
+
+        if (serversToMonitor.Length == 0)
+        {
+            return;
+        }
+
+        using var scope = _serviceProvider.CreateScope();
+        var statusService = scope.ServiceProvider.GetService<IisStatusService>();
+
+        if (statusService == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var statuses = await statusService.GetMultipleServersStatusAsync(serversToMonitor);
+            await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
+            foreach (var status in statuses)
+            {
+                if (!status.IsHealthy)
+                {
+                    _logger.LogWarning("Server {SiteName} is unhealthy: Site={SiteStatus}, Pool={PoolStatus}", 
+                        status.SiteName, status.SiteStatus, status.PoolStatus);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error monitoring servers");
         }
     }
 }

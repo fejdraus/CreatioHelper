@@ -12,7 +12,6 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IPlatformService, PlatformService>();
         services.AddSingleton<IFileSyncService, FileSyncService>();
         services.AddScoped<IWebServerServiceFactory, WebServerServiceFactory>();
-        services.AddSingleton<MonitoringService>();
         services.AddSingleton<IConfigurationService, ConfigurationService>();
         services.AddScoped<IWebServerServiceFactory, WebServerServiceFactory>();
         services.AddSingleton<WebSiteRegistryService>();
