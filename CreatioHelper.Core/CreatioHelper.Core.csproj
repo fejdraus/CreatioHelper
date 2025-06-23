@@ -8,9 +8,9 @@
 
   <ItemGroup>
     <PackageReference Include="Avalonia.AvaloniaEdit" Version="11.3.0" />
-    <PackageReference Include="StackExchange.Redis" Version="2.8.37" />
-    <PackageReference Include="System.Text.Json" Version="9.0.5" />
-    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.5" />
+    <PackageReference Include="StackExchange.Redis" Version="2.8.41" />
+    <PackageReference Include="System.Text.Json" Version="9.0.6" />
+    <PackageReference Include="System.Text.Encodings.Web" Version="9.0.6" />
   </ItemGroup>
 
   <ItemGroup>

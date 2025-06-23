@@ -1,4 +1,5 @@
 using System;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
 namespace CreatioHelper.Core.Services
@@ -12,12 +13,16 @@ namespace CreatioHelper.Core.Services
             _output = output ?? throw new ArgumentNullException(nameof(output));
         }
 
+        [SupportedOSPlatform("windows")]
         public async Task RefreshServerStatusAsync(ServerInfo server)
         {
             if (server == null) throw new ArgumentNullException(nameof(server));
 
+            // Проверяем платформу перед выполнением
             if (!OperatingSystem.IsWindows())
             {
+                server.PoolStatus = "Unsupported";
+                server.SiteStatus = "Unsupported";
                 _output.WriteLine("[ERROR] Status check is only available on Windows.");
                 return;
             }
@@ -29,15 +34,8 @@ namespace CreatioHelper.Core.Services
             try
             {
                 var manager = new RemoteIisManager(_output);
-
-                // Получаем статус пула
                 await manager.GetAppPoolStatusAsync(server);
-
-                // Получаем статус сайта
                 await manager.GetWebsiteStatusAsync(server);
-
-                // Можно раскомментировать для дополнительного логирования
-                // _output.WriteLine($"[INFO] Status updated for server '{server.Name}' - Pool: {server.PoolStatus}, Site: {server.SiteStatus}");
             }
             catch (Exception ex)
             {
@@ -51,6 +49,7 @@ namespace CreatioHelper.Core.Services
             }
         }
 
+        [SupportedOSPlatform("windows")]
         public async Task RefreshMultipleServersStatusAsync(params ServerInfo[] servers)
         {
             var tasks = new Task[servers.Length];

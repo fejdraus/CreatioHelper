@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using Microsoft.Web.Administration;
@@ -223,8 +224,16 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSitePathChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
 
+    [SupportedOSPlatform("windows")]
     private void LoadIisSites(AppSettings? settings)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            IisSites.Clear();
+            IisSites.Add(new IisSiteInfo { Name = "[IIS not available on this platform]", Path = "", PoolName = "" });
+            return;
+        }
+        
         try
         {
             Dispatcher.UIThread.Post(() =>

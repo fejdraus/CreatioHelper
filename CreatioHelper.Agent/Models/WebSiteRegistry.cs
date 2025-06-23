@@ -1,0 +1,8 @@
+namespace CreatioHelper.Agent.Models;
+
+public class WebSiteRegistry
+{
+    public List<WebSiteInfo> Sites { get; set; } = new();
+    public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
+    public string Version { get; set; } = "1.0";
+}

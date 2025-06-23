@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper", "CreatioHel
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper.Core", "CreatioHelper.Core\CreatioHelper.Core.csproj", "{B082318C-E657-A64C-DA45-2ED3A2D21905}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper.Agent", "CreatioHelper.Agent\CreatioHelper.Agent.csproj", "{0CCA0104-0B31-407F-A0C9-68F91000938D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{B082318C-E657-A64C-DA45-2ED3A2D21905}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B082318C-E657-A64C-DA45-2ED3A2D21905}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B082318C-E657-A64C-DA45-2ED3A2D21905}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0CCA0104-0B31-407F-A0C9-68F91000938D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0CCA0104-0B31-407F-A0C9-68F91000938D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0CCA0104-0B31-407F-A0C9-68F91000938D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0CCA0104-0B31-407F-A0C9-68F91000938D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
