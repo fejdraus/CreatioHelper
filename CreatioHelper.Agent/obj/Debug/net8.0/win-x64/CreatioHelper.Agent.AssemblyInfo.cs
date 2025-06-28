@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CreatioHelper.Agent")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+c418c04c503c0309def94d736a7a361fca7a6de9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+5fa209801e79109f5f3f8598ac113654f55063d0")]
 [assembly: System.Reflection.AssemblyProductAttribute("CreatioHelper.Agent")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CreatioHelper.Agent")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

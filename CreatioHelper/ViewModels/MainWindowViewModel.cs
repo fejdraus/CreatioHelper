@@ -117,6 +117,9 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isLogToFileEnabled;
+    
+    public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
+
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
     public ObservableCollection<ServerInfo> ServerList { get; } = new();
@@ -225,18 +228,54 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
 
     [SupportedOSPlatform("windows")]
+    private static bool IsIisAvailable()
+    {
+        if (!OperatingSystem.IsWindows()) return false;
+    
+        // Быстрая проверка через реестр
+        try
+        {
+            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\InetStp");
+            if (key == null) return false;
+        }
+        catch
+        {
+            return false;
+        }
+    
+        // Проверяем службу IIS
+        try
+        {
+            using var serviceController = new System.ServiceProcess.ServiceController("W3SVC");
+            var _ = serviceController.Status; // Просто пытаемся получить статус
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+    }
+    
+    [SupportedOSPlatform("windows")]
     private void LoadIisSites(AppSettings? settings)
     {
         if (!OperatingSystem.IsWindows())
         {
             IisSites.Clear();
-            IisSites.Add(new IisSiteInfo { Name = "[IIS not available on this platform]", Path = "", PoolName = "" });
+            OnPropertyChanged(nameof(HasIisSites));
             return;
         }
         
-        try
+        if (!IsIisAvailable())
         {
-            Dispatcher.UIThread.Post(() =>
+            IisSites.Clear();
+            OnPropertyChanged(nameof(HasIisSites));
+            return;
+        }
+        
+        Dispatcher.UIThread.Post(() =>
+        {
+            try
             {
                 using var manager = new ServerManager();
                 var sites = manager.Sites.ToList();
@@ -244,7 +283,6 @@ public partial class MainWindowViewModel : ObservableObject
             
                 if (sites.Count == 0)
                 {
-                    IisSites.Add(new IisSiteInfo { Name = "[No IIS sites found]", Path = "", PoolName = "" });
                     return;
                 }
             
@@ -277,14 +315,16 @@ public partial class MainWindowViewModel : ObservableObject
                     var assemblyName = GetAppAssembly.GetAppVersion(appPath);
                     IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
                 }
+                OnPropertyChanged(nameof(HasIisSites));
                 if (settings != null) ApplyServerSettings(settings);
-            });
-            
-        }
-        catch (Exception ex)
-        {
-            IisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "", PoolName = "" });
-        }
+            }
+            catch (Exception ex)
+            {
+                IisSites.Clear();
+                IisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "", PoolName = "" });
+                OnPropertyChanged(nameof(HasIisSites));
+            }
+        });
     }
 
     private void ApplyServerSettings(AppSettings settings)
