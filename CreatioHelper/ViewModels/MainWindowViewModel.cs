@@ -6,36 +6,48 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
-using Avalonia.Threading;
-using Microsoft.Web.Administration;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
+using CreatioHelper.Services;
+using System.Diagnostics;
+using System.Threading;
 
 namespace CreatioHelper.ViewModels;
 
+[SupportedOSPlatform("windows")]
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly bool _isInitializing;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
     private readonly ServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IisService _iisService;
+    private readonly ISettingsService _settingsService;
+    private readonly IOperationsService _operationsService;
+    private readonly IDialogService _dialogService;
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
-    public MainWindowViewModel(IOutputWriter output)
+    
+    public MainWindowViewModel(IOutputWriter output, ISettingsService settingsService, IOperationsService operationsService, IDialogService dialogService)
     {
         _output = output;
+        _settingsService = settingsService;
+        _operationsService = operationsService;
+        _dialogService = dialogService;
         _statusService = new ServerStatusService(output);
         _isInitializing = true;
         _remoteIisManager = new RemoteIisManager(output);
-        var settings = AppSettingsService.SettingsFileExists()
-            ? AppSettingsService.Load()
-            : new AppSettings
-            {
-                IsIisMode = true
-            };
-        LoadIisSites(settings);
+        _iisService = new IisService();
+        
+        var settings = _settingsService.Load();
+        
+        if (OperatingSystem.IsWindows())
+        {
+            LoadIisSites(settings);
+        }
+
         foreach (var server in ServerList)
         {
             var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
@@ -117,6 +129,12 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isLogToFileEnabled;
+    
+    public bool IsBusy => _operationsService.IsBusy;
+    
+    public string StartButtonText => _operationsService.StartButtonText;
+    
+    public bool IsStopButtonEnabled => _operationsService.IsStopButtonEnabled;
     
     public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
 
@@ -208,6 +226,43 @@ public partial class MainWindowViewModel : ObservableObject
             await _statusService.RefreshServerStatusAsync(server);
         }
     }
+    
+    [RelayCommand]
+    private async Task Start() 
+    {
+        await _operationsService.StartOperation(this);
+    }
+
+    [RelayCommand]
+    private void Stop() 
+    {
+        _operationsService.StopOperation();
+    }
+
+    [RelayCommand]
+    private async Task BrowseSitePath()
+    {
+        var path = await _dialogService.OpenFolderPickerAsync("Select Site Path");
+        if (path != null)
+        {
+            SitePath = path;
+        }
+    }
+
+    [RelayCommand]
+    private async Task BrowsePackagesPath()
+    {
+        var path = await _dialogService.OpenFolderPickerAsync("Select Packages Path");
+        if (path != null)
+        {
+            PackagesPath = path;
+        }
+    }
+
+    private void SetControlsEnabled(bool isEnabled) 
+    {
+        IsServerControlsEnabled = isEnabled;
+    }
 
     partial void OnIsFolderModeChanged(bool value)
     {
@@ -226,103 +281,16 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
     partial void OnSitePathChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
-
-    [SupportedOSPlatform("windows")]
-    private static bool IsIisAvailable()
-    {
-        if (!OperatingSystem.IsWindows()) return false;
-    
-        // Быстрая проверка через реестр
-        try
-        {
-            using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\InetStp");
-            if (key == null) return false;
-        }
-        catch
-        {
-            return false;
-        }
-    
-        // Проверяем службу IIS
-        try
-        {
-            using var serviceController = new System.ServiceProcess.ServiceController("W3SVC");
-            var _ = serviceController.Status; // Просто пытаемся получить статус
-            return true;
-        }
-        catch (InvalidOperationException)
-        {
-            return false;
-        }
-    }
     
     [SupportedOSPlatform("windows")]
     private void LoadIisSites(AppSettings? settings)
     {
-        if (!OperatingSystem.IsWindows())
+        _iisService.LoadIisSites(IisSites, success =>
         {
-            IisSites.Clear();
             OnPropertyChanged(nameof(HasIisSites));
-            return;
-        }
-        
-        if (!IsIisAvailable())
-        {
-            IisSites.Clear();
-            OnPropertyChanged(nameof(HasIisSites));
-            return;
-        }
-        
-        Dispatcher.UIThread.Post(() =>
-        {
-            try
+            if (success && settings != null)
             {
-                using var manager = new ServerManager();
-                var sites = manager.Sites.ToList();
-                IisSites.Clear();
-            
-                if (sites.Count == 0)
-                {
-                    return;
-                }
-            
-                foreach (var site in manager.Sites)
-                {
-                    var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
-                    var appVdir = app?.VirtualDirectories["/"];
-                    var rootApp = site.Applications["/"];
-                    var rootVdir = rootApp?.VirtualDirectories["/"];
-                    string sitePath = rootVdir?.PhysicalPath ?? "";
-                    string appPath = appVdir?.PhysicalPath ?? "";
-                    string poolName = rootApp?.ApplicationPoolName ?? "";
-                    var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
-                    if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
-                    {
-                        continue;
-                    }
-                    if (!File.Exists(Path.Combine(appPath, "Web.config")))
-                    {
-                        continue;
-                    }
-                    if (!File.Exists(connectionStrings))
-                    {
-                        continue;
-                    }
-                    if (!File.Exists(Path.Combine(sitePath, "Web.config")))
-                    {
-                        continue;
-                    }
-                    var assemblyName = GetAppAssembly.GetAppVersion(appPath);
-                    IisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
-                }
-                OnPropertyChanged(nameof(HasIisSites));
-                if (settings != null) ApplyServerSettings(settings);
-            }
-            catch (Exception ex)
-            {
-                IisSites.Clear();
-                IisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "", PoolName = "" });
-                OnPropertyChanged(nameof(HasIisSites));
+                ApplyServerSettings(settings);
             }
         });
     }
@@ -354,8 +322,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void SaveServerSettings()
     {
-        if (_isInitializing || !AppSettingsService.SettingsFileExists())
-            return;
+        if (_isInitializing) return;
 
         var settings = new AppSettings
         {
@@ -375,6 +342,6 @@ public partial class MainWindowViewModel : ObservableObject
             IsServerPanelVisible = IsServerPanelVisible
         };
 
-        AppSettingsService.Save(settings);
+        _settingsService.Save(settings);
     }
 }

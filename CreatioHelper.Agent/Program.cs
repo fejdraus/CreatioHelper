@@ -30,6 +30,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowAll");
 app.UseRouting();
 app.MapControllers();
+//app.UseAuthorization();
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
 app.MapGet("/test-signalr", () => Results.Content("""
                                                   <!DOCTYPE html>

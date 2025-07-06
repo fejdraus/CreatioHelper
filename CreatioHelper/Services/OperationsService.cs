@@ -1,0 +1,349 @@
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CreatioHelper.Core;
+using CreatioHelper.Core.Services;
+using CreatioHelper.ViewModels;
+
+namespace CreatioHelper.Services;
+
+[SupportedOSPlatform("windows")]
+public partial class OperationsService : ObservableObject, IOperationsService
+{
+    private readonly IOutputWriter _output;
+    private CancellationTokenSource? _cancellationTokenSource;
+    private readonly IRemoteIisManager _remoteIisManager;
+
+    [ObservableProperty]
+    private bool _isBusy;
+    
+    [ObservableProperty]
+    private string _startButtonText = "Start";
+    
+    [ObservableProperty]
+    private bool _isStopButtonEnabled;
+
+    public OperationsService(IOutputWriter output)
+    {
+        _output = output;
+        _remoteIisManager = new RemoteIisManager(output);
+    }
+
+    public async Task StartOperation(MainWindowViewModel viewModel)
+    {
+        IsStopButtonEnabled = false;
+
+        if (!TryValidateInputs(viewModel, out var sitePath) || sitePath == null)
+        {
+            return;
+        }
+
+        string packagesPath = viewModel.PackagesPath ?? "";
+        string packagesBefore = viewModel.PackagesToDeleteBefore?.Trim() ?? "";
+        string packagesAfter = viewModel.PackagesToDeleteAfter?.Trim() ?? "";
+        var serverList = viewModel.ServerList.ToArray();
+        _cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = _cancellationTokenSource.Token;
+        var preparer = new WorkspacePreparer(_output);
+        IsBusy = true;
+        StartButtonText = "In process...";
+        viewModel.IsServerControlsEnabled = false;
+
+        await Task.Run(async () => 
+        {
+            var quartzIsActiveOriginal = true;
+            try 
+            {
+                _output.WriteLine("Prepare WorkspaceConsole ...");
+                preparer.Prepare(sitePath, out quartzIsActiveOriginal);
+
+                if (cancellationToken.IsCancellationRequested) 
+                {
+                    return;
+                }
+
+                if (OperatingSystem.IsWindows() && (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath))) 
+                {
+                    var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
+                    var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
+                    var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : viewModel.SitePathWithVersion;
+                    if (appVersion < new Version(7, 12, 0, 0)) 
+                    {
+                        _output.WriteLine("[ERROR] Creatio application not found.");
+                        return;
+                    }
+                    var localServerInfo = new ServerInfo 
+                    {
+                        Name = Environment.MachineName,
+                        PoolName = poolName,
+                        SiteName = siteName,
+                        AppVersion = appVersion
+                    };
+                    var manager = new RemoteIisManager(_output);
+                    if (localServerInfo.PoolName != null) 
+                    {
+                        await manager.StopAppPoolAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Pool stopped.");
+                    }
+                    if (localServerInfo.SiteName != null) 
+                    {
+                        await manager.StopWebsiteAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Website stopped.");
+                    }
+                    IsStopButtonEnabled = true;
+
+                    if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages) 
+                    {
+                        _output.WriteLine("Deleting packages BEFORE installation...");
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.DeletePackages(sitePath, packagesBefore);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Deleting packages failed.");
+                                return;
+                            }
+                        }
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.RebuildWorkspace(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                return;
+                            }
+                        }
+
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.BuildConfiguration(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Building configuration failed.");
+                                return;
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath)) 
+                    {
+                        _output.WriteLine("Start installation packages...");
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.InstallFromRepository(sitePath, packagesPath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Failed to install packages.");
+                                return;
+                            }
+                        }
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.RebuildWorkspace(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                return;
+                            }
+                        }
+
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.BuildConfiguration(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Building configuration failed.");
+                                return;
+                            }
+                        }
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages) 
+                    {
+                        _output.WriteLine("Deleting packages AFTER installation...");
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.DeletePackages(sitePath, packagesAfter);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Deleting packages failed.");
+                                return;
+                            }
+                        }
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.RebuildWorkspace(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                return;
+                            }
+                        }
+
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.BuildConfiguration(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Building configuration failed.");
+                                return;
+                            }
+                        }
+                    }
+
+                    if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible) 
+                    {
+                        IsStopButtonEnabled = false;
+                        var syncService = new RemoteSynchronizationService(_output);
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var syncStatus = await syncService.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken);
+                            if (syncStatus) 
+                            {
+                                _output.WriteLine("[OK] All servers are successfully synchronized.");
+                            } 
+                            else 
+                            {
+                                _output.WriteLine("[ERROR] Failed to synchronize servers.");
+                                return;
+                            }
+                        }
+                        IsStopButtonEnabled = true;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(packagesPath) &&
+                        string.IsNullOrWhiteSpace(packagesBefore) &&
+                        string.IsNullOrWhiteSpace(packagesAfter) &&
+                        !viewModel.IsServerPanelVisible) 
+                    {
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.RegenerateSchemaSources(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Failed to regenerate schema sources.");
+                                return;
+                            }
+                        }
+
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.RebuildWorkspace(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
+                                return;
+                            }
+                        }
+
+                        if (!cancellationToken.IsCancellationRequested) 
+                        {
+                            var result = preparer.BuildConfiguration(sitePath);
+                            if (result != 0) 
+                            {
+                                _output.WriteLine("[ERROR] Building configuration failed.");
+                                return;
+                            }
+                        }
+                    }
+
+                    var redisManager = new RedisManager(_output, sitePath);
+                    var redisStatus = redisManager.CheckStatus();
+                    if (redisStatus) 
+                    {
+                        redisManager.Clear();
+                    }
+
+                    IsStopButtonEnabled = false;
+                    if (localServerInfo.PoolName != null) 
+                    {
+                        await manager.StartAppPoolAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Pool is running.");
+                    }
+                    if (localServerInfo.SiteName != null) 
+                    {
+                        await manager.StartWebsiteAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Website is running.");
+                    }
+                }
+            } 
+            catch (OperationCanceledException) 
+            {
+                _output.WriteLine("[INFO] Operation was cancelled.");
+                IsStopButtonEnabled = true;
+            } 
+            catch (Exception ex) 
+            {
+                _output.WriteLine($"[ERROR] {ex.Message}");
+                IsStopButtonEnabled = true;
+            } 
+            finally 
+            {
+                IsBusy = false;
+                StartButtonText = "Start";
+                viewModel.IsServerControlsEnabled = true;
+                IsStopButtonEnabled = true;
+                if (!quartzIsActiveOriginal) 
+                {
+                    preparer.UpdateOutConfig(Path.Combine(sitePath, "Web.config"), quartzIsActiveOriginal);
+                }
+            }
+        }, _cancellationTokenSource.Token);
+    }
+
+    public void StopOperation() 
+    {
+        if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested) 
+        {
+            _cancellationTokenSource.Cancel();
+            _output.WriteLine("[INFO] Cancelling operations...");
+        }
+        if (OperatingSystem.IsWindows()) 
+        {
+            try 
+            {
+                var processes = Process.GetProcessesByName("Terrasoft.Tools.WorkspaceConsole");
+                if (processes.Length > 0) 
+                {
+                    foreach (var process in processes)
+                        process.Kill();
+                    _output.WriteLine($"[INFO] Terminated {processes.Length} WorkspaceConsole processes.");
+                } 
+                else 
+                {
+                    _output.WriteLine("[INFO] No WorkspaceConsole processes found to terminate.");
+                }
+            } 
+            catch (Exception ex) 
+            {
+                _output.WriteLine($"[ERROR] Failed to terminate WorkspaceConsole processes: {ex.Message}");
+            }
+        }
+        IsBusy = false;
+        StartButtonText = "Start";
+    }
+
+    private bool TryValidateInputs(MainWindowViewModel viewModel, out string? sitePath) 
+    {
+        sitePath = viewModel.IsIisMode
+            ? viewModel.SelectedIisSite?.Path
+            : viewModel.SitePath;
+
+        if (string.IsNullOrWhiteSpace(sitePath)) 
+        {
+            _output.WriteLine("The path to the site is not indicated.");
+            return false;
+        }
+
+        return true;
+    }
+}

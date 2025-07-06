@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
         xmlns:core1="clr-namespace:CreatioHelper.Core;assembly=CreatioHelper.Core"
+        xmlns:converters="clr-namespace:CreatioHelper.Converters"
         xmlns:avalonEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
@@ -13,6 +14,7 @@
     <Window.Resources>
         <core1:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
         <core1:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
+        <converters:NotConverter x:Key="NotConverter"/>
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
@@ -21,7 +23,7 @@
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
             
             <!-- Row 0: Source selection -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,5">
+            <StackPanel Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Site path source:" />
                 <StackPanel x:Name="SiteSourcePanel" Orientation="Horizontal" >
                     <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" />
@@ -31,15 +33,15 @@
             </StackPanel>
 
             <!-- Row 1: Folder Mode -->
-            <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5">
+            <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" Margin="0,0,5,0"/>
-                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Click="BrowseSitePath_Click" Margin="5,0,0,0" Height="32"/>
+                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
             </StackPanel>
 
             <!-- Row 2: IIS Mode -->
-            <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5">
+            <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <ComboBox x:Name="IisSitesComboBox"
                           HorizontalAlignment="Stretch"
                           IsEnabled="{Binding HasIisSites}"
@@ -48,13 +50,13 @@
             </StackPanel>
 
             <!-- Row 3: Packages Path -->
-            <StackPanel Grid.Row="3" Margin="0,0,0,5">
+            <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Packages Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
-                            Click="BrowsePackagesPath_Click" Margin="5,0,0,0" Height="32"/>
+                            Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
             </StackPanel>
 
@@ -87,8 +89,9 @@
                 <!-- Start button -->
                 <Button x:Name="StartButton"
                         Grid.Column="0"
-                        Content="Start"
-                        Click="StartButton_Click"
+                        Content="{Binding StartButtonText}"
+                        Command="{Binding StartCommand}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}"
                         Width="140" 
                         Height="32"/>
 
@@ -96,7 +99,8 @@
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
-                        Click="StopButton_Click"
+                        Command="{Binding StopCommand}"
+                        IsEnabled="{Binding IsStopButtonEnabled}"
                         Width="140"
                         Height="32"
                         Margin="10,0,0,0" />
@@ -109,6 +113,7 @@
                         Content="{Binding ServerPanelButtonText}"
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"
+                        IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}"
                         Width="120"
                         Height="32"
                         HorizontalAlignment="Right" />
@@ -157,7 +162,7 @@
                 IsVisible="{Binding IsServerPanelVisible}">
             <Grid x:Name="ServerPanelStack" RowDefinitions="Auto,*">
                 <!-- Верхняя часть: кнопка Add, заголовок и т.д. -->
-                <StackPanel Grid.Row="0" Spacing="10">
+                <StackPanel Grid.Row="0" Spacing="10" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                     <Button x:Name="AddServerButton"
                             Content="Add"
                             HorizontalAlignment="Stretch"
