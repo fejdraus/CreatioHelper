@@ -1,4 +1,6 @@
-namespace CreatioHelper.Agent.Models;
+using System;
+using System.Collections.Generic;
+namespace CreatioHelper.Core.Models;
 
 public class WebServerStatus
 {

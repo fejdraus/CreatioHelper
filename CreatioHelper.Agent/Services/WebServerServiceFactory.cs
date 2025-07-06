@@ -1,5 +1,5 @@
 using CreatioHelper.Agent.Abstractions;
-using CreatioHelper.Agent.Models;
+using CreatioHelper.Core.Models;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Services.Linux;
 using CreatioHelper.Agent.Services.MacOS;

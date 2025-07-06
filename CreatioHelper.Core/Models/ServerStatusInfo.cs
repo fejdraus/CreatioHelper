@@ -1,4 +1,5 @@
-namespace CreatioHelper.Agent.Models;
+using System;
+namespace CreatioHelper.Core.Models;
 
 public class ServerStatusInfo
 {

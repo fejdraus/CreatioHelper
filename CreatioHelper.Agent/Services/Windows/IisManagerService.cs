@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text.Json;
 using CreatioHelper.Agent.Abstractions;
-using CreatioHelper.Agent.Models;
+using CreatioHelper.Core.Models;
 
 namespace CreatioHelper.Agent.Services.Windows;
 

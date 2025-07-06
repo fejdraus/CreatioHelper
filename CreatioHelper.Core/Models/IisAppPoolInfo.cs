@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CreatioHelper.Agent.Models;
+namespace CreatioHelper.Core.Models;
 
 public class IisAppPoolInfo
 {

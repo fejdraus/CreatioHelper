@@ -1,13 +1,10 @@
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace CreatioHelper.Agent.Models;
+namespace CreatioHelper.Core.Models;
 
-public class RegisterSiteRequest
+public class UpdateSiteRequest
 {
-    [Required]
-    [MaxLength(100)]
-    public string DisplayName { get; set; } = "";
-    
     [Required]
     [AllowedValues("IIS", "WindowsService", "Systemd", "Launchd")]
     public string Type { get; set; } = "";

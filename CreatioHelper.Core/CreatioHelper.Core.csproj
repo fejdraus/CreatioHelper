@@ -4,6 +4,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <OutputType>Library</OutputType>
     <RootNamespace>CreatioHelper.Core</RootNamespace>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,6 +19,7 @@
       <HintPath>..\CreatioHelper\bin\Debug\net8.0\Avalonia.Base.dll</HintPath>
     </Reference>
   </ItemGroup>
+  
   <PropertyGroup>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
   </PropertyGroup>

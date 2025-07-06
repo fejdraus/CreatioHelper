@@ -1,7 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using CreatioHelper.Agent.Abstractions;
-using CreatioHelper.Agent.Models;
+using CreatioHelper.Core.Models;
 
 namespace CreatioHelper.Agent.Services.Linux;
 

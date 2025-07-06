@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Agent.Models;
+using CreatioHelper.Core.Models;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Abstractions;
 

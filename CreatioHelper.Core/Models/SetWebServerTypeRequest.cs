@@ -1,4 +1,4 @@
-namespace CreatioHelper.Agent.Models;
+namespace CreatioHelper.Core.Models;
 
 public class SetWebServerTypeRequest
 {

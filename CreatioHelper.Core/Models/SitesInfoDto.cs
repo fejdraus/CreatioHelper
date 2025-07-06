@@ -1,4 +1,5 @@
-namespace CreatioHelper.Agent.Models;
+using System.Collections.Generic;
+namespace CreatioHelper.Core.Models;
 
 public class SitesInfoDto
 {
