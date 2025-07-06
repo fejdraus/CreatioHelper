@@ -39,5 +39,8 @@
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
+  </ItemGroup>
 
 </Project>
