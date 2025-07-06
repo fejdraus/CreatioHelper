@@ -1,3 +1,5 @@
+using CreatioHelper.Core.Enums;
+
 namespace CreatioHelper.Agent.Abstractions;
 
 public interface IPlatformService
