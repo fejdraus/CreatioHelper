@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
-using CreatioHelper.Agent.Abstractions;
+using CreatioHelper.Core.Abstractions;
 
 namespace CreatioHelper.Agent.Services;
 

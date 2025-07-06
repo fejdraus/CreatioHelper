@@ -1,4 +1,8 @@
-namespace CreatioHelper.Agent.Abstractions;
+using System.Threading;
+using System.Threading.Tasks;
+using CreatioHelper.Core.Models;
+
+namespace CreatioHelper.Core.Abstractions;
 
 public interface IFileSyncService
 {

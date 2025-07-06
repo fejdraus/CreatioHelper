@@ -1,4 +1,6 @@
-namespace CreatioHelper.Agent.Abstractions;
+using System.Threading.Tasks;
+
+namespace CreatioHelper.Core.Abstractions;
 
 public interface IConfigurationService
 {

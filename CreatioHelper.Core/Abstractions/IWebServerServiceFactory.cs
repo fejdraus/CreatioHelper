@@ -1,6 +1,8 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using CreatioHelper.Core.Models;
 
-namespace CreatioHelper.Agent.Abstractions;
+namespace CreatioHelper.Core.Abstractions;
 
 public interface IWebServerServiceFactory
 {

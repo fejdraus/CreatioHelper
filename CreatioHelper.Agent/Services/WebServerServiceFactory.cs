@@ -1,4 +1,4 @@
-using CreatioHelper.Agent.Abstractions;
+using CreatioHelper.Core.Abstractions;
 using CreatioHelper.Core.Models;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Services.Linux;

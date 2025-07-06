@@ -1,5 +1,5 @@
 using System.Runtime.InteropServices;
-using CreatioHelper.Agent.Abstractions;
+using CreatioHelper.Core.Abstractions;
 using CreatioHelper.Core.Enums;
 
 namespace CreatioHelper.Agent.Services;

@@ -1,4 +1,8 @@
-namespace CreatioHelper.Agent.Abstractions;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using CreatioHelper.Core.Models;
+
+namespace CreatioHelper.Core.Abstractions;
 
 public class WebServerResult
 {
