@@ -24,7 +24,7 @@ public class ConfigurationService : IConfigurationService
         await SetSettingAsync("WebServer:PreferredType", type);
     }
 
-    public async Task<T> GetSettingAsync<T>(string key, T defaultValue = default)
+    public async Task<T> GetSettingAsync<T>(string key, T? defaultValue = default)
     {
         await _semaphore.WaitAsync();
         try
@@ -34,13 +34,13 @@ public class ConfigurationService : IConfigurationService
             if (TryGetNestedValue(settings, key, out var value) && value is JsonElement element)
             {
                 if (typeof(T) == typeof(string))
-                    return (T)(object)element.GetString();
+                    return (T)(object?)element.GetString();
                 if (typeof(T) == typeof(int))
                     return (T)(object)element.GetInt32();
                 if (typeof(T) == typeof(bool))
                     return (T)(object)element.GetBoolean();
-                
-                return JsonSerializer.Deserialize<T>(element.GetRawText());
+
+                return JsonSerializer.Deserialize<T>(element.GetRawText())!;
             }
             
             return defaultValue;
@@ -102,7 +102,7 @@ public class ConfigurationService : IConfigurationService
         }
     }
 
-    private static bool TryGetNestedValue(Dictionary<string, object> dict, string key, out object value)
+    private static bool TryGetNestedValue(Dictionary<string, object> dict, string key, out object? value)
     {
         value = null;
         var keys = key.Split(':');
@@ -135,20 +135,21 @@ public class ConfigurationService : IConfigurationService
 
         for (int i = 0; i < keys.Length - 1; i++)
         {
-            if (!current.ContainsKey(keys[i]))
-            {
-                current[keys[i]] = new Dictionary<string, object>();
-            }
+            Dictionary<string, object> nextDict;
 
-            if (current[keys[i]] is not Dictionary<string, object> nextDict)
+            if (!current.TryGetValue(keys[i], out var next) || next is not Dictionary<string, object> dictValue)
             {
                 nextDict = new Dictionary<string, object>();
                 current[keys[i]] = nextDict;
+            }
+            else
+            {
+                nextDict = dictValue;
             }
 
             current = nextDict;
         }
 
-        current[keys[^1]] = value;
+        current[keys[^1]] = value!;
     }
 }

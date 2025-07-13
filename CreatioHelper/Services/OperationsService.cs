@@ -81,11 +81,11 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _output.WriteLine("[ERROR] Creatio application not found.");
                         return;
                     }
-                    var localServerInfo = new ServerInfo 
+                    var localServerInfo = new ServerInfo
                     {
                         Name = Environment.MachineName,
-                        PoolName = poolName,
-                        SiteName = siteName,
+                        PoolName = poolName ?? string.Empty,
+                        SiteName = siteName ?? string.Empty,
                         AppVersion = appVersion
                     };
                     var manager = new RemoteIisManager(_output);

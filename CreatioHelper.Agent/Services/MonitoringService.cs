@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Core.Enums;
+using System;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -137,7 +138,7 @@ public class MonitoringService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var statusService = scope.ServiceProvider.GetService<IisStatusService>();
 
-        if (statusService == null)
+        if (statusService == null || !OperatingSystem.IsWindows())
         {
             return;
         }
