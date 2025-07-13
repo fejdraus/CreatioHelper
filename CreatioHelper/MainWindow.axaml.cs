@@ -123,7 +123,7 @@ namespace CreatioHelper
                     var path = textBox.Text.Trim();
                     if (Directory.Exists(path))
                     {
-                        var version = GetAppAssembly.GetAppVersion(path);
+                        var version = AppVersionHelper.GetAppVersion(path);
                         _viewModel.SitePathWithVersion = version;
                     }
                 }
