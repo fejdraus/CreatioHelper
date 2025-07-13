@@ -4,7 +4,11 @@ using System.Reflection;
 
 namespace CreatioHelper.Core;
 
-public static class GetAppAssembly
+/// <summary>
+/// Provides helper methods for reading the application version
+/// from a Creatio installation.
+/// </summary>
+public static class AppVersionHelper
 {
     public static Version GetAppVersion(string appPath)
     {

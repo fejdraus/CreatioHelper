@@ -181,7 +181,7 @@ namespace CreatioHelper.Core.Services
                     return null;
                 }
                 
-                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
+                var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
                     _output.WriteLine($"[PS-ERROR] Check the name of the site");
