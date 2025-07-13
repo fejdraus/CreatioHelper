@@ -13,3 +13,5 @@
 /CreatioHelper.Agent/bin
 /CreatioHelper.Agent/obj
 /CreatioHelper.Agent/.vs
+/CreatioHelper.Agent.Tests/bin
+/CreatioHelper.Agent.Tests/obj

@@ -84,7 +84,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("webserver-type")]
-    public IActionResult SetWebServerType([FromBody] SetWebServerTypeRequest request)
+    public async Task<IActionResult> SetWebServerType([FromBody] SetWebServerTypeRequest request)
     {
         if (!IsWebServerSupported)
         {
@@ -101,7 +101,8 @@ public class WebServerController : ControllerBase
         // Здесь можно сохранить выбор в конфигурацию
         _configuration["WebServer:PreferredType"] = request.Type;
         
-        return Ok(new { Message = $"Web server type set to {request.Type}", CurrentType = _webServerFactory.GetSupportedWebServerTypeAsync() });
+        var currentType = await _webServerFactory.GetSupportedWebServerTypeAsync();
+        return Ok(new { Message = $"Web server type set to {request.Type}", CurrentType = currentType });
     }
 
     [HttpPost("sites/{siteName}/stop")]
@@ -366,10 +367,12 @@ public class WebServerController : ControllerBase
             var sites = await sitesTask;
             var appPools = await appPoolsTask;
             
+            var webServerType = await _webServerFactory.GetSupportedWebServerTypeAsync();
+
             var overview = new
             {
                 ServerName = Environment.MachineName,
-                Platform = $"{_platformService.GetPlatform()}/{_webServerFactory.GetSupportedWebServerTypeAsync()}", 
+                Platform = $"{_platformService.GetPlatform()}/{webServerType}",
                 LastUpdated = DateTime.UtcNow,
                 Sites = new
                 {
