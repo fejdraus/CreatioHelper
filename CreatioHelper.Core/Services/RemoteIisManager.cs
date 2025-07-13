@@ -140,7 +140,7 @@ namespace CreatioHelper.Core.Services
             }
         }
 
-        private async Task<string> GetStateAsync(string serverName, bool isPool, string expression)
+        private async Task<string?> GetStateAsync(string serverName, bool isPool, string expression)
         {
             if (string.IsNullOrEmpty(expression)) throw new ArgumentNullException(nameof(expression));
 
@@ -191,7 +191,7 @@ namespace CreatioHelper.Core.Services
                 if (string.IsNullOrWhiteSpace(outputText))
                     return null;
                 
-                return  lines[2];
+                return lines[2];
             }
             catch (Exception ex)
             {
