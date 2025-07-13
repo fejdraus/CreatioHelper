@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using CreatioHelper.Core.Models;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Core.Abstractions;
+using System;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -202,17 +203,15 @@ public class WebServerController : ControllerBase
 
         try
         {
-            if (_iisStatusService != null)
+            if (OperatingSystem.IsWindows() && _iisStatusService != null)
             {
                 var status = await _iisStatusService.GetServerStatusAsync(siteName, poolName);
                 return Ok(status);
             }
-            else
-            {
-                var webServerService = _webServerFactory.CreateWebServerService();
-                var siteResult = await webServerService.GetSiteStatusAsync(siteName);
-                return Ok(siteResult);
-            }
+
+            var webServerService = _webServerFactory.CreateWebServerService();
+            var siteResult = await webServerService.GetSiteStatusAsync(siteName);
+            return Ok(siteResult);
         }
         catch (Exception ex)
         {
@@ -266,7 +265,7 @@ public class WebServerController : ControllerBase
     [HttpPost("status/multiple")]
     public async Task<IActionResult> GetMultipleServerStatus([FromBody] ServerRequest[] requests)
     {
-        if (!IsWebServerSupported || _iisStatusService == null)
+        if (!IsWebServerSupported || _iisStatusService == null || !OperatingSystem.IsWindows())
         {
             return BadRequest("Server status checking is not supported on this platform");
         }

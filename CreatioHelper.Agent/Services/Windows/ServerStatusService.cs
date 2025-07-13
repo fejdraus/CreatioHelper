@@ -1,8 +1,10 @@
 using CreatioHelper.Core.Abstractions;
 using CreatioHelper.Core.Models;
+using System.Runtime.Versioning;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
+[SupportedOSPlatform("windows")]
 public class IisStatusService
 {
     private readonly IisManagerService _iisManager;
