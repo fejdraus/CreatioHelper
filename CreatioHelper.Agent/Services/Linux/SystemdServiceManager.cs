@@ -116,7 +116,7 @@ public class SystemdServiceManager : IWebServerService
             { 
                 Success = true, 
                 Message = $"Service {serviceName} status retrieved successfully.",
-                Data = new { ServiceName = serviceName, Status = state ?? "Unknown", Details = details }
+                Data = new Data { ServiceName = serviceName, Status = state ?? "Unknown", Details = details }
             };
         }
         catch (Exception ex)

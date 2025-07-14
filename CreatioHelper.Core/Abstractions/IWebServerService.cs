@@ -8,7 +8,7 @@ public class WebServerResult
 {
     public bool Success { get; set; }
     public string Message { get; set; } = "";
-    public object? Data { get; set; }
+    public Data? Data { get; set; }
 }
 
 public interface IWebServerService
@@ -22,4 +22,12 @@ public interface IWebServerService
     Task<List<WebServerStatus>> GetAllSitesAsync();
     Task<List<WebServerStatus>> GetAllAppPoolsAsync();
     bool IsSupported();
+}
+
+public class Data
+{
+    public string? ServiceName { get; set; }
+    public string? Status { get; set; }
+    public string? Details { get; set; }
+    public string? PoolName { get; set; }
 }
