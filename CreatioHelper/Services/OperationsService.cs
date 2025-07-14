@@ -89,16 +89,10 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         AppVersion = appVersion
                     };
                     var manager = new RemoteIisManager(_output);
-                    if (localServerInfo.PoolName != null) 
-                    {
-                        await manager.StopAppPoolAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Pool stopped.");
-                    }
-                    if (localServerInfo.SiteName != null) 
-                    {
-                        await manager.StopWebsiteAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Website stopped.");
-                    }
+                    await manager.StopAppPoolAsync(localServerInfo);
+                    _output.WriteLine("[INFO] Main Pool stopped.");
+                    await manager.StopWebsiteAsync(localServerInfo);
+                    _output.WriteLine("[INFO] Main Website stopped.");
                     IsStopButtonEnabled = true;
 
                     if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages) 

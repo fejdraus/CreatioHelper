@@ -25,10 +25,11 @@ namespace CreatioHelper.Core
                 AllowAdmin = true
             };
 
-            foreach (var host in redisInfo.Hosts)
-            {
-                options.EndPoints.Add(host);
-            }
+            if (redisInfo.Hosts != null)
+                foreach (var host in redisInfo.Hosts)
+                {
+                    options.EndPoints.Add(host);
+                }
 
             if (!string.IsNullOrEmpty(redisInfo.CertificatePath))
             {

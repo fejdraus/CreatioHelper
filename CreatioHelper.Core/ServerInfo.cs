@@ -10,7 +10,7 @@ namespace CreatioHelper.Core
         private string _networkPath = string.Empty;
         private string _siteName = string.Empty;
         private string _poolName = string.Empty;
-        private Version _appVersion = new();
+        private Version? _appVersion = new();
         private string _poolStatus = "Unknown";
         private string _siteStatus = "Unknown";
         private bool _isStatusLoading;
@@ -92,7 +92,7 @@ namespace CreatioHelper.Core
             }
         }
         
-        public Version AppVersion
+        public Version? AppVersion
         {
             get => _appVersion;
             set
@@ -120,7 +120,7 @@ namespace CreatioHelper.Core
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
