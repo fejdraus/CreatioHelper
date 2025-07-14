@@ -36,7 +36,7 @@ namespace CreatioHelper.Core
                 process.Start();
                 output.WriteLine($"[INFO][{server.Name}] File copying in progress...");
 
-                await WaitForExitAsync(process, cancellationToken);
+                await process.WaitForExitAsync(cancellationToken);
 
                 int exitCode = process.ExitCode;
                 if (exitCode >= 8)
@@ -66,13 +66,7 @@ namespace CreatioHelper.Core
             }
         }
         
-        private static async Task WaitForExitAsync(Process process, CancellationToken cancellationToken)
-        {
-            while (!process.HasExited)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                await Task.Delay(100, cancellationToken);
-            }
-        }
+        // No additional helpers are required; Process.WaitForExitAsync handles
+        // asynchronous waiting and supports cancellation.
     }
 }
