@@ -200,7 +200,7 @@ public class IisManagerService : IWebServerService
             { 
                 Success = true, 
                 Message = $"Site {siteName} status retrieved successfully.",
-                Data = new { SiteName = siteName, Status = state ?? "Unknown" }
+                Data = new Data { ServiceName = siteName, Status = state ?? "Unknown" }
             };
         }
         catch (Exception ex)
@@ -219,7 +219,7 @@ public class IisManagerService : IWebServerService
             { 
                 Success = true, 
                 Message = $"App pool {poolName} status retrieved successfully.",
-                Data = new { PoolName = poolName, Status = state ?? "Unknown" }
+                Data = new Data { PoolName = poolName, Status = state ?? "Unknown" }
             };
         }
         catch (Exception ex)
