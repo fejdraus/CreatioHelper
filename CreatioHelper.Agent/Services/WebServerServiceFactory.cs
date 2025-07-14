@@ -26,7 +26,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
         {
             var preferredType = _configurationService.GetWebServerTypeAsync().GetAwaiter().GetResult();
             
-            if (preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase))
+            if (preferredType != null && preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase))
             {
                 return _serviceProvider.GetRequiredService<WindowsServiceManager>();
             }
@@ -57,7 +57,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
         if (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows())
         {
             var preferredType = await _configurationService.GetWebServerTypeAsync();
-            return preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase) ? "WindowsService/Kestrel" : "IIS";
+            return preferredType != null && preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase) ? "WindowsService/Kestrel" : "IIS";
         }
         
         if (_platformService.IsFeatureSupported(FeatureNames.SystemdManagement) && OperatingSystem.IsLinux())

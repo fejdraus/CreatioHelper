@@ -14,7 +14,7 @@ public class ConfigurationService : IConfigurationService
         _configPath = Path.Combine(environment.ContentRootPath, "agent-settings.json");
     }
 
-    public async Task<string> GetWebServerTypeAsync()
+    public async Task<string?> GetWebServerTypeAsync()
     {
         return await GetSettingAsync("WebServer:PreferredType", "IIS");
     }
@@ -24,7 +24,7 @@ public class ConfigurationService : IConfigurationService
         await SetSettingAsync("WebServer:PreferredType", type);
     }
 
-    public async Task<T> GetSettingAsync<T>(string key, T? defaultValue = default)
+    public async Task<T?> GetSettingAsync<T>(string key, T? defaultValue = default)
     {
         await _semaphore.WaitAsync();
         try
@@ -34,7 +34,7 @@ public class ConfigurationService : IConfigurationService
             if (TryGetNestedValue(settings, key, out var value) && value is JsonElement element)
             {
                 if (typeof(T) == typeof(string))
-                    return (T)(object?)element.GetString();
+                    return (T)((object?)element.GetString())!;
                 if (typeof(T) == typeof(int))
                     return (T)(object)element.GetInt32();
                 if (typeof(T) == typeof(bool))

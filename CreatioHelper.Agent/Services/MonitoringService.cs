@@ -27,7 +27,7 @@ public class MonitoringService : BackgroundService
     {
         lock (_monitoredServers)
         {
-            if (!_monitoredServers.Any(s => s.SiteName == siteName))
+            if (_monitoredServers.All(s => s.SiteName != siteName))
             {
                 _monitoredServers.Add(new ServerRequest { SiteName = siteName, PoolName = poolName });
                 _logger.LogInformation("Added server {SiteName} to monitoring", siteName);
@@ -136,29 +136,31 @@ public class MonitoringService : BackgroundService
         }
 
         using var scope = _serviceProvider.CreateScope();
-        var statusService = scope.ServiceProvider.GetService<IisStatusService>();
-
-        if (statusService == null || !OperatingSystem.IsWindows())
+        if (OperatingSystem.IsWindows())
         {
-            return;
-        }
-
-        try
-        {
-            var statuses = await statusService.GetMultipleServersStatusAsync(serversToMonitor);
-            await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
-            foreach (var status in statuses)
+            var statusService = scope.ServiceProvider.GetService<IisStatusService>();
+            if (statusService == null)
             {
-                if (!status.IsHealthy)
+                return;
+            }
+
+            try
+            {
+                var statuses = await statusService.GetMultipleServersStatusAsync(serversToMonitor);
+                await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
+                foreach (var status in statuses)
                 {
-                    _logger.LogWarning("Server {SiteName} is unhealthy: Site={SiteStatus}, Pool={PoolStatus}", 
-                        status.SiteName, status.SiteStatus, status.PoolStatus);
+                    if (!status.IsHealthy)
+                    {
+                        _logger.LogWarning("Server {SiteName} is unhealthy: Site={SiteStatus}, Pool={PoolStatus}", 
+                            status.SiteName, status.SiteStatus, status.PoolStatus);
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error monitoring servers");
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error monitoring servers");
+            }
         }
     }
 }

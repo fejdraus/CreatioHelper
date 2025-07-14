@@ -7,7 +7,7 @@ namespace CreatioHelper.Core
 {
     public class BoolToScrollBarVisibilityConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        public object Convert(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             if (value is bool isChecked)
             {
@@ -16,7 +16,7 @@ namespace CreatioHelper.Core
             return ScrollBarVisibility.Auto;
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
         {
             throw new NotImplementedException();
         }
