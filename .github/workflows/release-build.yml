@@ -1,5 +1,8 @@
 name: Build Release
 
+permissions:
+  contents: write
+  
 on:
   release:
     types: [published]
@@ -22,7 +25,13 @@ jobs:
         with:
           dotnet-version: '8.0.x'
       - name: Publish
-        run: dotnet publish CreatioHelper/CreatioHelper.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o publish
+        run: dotnet publish CreatioHelper/CreatioHelper.csproj \
+          -c Release \
+          -r ${{ matrix.runtime }} \
+          --self-contained true \
+          -p:PublishSingleFile=true \
+          -o publish \
+          --no-restore
       - name: Archive Windows
         if: runner.os == 'Windows'
         run: Compress-Archive -Path publish/* -DestinationPath CreatioHelper-${{ matrix.runtime }}.zip
