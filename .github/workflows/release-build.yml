@@ -2,7 +2,7 @@ name: Build Release
 
 permissions:
   contents: write
-  
+
 on:
   release:
     types: [published]
@@ -18,27 +18,38 @@ jobs:
             runtime: win-x64
           - os: ubuntu-latest
             runtime: linux-x64
+
     steps:
       - uses: actions/checkout@v3
+
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-      - name: Publish
-        run: |
-          dotnet restore CreatioHelper/CreatioHelper.csproj --runtime ${{ matrix.runtime }}
-          dotnet publish CreatioHelper/CreatioHelper.csproj -c Release -r ${{ matrix.runtime }} --self-contained true -p:PublishSingleFile=true -o publish --no-restore
-      - name: Archive Windows
+
+      - name: Restore all projects for this RID
+        run: dotnet restore CreatioHelper.sln --runtime ${{ matrix.runtime }}
+
+      - name: Publish self-contained build
+        run: dotnet publish CreatioHelper/CreatioHelper.csproj \
+          --configuration Release \
+          --runtime ${{ matrix.runtime }} \
+          --self-contained true \
+          /p:PublishSingleFile=true \
+          --output publish \
+          --no-restore
+
+      - name: Archive build
         if: runner.os == 'Windows'
         run: Compress-Archive -Path publish/* -DestinationPath CreatioHelper-${{ matrix.runtime }}.zip
         shell: pwsh
-      - name: Archive Linux
+      - name: Archive build
         if: runner.os != 'Windows'
         run: zip -r CreatioHelper-${{ matrix.runtime }}.zip publish
+
       - name: Upload ZIP to GitHub Release
         uses: actions/upload-release-asset@v1
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
           upload_url: ${{ github.event.release.upload_url }}
           asset_path: CreatioHelper-${{ matrix.runtime }}.zip
           asset_name: CreatioHelper-${{ matrix.runtime }}.zip
