@@ -24,13 +24,13 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
+          dotnet-version: "8.0.x"
 
       - name: Restore all projects for this RID
         run: dotnet restore CreatioHelper.sln --runtime ${{ matrix.runtime }}
 
       - name: Publish self-contained build
-        run: dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true --output publish --no-restore
+        run: dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None --output publish --no-restore
 
       - name: Archive build
         if: runner.os == 'Windows'
