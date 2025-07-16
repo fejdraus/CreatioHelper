@@ -35,6 +35,7 @@ jobs:
             dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishReadyToRun=true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
           else
             dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
+          fi
         shell: bash
 
       - name: Archive build on Windows
