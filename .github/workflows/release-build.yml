@@ -36,7 +36,7 @@ jobs:
 
       - name: Publish self-contained build on Linux
         if: runner.os == 'linux-x64'
-        run: dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishReadyToRun=true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
+        run: dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
         shell: bash
 
       - name: Archive build on Windows
