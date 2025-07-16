@@ -30,15 +30,23 @@ jobs:
         run: dotnet restore CreatioHelper.sln --runtime ${{ matrix.runtime }}
 
       - name: Publish self-contained build
-        run: dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishReadyToRun=true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
+        run: |
+          if [[ "${{ matrix.runtime }}" == "win-x64" ]]; then
+            dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishReadyToRun=true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
+          else
+            dotnet publish CreatioHelper/CreatioHelper.csproj --configuration Release --runtime ${{ matrix.runtime }} --self-contained true /p:PublishSingleFile=true /p:IncludeNativeLibrariesForSelfExtract=true /p:EnableCompressionInSingleFile=true /p:DebugType=None /p:DebugSymbols=false --output publish --no-restore
+        shell: bash
 
-      - name: Archive build
+      - name: Archive build on Windows
         if: runner.os == 'Windows'
         run: Compress-Archive -Path publish/* -DestinationPath CreatioHelper-${{ matrix.runtime }}.zip
         shell: pwsh
-      - name: Archive build
+      - name: Archive build on Linux
         if: runner.os != 'Windows'
-        run: zip -r CreatioHelper-${{ matrix.runtime }}.zip publish
+        run: |
+          cd publish
+          zip ../CreatioHelper-${{ matrix.runtime }}.zip *
+        shell: bash
 
       - name: Upload ZIP to GitHub Release
         uses: actions/upload-release-asset@v1
