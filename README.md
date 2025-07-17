@@ -30,7 +30,7 @@ Published binaries can be produced with `dotnet publish` if desired.
 
 ## Wiki
 
-For more information, please refer to the 📘 [Read the User Guide](./USER_GUIDE.md).
+For more information, please refer to the [Read the User Guide](./USER_GUIDE.md).
 
 ## Acknowledgements
 
