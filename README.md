@@ -1,9 +1,9 @@
 # CreatioHelper
 
-CreatioHelper is a collection of utilities designed to simplify everyday maintenance tasks when working with the Creatio platform. The repository contains several components built on top of the shared **CreatioHelper.Core** library:
+CreatioHelper is a graphical user interface (GUI) for the Creatio WorkspaceConsole. It simplifies and automates the process of managing packages, builds, and deployments within the Creatio platform:
 
-- **CreatioHelper** – cross‑platform desktop application built with Avalonia.
-- **CreatioHelper.Agent** – lightweight ASP.NET Core service that exposes monitoring and management APIs.
+- **CreatioHelper** – cross-platform graphical application for managing WorkspaceConsole, developed with AvaloniaUI.
+- **CreatioHelper.Agent** – lightweight background service that provides APIs for monitoring and managing the Creatio environment. This agent can run on a server in the background and accept commands via HTTP.
 
 ## Building
 
@@ -27,10 +27,6 @@ Each component can be executed directly with `dotnet run`:
 ```
 
 Published binaries can be produced with `dotnet publish` if desired.
-
-## Releases
-
-Release builds for Windows and Linux are generated automatically. When a GitHub release is published, the _Build Release_ workflow publishes self-contained binaries for both platforms and uploads the resulting ZIP archives as build artifacts.
 
 ## Acknowledgements
 
