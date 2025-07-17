@@ -41,7 +41,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 - **Roman**
 - **Oleksandr**
 - **Viacheslav**
-- **Dasha Taranushchenko**
+- **Dasha**
 - **Anton**
 - **Vadym**
 - **Roma**
