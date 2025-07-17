@@ -15,26 +15,6 @@ This guide covers:
 
 ---
 
-## Getting Started
-
-### Requirements
-
-- **.NET 8 SDK** installed on your system.
-- **Windows OS** for full IIS support; Linux is supported in folder mode.
-- Administrator rights when managing IIS or remote servers.
-- Access to Creatio installation (must be version 7.12.0.0 or newer).
-
-### Running the Application
-
-```bash
-# Run from source
- dotnet run --project CreatioHelper
-```
-
-Alternatively, launch the compiled executable from the **publish** directory.
-
----
-
 ## Application Interface Overview
 
 Upon launching CreatioHelper, you will see:
