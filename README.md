@@ -28,6 +28,10 @@ Each component can be executed directly with `dotnet run`:
 
 Published binaries can be produced with `dotnet publish` if desired.
 
+## Wiki
+
+For more information, please refer to the 📘 [Read the User Guide](./USER_GUIDE.md).
+
 ## Acknowledgements
 
 Special thanks to the members of the **PeaceTeam** from **Banza** for their invaluable contributions in development and testing:
