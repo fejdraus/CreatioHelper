@@ -34,6 +34,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 
 - **Oleksandr Sarnatskyi**
 - **Lavreniuk Anna**
+- **Anthony Kukushkin**
 - **Roman Bezgubenko**
 - **Alexandr Onatskiy**
 - **Viacheslav Medliakovskiy**
@@ -45,5 +46,4 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 - **Alena Hoptar**
 - **Vitaliy Polyakov**
 - **Dmitry Zusko**
-- **Anthony Kukushkin**
 - **Olena Toporets**
