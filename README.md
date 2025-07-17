@@ -60,8 +60,8 @@ We stand with Ukraine in its fight against Russian aggression.
 All funds raised via the links below will be **fully transferred to support the Ukrainian Armed Forces (Збройні Сили України, ЗСУ)** and defenders on the front line.
 
 [![Support on Patreon](https://img.shields.io/badge/Support%20on-Patreon-orange)](https://www.patreon.com/yourpatreonlink)
-[![Donate via PayPal](https://img.shields.io/badge/Donate%20via-PayPal-blue)](https://www.paypal.me/yourpaypallink)
 [![Support on Buy Me a Coffee](https://img.shields.io/badge/Support%20via-Buy%20Me%20a%20Coffee-yellow)](https://www.buymeacoffee.com/yourcoffeelink)
+[![Support on Ko-fi](https://img.shields.io/badge/Support%20via-Ko--fi-red)](https://ko-fi.com/yourkofilink)
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
