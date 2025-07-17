@@ -41,7 +41,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 - **Roman Bezgubenko**
 - **Alexandr Onatskiy**
 - **Viacheslav Medliakovskiy**
-- **Dasha Taranushchenko**
+- **Dasha**
 - **Anton Slobodenyuk**
 - **Vadim Konstantinov**
 - **Roma Nogachevskiy**
