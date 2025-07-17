@@ -34,6 +34,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 
 - **Oleksandr**
 - **Anna**
+- **KotikSmerit**
 - **Roman**
 - **Oleksandr**
 - **Viacheslav**
@@ -45,5 +46,4 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 - **Olena**
 - **Vitalii**
 - **Dmytro**
-- **KotikSmerit**
 - **Olena**
