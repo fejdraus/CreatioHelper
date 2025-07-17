@@ -28,6 +28,22 @@ Each component can be executed directly with `dotnet run`:
 
 Published binaries can be produced with `dotnet publish` if desired.
 
-## Releases
+## Acknowledgements
 
-Release builds for Windows and Linux are generated automatically. When a GitHub release is published, the _Build Release_ workflow publishes self-contained binaries for both platforms and uploads the resulting ZIP archives as build artifacts.
+Special thanks to the members of the **PeaceTeam** from **Banza** for their invaluable contributions in development and testing:
+
+- **Oleksandr Sarnatskyi**
+- **Lavreniuk Anna**
+- **Roman Bezgubenko**
+- **Alexandr Onatskiy**
+- **Viacheslav Medliakovskiy**
+- **Dasha Taranushchenko**
+- **Anton Slobodenyuk**
+- **Vadim Konstantinov**
+- **Roma Nogachevskiy**
+- **Vitya Orlov**
+- **Alena Hoptar**
+- **Vitaliy Polyakov**
+- **Dmitry Zusko**
+- **Anthony Kukushkin**
+- **Olena Toporets**
