@@ -28,13 +28,16 @@ Each component can be executed directly with `dotnet run`:
 
 Published binaries can be produced with `dotnet publish` if desired.
 
+## Releases
+
+Release builds for Windows and Linux are generated automatically. When a GitHub release is published, the _Build Release_ workflow publishes self-contained binaries for both platforms and uploads the resulting ZIP archives as build artifacts.
+
 ## Acknowledgements
 
 Special thanks to the members of the **PeaceTeam** from **Banza** for their invaluable contributions in development and testing:
 
 - **Oleksandr Sarnatskyi**
 - **Lavreniuk Anna**
-- **Anthony Kukushkin**
 - **Roman Bezgubenko**
 - **Alexandr Onatskiy**
 - **Viacheslav Medliakovskiy**
@@ -46,4 +49,20 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 - **Alena Hoptar**
 - **Vitaliy Polyakov**
 - **Dmitry Zusko**
+- **Anthony Kukushkin**
 - **Olena Toporets**
+
+---
+
+## 🇺🇦 Support Ukraine Armed Forces (ЗСУ)
+
+We stand with Ukraine in its fight against Russian aggression.
+All funds raised via the links below will be **fully transferred to support the Ukrainian Armed Forces (Збройні Сили України, ЗСУ)** and defenders on the front line.
+
+[![Support on Patreon](https://img.shields.io/badge/Support%20on-Patreon-orange)](https://www.patreon.com/yourpatreonlink)
+[![Donate via PayPal](https://img.shields.io/badge/Donate%20via-PayPal-blue)](https://www.paypal.me/yourpaypallink)
+[![Support on Buy Me a Coffee](https://img.shields.io/badge/Support%20via-Buy%20Me%20a%20Coffee-yellow)](https://www.buymeacoffee.com/yourcoffeelink)
+
+> 💙💛 **All contributions will be sent directly to support ZSU defenders.**
+
+**Слава Україні! Героям слава!** 🇺🇦
