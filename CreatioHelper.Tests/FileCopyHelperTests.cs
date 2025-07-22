@@ -15,7 +15,7 @@ public class FileCopyHelperTests
         }
 
         var server = new ServerInfo { Name = "test" };
-        var writer = new BufferingOutputWriter(_ => { });
+        var writer = new BufferingOutputWriter(_ => { }, () => { });
         await Assert.ThrowsAsync<PlatformNotSupportedException>(async () =>
             await FileCopyHelper.CopyAsync(server, "/tmp/src", "/tmp/dest", writer));
     }
