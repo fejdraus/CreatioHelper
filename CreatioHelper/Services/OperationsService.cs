@@ -258,12 +258,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
 
                     IsStopButtonEnabled = false;
-                    if (localServerInfo.PoolName != null) 
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                     {
                         await manager.StartAppPoolAsync(localServerInfo);
                         _output.WriteLine("[INFO] Main Pool is running.");
                     }
-                    if (localServerInfo.SiteName != null) 
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
                     {
                         await manager.StartWebsiteAsync(localServerInfo);
                         _output.WriteLine("[INFO] Main Website is running.");
