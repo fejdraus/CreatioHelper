@@ -31,20 +31,29 @@ namespace CreatioHelper
             LogTextEditor.TextArea.TextView.LineTransformers.Add(
                 new LogLineColorizer()
             );
-            _writer = new BufferingOutputWriter(line =>
-            {
-                if (Dispatcher.UIThread.CheckAccess())
+            _writer = new BufferingOutputWriter(
+                line =>
                 {
-                    AddLogTextLine(line);
-                }
-                else
-                {
-                    Dispatcher.UIThread.Post(() =>
+                    if (Dispatcher.UIThread.CheckAccess())
                     {
                         AddLogTextLine(line);
-                    });
-                }
-            });
+                    }
+                    else
+                    {
+                        Dispatcher.UIThread.Post(() => { AddLogTextLine(line); });
+                    }
+                },
+                () =>
+                {
+                    if (Dispatcher.UIThread.CheckAccess())
+                    {
+                        ClearLog();
+                    }
+                    else
+                    {
+                        Dispatcher.UIThread.Post(ClearLog);
+                    }
+                });
             _viewModel = new MainWindowViewModel(_writer, new SettingsService(), new OperationsService(_writer), new DialogService(StorageProvider));
             DataContext = _viewModel;
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;

@@ -43,6 +43,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
     public async Task StartOperation(MainWindowViewModel viewModel)
     {
         IsStopButtonEnabled = false;
+        _output.Clear();
 
         if (!TryValidateInputs(viewModel, out var sitePath) || sitePath == null)
         {
