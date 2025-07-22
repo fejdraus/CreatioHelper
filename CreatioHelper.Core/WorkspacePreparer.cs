@@ -25,7 +25,9 @@ namespace CreatioHelper.Core
             sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
             bool isFramework = IsDotNetFramework(sitePath);
-            string appDllPath = Path.Combine(sitePath, "bin", "Terrasoft.Common.dll");
+            string appDllPath = isFramework
+                ? Path.Combine(sitePath, "bin", "Terrasoft.Common.dll")
+                : Path.Combine(sitePath, "Terrasoft.Common.dll");
             string consoleDllPath = isFramework
                 ? Path.Combine(sitePath, "Terrasoft.WebApp", "DesktopBin", "WorkspaceConsole", "Terrasoft.Tools.Common.dll")
                 : Path.Combine(sitePath, "WorkspaceConsole", "Terrasoft.Tools.Common.dll");
