@@ -91,7 +91,7 @@ public class IisService
                     {
                         continue;
                     }
-                    var assemblyName = AppVersionHelper.GetAppVersion(appPath);
+                    var assemblyName = AppVersionHelper.GetAppVersion(sitePath);
                     iisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
                 }
                 onCompletion(true);
