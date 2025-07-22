@@ -12,9 +12,22 @@ public static class AppVersionHelper
 {
     public static Version GetAppVersion(string appPath)
     {
-        var appDll = Path.Combine(appPath, "bin", "Terrasoft.Common.dll");
-        if (!File.Exists(appDll)) return new Version();
-        var assemblyName = AssemblyName.GetAssemblyName(appDll);
+        if (string.IsNullOrWhiteSpace(appPath))
+        {
+            throw new ArgumentNullException(nameof(appPath));
+        }
+
+        bool isFramework = Directory.Exists(Path.Combine(appPath, "Terrasoft.WebApp"));
+        string dllPath = isFramework
+            ? Path.Combine(appPath, "bin", "Terrasoft.Common.dll")
+            : Path.Combine(appPath, "Terrasoft.Common.dll");
+
+        if (!File.Exists(dllPath))
+        {
+            return new Version();
+        }
+
+        var assemblyName = AssemblyName.GetAssemblyName(dllPath);
         return assemblyName.Version ?? new Version();
     }
 }
