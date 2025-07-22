@@ -28,10 +28,31 @@ public class AppVersionHelperTests
         var tempDir = Directory.CreateTempSubdirectory();
         try
         {
+            Directory.CreateDirectory(Path.Combine(tempDir.FullName, "Terrasoft.WebApp"));
             var binDir = Path.Combine(tempDir.FullName, "bin");
             Directory.CreateDirectory(binDir);
             var sourceAssembly = Assembly.GetExecutingAssembly().Location;
             var destAssembly = Path.Combine(binDir, "Terrasoft.Common.dll");
+            File.Copy(sourceAssembly, destAssembly);
+
+            var expected = AssemblyName.GetAssemblyName(sourceAssembly).Version;
+            var actual = AppVersionHelper.GetAppVersion(tempDir.FullName);
+            Assert.Equal(expected, actual);
+        }
+        finally
+        {
+            tempDir.Delete(true);
+        }
+    }
+
+    [Fact]
+    public void GetAppVersion_WhenNetEdition_ReturnsAssemblyVersion()
+    {
+        var tempDir = Directory.CreateTempSubdirectory();
+        try
+        {
+            var sourceAssembly = Assembly.GetExecutingAssembly().Location;
+            var destAssembly = Path.Combine(tempDir.FullName, "Terrasoft.Common.dll");
             File.Copy(sourceAssembly, destAssembly);
 
             var expected = AssemblyName.GetAssemblyName(sourceAssembly).Version;

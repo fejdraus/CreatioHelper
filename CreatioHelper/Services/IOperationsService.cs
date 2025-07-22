@@ -1,10 +1,11 @@
+using System.ComponentModel;
 using System.Threading.Tasks;
 using CreatioHelper.Core;
 using CreatioHelper.ViewModels;
 
 namespace CreatioHelper.Services;
 
-public interface IOperationsService
+public interface IOperationsService : INotifyPropertyChanged
 {
     Task StartOperation(MainWindowViewModel viewModel);
     void StopOperation();
