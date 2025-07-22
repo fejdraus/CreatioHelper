@@ -35,6 +35,15 @@ public partial class MainWindowViewModel : ObservableObject
         _output = output;
         _settingsService = settingsService;
         _operationsService = operationsService;
+        _operationsService.PropertyChanged += (_, args) =>
+        {
+            if (args.PropertyName == nameof(IOperationsService.IsBusy))
+                OnPropertyChanged(nameof(IsBusy));
+            else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
+                OnPropertyChanged(nameof(StartButtonText));
+            else if (args.PropertyName == nameof(IOperationsService.IsStopButtonEnabled))
+                OnPropertyChanged(nameof(IsStopButtonEnabled));
+        };
         _dialogService = dialogService;
         _statusService = new ServerStatusService(output);
         _isInitializing = true;

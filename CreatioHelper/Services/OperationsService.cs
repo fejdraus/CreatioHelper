@@ -6,6 +6,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
+using System.Runtime.InteropServices;
+using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
@@ -286,9 +288,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                 StartButtonText = "Start";
                 viewModel.IsServerControlsEnabled = true;
                 IsStopButtonEnabled = true;
-                if (!quartzIsActiveOriginal) 
+                if (!quartzIsActiveOriginal)
                 {
-                    preparer.UpdateOutConfig(Path.Combine(sitePath, "Web.config"), quartzIsActiveOriginal);
+                    string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))
+                        ? Path.Combine(sitePath, "Web.config")
+                        : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+                    preparer.UpdateOutConfig(config, quartzIsActiveOriginal);
                 }
             }
         }, _cancellationTokenSource.Token);
@@ -301,32 +306,53 @@ public partial class OperationsService : ObservableObject, IOperationsService
             _cancellationTokenSource.Cancel();
             _output.WriteLine("[INFO] Cancelling operations...");
         }
-        if (OperatingSystem.IsWindows()) 
+        try
         {
-            try 
+            int killed = 0;
+
+            foreach (var process in Process.GetProcessesByName("Terrasoft.Tools.WorkspaceConsole"))
             {
-                var processes = Process.GetProcessesByName("Terrasoft.Tools.WorkspaceConsole");
-                if (processes.Length > 0) 
+                try
                 {
-                    foreach (var process in processes)
-                        process.Kill();
-                    _output.WriteLine($"[INFO] Terminated {processes.Length} WorkspaceConsole processes.");
-                } 
-                else 
-                {
-                    _output.WriteLine("[INFO] No WorkspaceConsole processes found to terminate.");
+                    process.Kill();
+                    killed++;
                 }
-            } 
-            catch (Exception ex) 
-            {
-                _output.WriteLine($"[ERROR] Failed to terminate WorkspaceConsole processes: {ex.Message}");
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[ERROR] Failed to kill process {process.Id}: {ex.Message}");
+                }
             }
+
+            foreach (var process in Process.GetProcessesByName("dotnet"))
+            {
+                try
+                {
+                    string cmd = GetCommandLine(process);
+                    if (cmd.Contains("Terrasoft.Tools.WorkspaceConsole.dll", StringComparison.OrdinalIgnoreCase))
+                    {
+                        process.Kill();
+                        killed++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[ERROR] Failed to inspect process {process.Id}: {ex.Message}");
+                }
+            }
+
+            _output.WriteLine(killed > 0
+                ? $"[INFO] Terminated {killed} WorkspaceConsole processes."
+                : "[INFO] No WorkspaceConsole processes found to terminate.");
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to terminate WorkspaceConsole processes: {ex.Message}");
         }
         IsBusy = false;
         StartButtonText = "Start";
     }
 
-    private bool TryValidateInputs(MainWindowViewModel viewModel, out string? sitePath) 
+    private bool TryValidateInputs(MainWindowViewModel viewModel, out string? sitePath)
     {
         sitePath = viewModel.IsIisMode
             ? viewModel.SelectedIisSite?.Path
@@ -339,5 +365,35 @@ public partial class OperationsService : ObservableObject, IOperationsService
         }
 
         return true;
+    }
+
+    private static string GetCommandLine(Process process)
+    {
+        try
+        {
+            if (OperatingSystem.IsWindows())
+            {
+                using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}");
+                using var results = searcher.Get();
+                foreach (ManagementObject obj in results)
+                {
+                    return obj["CommandLine"]?.ToString() ?? string.Empty;
+                }
+            }
+            else
+            {
+                string path = $"/proc/{process.Id}/cmdline";
+                if (File.Exists(path))
+                {
+                    return File.ReadAllText(path).Replace('\0', ' ');
+                }
+            }
+        }
+        catch
+        {
+            // Ignore retrieval errors
+        }
+
+        return string.Empty;
     }
 }
