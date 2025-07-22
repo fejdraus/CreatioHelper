@@ -286,9 +286,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                 StartButtonText = "Start";
                 viewModel.IsServerControlsEnabled = true;
                 IsStopButtonEnabled = true;
-                if (!quartzIsActiveOriginal) 
+                if (!quartzIsActiveOriginal)
                 {
-                    preparer.UpdateOutConfig(Path.Combine(sitePath, "Web.config"), quartzIsActiveOriginal);
+                    string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))
+                        ? Path.Combine(sitePath, "Web.config")
+                        : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+                    preparer.UpdateOutConfig(config, quartzIsActiveOriginal);
                 }
             }
         }, _cancellationTokenSource.Token);
