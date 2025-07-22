@@ -19,7 +19,7 @@ public static class AppVersionHelper
 
         bool isFramework = Directory.Exists(Path.Combine(appPath, "Terrasoft.WebApp"));
         string dllPath = isFramework
-            ? Path.Combine(appPath, "bin", "Terrasoft.Common.dll")
+            ? Path.Combine(appPath, "Terrasoft.WebApp" ,"bin", "Terrasoft.Common.dll")
             : Path.Combine(appPath, "Terrasoft.Common.dll");
 
         if (!File.Exists(dllPath))

@@ -80,9 +80,21 @@ namespace CreatioHelper.Core
                 foreach (var endpoint in _redis.GetEndPoints())
                 {
                     var server = _redis.GetServer(endpoint);
+                    if (!server.IsConnected)
+                    {
+                        _output.WriteLine($"[WARN] Server {endpoint} is not connected. Skipping.");
+                        continue;
+                    }
+
+                    if (server.IsReplica)
+                    {
+                        _output.WriteLine($"[INFO] Skipping replica server: {endpoint}");
+                        continue;
+                    }
+
                     server.FlushDatabase();
+                    _output.WriteLine($"Redis database flushed on {endpoint}.");
                 }
-                _output.WriteLine("Redis cleared.");
             }
             catch (Exception ex)
             {

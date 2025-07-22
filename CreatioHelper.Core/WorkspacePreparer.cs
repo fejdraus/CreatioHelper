@@ -312,7 +312,8 @@ namespace CreatioHelper.Core
             var logPath = Path.Combine(appDirectory, "WSCLog");
             _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = GetWebAppPath(sitePath);
-            var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{webAppPath}\" -sourcePath=\"{packagesPath}\" -destinationPath=\"{tempPackagesPath}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var configPath = GetConfigurationPath(sitePath);
+            var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -sourcePath=\"{SafePath(packagesPath)}\" -destinationPath=\"{SafePath(tempPackagesPath)}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -logPath=\"{SafePath(logPath)}\" -configurationPath=\"{SafePath(configPath)}\" -autoExit=\"true\"";
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
         
@@ -334,7 +335,7 @@ namespace CreatioHelper.Core
             _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = GetWebAppPath(sitePath);
             var configPath = GetConfigurationPath(sitePath);
-            var arguments = $"-operation=\"RegenerateSchemaSources\" -workspaceName=\"Default\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var arguments = $"-operation=\"RegenerateSchemaSources\" -workspaceName=\"Default\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
             _output.WriteLine("Starting Regenerate Schema Sources...");
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
@@ -362,7 +363,7 @@ namespace CreatioHelper.Core
             _output.WriteLine($"Path to log file: {logPath}");
             var webAppPath = GetWebAppPath(sitePath);
             var configPath = GetConfigurationPath(sitePath);
-            var arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            var arguments = $"-operation=\"RebuildWorkspace\" -workspaceName=\"Default\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
             _output.WriteLine("Starting Rebuild Workspace...");
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
@@ -390,7 +391,7 @@ namespace CreatioHelper.Core
             _output.WriteLine($"Path to log file: {logPath}");
             string webAppPath = GetWebAppPath(sitePath);
             string configPath = GetConfigurationPath(sitePath);
-            string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -destinationPath=\"{webAppPath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
             _output.WriteLine("Starting Build Configuration...");
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
@@ -419,7 +420,7 @@ namespace CreatioHelper.Core
             _output.WriteLine($"Path to log file: {logPath}");
             string webAppPath = GetWebAppPath(sitePath);
             string configPath = GetConfigurationPath(sitePath);
-            string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{sitePath}\" -configurationPath=\"{configPath}\" -confRuntimeParentDirectory=\"{webAppPath}\" -logPath=\"{logPath}\" -autoExit=\"true\"";
+            string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
             _output.WriteLine($"Deleting packages: {packageList}");
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
@@ -427,20 +428,26 @@ namespace CreatioHelper.Core
         private int RunWorkspaceConsole(string sitePath, string arguments, string? workingDirectory)
         {
             string exePath = GetWorkspaceConsoleExePath(sitePath);
+            string args = $"{Quote(exePath)} {arguments}";
+            _output.WriteLine($"Running dotnet with args: {args}");
             if (IsDotNetFramework(sitePath))
             {
                 return ProcessHelper.Run(exePath, arguments, _output, workingDirectory);
             }
-
-            return ProcessHelper.Run("dotnet", $"\"{exePath}\" {arguments}", _output, workingDirectory);
+            return ProcessHelper.Run("dotnet", args, _output, workingDirectory);
         }
 
+        private static string Quote(string path) => $"\"{path}\"";
+        
         private string GetWebAppPath(string sitePath) => IsDotNetFramework(sitePath)
             ? Path.Combine(sitePath, "Terrasoft.WebApp")
-            : sitePath;
+            : SafePath(sitePath);
 
         private string GetConfigurationPath(string sitePath) => Path.Combine(GetWebAppPath(sitePath), "Terrasoft.Configuration");
 
         private bool IsDotNetFramework(string sitePath) => Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"));
+        
+        string SafePath(string path) => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
     }
 }
