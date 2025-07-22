@@ -91,10 +91,17 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         AppVersion = appVersion
                     };
                     var manager = new RemoteIisManager(_output);
-                    await manager.StopAppPoolAsync(localServerInfo);
-                    _output.WriteLine("[INFO] Main Pool stopped.");
-                    await manager.StopWebsiteAsync(localServerInfo);
-                    _output.WriteLine("[INFO] Main Website stopped.");
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                    {
+                        await manager.StopAppPoolAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Pool stopped.");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                    {
+                        await manager.StopWebsiteAsync(localServerInfo);
+                        _output.WriteLine("[INFO] Main Website stopped.");
+                    }
                     IsStopButtonEnabled = true;
 
                     if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages) 
@@ -260,12 +267,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
 
                     IsStopButtonEnabled = false;
-                    if (localServerInfo.PoolName != null) 
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                     {
                         await manager.StartAppPoolAsync(localServerInfo);
                         _output.WriteLine("[INFO] Main Pool is running.");
                     }
-                    if (localServerInfo.SiteName != null) 
+                    if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
                     {
                         await manager.StartWebsiteAsync(localServerInfo);
                         _output.WriteLine("[INFO] Main Website is running.");
