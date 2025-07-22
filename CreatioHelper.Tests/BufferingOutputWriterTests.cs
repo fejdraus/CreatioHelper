@@ -20,4 +20,15 @@ public class BufferingOutputWriterTests
         var firstSpace = line.IndexOf(' ');
         Assert.True(DateTime.TryParse(line[..firstSpace], CultureInfo.CurrentCulture, DateTimeStyles.None, out _));
     }
+
+    [Fact]
+    public void Clear_InvokesAction()
+    {
+        bool cleared = false;
+        var writer = new BufferingOutputWriter(_ => { }, () => cleared = true);
+
+        writer.Clear();
+
+        Assert.True(cleared);
+    }
 }
