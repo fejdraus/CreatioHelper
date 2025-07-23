@@ -10,27 +10,46 @@ namespace CreatioHelper.Core;
 /// </summary>
 public static class AppVersionHelper
 {
-    public static Version GetAppVersion(string appPath)
+    public static Version GetAppVersion(string sitePath)
     {
-        if (string.IsNullOrWhiteSpace(appPath))
-        {
-            throw new ArgumentNullException(nameof(appPath));
-        }
-        string dllPath = Path.Combine(appPath, "Terrasoft.Common.dll");
-        bool isFramework = Directory.Exists(Path.Combine(appPath, "Terrasoft.WebApp"));
-        if (isFramework && OperatingSystem.IsWindows())
-        {
-            dllPath = isFramework
-                ? Path.Combine(appPath, "Terrasoft.WebApp" ,"bin", "Terrasoft.Common.dll")
-                : Path.Combine(appPath, "Terrasoft.Common.dll");
-        }
+        ArgumentException.ThrowIfNullOrWhiteSpace(sitePath);
 
-        if (!File.Exists(dllPath))
+        string? dllPath = GetTerrasoftDllPath(sitePath);
+
+        if (dllPath is null || !File.Exists(dllPath))
         {
             return new Version();
         }
 
-        var assemblyName = AssemblyName.GetAssemblyName(dllPath);
-        return assemblyName.Version ?? new Version();
+        try
+        {
+            var assemblyName = AssemblyName.GetAssemblyName(dllPath);
+            return assemblyName.Version ?? new Version();
+        }
+        catch
+        {
+            return new Version();
+        }
     }
+
+    private static string? GetTerrasoftDllPath(string sitePath)
+    {
+        string directPath = Path.Combine(sitePath, "Terrasoft.Common.dll");
+        if (File.Exists(directPath))
+        {
+            return directPath;
+        }
+
+        if (OperatingSystem.IsWindows())
+        {
+            string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
+            if (File.Exists(nestedPath))
+            {
+                return nestedPath;
+            }
+        }
+
+        return null;
+    }
+
 }
