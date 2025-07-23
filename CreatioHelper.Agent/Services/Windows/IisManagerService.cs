@@ -301,7 +301,7 @@ public class IisManagerService : IWebServerService
                             Name = poolInfo.Name,
                             Status = poolInfo.Value,
                             Type = "AppPool",
-                            Port = "", // У App Pools нет портов
+                            Port = "", // App Pools do not have ports
                             IsRunning = isRunning,
                             LastChecked = DateTime.UtcNow
                         });
@@ -321,7 +321,7 @@ public class IisManagerService : IWebServerService
         return appPools;
     }
 
-    #region Private Methods (адаптированные из RemoteIisManager)
+    #region Private Methods (adapted from RemoteIisManager)
 
     private async Task<bool> ExecuteScriptAsync(string script)
     {
@@ -427,7 +427,7 @@ public class IisManagerService : IWebServerService
     private async Task<bool> WaitForSiteStateAsync(string siteName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // 1 минута ожидания
+        const int maxAttempts = 12; // wait up to 1 minute
         
         while (attempts < maxAttempts)
         {
@@ -450,7 +450,7 @@ public class IisManagerService : IWebServerService
     private async Task<bool> WaitForAppPoolStateAsync(string poolName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // 1 минута ожидания
+        const int maxAttempts = 12; // wait up to 1 minute
         
         while (attempts < maxAttempts)
         {

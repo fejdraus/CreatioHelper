@@ -91,7 +91,7 @@ public class FileSyncService : IFileSyncService
         SyncOptions options, 
         CancellationToken cancellationToken)
     {
-        // Упрощенная реализация для примера
+        // Simplified implementation as an example
         return await Task.FromResult(0L);
     }
 }

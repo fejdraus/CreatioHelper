@@ -21,24 +21,24 @@ public class WebSiteRegistryService
     {
         var sites = new List<WebSiteInfo>();
         
-        // 1. Автообнаружение IIS сайтов
+        // 1. Auto-discover IIS sites
         if (OperatingSystem.IsWindows())
         {
             var iisSites = await DiscoverIisSitesAsync();
             sites.AddRange(iisSites);
         }
         
-        // 2. Автообнаружение Systemd сервисов
+        // 2. Auto-discover Systemd services
         if (OperatingSystem.IsLinux())
         {
             var systemdSites = await DiscoverSystemdSitesAsync();
             sites.AddRange(systemdSites);
         }
         
-        // 3. Добавляем вручную настроенные сайты (не автообнаруженные)
+        // 3. Add manually configured sites (not auto-discovered)
         sites.AddRange(_registry.Sites.Where(s => !s.AutoDiscovered));
         
-        // 4. Удаляем дубликаты по имени
+        // 4. Remove duplicates by name
         sites = sites.GroupBy(s => s.Name)
                     .Select(g => g.First())
                     .OrderBy(s => s.Name)
@@ -53,7 +53,7 @@ public class WebSiteRegistryService
         return sites.FirstOrDefault(s => s.Name.Equals(siteName, StringComparison.OrdinalIgnoreCase));
     }
     
-    // Автообнаружение IIS сайтов
+    // Auto-discover IIS sites
     private async Task<List<WebSiteInfo>> DiscoverIisSitesAsync()
     {
         var sites = new List<WebSiteInfo>();
@@ -65,7 +65,7 @@ public class WebSiteRegistryService
             
             if (!string.IsNullOrWhiteSpace(result))
             {
-                // Обрабатываем случай одного сайта (не массив) и множественных сайтов
+                // Handle both single-site and multi-site results
                 JsonElement json = JsonSerializer.Deserialize<JsonElement>(result);
                 
                 if (json.ValueKind == JsonValueKind.Array)
@@ -119,14 +119,14 @@ public class WebSiteRegistryService
         };
     }
     
-    // Автообнаружение Systemd сервисов (только помеченных как веб-сайты)
+    // Auto-discover Systemd services (only those marked as web sites)
     private async Task<List<WebSiteInfo>> DiscoverSystemdSitesAsync()
     {
         var sites = new List<WebSiteInfo>();
         
         try
         {
-            // Ищем только сервисы с определенными именами или описаниями
+            // Search for services with specific names or descriptions
             var script = "systemctl list-units --type=service --state=loaded --no-legend | grep -E '(kestrel|web|http|api)' | awk '{print $1}' | sed 's/.service$//'";
             var result = await ExecuteBashAsync(script);
             
@@ -157,7 +157,7 @@ public class WebSiteRegistryService
         return sites;
     }
     
-    // Ручное добавление сайтов
+    // Manual site registration
     public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, Dictionary<string, string>? properties = null)
     {
         await _semaphore.WaitAsync();
@@ -221,7 +221,7 @@ public class WebSiteRegistryService
         return site != null;
     }
 
-    // PowerShell для Windows
+    // PowerShell for Windows
     private async Task<string?> ExecutePowerShellAsync(string script)
     {
         if (!OperatingSystem.IsWindows())
@@ -263,7 +263,7 @@ public class WebSiteRegistryService
         }
     }
 
-    // Bash для Linux
+    // Bash for Linux
     private async Task<string?> ExecuteBashAsync(string script)
     {
         if (!OperatingSystem.IsLinux())

@@ -82,7 +82,7 @@
                          AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
             </Grid>
 
-            <!-- Row 5: Кнопки Start / Stop / Servers sync -->
+            <!-- Row 5: Start/Stop buttons and server sync -->
             <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,5,0,5">
                 <!-- Start button -->
                 <Button x:Name="StartButton"
@@ -103,7 +103,7 @@
                         Height="32"
                         Margin="10,0,0,0" />
 
-                <!-- Пустая «звездочка» (Grid.Column="2") для выравнивания -->
+                <!-- Empty spacer (Grid.Column="2") for alignment -->
 
                 <!-- ServerPanel button (Grid.Column="3") -->
                 <Button x:Name="ServerPanelButton" 
@@ -117,7 +117,7 @@
                         HorizontalAlignment="Right" />
             </Grid>
 
-            <!-- Row 6: Чекбокс «Автопрокрутка» -->
+            <!-- Row 6: "Auto Scroll" checkbox -->
             <StackPanel Grid.Row="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
                 <CheckBox x:Name="AutoScrollCheckBox"
                           Content="Auto Scroll"
@@ -135,7 +135,7 @@
                           Margin="10,0,0,0"/>
             </StackPanel>
 
-            <!-- Row 7: ListBox с логом (звездочка «*» растягивает на всё оставшееся место) -->
+            <!-- Row 7: Log list box (star "*" stretches to fill remaining space) -->
             <Border Grid.Row="7" BorderBrush="#D4D4D4" BorderThickness="1" CornerRadius="5" Padding="5">
                 <avalonEdit:TextEditor
                     x:Name="LogTextEditor"
@@ -150,7 +150,7 @@
             </Border>
         </Grid>
 
-        <!-- Правая часть: панель серверов (не меняется) -->
+        <!-- Right panel: server list (static) -->
         <Border Grid.Column="1"
                 Width="350"
                 Background="{DynamicResource ThemeBackgroundBrush}"
@@ -159,7 +159,7 @@
                 Padding="10"
                 IsVisible="{Binding IsServerPanelVisible}">
             <Grid x:Name="ServerPanelStack" RowDefinitions="Auto,*">
-                <!-- Верхняя часть: кнопка Add, заголовок и т.д. -->
+                <!-- Top section: Add button, header, etc. -->
                 <StackPanel Grid.Row="0" Spacing="10" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                     <Button x:Name="AddServerButton"
                             Content="Add"
@@ -177,7 +177,7 @@
                     <TextBlock Text="Target servers path:" />
                 </StackPanel>
 
-                <!-- Нижняя часть: список серверов с прокруткой -->
+                <!-- Bottom section: scrollable server list -->
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -222,7 +222,7 @@
                                         <Run Text="]" />
                                     </TextBlock>
 
-                                    <!-- Кнопки управления пулом и сайтом -->
+                                    <!-- Buttons to control pool and site -->
                                     <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,5,0,0">
                                         <Button Content="Start Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartPoolCommand, FallbackValue={x:Null}}"

@@ -37,7 +37,7 @@ public class LaunchdServiceManager : IWebServerService
                 return new WebServerResult { Success = true, Message = $"Service {serviceName} is already running." };
             }
 
-            // Загружаем сервис если он не загружен
+            // Load the service if it is not already loaded
             if (currentState == "not loaded")
             {
                 if (!await ExecuteLaunchctlAsync($"load {serviceName}"))
@@ -46,7 +46,7 @@ public class LaunchdServiceManager : IWebServerService
                 }
             }
 
-            // Запускаем сервис
+            // Start the service
             if (!await ExecuteLaunchctlAsync($"start {serviceName}"))
             {
                 return new WebServerResult { Success = false, Message = $"Failed to start service {serviceName}." };
@@ -108,7 +108,7 @@ public class LaunchdServiceManager : IWebServerService
         }
     }
 
-    // Для launchd нет отдельных пулов, поэтому используем те же методы
+    // Launchd has no separate pools, so use the same methods
     public Task<WebServerResult> StartAppPoolAsync(string serviceName) => StartSiteAsync(serviceName);
     public Task<WebServerResult> StopAppPoolAsync(string serviceName) => StopSiteAsync(serviceName);
 
@@ -141,14 +141,14 @@ public class LaunchdServiceManager : IWebServerService
         
         try
         {
-            // Получаем все загруженные сервисы
+            // Retrieve all loaded services
             var result = await ExecuteLaunchctlWithOutputAsync("list");
             
             if (!string.IsNullOrWhiteSpace(result))
             {
                 var lines = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
                 
-                foreach (var line in lines.Skip(1)) // Пропускаем заголовок
+                foreach (var line in lines.Skip(1)) // Skip the header line
                 {
                     var parts = line.Split(new[] { '\t' }, StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length >= 3)
@@ -157,7 +157,7 @@ public class LaunchdServiceManager : IWebServerService
                         var status = parts[1];
                         var serviceName = parts[2];
                         
-                        // Фильтруем только интересующие нас сервисы
+                        // Filter only the services we are interested in
                         if (serviceName.Contains("kestrel") || serviceName.Contains("dotnet") || serviceName.Contains("webapp"))
                         {
                             var isRunning = pid != "-" && !string.IsNullOrWhiteSpace(pid);
@@ -167,7 +167,7 @@ public class LaunchdServiceManager : IWebServerService
                                 Name = serviceName,
                                 Status = isRunning ? "running" : "loaded",
                                 Type = "LaunchdService",
-                                Port = "", // Можно добавить логику получения порта
+                                Port = "", // TODO: add logic for retrieving the port
                                 IsRunning = isRunning,
                                 LastChecked = DateTime.UtcNow
                             });
@@ -277,7 +277,7 @@ public class LaunchdServiceManager : IWebServerService
                 return "not loaded";
             }
             
-            // Парсим вывод launchctl print для определения состояния
+            // Parse launchctl print output to determine the state
             if (result.Contains("state = running"))
                 return "running";
             if (result.Contains("state = waiting"))
@@ -300,7 +300,7 @@ public class LaunchdServiceManager : IWebServerService
     private async Task<bool> WaitForServiceStateAsync(string serviceName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // 1 минута ожидания
+        const int maxAttempts = 12; // wait up to 1 minute
         
         while (attempts < maxAttempts)
         {
