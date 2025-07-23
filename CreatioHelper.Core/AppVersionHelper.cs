@@ -16,11 +16,14 @@ public static class AppVersionHelper
         {
             throw new ArgumentNullException(nameof(appPath));
         }
-
+        string dllPath = Path.Combine(appPath, "Terrasoft.Common.dll");
         bool isFramework = Directory.Exists(Path.Combine(appPath, "Terrasoft.WebApp"));
-        string dllPath = isFramework
-            ? Path.Combine(appPath, "Terrasoft.WebApp" ,"bin", "Terrasoft.Common.dll")
-            : Path.Combine(appPath, "Terrasoft.Common.dll");
+        if (isFramework && OperatingSystem.IsWindows())
+        {
+            dllPath = isFramework
+                ? Path.Combine(appPath, "Terrasoft.WebApp" ,"bin", "Terrasoft.Common.dll")
+                : Path.Combine(appPath, "Terrasoft.Common.dll");
+        }
 
         if (!File.Exists(dllPath))
         {

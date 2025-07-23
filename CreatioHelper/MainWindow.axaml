@@ -18,8 +18,6 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
-        <!-- Левая часть: основной UI -->
-        <!-- Теперь у нас 8 строк: 0..5 — ваши старые Auto, 6 — новый Auto (чекбокс), 7 — "*" (ListBox) -->
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
             
             <!-- Row 0: Source selection -->
