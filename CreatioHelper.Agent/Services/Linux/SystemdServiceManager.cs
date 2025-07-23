@@ -101,7 +101,7 @@ public class SystemdServiceManager : IWebServerService
         }
     }
 
-    // Для systemd нет отдельных пулов, поэтому используем те же методы
+    // Systemd has no separate pools, so use the same methods
     public Task<WebServerResult> StartAppPoolAsync(string serviceName) => StartSiteAsync(serviceName);
     public Task<WebServerResult> StopAppPoolAsync(string serviceName) => StopSiteAsync(serviceName);
 
@@ -134,7 +134,7 @@ public class SystemdServiceManager : IWebServerService
         
         try
         {
-            // Получаем все сервисы с определенным паттерном (например, все .NET приложения)
+            // Retrieve all services matching a pattern (e.g., all .NET apps)
             var result = await ExecuteSystemctlWithOutputAsync("list-units --type=service --state=active,inactive --no-pager --plain | grep -E '\\.(service)$'");
             
             if (!string.IsNullOrWhiteSpace(result))
@@ -151,7 +151,7 @@ public class SystemdServiceManager : IWebServerService
                         var activeState = parts[2];
                         var subState = parts[3];
                         
-                        // Фильтруем только интересующие нас сервисы (например, содержащие 'kestrel' или 'dotnet')
+                        // Filter only relevant services (e.g., containing 'kestrel' or 'dotnet')
                         if (serviceName.Contains("kestrel") || serviceName.Contains("dotnet") || serviceName.Contains("webapp"))
                         {
                             services.Add(new WebServerStatus
@@ -159,7 +159,7 @@ public class SystemdServiceManager : IWebServerService
                                 Name = serviceName,
                                 Status = activeState,
                                 Type = "SystemdService",
-                                Port = "", // Можно добавить логику получения порта из конфига
+                                Port = "", // TODO: add logic to obtain the port from config
                                 IsRunning = string.Equals(activeState, "active", StringComparison.OrdinalIgnoreCase),
                                 LastChecked = DateTime.UtcNow
                             });
@@ -274,7 +274,7 @@ public class SystemdServiceManager : IWebServerService
     private async Task<bool> WaitForServiceStateAsync(string serviceName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // 1 минута ожидания
+        const int maxAttempts = 12; // wait up to 1 minute
         
         while (attempts < maxAttempts)
         {

@@ -18,7 +18,7 @@ namespace CreatioHelper.Core.Services
         {
             if (server == null) throw new ArgumentNullException(nameof(server));
 
-            // Проверяем платформу перед выполнением
+            // Check the platform before executing
             if (!OperatingSystem.IsWindows())
             {
                 server.PoolStatus = "Unsupported";
