@@ -12,7 +12,7 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
-        // ✅ Регистрируем кодировки Windows, включая 866 (DOS Кириллица)
+        // ✅ Register Windows code pages, including 866 (DOS Cyrillic)
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
         BuildAvaloniaApp()

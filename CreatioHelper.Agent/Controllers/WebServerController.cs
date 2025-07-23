@@ -30,7 +30,7 @@ public class WebServerController : ControllerBase
         _iisStatusService = iisStatusService;
     }
 
-    // Добавляем свойство IsWebServerSupported
+    // Add IsWebServerSupported property
     private bool IsWebServerSupported => _webServerFactory.IsWebServerSupported();
 
     [HttpGet("info")]
@@ -39,7 +39,7 @@ public class WebServerController : ControllerBase
         return Ok(new
         {
             Platform = _platformService.GetPlatform().ToString(),
-            SupportedWebServer = await _webServerFactory.GetSupportedWebServerTypeAsync(), // Теперь async
+            SupportedWebServer = await _webServerFactory.GetSupportedWebServerTypeAsync(), // Now async
             AvailableWebServerTypes = _webServerFactory.GetAvailableWebServerTypes(),
             IsSupported = IsWebServerSupported,
             Features = new[]
@@ -99,7 +99,7 @@ public class WebServerController : ControllerBase
             return BadRequest($"Web server type '{request.Type}' is not available. Available types: {string.Join(", ", availableTypes)}");
         }
 
-        // Здесь можно сохранить выбор в конфигурацию
+        // Optionally save the selection to configuration
         _configuration["WebServer:PreferredType"] = request.Type;
         
         var currentType = await _webServerFactory.GetSupportedWebServerTypeAsync();
@@ -282,7 +282,7 @@ public class WebServerController : ControllerBase
         }
     }
 
-    // Новые методы с детальной информацией
+    // Additional methods with detailed information
     [HttpGet("sites/detailed")]
     public async Task<IActionResult> GetAllSitesDetailed()
     {
@@ -296,7 +296,7 @@ public class WebServerController : ControllerBase
             var webServerService = _webServerFactory.CreateWebServerService();
             var sites = await webServerService.GetAllSitesAsync();
             
-            // Группируем по статусу для удобного отображения
+            // Group by status for easier display
             var result = new
             {
                 TotalSites = sites.Count,
@@ -328,7 +328,7 @@ public class WebServerController : ControllerBase
             var webServerService = _webServerFactory.CreateWebServerService();
             var appPools = await webServerService.GetAllAppPoolsAsync();
             
-            // Группируем по статусу для удобного отображения
+            // Group by status for easier display
             var result = new
             {
                 TotalAppPools = appPools.Count,

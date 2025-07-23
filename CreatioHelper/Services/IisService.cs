@@ -18,7 +18,7 @@ public class IisService
     {
         if (!OperatingSystem.IsWindows()) return false;
     
-        // Быстрая проверка через реестр
+        // Quick check via the registry
         try
         {
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\InetStp");
@@ -29,11 +29,11 @@ public class IisService
             return false;
         }
     
-        // Проверяем службу IIS
+        // Check the IIS service
         try
         {
             using var serviceController = new System.ServiceProcess.ServiceController("W3SVC");
-            var _ = serviceController.Status; // Просто пытаемся получить статус
+            var _ = serviceController.Status; // Just try to retrieve the status
             return true;
         }
         catch (InvalidOperationException)

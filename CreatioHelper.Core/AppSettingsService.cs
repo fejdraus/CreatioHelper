@@ -26,7 +26,7 @@ namespace CreatioHelper.Core
             }
             catch (Exception)
             {
-                // Логирование исключения может быть добавлено здесь
+                // Exception logging can be added here
                 return new AppSettings();
             }
         }
@@ -40,7 +40,7 @@ namespace CreatioHelper.Core
             }
             catch (Exception)
             {
-                // Логирование исключения может быть добавлено здесь
+                // Exception logging can be added here
             }
         }
 

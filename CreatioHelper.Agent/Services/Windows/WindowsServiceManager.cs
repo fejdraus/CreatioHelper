@@ -101,7 +101,7 @@ public class WindowsServiceManager : IWebServerService
         }
     }
 
-    // Для Windows Services нет отдельных пулов
+    // Windows Services do not have separate pools
     public Task<WebServerResult> StartAppPoolAsync(string serviceName) => StartSiteAsync(serviceName);
     public Task<WebServerResult> StopAppPoolAsync(string serviceName) => StopSiteAsync(serviceName);
 
@@ -134,7 +134,7 @@ public class WindowsServiceManager : IWebServerService
         
         try
         {
-            // Получаем все сервисы, которые могут быть Kestrel/Creatio
+            // Retrieve all services that might be Kestrel/Creatio
             var result = await ExecuteServiceCommandWithOutputAsync("Get-Service | Where-Object {$_.Name -like '*creatio*' -or $_.Name -like '*kestrel*' -or $_.Name -like '*dotnet*' -or $_.DisplayName -like '*creatio*'} | Select-Object Name, Status, DisplayName | ConvertTo-Json");
             
             if (!string.IsNullOrWhiteSpace(result))
@@ -154,7 +154,7 @@ public class WindowsServiceManager : IWebServerService
                                 Name = serviceInfo.Name,
                                 Status = serviceInfo.Status,
                                 Type = "WindowsService",
-                                Port = await GetServicePortAsync(serviceInfo.Name), // Попытаемся получить порт
+                                Port = await GetServicePortAsync(serviceInfo.Name), // Try to obtain the port
                                 IsRunning = isRunning,
                                 LastChecked = DateTime.UtcNow
                             });
@@ -274,10 +274,10 @@ public class WindowsServiceManager : IWebServerService
     {
         try
         {
-            // Попытаемся найти порт через netstat и связь с процессом
+            // Try to find the port via netstat and process association
             var result = await ExecuteServiceCommandWithOutputAsync($"Get-WmiObject -Class Win32_Service | Where-Object {{$_.Name -eq '{serviceName}'}} | Select-Object ProcessId");
-            // Здесь можно добавить логику поиска порта по ProcessId
-            return ""; // Пока возвращаем пустую строку
+            // TODO: add logic to determine the port by ProcessId
+            return ""; // Return an empty string for now
         }
         catch
         {
@@ -288,7 +288,7 @@ public class WindowsServiceManager : IWebServerService
     private async Task<bool> WaitForServiceStateAsync(string serviceName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // 1 минута ожидания
+        const int maxAttempts = 12; // wait up to 1 minute
         
         while (attempts < maxAttempts)
         {
