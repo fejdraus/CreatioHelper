@@ -74,7 +74,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     return;
                 }
 
-                if (OperatingSystem.IsWindows() && (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath))) 
+                if (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath)) 
                 {
                     var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
                     var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
@@ -92,17 +92,21 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         AppVersion = appVersion
                     };
                     var manager = new RemoteIisManager(_output);
-                    if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                    if (OperatingSystem.IsWindows())
                     {
-                        await manager.StopAppPoolAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Pool stopped.");
-                    }
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                        {
+                            await manager.StopAppPoolAsync(localServerInfo);
+                            _output.WriteLine("[INFO] Main Pool stopped.");
+                        }
 
-                    if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
-                    {
-                        await manager.StopWebsiteAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Website stopped.");
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                        {
+                            await manager.StopWebsiteAsync(localServerInfo);
+                            _output.WriteLine("[INFO] Main Website stopped.");
+                        }   
                     }
+                    
                     IsStopButtonEnabled = true;
 
                     if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages) 
@@ -268,15 +272,18 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
 
                     IsStopButtonEnabled = false;
-                    if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                    if (OperatingSystem.IsWindows())
                     {
-                        await manager.StartAppPoolAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Pool is running.");
-                    }
-                    if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
-                    {
-                        await manager.StartWebsiteAsync(localServerInfo);
-                        _output.WriteLine("[INFO] Main Website is running.");
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                        {
+                            await manager.StartAppPoolAsync(localServerInfo);
+                            _output.WriteLine("[INFO] Main Pool is running.");
+                        }
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
+                        {
+                            await manager.StartWebsiteAsync(localServerInfo);
+                            _output.WriteLine("[INFO] Main Website is running.");
+                        }    
                     }
                 }
             } 

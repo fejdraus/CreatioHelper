@@ -11,6 +11,10 @@ public sealed class Job : IDisposable
 
     public Job()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
         _handle = CreateJobObject(IntPtr.Zero, null);
         if (_handle == IntPtr.Zero)
             throw new Win32Exception(Marshal.GetLastWin32Error());
@@ -27,23 +31,34 @@ public sealed class Job : IDisposable
 
         int length = Marshal.SizeOf(extendedInfo);
         IntPtr ptr = Marshal.AllocHGlobal(length);
-        Marshal.StructureToPtr(extendedInfo, ptr, false);
-
-        if (!SetInformationJobObject(_handle, JobObjectInfoType.ExtendedLimitInformation, ptr, (uint)length))
-            throw new Win32Exception(Marshal.GetLastWin32Error());
-
-        Marshal.FreeHGlobal(ptr);
+        try
+        {
+            Marshal.StructureToPtr(extendedInfo, ptr, false);
+            if (!SetInformationJobObject(_handle, JobObjectInfoType.ExtendedLimitInformation, ptr, (uint)length))
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(ptr);
+        }
     }
 
     public void AddProcess(IntPtr processHandle)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
         if (!AssignProcessToJobObject(_handle, processHandle))
-            throw new Win32Exception(Marshal.GetLastWin32Error());
+        {
+            throw new Win32Exception(Marshal.GetLastWin32Error());   
+        }
     }
 
     public void Dispose()
     {
-        if (_handle != IntPtr.Zero)
+        if (OperatingSystem.IsWindows() && _handle != IntPtr.Zero)
         {
             CloseHandle(_handle);
             _handle = IntPtr.Zero;
