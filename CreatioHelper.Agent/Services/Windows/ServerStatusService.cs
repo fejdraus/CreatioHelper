@@ -29,7 +29,7 @@ public class IisStatusService
 
         try
         {
-            // Получаем статус сайта
+            // Get the site status
             if (!string.IsNullOrWhiteSpace(siteName))
             {
                 var siteResult = await _iisManager.GetSiteStatusAsync(siteName);
@@ -45,7 +45,7 @@ public class IisStatusService
                 }
             }
 
-            // Получаем статус пула
+            // Get the pool status
             if (!string.IsNullOrWhiteSpace(poolName))
             {
                 var poolResult = await _iisManager.GetAppPoolStatusAsync(poolName);

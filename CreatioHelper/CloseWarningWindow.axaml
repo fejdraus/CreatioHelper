@@ -6,6 +6,6 @@
         Title="Attention" CanResize="False">
     <StackPanel Margin="10" Spacing="10">
         <TextBlock TextWrapping="Wrap" Text="The process is being performed now. Please wait for the completion before closing."/>
-        <Button HorizontalAlignment="Right" Width="80" Content="Ок" Click="Ok_Click"/>
+        <Button HorizontalAlignment="Right" Width="80" Content="OK" Click="Ok_Click"/>
     </StackPanel>
 </Window>

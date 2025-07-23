@@ -18,7 +18,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Получить все сайты (автообнаруженные + зарегистрированные вручную)
+    /// Get all sites (auto-discovered plus manually registered)
     /// </summary>
     [HttpGet("")]
     public async Task<IActionResult> GetAllSites()
@@ -47,7 +47,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Зарегистрировать новый сайт вручную
+    /// Manually register a new site
     /// </summary>
     [HttpPost("register")]
     public async Task<IActionResult> RegisterSite([FromBody] RegisterSiteRequest request)
@@ -59,7 +59,7 @@ public class WebSiteController : ControllerBase
 
         try
         {
-            // Проверяем, не существует ли уже сайт с таким именем
+            // Check whether a site with the same name already exists
             var existingSite = await _registryService.GetSiteInfoAsync(request.DisplayName);
             if (existingSite != null && existingSite.AutoDiscovered)
             {
@@ -86,7 +86,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Обновить информацию о сайте
+    /// Update site information
     /// </summary>
     [HttpPut("{siteName}")]
     public async Task<IActionResult> UpdateSite(string siteName, [FromBody] UpdateSiteRequest request)
@@ -128,7 +128,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Удалить сайт из реестра (только зарегистрированные вручную)
+    /// Remove a site from the registry (only manually registered)
     /// </summary>
     [HttpDelete("{siteName}")]
     public async Task<IActionResult> UnregisterSite(string siteName)
@@ -158,7 +158,7 @@ public class WebSiteController : ControllerBase
     }
 
     /// <summary>
-    /// Получить информацию о конкретном сайте
+    /// Get information about a specific site
     /// </summary>
     [HttpGet("{siteName}")]
     public async Task<IActionResult> GetSiteInfo(string siteName)
@@ -181,7 +181,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Проверить существование сайта
+    /// Check if a site exists
     /// </summary>
     [HttpHead("{siteName}")]
     public async Task<IActionResult> CheckSiteExists(string siteName)
@@ -199,7 +199,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Получить сайты по типу
+    /// Get sites by type
     /// </summary>
     [HttpGet("by-type/{type}")]
     public async Task<IActionResult> GetSitesByType(string type)
@@ -224,7 +224,7 @@ public class WebSiteController : ControllerBase
     }
     
     /// <summary>
-    /// Получить статистику по сайтам
+    /// Get site statistics
     /// </summary>
     [HttpGet("stats")]
     public async Task<IActionResult> GetSiteStats()
