@@ -9,7 +9,7 @@ using CreatioHelper.Services;
 
 namespace CreatioHelper;
 
-public partial class App : Application
+public partial class App : Avalonia.Application
 {
     public static IServiceProvider? Services { get; private set; }
 

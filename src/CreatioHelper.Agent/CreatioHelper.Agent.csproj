@@ -41,6 +41,9 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
+    <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
+    <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
+    <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
   </ItemGroup>
 
 </Project>
