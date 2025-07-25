@@ -1,8 +1,8 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using CreatioHelper.Core.Enums;
+using CreatioHelper.Domain.Enums;
 
-namespace CreatioHelper.Core.Abstractions;
+namespace CreatioHelper.Application.Interfaces;
 
 public interface IPlatformService
 {

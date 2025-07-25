@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using CreatioHelper.Agent.Controllers;
-using CreatioHelper.Core.Abstractions;
-using CreatioHelper.Core.Enums;
-using CreatioHelper.Core.Models;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Enums;
+using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

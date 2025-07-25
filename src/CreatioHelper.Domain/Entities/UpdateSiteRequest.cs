@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace CreatioHelper.Core.Models;
+namespace CreatioHelper.Domain.Entities;
 
 public class UpdateSiteRequest
 {

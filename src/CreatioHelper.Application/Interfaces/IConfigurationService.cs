@@ -1,6 +1,6 @@
 using System.Threading.Tasks;
 
-namespace CreatioHelper.Core.Abstractions;
+namespace CreatioHelper.Application.Interfaces;
 
 public interface IConfigurationService
 {

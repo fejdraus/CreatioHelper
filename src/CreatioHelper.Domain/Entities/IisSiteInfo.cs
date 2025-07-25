@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace CreatioHelper.Core.Models;
+namespace CreatioHelper.Domain.Entities;
 
 public class IisSiteInfo
 {

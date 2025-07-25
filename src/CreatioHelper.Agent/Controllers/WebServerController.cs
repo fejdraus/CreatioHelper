@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Core.Models;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Agent.Services.Windows;
-using CreatioHelper.Core.Abstractions;
+using CreatioHelper.Application.Interfaces;
 using System;
 
 namespace CreatioHelper.Agent.Controllers;

@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
-using CreatioHelper.Core.Abstractions;
-using CreatioHelper.Core.Enums;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Agent.Services;
 

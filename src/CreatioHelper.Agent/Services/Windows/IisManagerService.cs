@@ -1,8 +1,8 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text.Json;
-using CreatioHelper.Core.Abstractions;
-using CreatioHelper.Core.Models;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
