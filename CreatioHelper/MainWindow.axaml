@@ -24,7 +24,8 @@
             <StackPanel Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Site path source:" />
                 <StackPanel x:Name="SiteSourcePanel" Orientation="Horizontal" >
-                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" />
+                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" 
+                                 IsVisible="{Binding IsWindows}" />
                     <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource"
                                  Margin="15,0,0,0" />
                 </StackPanel>
@@ -44,7 +45,8 @@
                           HorizontalAlignment="Stretch"
                           IsEnabled="{Binding HasIisSites}"
                           ItemsSource="{Binding IisSites}"
-                          SelectedItem="{Binding SelectedIisSite}" />
+                          SelectedItem="{Binding SelectedIisSite}"
+                          IsVisible="{Binding IsWindows}" />
             </StackPanel>
 
             <!-- Row 3: Packages Path -->
