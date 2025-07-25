@@ -90,6 +90,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                 if (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath)) 
                 {
+                    string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
                     var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
                     var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
                     var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : viewModel.SitePathWithVersion;
@@ -108,19 +109,22 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     var manager = new RemoteIisManager(_output);
                     if (OperatingSystem.IsWindows())
                     {
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                        if (!File.Exists(nestedPath))
                         {
-                            await manager.StopAppPoolAsync(localServerInfo);
-                            _output.WriteLine("[INFO] Main Pool stopped.");
-                        }
+                            if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                            {
+                                await manager.StopAppPoolAsync(localServerInfo);
+                                _output.WriteLine("[INFO] Main Pool stopped.");
+                            }
 
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
-                        {
-                            await manager.StopWebsiteAsync(localServerInfo);
-                            _output.WriteLine("[INFO] Main Website stopped.");
+                            if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                            {
+                                await manager.StopWebsiteAsync(localServerInfo);
+                                _output.WriteLine("[INFO] Main Website stopped.");
+                            }
                         }
-
-                        if (!string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        
+                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
                             var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
@@ -136,7 +140,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        if (!string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
                             var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
@@ -217,19 +221,21 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     IsStopButtonEnabled = false;
                     if (OperatingSystem.IsWindows())
                     {
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                        if (!File.Exists(nestedPath))
                         {
-                            await manager.StartAppPoolAsync(localServerInfo);
-                            _output.WriteLine("[INFO] Main Pool is running.");
-                        }
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
-                        {
-                            await manager.StartWebsiteAsync(localServerInfo);
-                            _output.WriteLine("[INFO] Main Website is running.");
+                            if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                            {
+                                await manager.StartAppPoolAsync(localServerInfo);
+                                _output.WriteLine("[INFO] Main Pool is running.");
+                            }
+                            if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
+                            {
+                                await manager.StartWebsiteAsync(localServerInfo);
+                                _output.WriteLine("[INFO] Main Website is running.");
+                            }
                         }
 
-                        // Запуск службы для .NET версий Creatio на Windows
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
                             var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
                             if (serviceStartResult)
@@ -244,8 +250,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        // Запуск службы для Linux
-                        if (!string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
                             var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
                             if (serviceStartResult)
