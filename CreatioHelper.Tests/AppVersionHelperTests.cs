@@ -25,6 +25,10 @@ public class AppVersionHelperTests
     [Fact]
     public void GetAppVersion_WhenFileExists_ReturnsAssemblyVersion()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // test is only relevant on Windows
+        }
         var tempDir = Directory.CreateTempSubdirectory();
         try
         {

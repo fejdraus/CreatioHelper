@@ -13,6 +13,7 @@ using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.Services;
 using CreatioHelper.ViewModels;
+using Microsoft.Extensions.DependencyInjection;
 
 using System.Runtime.Versioning;
 
@@ -54,7 +55,12 @@ namespace CreatioHelper
                         Dispatcher.UIThread.Post(ClearLog);
                     }
                 });
-            _viewModel = new MainWindowViewModel(_writer, new SettingsService(), new OperationsService(_writer), new DialogService(StorageProvider));
+
+            var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
+            var settingsService = provider.GetRequiredService<ISettingsService>();
+            var dialogService = new DialogService(StorageProvider);
+            var operationsService = new OperationsService(_writer);
+            _viewModel = new MainWindowViewModel(_writer, settingsService, operationsService, dialogService);
             DataContext = _viewModel;
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
