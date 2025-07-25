@@ -21,11 +21,10 @@
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
             
             <!-- Row 0: Source selection -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+            <StackPanel Grid.Row="0" Margin="0,0,0,5" IsVisible="{Binding IsWindows}" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Site path source:" />
                 <StackPanel x:Name="SiteSourcePanel" Orientation="Horizontal" >
-                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" 
-                                 IsVisible="{Binding IsWindows}" />
+                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" />
                     <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource"
                                  Margin="15,0,0,0" />
                 </StackPanel>
