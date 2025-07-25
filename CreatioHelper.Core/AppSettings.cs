@@ -6,6 +6,8 @@ namespace CreatioHelper.Core
     {
         public string? SitePath { get; set; }
 
+        public string? ServiceName { get; set; }
+
         public string? SelectedIisSiteName { get; set; }
 
         public string? PackagesPath { get; set; }

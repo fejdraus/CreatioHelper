@@ -124,6 +124,9 @@ public partial class MainWindowViewModel : ObservableObject
     private string? _sitePath;
 
     [ObservableProperty]
+    private string? _serviceName;
+
+    [ObservableProperty]
     private string? _packagesPath;
 
     [ObservableProperty]
@@ -297,6 +300,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
     partial void OnSitePathChanged(string? value) => SaveServerSettings();
+    partial void OnServiceNameChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
     
     [SupportedOSPlatform("windows")]
@@ -315,6 +319,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void ApplyServerSettings(AppSettings settings)
     {
         SitePath = settings.SitePath;
+        ServiceName = settings.ServiceName;
         PackagesPath = settings.PackagesPath;
         PackagesToDeleteBefore = settings.PackagesToDeleteBefore;
         PackagesToDeleteAfter = settings.PackagesToDeleteAfter;
@@ -344,6 +349,7 @@ public partial class MainWindowViewModel : ObservableObject
         var settings = new AppSettings
         {
             SitePath = IsFolderMode ? SitePath : null,
+            ServiceName = IsFolderMode ? ServiceName : null,
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
             PackagesPath = PackagesPath,
             PackagesToDeleteBefore = PackagesToDeleteBefore,
