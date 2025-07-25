@@ -56,6 +56,14 @@ public partial class MainWindowViewModel : ObservableObject
         {
             LoadIisSites(settings);
         }
+        else
+        {
+            if (settings.IsIisMode)
+            {
+                IsFolderMode = true;
+            }
+            ApplyServerSettings(settings);
+        }
 
         foreach (var server in ServerList)
         {
