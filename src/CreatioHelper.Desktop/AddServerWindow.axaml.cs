@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
-using CreatioHelper.Core;
+using CreatioHelper.Domain.Entities;
 using MsBox.Avalonia;
 using MsBox.Avalonia.Enums;
 
