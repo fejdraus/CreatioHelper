@@ -8,5 +8,7 @@ namespace CreatioHelper.Core
         Task<bool> StopWebsiteAsync(ServerInfo server);
         Task<bool> StartAppPoolAsync(ServerInfo server);
         Task<bool> StartWebsiteAsync(ServerInfo server);
+        Task<bool> StartServiceAsync(ServerInfo server);
+        Task<bool> StopServiceAsync(ServerInfo server);
     }
 }

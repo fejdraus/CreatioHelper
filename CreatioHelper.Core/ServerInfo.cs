@@ -10,10 +10,13 @@ namespace CreatioHelper.Core
         private string _networkPath = string.Empty;
         private string _siteName = string.Empty;
         private string _poolName = string.Empty;
+        private string _serviceName = string.Empty;
         private Version? _appVersion = new();
         private string _poolStatus = "Unknown";
         private string _siteStatus = "Unknown";
+        private string _serviceStatus = "Unknown";
         private bool _isStatusLoading;
+        
         public string Name
         {
             get => _name;
@@ -65,7 +68,20 @@ namespace CreatioHelper.Core
                 }
             }
         }
-        
+
+        public string ServiceName
+        {
+            get => _serviceName;
+            set
+            {
+                if (_serviceName != value)
+                {
+                    _serviceName = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public string PoolStatus
         {
             get => _poolStatus;
@@ -91,7 +107,20 @@ namespace CreatioHelper.Core
                 }
             }
         }
-        
+
+        public string ServiceStatus
+        {
+            get => _serviceStatus;
+            set
+            {
+                if (_serviceStatus != value)
+                {
+                    _serviceStatus = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
         public Version? AppVersion
         {
             get => _appVersion;
