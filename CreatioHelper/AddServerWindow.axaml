@@ -11,16 +11,20 @@
     <StackPanel Margin="15" Spacing="10">
 
         <TextBlock Text="Server name:" />
-        <TextBox Text="{Binding Name, Mode=TwoWay}" />
+        <TextBox Text="{Binding Name, Mode=TwoWay}" 
+                 Watermark="Enter server name (e.g., PROD-SERVER-01)" />
 
         <TextBlock Text="Network path to site:" />
-        <TextBox Text="{Binding NetworkPath, Mode=TwoWay}" />
+        <TextBox Text="{Binding NetworkPath, Mode=TwoWay}" 
+                 Watermark="Enter UNC path to site folder (e.g., \\server\share\site)" />
 
         <TextBlock Text="Site name:" />
-        <TextBox Text="{Binding SiteName, Mode=TwoWay}" />
+        <TextBox Text="{Binding SiteName, Mode=TwoWay}" 
+                 Watermark="Enter IIS site name (e.g., Default Web Site)" />
 
         <TextBlock Text="Pool name:" />
-        <TextBox Text="{Binding PoolName, Mode=TwoWay}" />
+        <TextBox Text="{Binding PoolName, Mode=TwoWay}" 
+                 Watermark="Enter IIS application pool name (e.g., DefaultAppPool)" />
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
             <Button Width="80" Content="OK" IsDefault="True" Click="OkButton_Click" />
