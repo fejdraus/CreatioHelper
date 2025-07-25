@@ -1,4 +1,6 @@
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using CreatioHelper.Core.Abstractions;
 
@@ -85,13 +87,45 @@ public class FileSyncService : IFileSyncService
         }
     }
 
+    private static bool ShouldExclude(string path, List<string> patterns)
+    {
+        return patterns.Any(p => Regex.IsMatch(Path.GetFileName(path), p));
+    }
+
     private async Task<long> CopyDirectoryAsync(
-        string sourcePath, 
-        string destinationPath, 
-        SyncOptions options, 
+        string sourcePath,
+        string destinationPath,
+        SyncOptions options,
         CancellationToken cancellationToken)
     {
-        // Simplified implementation as an example
-        return await Task.FromResult(0L);
+        long bytesCopied = 0;
+        Directory.CreateDirectory(destinationPath);
+
+        foreach (var file in Directory.GetFiles(sourcePath))
+        {
+            if (ShouldExclude(file, options.ExcludePatterns))
+                continue;
+
+            var destFile = Path.Combine(destinationPath, Path.GetFileName(file));
+            var mode = options.OverwriteExisting ? FileMode.Create : FileMode.CreateNew;
+            await using var sourceStream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read);
+            await using var destStream = new FileStream(destFile, mode, FileAccess.Write, FileShare.None);
+            await sourceStream.CopyToAsync(destStream, cancellationToken);
+            bytesCopied += destStream.Length;
+        }
+
+        if (options.Recursive)
+        {
+            foreach (var dir in Directory.GetDirectories(sourcePath))
+            {
+                if (ShouldExclude(dir, options.ExcludePatterns))
+                    continue;
+
+                var destDir = Path.Combine(destinationPath, Path.GetFileName(dir));
+                bytesCopied += await CopyDirectoryAsync(dir, destDir, options, cancellationToken);
+            }
+        }
+
+        return bytesCopied;
     }
 }

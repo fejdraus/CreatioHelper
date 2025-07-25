@@ -20,17 +20,17 @@ public class WebServerServiceFactory : IWebServerServiceFactory
         _configurationService = configurationService;
     }
 
-    public IWebServerService CreateWebServerService()
+    public async Task<IWebServerService> CreateWebServerServiceAsync()
     {
         if (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows())
         {
-            var preferredType = _configurationService.GetWebServerTypeAsync().GetAwaiter().GetResult();
-            
+            var preferredType = await _configurationService.GetWebServerTypeAsync();
+
             if (preferredType != null && preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase))
             {
                 return _serviceProvider.GetRequiredService<WindowsServiceManager>();
             }
-            
+
             return _serviceProvider.GetRequiredService<IisManagerService>();
         }
         
