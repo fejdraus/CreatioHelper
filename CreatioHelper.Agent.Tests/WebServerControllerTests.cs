@@ -32,7 +32,7 @@ public class WebServerControllerTests
         var serviceMock = new Mock<IWebServerService>();
         serviceMock.Setup(s => s.GetAllSitesAsync()).ReturnsAsync(sites);
         serviceMock.Setup(s => s.GetAllAppPoolsAsync()).ReturnsAsync(appPools);
-        factoryMock.Setup(f => f.CreateWebServerService()).Returns(serviceMock.Object);
+        factoryMock.Setup(f => f.CreateWebServerServiceAsync()).ReturnsAsync(serviceMock.Object);
 
         var platformMock = new Mock<IPlatformService>();
         platformMock.Setup(p => p.GetPlatform()).Returns(PlatformType.Windows);

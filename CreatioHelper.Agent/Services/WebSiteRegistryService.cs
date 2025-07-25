@@ -9,16 +9,37 @@ public class WebSiteRegistryService
     private readonly string _registryPath;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private WebSiteRegistry _registry = new();
+    private bool _loaded;
 
     public WebSiteRegistryService(ILogger<WebSiteRegistryService> logger, IWebHostEnvironment environment)
     {
         _logger = logger;
         _registryPath = Path.Combine(environment.ContentRootPath, "website-registry.json");
-        LoadRegistryAsync().GetAwaiter().GetResult();
+    }
+
+    private async Task EnsureLoadedAsync()
+    {
+        if (_loaded)
+            return;
+
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (!_loaded)
+            {
+                await LoadRegistryAsync();
+                _loaded = true;
+            }
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public async Task<List<WebSiteInfo>> GetAllSitesAsync()
     {
+        await EnsureLoadedAsync();
         var sites = new List<WebSiteInfo>();
         
         // 1. Auto-discover IIS sites
@@ -160,6 +181,7 @@ public class WebSiteRegistryService
     // Manual site registration
     public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, Dictionary<string, string>? properties = null)
     {
+        await EnsureLoadedAsync();
         await _semaphore.WaitAsync();
         try
         {
@@ -196,6 +218,7 @@ public class WebSiteRegistryService
 
     public async Task UnregisterWebSiteAsync(string siteName)
     {
+        await EnsureLoadedAsync();
         await _semaphore.WaitAsync();
         try
         {
