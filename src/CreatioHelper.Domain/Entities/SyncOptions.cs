@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-namespace CreatioHelper.Core.Models;
+namespace CreatioHelper.Domain.Entities;
 
 public class SyncOptions
 {

@@ -1,5 +1,5 @@
-using CreatioHelper.Core.Abstractions;
-using CreatioHelper.Core.Models;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Entities;
 using System.Runtime.Versioning;
 
 namespace CreatioHelper.Agent.Services.Windows;

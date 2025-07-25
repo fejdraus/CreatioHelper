@@ -1,4 +1,4 @@
-using CreatioHelper.Core.Abstractions;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Services.Windows;
 

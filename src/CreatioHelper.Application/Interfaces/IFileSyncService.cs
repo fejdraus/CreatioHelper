@@ -1,8 +1,8 @@
 using System.Threading;
 using System.Threading.Tasks;
-using CreatioHelper.Core.Models;
+using CreatioHelper.Domain.Entities;
 
-namespace CreatioHelper.Core.Abstractions;
+namespace CreatioHelper.Application.Interfaces;
 
 public interface IFileSyncService
 {

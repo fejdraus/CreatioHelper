@@ -1,4 +1,4 @@
-namespace CreatioHelper.Core.Enums;
+namespace CreatioHelper.Domain.Enums;
 
 public enum PlatformType
 {

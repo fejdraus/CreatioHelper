@@ -1,4 +1,4 @@
-namespace CreatioHelper.Core.Models;
+namespace CreatioHelper.Domain.Entities;
 
 public class ServerRequest
 {

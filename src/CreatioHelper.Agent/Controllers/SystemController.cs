@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Core.Abstractions;
+using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper.Agent.Controllers;
 
