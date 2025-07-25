@@ -75,7 +75,7 @@ public class MonitoringService : BackgroundService
 
         try
         {
-            var webServerService = webServerFactory.CreateWebServerService();
+            var webServerService = await webServerFactory.CreateWebServerServiceAsync();
         
             var sitesTask = webServerService.GetAllSitesAsync();
             var appPoolsTask = webServerService.GetAllAppPoolsAsync();

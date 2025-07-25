@@ -116,7 +116,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopSiteAsync(siteName);
             
             if (result.Success)
@@ -145,7 +145,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartAppPoolAsync(poolName);
             
             if (result.Success)
@@ -174,7 +174,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopAppPoolAsync(poolName);
             
             if (result.Success)
@@ -209,7 +209,7 @@ public class WebServerController : ControllerBase
                 return Ok(status);
             }
 
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var siteResult = await webServerService.GetSiteStatusAsync(siteName);
             return Ok(siteResult);
         }
@@ -230,7 +230,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var sites = await webServerService.GetAllSitesAsync();
             return Ok(sites);
         }
@@ -251,7 +251,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var appPools = await webServerService.GetAllAppPoolsAsync();
             return Ok(appPools);
         }
@@ -293,7 +293,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var sites = await webServerService.GetAllSitesAsync();
             
             // Group by status for easier display
@@ -325,7 +325,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var appPools = await webServerService.GetAllAppPoolsAsync();
             
             // Group by status for easier display
@@ -357,7 +357,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var sitesTask = webServerService.GetAllSitesAsync();
             var appPoolsTask = webServerService.GetAllAppPoolsAsync();
             
@@ -408,7 +408,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var webServerService = _webServerFactory.CreateWebServerService();
+            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartSiteAsync(siteName);
         
             if (result.Success)

@@ -40,6 +40,20 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _remoteIisManager = new RemoteIisManager(output);
     }
 
+    private bool ExecutePreparerAction(Func<int> action, string errorMessage, CancellationToken token)
+    {
+        if (token.IsCancellationRequested)
+            return false;
+
+        int result = action();
+        if (result != 0)
+        {
+            _output.WriteLine(errorMessage);
+            return false;
+        }
+        return true;
+    }
+
     public async Task StartOperation(MainWindowViewModel viewModel)
     {
         IsStopButtonEnabled = false;
@@ -109,103 +123,28 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     
                     IsStopButtonEnabled = true;
 
-                    if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages) 
+                    if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
                     {
                         _output.WriteLine("Deleting packages BEFORE installation...");
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.DeletePackages(sitePath, packagesBefore);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Deleting packages failed.");
-                                return;
-                            }
-                        }
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.RebuildWorkspace(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
-                                return;
-                            }
-                        }
-
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.BuildConfiguration(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Building configuration failed.");
-                                return;
-                            }
-                        }
+                        if (!ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath)) 
+                    if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
                     {
                         _output.WriteLine("Start installation packages...");
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.InstallFromRepository(sitePath, packagesPath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Failed to install packages.");
-                                return;
-                            }
-                        }
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.RebuildWorkspace(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
-                                return;
-                            }
-                        }
-
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.BuildConfiguration(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Building configuration failed.");
-                                return;
-                            }
-                        }
+                        if (!ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
                     }
 
-                    if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages) 
+                    if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
                     {
                         _output.WriteLine("Deleting packages AFTER installation...");
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.DeletePackages(sitePath, packagesAfter);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Deleting packages failed.");
-                                return;
-                            }
-                        }
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.RebuildWorkspace(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
-                                return;
-                            }
-                        }
-
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.BuildConfiguration(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Building configuration failed.");
-                                return;
-                            }
-                        }
+                        if (!ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
                     }
 
                     if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible) 
@@ -233,35 +172,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         string.IsNullOrWhiteSpace(packagesAfter) &&
                         !viewModel.IsServerPanelVisible) 
                     {
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.RegenerateSchemaSources(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Failed to regenerate schema sources.");
-                                return;
-                            }
-                        }
-
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.RebuildWorkspace(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Rebuilding workspace failed.");
-                                return;
-                            }
-                        }
-
-                        if (!cancellationToken.IsCancellationRequested) 
-                        {
-                            var result = preparer.BuildConfiguration(sitePath);
-                            if (result != 0) 
-                            {
-                                _output.WriteLine("[ERROR] Building configuration failed.");
-                                return;
-                            }
-                        }
+                        if (!ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return;
+                        if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
                     }
 
                     var redisManager = new RedisManager(_output, sitePath);
