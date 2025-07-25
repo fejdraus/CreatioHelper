@@ -12,7 +12,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CreatioHelper.Core;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Core.Services;
 using CreatioHelper.ViewModels;
 
