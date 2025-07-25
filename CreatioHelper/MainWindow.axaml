@@ -32,10 +32,14 @@
 
             <!-- Row 1: Folder Mode -->
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+                <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" Margin="0,0,5,0"/>
                     <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
+                <TextBlock Text="Service Name (for service management):" Margin="0,10,0,5" />
+                <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}" 
+                         Watermark="Enter service name for Linux/Windows service management" />
             </StackPanel>
 
             <!-- Row 2: IIS Mode -->
