@@ -34,7 +34,9 @@
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" Margin="0,0,5,0"/>
+                    <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" 
+                             Watermark="Enter path to Creatio application folder"
+                             Margin="0,0,5,0"/>
                     <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
                 <TextBlock Text="Service Name (for service management):" Margin="0,10,0,5" />
@@ -49,6 +51,7 @@
                           IsEnabled="{Binding HasIisSites}"
                           ItemsSource="{Binding IisSites}"
                           SelectedItem="{Binding SelectedIisSite}"
+                          PlaceholderText="Select IIS site from the list"
                           IsVisible="{Binding IsWindows}" />
             </StackPanel>
 
@@ -57,6 +60,7 @@
                 <TextBlock Text="Packages Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
+                             Watermark="Enter path to packages folder for installation"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
                             Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
@@ -79,11 +83,13 @@
                 <TextBox Grid.Row="1" Grid.Column="0"
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
+                         Watermark="Package names to delete before installation (one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
+                         Watermark="Package names to delete after installation (one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
             </Grid>
 
