@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using CreatioHelper.Domain.Entities;
 using System.Threading;
 using System.Threading.Tasks;
 
