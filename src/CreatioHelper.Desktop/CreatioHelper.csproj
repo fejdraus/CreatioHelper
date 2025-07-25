@@ -28,7 +28,8 @@
     </ItemGroup>
     <ItemGroup>
       <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
-    </ItemGroup>
+      <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
+  </ItemGroup>
     <ItemGroup>
       <None Update="settings.json">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
