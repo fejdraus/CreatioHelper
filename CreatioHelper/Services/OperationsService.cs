@@ -118,7 +118,37 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             await manager.StopWebsiteAsync(localServerInfo);
                             _output.WriteLine("[INFO] Main Website stopped.");
-                        }   
+                        }
+
+                        if (!string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        {
+                            localServerInfo.ServiceName = viewModel.ServiceName;
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
+                            if (serviceStopResult)
+                            {
+                                _output.WriteLine("[INFO] Main Service stopped.");
+                            }
+                            else
+                            {
+                                _output.WriteLine("[WARNING] Failed to stop main service or service was not running.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        {
+                            localServerInfo.ServiceName = viewModel.ServiceName;
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
+                            if (serviceStopResult)
+                            {
+                                _output.WriteLine("[INFO] Main Service stopped.");
+                            }
+                            else
+                            {
+                                _output.WriteLine("[WARNING] Failed to stop main service or service was not running.");
+                            }
+                        }
                     }
                     
                     IsStopButtonEnabled = true;
@@ -196,7 +226,37 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             await manager.StartWebsiteAsync(localServerInfo);
                             _output.WriteLine("[INFO] Main Website is running.");
-                        }    
+                        }
+
+                        // Запуск службы для .NET версий Creatio на Windows
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        {
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
+                            if (serviceStartResult)
+                            {
+                                _output.WriteLine("[INFO] Main Service is running.");
+                            }
+                            else
+                            {
+                                _output.WriteLine("[WARNING] Failed to start main service.");
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Запуск службы для Linux
+                        if (!string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        {
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
+                            if (serviceStartResult)
+                            {
+                                _output.WriteLine("[INFO] Main Service is running.");
+                            }
+                            else
+                            {
+                                _output.WriteLine("[WARNING] Failed to start main service.");
+                            }
+                        }
                     }
                 }
             } 

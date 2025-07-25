@@ -9,6 +9,7 @@ namespace CreatioHelper.Core.Services
     public class RemoteIisManager(IOutputWriter output) : IRemoteIisManager
     {
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
+        private readonly SystemServiceManager _systemServiceManager = new(output);
 
         private bool IsLocal(string serverName) => string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
 
@@ -87,6 +88,58 @@ namespace CreatioHelper.Core.Services
             }
 
             return await WaitForStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'", "Started", $"Website {server.SiteName}");
+        }
+
+        public async Task<bool> StartServiceAsync(ServerInfo server)
+        {
+            if (string.IsNullOrWhiteSpace(server.ServiceName))
+            {
+                _output.WriteLine($"[ERROR] Service name is not specified for server '{server.Name}'.");
+                return false;
+            }
+
+            try
+            {
+                if (IsLocal(server.Name))
+                {
+                    return await _systemServiceManager.StartServiceAsync(server.ServiceName);
+                }
+                else
+                {
+                    return await StartRemoteServiceAsync(server.Name, server.ServiceName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to start service '{server.ServiceName}' on '{server.Name}': {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> StopServiceAsync(ServerInfo server)
+        {
+            if (string.IsNullOrWhiteSpace(server.ServiceName))
+            {
+                _output.WriteLine($"[ERROR] Service name is not specified for server '{server.Name}'.");
+                return false;
+            }
+
+            try
+            {
+                if (IsLocal(server.Name))
+                {
+                    return await _systemServiceManager.StopServiceAsync(server.ServiceName);
+                }
+                else
+                {
+                    return await StopRemoteServiceAsync(server.Name, server.ServiceName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to stop service '{server.ServiceName}' on '{server.Name}': {ex.Message}");
+                return false;
+            }
         }
 
         private async Task<bool> ExecuteScriptAsync(string serverName, string script)
@@ -263,6 +316,187 @@ namespace CreatioHelper.Core.Services
             {
                 server.SiteStatus = "Error";
                 _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name}': {ex.Message}");
+            }
+        }
+
+        public async Task GetServiceStatusAsync(ServerInfo server)
+        {
+            try
+            {
+                if (!string.IsNullOrWhiteSpace(server.ServiceName))
+                {
+                    string? serviceStatus;
+                    if (IsLocal(server.Name))
+                    {
+                        serviceStatus = await _systemServiceManager.GetServiceStateAsync(server.ServiceName);
+                    }
+                    else
+                    {
+                        serviceStatus = await GetRemoteServiceStateAsync(server.Name, server.ServiceName);
+                    }
+                    
+                    server.ServiceStatus = serviceStatus ?? "Error";
+                }
+                else
+                {
+                    server.ServiceStatus = "Service name is empty";
+                }
+            }
+            catch (Exception ex)
+            {
+                server.ServiceStatus = "Error";
+                _output.WriteLine($"[ERROR] Failed to get service status for server '{server.Name}': {ex.Message}");
+            }
+        }
+
+        private async Task<bool> StartRemoteServiceAsync(string serverName, string serviceName)
+        {
+            try
+            {
+                string command;
+                if (OperatingSystem.IsWindows())
+                {
+                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Start-Service -Name '{serviceName}' }} -ErrorAction Stop";
+                }
+                else
+                {
+                    command = $"ssh {serverName} 'systemctl start {serviceName}'";
+                }
+
+                return await ExecuteRemoteCommandAsync(command);
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to start remote service '{serviceName}' on '{serverName}': {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<bool> StopRemoteServiceAsync(string serverName, string serviceName)
+        {
+            try
+            {
+                string command;
+                if (OperatingSystem.IsWindows())
+                {
+                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Stop-Service -Name '{serviceName}' -Force }} -ErrorAction Stop";
+                }
+                else
+                {
+                    command = $"ssh {serverName} 'systemctl stop {serviceName}'";
+                }
+
+                return await ExecuteRemoteCommandAsync(command);
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to stop remote service '{serviceName}' on '{serverName}': {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<string?> GetRemoteServiceStateAsync(string serverName, string serviceName)
+        {
+            try
+            {
+                string command;
+                if (OperatingSystem.IsWindows())
+                {
+                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ (Get-Service -Name '{serviceName}').Status }} -ErrorAction Stop";
+                }
+                else
+                {
+                    command = $"ssh {serverName} 'systemctl is-active {serviceName}'";
+                }
+
+                return await ExecuteRemoteCommandWithOutputAsync(command);
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to get remote service state for '{serviceName}' on '{serverName}': {ex.Message}");
+                return "Error";
+            }
+        }
+
+        private async Task<bool> ExecuteRemoteCommandAsync(string command)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = OperatingSystem.IsWindows() ? "powershell.exe" : "/bin/bash",
+                    Arguments = OperatingSystem.IsWindows() 
+                        ? $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\""
+                        : $"-c \"{command}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    _output.WriteLine("[ERROR] Failed to start process for remote service management.");
+                    return false;
+                }
+
+                var errorText = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (!string.IsNullOrWhiteSpace(errorText))
+                {
+                    _output.WriteLine($"[ERROR] Remote service operation failed: {errorText.Trim()}");
+                    return false;
+                }
+
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Remote command execution failed: {ex.Message}");
+                return false;
+            }
+        }
+
+        private async Task<string?> ExecuteRemoteCommandWithOutputAsync(string command)
+        {
+            try
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = OperatingSystem.IsWindows() ? "powershell.exe" : "/bin/bash",
+                    Arguments = OperatingSystem.IsWindows() 
+                        ? $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\""
+                        : $"-c \"{command}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                {
+                    _output.WriteLine("[ERROR] Failed to start process for remote service status check.");
+                    return null;
+                }
+
+                var outputText = await process.StandardOutput.ReadToEndAsync();
+                var errorText = await process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                if (!string.IsNullOrWhiteSpace(errorText))
+                {
+                    return null;
+                }
+
+                return outputText?.Trim();
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to execute remote command with output: {ex.Message}");
+                return null;
             }
         }
     }

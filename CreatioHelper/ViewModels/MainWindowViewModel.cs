@@ -367,4 +367,82 @@ public partial class MainWindowViewModel : ObservableObject
 
         _settingsService.Save(settings);
     }
+
+    [RelayCommand]
+    private async Task StartService(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StartServiceAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopService(ServerInfo server)
+    {
+        var result = await _remoteIisManager.StopServiceAsync(server);
+        if (result)
+        {
+            await _statusService.RefreshServerStatusAsync(server);
+        }
+    }
+
+    [RelayCommand]
+    private async Task StartMainService()
+    {
+        if (string.IsNullOrWhiteSpace(ServiceName))
+        {
+            _output.WriteLine("[ERROR] Service name is not specified. Please enter a service name.");
+            return;
+        }
+
+        try
+        {
+            var systemServiceManager = new SystemServiceManager(_output);
+            var result = await systemServiceManager.StartServiceAsync(ServiceName);
+            
+            if (result)
+            {
+                _output.WriteLine($"[SUCCESS] Service '{ServiceName}' started successfully.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to start service '{ServiceName}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to start service '{ServiceName}': {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopMainService()
+    {
+        if (string.IsNullOrWhiteSpace(ServiceName))
+        {
+            _output.WriteLine("[ERROR] Service name is not specified. Please enter a service name.");
+            return;
+        }
+
+        try
+        {
+            var systemServiceManager = new SystemServiceManager(_output);
+            var result = await systemServiceManager.StopServiceAsync(ServiceName);
+            
+            if (result)
+            {
+                _output.WriteLine($"[SUCCESS] Service '{ServiceName}' stopped successfully.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop service '{ServiceName}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to stop service '{ServiceName}': {ex.Message}");
+        }
+    }
 }
