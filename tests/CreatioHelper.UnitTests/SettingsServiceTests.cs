@@ -1,5 +1,5 @@
 using System.IO;
-using CreatioHelper.Core;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Services;
 
 namespace CreatioHelper.Tests;

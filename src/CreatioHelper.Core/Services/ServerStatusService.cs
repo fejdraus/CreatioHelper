@@ -1,4 +1,5 @@
 using System;
+using CreatioHelper.Domain.Entities;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 

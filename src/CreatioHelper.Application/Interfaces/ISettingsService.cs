@@ -1,6 +1,6 @@
-using CreatioHelper.Core;
+using CreatioHelper.Domain.Entities;
 
-namespace CreatioHelper.Services;
+namespace CreatioHelper.Application.Interfaces;
 
 public interface ISettingsService
 {

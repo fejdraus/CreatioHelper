@@ -1,5 +1,6 @@
-using CreatioHelper.Core;
-using CreatioHelper.Core.Services;
+using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services;
+using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper.Services;
 

@@ -6,6 +6,7 @@ using System;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Services;
+using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper;
 

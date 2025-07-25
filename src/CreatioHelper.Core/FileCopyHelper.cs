@@ -1,4 +1,5 @@
 ﻿using System;
+using CreatioHelper.Domain.Entities;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;

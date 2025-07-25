@@ -3,7 +3,9 @@ using System.IO;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 
-namespace CreatioHelper.Core
+using CreatioHelper.Domain.Entities;
+
+namespace CreatioHelper.Infrastructure.Services
 {
     public static class AppSettingsService
     {

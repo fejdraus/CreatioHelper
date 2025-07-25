@@ -6,6 +6,7 @@ using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Core.Services;
+using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Core
 {
