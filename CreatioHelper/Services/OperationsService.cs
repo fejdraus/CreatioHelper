@@ -109,7 +109,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     var manager = new RemoteIisManager(_output);
                     if (OperatingSystem.IsWindows())
                     {
-                        if (!File.Exists(nestedPath))
+                        if (File.Exists(nestedPath))
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
                             {
@@ -124,7 +124,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             }
                         }
                         
-                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
                             var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
@@ -140,7 +140,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
+                        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
                             var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
@@ -221,7 +221,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     IsStopButtonEnabled = false;
                     if (OperatingSystem.IsWindows())
                     {
-                        if (!File.Exists(nestedPath))
+                        if (File.Exists(nestedPath))
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                             {
@@ -235,7 +235,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             }
                         }
 
-                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
                             var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
                             if (serviceStartResult)
@@ -250,7 +250,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        if (File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+                        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
                             var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
                             if (serviceStartResult)
