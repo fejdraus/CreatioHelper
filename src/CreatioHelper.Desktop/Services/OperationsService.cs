@@ -14,6 +14,7 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Utils;
 using CreatioHelper.ViewModels;
 

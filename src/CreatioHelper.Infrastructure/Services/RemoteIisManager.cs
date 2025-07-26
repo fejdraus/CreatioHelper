@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
 namespace CreatioHelper.Infrastructure.Services
 {
     [SupportedOSPlatform("windows")]

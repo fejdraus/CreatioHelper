@@ -1,3 +1,4 @@
+using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
