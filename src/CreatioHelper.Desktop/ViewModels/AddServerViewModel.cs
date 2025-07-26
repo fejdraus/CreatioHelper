@@ -22,13 +22,13 @@ public class AddServerViewModel(ServerInfo? server = null) : INotifyPropertyChan
 
     public string SiteName
     {
-        get => Server.SiteName;
+        get => Server.SiteName ?? string.Empty;
         set { Server.SiteName = value; OnPropertyChanged(); }
     }
 
     public string PoolName
     {
-        get => Server.PoolName;
+        get => Server.PoolName ?? string.Empty;
         set { Server.PoolName = value; OnPropertyChanged(); }
     }
 
