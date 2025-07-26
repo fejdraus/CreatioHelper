@@ -2,10 +2,11 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using CreatioHelper.Core;
+using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services
 {
-    public class SystemServiceManager
+    public class SystemServiceManager : ISystemServiceManager
     {
         private readonly IOutputWriter _output;
 

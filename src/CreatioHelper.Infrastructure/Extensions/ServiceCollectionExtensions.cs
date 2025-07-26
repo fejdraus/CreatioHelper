@@ -9,6 +9,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddInfrastructure(this IServiceCollection services)
     {
         services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddTransient<ISystemServiceManager, SystemServiceManager>();
         return services;
     }
 }
