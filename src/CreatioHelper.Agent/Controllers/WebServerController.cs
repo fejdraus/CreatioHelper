@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Contracts.Requests;
+using CreatioHelper.Contracts.Responses;
 using System;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -118,14 +119,26 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopSiteAsync(siteName);
-            
+            var dto = new WebServerResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                Data = result.Data is null ? null : new Data
+                {
+                    ServiceName = result.Data.ServiceName,
+                    Status = result.Data.Status,
+                    Details = result.Data.Details,
+                    PoolName = result.Data.PoolName
+                }
+            };
+
             if (result.Success)
             {
-                return Ok(result);
+                return Ok(dto);
             }
             else
             {
-                return BadRequest(result);
+                return BadRequest(dto);
             }
         }
         catch (Exception ex)
@@ -147,14 +160,26 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartAppPoolAsync(poolName);
-            
+            var dto = new WebServerResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                Data = result.Data is null ? null : new Data
+                {
+                    ServiceName = result.Data.ServiceName,
+                    Status = result.Data.Status,
+                    Details = result.Data.Details,
+                    PoolName = result.Data.PoolName
+                }
+            };
+
             if (result.Success)
             {
-                return Ok(result);
+                return Ok(dto);
             }
             else
             {
-                return BadRequest(result);
+                return BadRequest(dto);
             }
         }
         catch (Exception ex)
@@ -176,14 +201,26 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopAppPoolAsync(poolName);
-            
+            var dto = new WebServerResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                Data = result.Data is null ? null : new Data
+                {
+                    ServiceName = result.Data.ServiceName,
+                    Status = result.Data.Status,
+                    Details = result.Data.Details,
+                    PoolName = result.Data.PoolName
+                }
+            };
+
             if (result.Success)
             {
-                return Ok(result);
+                return Ok(dto);
             }
             else
             {
-                return BadRequest(result);
+                return BadRequest(dto);
             }
         }
         catch (Exception ex)
@@ -206,12 +243,36 @@ public class WebServerController : ControllerBase
             if (OperatingSystem.IsWindows() && _iisStatusService != null)
             {
                 var status = await _iisStatusService.GetServerStatusAsync(siteName, poolName);
-                return Ok(status);
+                var dto = new ServerStatusInfo
+                {
+                    ServerName = status.ServerName,
+                    SiteName = status.SiteName,
+                    PoolName = status.PoolName,
+                    SiteStatus = status.SiteStatus,
+                    PoolStatus = status.PoolStatus,
+                    IsStatusLoading = status.IsStatusLoading,
+                    IsHealthy = status.IsHealthy,
+                    LastUpdated = status.LastUpdated,
+                    ErrorMessage = status.ErrorMessage
+                };
+                return Ok(dto);
             }
 
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var siteResult = await webServerService.GetSiteStatusAsync(siteName);
-            return Ok(siteResult);
+            var resultDto = new WebServerResult
+            {
+                Success = siteResult.Success,
+                Message = siteResult.Message,
+                Data = siteResult.Data is null ? null : new Data
+                {
+                    ServiceName = siteResult.Data.ServiceName,
+                    Status = siteResult.Data.Status,
+                    Details = siteResult.Data.Details,
+                    PoolName = siteResult.Data.PoolName
+                }
+            };
+            return Ok(resultDto);
         }
         catch (Exception ex)
         {
@@ -232,7 +293,18 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var sites = await webServerService.GetAllSitesAsync();
-            return Ok(sites);
+            var dto = sites.Select(s => new WebServerStatus
+            {
+                Name = s.Name,
+                Status = s.Status,
+                Type = s.Type,
+                Port = s.Port,
+                IsRunning = s.IsRunning,
+                LastChecked = s.LastChecked,
+                ErrorMessage = s.ErrorMessage,
+                Properties = s.Properties
+            });
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -253,7 +325,18 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var appPools = await webServerService.GetAllAppPoolsAsync();
-            return Ok(appPools);
+            var dto = appPools.Select(p => new WebServerStatus
+            {
+                Name = p.Name,
+                Status = p.Status,
+                Type = p.Type,
+                Port = p.Port,
+                IsRunning = p.IsRunning,
+                LastChecked = p.LastChecked,
+                ErrorMessage = p.ErrorMessage,
+                Properties = p.Properties
+            });
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -272,8 +355,25 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var statuses = await _iisStatusService.GetMultipleServersStatusAsync(requests);
-            return Ok(statuses);
+            var domainRequests = requests.Select(r => new CreatioHelper.Domain.Entities.ServerRequest
+            {
+                SiteName = r.SiteName,
+                PoolName = r.PoolName
+            }).ToArray();
+            var statuses = await _iisStatusService.GetMultipleServersStatusAsync(domainRequests);
+            var dto = statuses.Select(s => new ServerStatusInfo
+            {
+                ServerName = s.ServerName,
+                SiteName = s.SiteName,
+                PoolName = s.PoolName,
+                SiteStatus = s.SiteStatus,
+                PoolStatus = s.PoolStatus,
+                IsStatusLoading = s.IsStatusLoading,
+                IsHealthy = s.IsHealthy,
+                LastUpdated = s.LastUpdated,
+                ErrorMessage = s.ErrorMessage
+            });
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -410,14 +510,26 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartSiteAsync(siteName);
-        
+            var dto = new WebServerResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                Data = result.Data is null ? null : new Data
+                {
+                    ServiceName = result.Data.ServiceName,
+                    Status = result.Data.Status,
+                    Details = result.Data.Details,
+                    PoolName = result.Data.PoolName
+                }
+            };
+
             if (result.Success)
             {
-                return Ok(result);
+                return Ok(dto);
             }
             else
             {
-                return BadRequest(result);
+                return BadRequest(dto);
             }
         }
         catch (Exception ex)

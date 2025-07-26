@@ -4,6 +4,7 @@ using CreatioHelper.Agent.Controllers;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Enums;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Contracts.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;

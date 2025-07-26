@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Contracts.Requests;
 
 namespace CreatioHelper.Agent.Controllers;
 
