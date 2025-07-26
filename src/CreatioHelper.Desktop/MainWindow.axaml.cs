@@ -12,8 +12,8 @@ using Avalonia.Threading;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
-using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -59,10 +59,10 @@ namespace CreatioHelper
                 });
 
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
-            var settingsService = provider.GetRequiredService<ISettingsService>();
+            var mediator = provider.GetRequiredService<IMediator>();
             var dialogService = new DialogService(StorageProvider);
             var operationsService = new OperationsService(_writer);
-            _viewModel = new MainWindowViewModel(_writer, settingsService, operationsService, dialogService);
+            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService);
             DataContext = _viewModel;
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;

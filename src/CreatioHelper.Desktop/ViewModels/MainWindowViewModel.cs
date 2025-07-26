@@ -13,6 +13,8 @@ using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Settings;
 using System.Diagnostics;
 using System.Threading;
 
@@ -26,16 +28,16 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
     private readonly IisService _iisService;
-    private readonly ISettingsService _settingsService;
+    private readonly IMediator _mediator;
     private readonly IOperationsService _operationsService;
     private readonly IDialogService _dialogService;
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
     
-    public MainWindowViewModel(IOutputWriter output, ISettingsService settingsService, IOperationsService operationsService, IDialogService dialogService)
+    public MainWindowViewModel(IOutputWriter output, IMediator mediator, IOperationsService operationsService, IDialogService dialogService)
     {
         _output = output;
-        _settingsService = settingsService;
+        _mediator = mediator;
         _operationsService = operationsService;
         _operationsService.PropertyChanged += (_, args) =>
         {
@@ -52,7 +54,7 @@ public partial class MainWindowViewModel : ObservableObject
         _remoteIisManager = new RemoteIisManager(output);
         _iisService = new IisService();
         
-        var settings = _settingsService.Load();
+        var settings = _mediator.Send(new LoadSettingsQuery()).GetAwaiter().GetResult();
         
         if (OperatingSystem.IsWindows())
         {
@@ -367,7 +369,7 @@ public partial class MainWindowViewModel : ObservableObject
             IsServerPanelVisible = IsServerPanelVisible
         };
 
-        _settingsService.Save(settings);
+        _mediator.Send(new SaveSettingsCommand(settings));
     }
 
     [RelayCommand]
