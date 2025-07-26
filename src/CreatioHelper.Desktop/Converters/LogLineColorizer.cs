@@ -3,7 +3,7 @@ using Avalonia.Media;
 using AvaloniaEdit.Document;
 using AvaloniaEdit.Rendering;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Converters;
 
 public class LogLineColorizer : DocumentColorizingTransformer
 {

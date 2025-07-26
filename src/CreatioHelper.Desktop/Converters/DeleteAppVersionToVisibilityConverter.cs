@@ -2,8 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Avalonia.Data.Converters;
+using CreatioHelper.Core;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Converters;
 
 public class DeleteAppVersionToVisibilityConverter : IMultiValueConverter
 {

@@ -13,8 +13,8 @@
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <core1:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
-        <core1:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
+        <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
+        <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
         <converters:NotConverter x:Key="NotConverter"/>
     </Window.Resources>
 
@@ -222,7 +222,7 @@
                                         <Run Text="Pool name: " />
                                         <Run Text="{Binding PoolName}" />
                                         <Run Text=" [" />
-                                        <Run Text="{Binding PoolStatus}" Foreground="{Binding PoolStatus, Converter={x:Static core1:StatusToColorConverter.Instance}}" />
+                                        <Run Text="{Binding PoolStatus}" Foreground="{Binding PoolStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" />
                                         <Run Text="]" />
                                     </TextBlock>
                                     
@@ -230,7 +230,7 @@
                                         <Run Text="Site name: " />
                                         <Run Text="{Binding SiteName}" />
                                         <Run Text=" [" />
-                                        <Run Text="{Binding SiteStatus}" Foreground="{Binding SiteStatus, Converter={x:Static core1:StatusToColorConverter.Instance}}" />
+                                        <Run Text="{Binding SiteStatus}" Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" />
                                         <Run Text="]" />
                                     </TextBlock>
 

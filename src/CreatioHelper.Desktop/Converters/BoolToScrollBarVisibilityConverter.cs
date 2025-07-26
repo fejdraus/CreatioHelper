@@ -3,7 +3,7 @@ using System.Globalization;
 using Avalonia.Controls.Primitives;
 using Avalonia.Data.Converters;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Converters
 {
     public class BoolToScrollBarVisibilityConverter : IValueConverter
     {
