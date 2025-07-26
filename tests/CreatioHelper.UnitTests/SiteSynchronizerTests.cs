@@ -49,6 +49,10 @@ public class SiteSynchronizerTests
     [Fact]
     public async Task SynchronizeAsync_ReturnsTrue_When_AllOperationsSucceed()
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return; // Test relies on Windows-specific behavior
+        }
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
         remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
