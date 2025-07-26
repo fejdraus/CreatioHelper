@@ -21,4 +21,6 @@ public class IisSiteInfo
     public string PoolName { get; set; } = "";
 
     public Version Version { get; set; } = new();
+
+    public override string ToString() => Name;
 }
