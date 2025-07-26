@@ -11,7 +11,6 @@ using CommunityToolkit.Mvvm.Input;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
-using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
@@ -32,6 +31,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IMediator _mediator;
     private readonly IOperationsService _operationsService;
     private readonly IDialogService _dialogService;
+    private readonly ISystemServiceManager _systemServiceManager;
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
     
@@ -42,7 +42,8 @@ public partial class MainWindowViewModel : ObservableObject
         IDialogService dialogService,
         ServerStatusService statusService,
         IRemoteIisManager remoteIisManager,
-        IisService iisService)
+        IisService iisService,
+        ISystemServiceManager systemServiceManager)
     {
         _output = output;
         _mediator = mediator;
@@ -61,6 +62,7 @@ public partial class MainWindowViewModel : ObservableObject
         _isInitializing = true;
         _remoteIisManager = remoteIisManager;
         _iisService = iisService;
+        _systemServiceManager = systemServiceManager;
         
         var settings = _mediator.Send(new LoadSettingsQuery()).GetAwaiter().GetResult();
         
@@ -411,8 +413,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var systemServiceManager = new SystemServiceManager(_output);
-            var result = await systemServiceManager.StartServiceAsync(ServiceName);
+            var result = await _systemServiceManager.StartServiceAsync(ServiceName);
             
             if (result)
             {
@@ -440,8 +441,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            var systemServiceManager = new SystemServiceManager(_output);
-            var result = await systemServiceManager.StopServiceAsync(ServiceName);
+            var result = await _systemServiceManager.StopServiceAsync(ServiceName);
             
             if (result)
             {
