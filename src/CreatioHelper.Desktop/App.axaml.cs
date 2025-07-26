@@ -5,8 +5,8 @@ using Avalonia.Markup.Xaml;
 using System;
 using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
-using CreatioHelper.Services;
-using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Application.Extensions;
+using CreatioHelper.Infrastructure.Extensions;
 
 namespace CreatioHelper;
 
@@ -36,6 +36,7 @@ public partial class App : Avalonia.Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddApplication();
+        services.AddInfrastructure();
     }
 }

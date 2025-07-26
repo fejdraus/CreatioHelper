@@ -1,8 +1,7 @@
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 
-namespace CreatioHelper.Services;
+namespace CreatioHelper.Infrastructure.Services;
 
 public class SettingsService : ISettingsService
 {
