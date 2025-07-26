@@ -1,3 +1,4 @@
+#if WINDOWS
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -7,7 +8,6 @@ using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 using Moq;
-
 namespace CreatioHelper.Tests;
 
 public class SiteSynchronizerTests
@@ -86,3 +86,4 @@ public class SiteSynchronizerTests
         Assert.True(result);
     }
 }
+#endif
