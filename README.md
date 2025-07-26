@@ -5,6 +5,16 @@ CreatioHelper is a graphical user interface (GUI) for the Creatio WorkspaceConso
 - **CreatioHelper** – cross-platform graphical application for managing WorkspaceConsole, developed with AvaloniaUI.
 - **CreatioHelper.Agent** – lightweight background service that provides APIs for monitoring and managing the Creatio environment. This agent can run on a server in the background and accept commands via HTTP.
 
+Projects are organized under the `src` folder while tests live under `tests`:
+
+```
+src/CreatioHelper.Desktop/      # GUI application
+src/CreatioHelper.Agent/        # Background web API
+src/CreatioHelper.Domain/       # Domain models
+src/CreatioHelper.Application/  # Use cases and interfaces
+src/CreatioHelper.Infrastructure/ # Infrastructure services
+```
+
 ## Building
 
 This solution targets **.NET 8**. Make sure the .NET 8 SDK is installed, then build everything using:
@@ -20,16 +30,16 @@ Each component can be executed directly with `dotnet run`:
 
 ```bash
 # Launch the desktop GUI
- dotnet run --project CreatioHelper
+ dotnet run --project src/CreatioHelper.Desktop
 
 # Start the agent service
- dotnet run --project CreatioHelper.Agent
+ dotnet run --project src/CreatioHelper.Agent
 ```
 
 Published binaries can be produced with `dotnet publish` if desired.
 
-
 ## Architecture
+
 - **Domain** – core entities and enums shared across the solution
 - **Application** – interfaces, Mediator handlers and use cases
 - **Infrastructure** – implementations of external integrations (IIS, file system, configuration)
