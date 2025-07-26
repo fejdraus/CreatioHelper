@@ -234,11 +234,8 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
     private string GetServiceName(ServerInfo server)
     {
-        if (!string.IsNullOrEmpty(server.PoolName))
-            return server.PoolName;
-        
-        if (!string.IsNullOrEmpty(server.SiteName))
-            return server.SiteName;
+        if (!string.IsNullOrEmpty(server.ServiceName))
+            return server.ServiceName;
 
         return string.Empty;
     }
