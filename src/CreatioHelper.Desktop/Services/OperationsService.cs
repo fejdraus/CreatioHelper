@@ -1,16 +1,10 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.Versioning;
-using System.Runtime.InteropServices;
 using System.Management;
 using System.Threading;
 using System.Threading.Tasks;
-using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
@@ -20,7 +14,6 @@ using CreatioHelper.ViewModels;
 
 namespace CreatioHelper.Services;
 
-[SupportedOSPlatform("windows")]
 public partial class OperationsService : ObservableObject, IOperationsService
 {
     private readonly IOutputWriter _output;
@@ -380,8 +373,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
             {
                 using var searcher = new ManagementObjectSearcher($"SELECT CommandLine FROM Win32_Process WHERE ProcessId = {process.Id}");
                 using var results = searcher.Get();
-                foreach (ManagementObject obj in results)
+                foreach (var o in results)
                 {
+                    var obj = (ManagementObject)o;
                     return obj["CommandLine"]?.ToString() ?? string.Empty;
                 }
             }

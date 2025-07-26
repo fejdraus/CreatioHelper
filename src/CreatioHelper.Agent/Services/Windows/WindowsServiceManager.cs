@@ -1,11 +1,8 @@
 using System.Diagnostics;
-using System.Runtime.Versioning;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
-[SupportedOSPlatform("windows")]
 public class WindowsServiceManager : IWebServerService
 {
     private readonly ILogger<WindowsServiceManager> _logger;
@@ -141,7 +138,7 @@ public class WindowsServiceManager : IWebServerService
             {
                 try
                 {
-                    var servicesData = System.Text.Json.JsonSerializer.Deserialize<WindowsServiceInfo[]>(result, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var servicesData = JsonSerializer.Deserialize<WindowsServiceInfo[]>(result, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     
                     if (servicesData != null)
                     {
@@ -161,7 +158,7 @@ public class WindowsServiceManager : IWebServerService
                         }
                     }
                 }
-                catch (System.Text.Json.JsonException ex)
+                catch (JsonException ex)
                 {
                     _logger.LogError(ex, "Error parsing services JSON data");
                 }
@@ -249,7 +246,7 @@ public class WindowsServiceManager : IWebServerService
                 return null;
             }
 
-            return outputText?.Trim();
+            return outputText.Trim();
         }
         catch (Exception ex)
         {

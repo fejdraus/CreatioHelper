@@ -12,7 +12,6 @@ using Microsoft.Web.Administration;
 
 namespace CreatioHelper.Services;
 
-[SupportedOSPlatform("windows")]
 public class IisService
 {
     public static bool IsIisAvailable()

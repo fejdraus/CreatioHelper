@@ -21,7 +21,6 @@ using System.Threading;
 
 namespace CreatioHelper.ViewModels;
 
-[SupportedOSPlatform("windows")]
 public partial class MainWindowViewModel : ObservableObject
 {
     private readonly bool _isInitializing;
@@ -209,6 +208,10 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task RefreshServerStatus(ServerInfo server)
     {
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
         await _statusService.RefreshServerStatusAsync(server);
     }
     
@@ -216,6 +219,10 @@ public partial class MainWindowViewModel : ObservableObject
     private async Task RefreshAllServersStatus()
     {
         if (ServerList.Count == 0) return;
+        if (!OperatingSystem.IsWindows())
+        {
+            return;
+        }
         await _statusService.RefreshMultipleServersStatusAsync(ServerList.ToArray());
     }
     
@@ -225,6 +232,10 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _remoteIisManager.StopAppPoolAsync(server);
         if (result)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
             await _statusService.RefreshServerStatusAsync(server);
         }
     }
@@ -235,6 +246,10 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _remoteIisManager.StartAppPoolAsync(server);
         if (result)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
             await _statusService.RefreshServerStatusAsync(server);
         }
     }
@@ -245,6 +260,10 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _remoteIisManager.StopWebsiteAsync(server);
         if (result)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
             await _statusService.RefreshServerStatusAsync(server);
         }
     }
@@ -258,6 +277,10 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _remoteIisManager.StartWebsiteAsync(server);
         if (result)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return;
+            }
             await _statusService.RefreshServerStatusAsync(server);
         }
     }
@@ -318,7 +341,6 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
     
-    [SupportedOSPlatform("windows")]
     private void LoadIisSites(AppSettings? settings)
     {
         _iisService.LoadIisSites(IisSites, success =>

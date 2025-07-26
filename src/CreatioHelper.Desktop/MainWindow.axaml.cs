@@ -1,18 +1,13 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services;
-using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Utils;
 using CreatioHelper.Converters;
 using CreatioHelper.Services;
@@ -20,12 +15,10 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-using System.Runtime.Versioning;
 using CreatioHelper.Infrastructure.Services.Workspace;
 
 namespace CreatioHelper
 {
-    [SupportedOSPlatform("windows")]
     public partial class MainWindow : Window
     {
         private readonly BufferingOutputWriter _writer;

@@ -1,12 +1,9 @@
-using System.Runtime.Versioning;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Logging;
-using Xunit;
 
 namespace CreatioHelper.Tests;
 
-[SupportedOSPlatform("windows")]
 public class RemoteIisManagerTests
 {
     [Fact]

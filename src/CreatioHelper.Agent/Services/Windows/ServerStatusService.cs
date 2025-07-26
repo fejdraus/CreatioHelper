@@ -1,10 +1,7 @@
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
-using System.Runtime.Versioning;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
-[SupportedOSPlatform("windows")]
 public class IisStatusService
 {
     private readonly IisManagerService _iisManager;
@@ -35,9 +32,9 @@ public class IisStatusService
                 var siteResult = await _iisManager.GetSiteStatusAsync(siteName);
                 if (siteResult.Success && siteResult.Data is { } siteData)
                 {
-                    var siteInfo = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                        System.Text.Json.JsonSerializer.Serialize(siteData));
-                    status.SiteStatus = siteInfo?["Status"]?.ToString() ?? "Unknown";
+                    var siteInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        JsonSerializer.Serialize(siteData));
+                    status.SiteStatus = siteInfo?["Status"].ToString() ?? "Unknown";
                 }
                 else
                 {
@@ -51,9 +48,9 @@ public class IisStatusService
                 var poolResult = await _iisManager.GetAppPoolStatusAsync(poolName);
                 if (poolResult.Success && poolResult.Data is { } poolData)
                 {
-                    var poolInfo = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                        System.Text.Json.JsonSerializer.Serialize(poolData));
-                    status.PoolStatus = poolInfo?["Status"]?.ToString() ?? "Unknown";
+                    var poolInfo = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        JsonSerializer.Serialize(poolData));
+                    status.PoolStatus = poolInfo?["Status"].ToString() ?? "Unknown";
                 }
                 else
                 {

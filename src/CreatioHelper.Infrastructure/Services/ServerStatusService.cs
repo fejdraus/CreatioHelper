@@ -1,7 +1,4 @@
-using System;
 using CreatioHelper.Domain.Entities;
-using System.Runtime.Versioning;
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
 
@@ -17,8 +14,7 @@ namespace CreatioHelper.Infrastructure.Services
             _output = output ?? throw new ArgumentNullException(nameof(output));
             _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
         }
-
-        [SupportedOSPlatform("windows")]
+        
         public async Task RefreshServerStatusAsync(ServerInfo server)
         {
             if (server == null) throw new ArgumentNullException(nameof(server));
@@ -52,8 +48,7 @@ namespace CreatioHelper.Infrastructure.Services
                 server.IsStatusLoading = false;
             }
         }
-
-        [SupportedOSPlatform("windows")]
+        
         public async Task RefreshMultipleServersStatusAsync(params ServerInfo[] servers)
         {
             var tasks = new Task[servers.Length];
