@@ -5,3 +5,9 @@
 /tests/**/bin
 /tests/**/obj
 /.dotnet
+/src/CreatioHelper.Application/.idea
+/src/CreatioHelper.Contracts/.idea
+/src/CreatioHelper.Domain/.idea
+/src/CreatioHelper.Shared/.idea
+/src/CreatioHelper.Infrastructure/.idea
+/src/CreatioHelper.Contracts/.idea
