@@ -13,6 +13,7 @@ using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Application.Mediator;
 using CreatioHelper.Application.Settings;
 using System.Diagnostics;

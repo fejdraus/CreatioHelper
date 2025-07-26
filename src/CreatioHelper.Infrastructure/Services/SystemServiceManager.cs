@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services
 {

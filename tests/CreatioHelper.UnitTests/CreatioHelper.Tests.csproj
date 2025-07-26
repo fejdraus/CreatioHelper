@@ -24,5 +24,6 @@
     <ProjectReference Include="..\..\src\CreatioHelper.Infrastructure\CreatioHelper.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\CreatioHelper.Application\CreatioHelper.Application.csproj" />
     <ProjectReference Include="..\..\src\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
+    <ProjectReference Include="..\..\src\CreatioHelper.Shared\CreatioHelper.Shared.csproj" />
   </ItemGroup>
 </Project>

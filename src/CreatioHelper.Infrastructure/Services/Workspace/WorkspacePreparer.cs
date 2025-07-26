@@ -6,6 +6,8 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services.Workspace;
 
@@ -456,4 +458,3 @@ public class WorkspacePreparer : IWorkspacePreparer
         string SafePath(string path) => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
     }
-}

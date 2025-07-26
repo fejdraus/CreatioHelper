@@ -2,7 +2,9 @@ using System;
 using System.IO;
 using System.Xml;
 using StackExchange.Redis;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services.Redis
 {

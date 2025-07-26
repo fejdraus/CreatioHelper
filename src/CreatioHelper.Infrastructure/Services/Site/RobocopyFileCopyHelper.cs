@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
+using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
