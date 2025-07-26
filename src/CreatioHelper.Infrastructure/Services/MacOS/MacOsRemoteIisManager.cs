@@ -3,7 +3,7 @@ using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
 using System.Diagnostics;
 
-namespace CreatioHelper.Infrastructure.Services.Linux;
+namespace CreatioHelper.Infrastructure.Services.MacOs;
 
 public class MacOsRemoteIisManager : IRemoteIisManager
 {
@@ -188,11 +188,8 @@ public class MacOsRemoteIisManager : IRemoteIisManager
 
     private string GetServiceName(ServerInfo server)
     {
-        if (!string.IsNullOrEmpty(server.PoolName))
-            return server.PoolName;
-        
-        if (!string.IsNullOrEmpty(server.SiteName))
-            return server.SiteName;
+        if (!string.IsNullOrEmpty(server.ServiceName))
+            return server.ServiceName;
 
         return string.Empty;
     }
