@@ -5,7 +5,7 @@ using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Shared.Utils
 {
     public static class ProcessHelper
     {

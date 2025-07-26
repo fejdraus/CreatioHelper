@@ -1,4 +1,4 @@
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Domain.Entities;
 
 public class RedisInfo
 {

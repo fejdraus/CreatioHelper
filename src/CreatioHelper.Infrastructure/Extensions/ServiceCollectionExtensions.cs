@@ -2,9 +2,9 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
 using CreatioHelper.Infrastructure.Services.Site;
-using CreatioHelper.Core;
-using CreatioHelper.Core.Services;
 using Microsoft.Extensions.DependencyInjection;
+using CreatioHelper.Infrastructure.Services.Redis;
+using CreatioHelper.Infrastructure.Services.Workspace;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
@@ -20,6 +20,8 @@ public static class ServiceCollectionExtensions
         services.AddTransient<ISystemServiceManager, SystemServiceManager>();
         services.AddSingleton<IRemoteIisManager, RemoteIisManager>();
         services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
+        services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
+        services.AddTransient<IRedisManagerFactory, RedisManagerFactory>();
         services.AddTransient<ServerStatusService>();
         services.AddTransient<ISiteSynchronizer, SiteSynchronizer>();
         return services;

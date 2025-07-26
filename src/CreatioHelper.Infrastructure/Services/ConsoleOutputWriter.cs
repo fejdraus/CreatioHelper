@@ -1,5 +1,5 @@
 using System;
-using CreatioHelper.Core;
+using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services;
 

@@ -1,6 +1,6 @@
 using System;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Shared.Utils;
 
 public static class Constants
 {

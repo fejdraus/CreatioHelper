@@ -2,10 +2,11 @@ using System;
 using System.IO;
 using System.Xml;
 using StackExchange.Redis;
+using CreatioHelper.Application.Interfaces;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Infrastructure.Services.Redis
 {
-    public class RedisManager
+    public class RedisManager : IRedisManager
     {
         private readonly IOutputWriter _output;
         private readonly ConnectionMultiplexer _redis;

@@ -6,7 +6,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.Versioning;
 using Avalonia.Threading;
-using CreatioHelper.Core;
+using CreatioHelper.Shared.Utils;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Web.Administration;
 

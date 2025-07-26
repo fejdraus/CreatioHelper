@@ -10,16 +10,14 @@ using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Core;
+using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services;
-using CreatioHelper.Core.Services;
 using CreatioHelper.Converters;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
-
 using System.Runtime.Versioning;
 
 namespace CreatioHelper

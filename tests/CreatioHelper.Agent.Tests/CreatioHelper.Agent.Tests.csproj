@@ -25,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CreatioHelper.Agent\CreatioHelper.Agent.csproj" />
-    <ProjectReference Include="..\..\src\CreatioHelper.Core\CreatioHelper.Core.csproj" />
   </ItemGroup>
 
 </Project>

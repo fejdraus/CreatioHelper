@@ -4,7 +4,7 @@ using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 
-namespace CreatioHelper.Core.Services
+namespace CreatioHelper.Infrastructure.Services
 {
     public class ServerStatusService
     {

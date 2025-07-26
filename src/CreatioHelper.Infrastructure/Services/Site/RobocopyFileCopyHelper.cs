@@ -3,7 +3,6 @@ using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Core;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Infrastructure.Services.Site;

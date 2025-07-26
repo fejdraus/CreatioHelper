@@ -9,7 +9,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
     <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
-    <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
   </ItemGroup>
 

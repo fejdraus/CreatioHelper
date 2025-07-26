@@ -1,4 +1,4 @@
-﻿namespace CreatioHelper.Core
+﻿namespace CreatioHelper.Application.Interfaces
 {
     public interface IOutputWriter
     {

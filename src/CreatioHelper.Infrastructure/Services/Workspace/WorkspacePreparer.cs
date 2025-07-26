@@ -1,26 +1,32 @@
-﻿#nullable enable
+#nullable enable
 using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Xml;
+using CreatioHelper.Application.Interfaces;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Infrastructure.Services.Workspace;
+
+public class WorkspacePreparer : IWorkspacePreparer
 {
-    public class WorkspacePreparer(IOutputWriter output)
-    {
-        private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
+    private readonly IOutputWriter _output;
 
-        public void Prepare(string sitePath, out bool quartzIsActiveOriginal)
+    public WorkspacePreparer(IOutputWriter output)
+    {
+        _output = output ?? throw new ArgumentNullException(nameof(output));
+    }
+
+    public void Prepare(string sitePath, out bool quartzIsActiveOriginal)
+    {
+        _output.WriteLine("Starting WorkspaceConsole preparation...");
+        quartzIsActiveOriginal = true;
+        if (string.IsNullOrWhiteSpace(sitePath) || !Directory.Exists(sitePath))
         {
-            _output.WriteLine("Starting WorkspaceConsole preparation...");
-            quartzIsActiveOriginal = true;
-            if (string.IsNullOrWhiteSpace(sitePath) || !Directory.Exists(sitePath))
-            {
-                _output.WriteLine("❌ SitePath is not provided or does not exist.");
-                return;
-            }
+            _output.WriteLine("❌ SitePath is not provided or does not exist.");
+            return;
+        }
 
             sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 

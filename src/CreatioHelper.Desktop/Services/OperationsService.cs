@@ -13,8 +13,8 @@ using System.Threading.Tasks;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Core;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Utils;
 using CreatioHelper.ViewModels;
 
 namespace CreatioHelper.Services;
@@ -26,6 +26,8 @@ public partial class OperationsService : ObservableObject, IOperationsService
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly IRemoteIisManager _remoteIisManager;
     private readonly ISiteSynchronizer _siteSynchronizer;
+    private readonly IWorkspacePreparer _workspacePreparer;
+    private readonly IRedisManagerFactory _redisManagerFactory;
 
     [ObservableProperty]
     private bool _isBusy;
@@ -36,11 +38,18 @@ public partial class OperationsService : ObservableObject, IOperationsService
     [ObservableProperty]
     private bool _isStopButtonEnabled;
 
-    public OperationsService(IOutputWriter output, IRemoteIisManager remoteIisManager, ISiteSynchronizer siteSynchronizer)
+    public OperationsService(
+        IOutputWriter output,
+        IRemoteIisManager remoteIisManager,
+        ISiteSynchronizer siteSynchronizer,
+        IWorkspacePreparer workspacePreparer,
+        IRedisManagerFactory redisManagerFactory)
     {
         _output = output;
         _remoteIisManager = remoteIisManager;
         _siteSynchronizer = siteSynchronizer;
+        _workspacePreparer = workspacePreparer;
+        _redisManagerFactory = redisManagerFactory;
     }
 
     private bool ExecutePreparerAction(Func<int> action, string errorMessage, CancellationToken token)
@@ -73,7 +82,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         var serverList = viewModel.ServerList.ToArray();
         _cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = _cancellationTokenSource.Token;
-        var preparer = new WorkspacePreparer(_output);
+        var preparer = _workspacePreparer;
         IsBusy = true;
         StartButtonText = "In process...";
         viewModel.IsServerControlsEnabled = false;
@@ -213,7 +222,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
                     }
 
-                    var redisManager = new RedisManager(_output, sitePath);
+                    var redisManager = _redisManagerFactory.Create(sitePath);
                     var redisStatus = redisManager.CheckStatus();
                     if (redisStatus) 
                     {

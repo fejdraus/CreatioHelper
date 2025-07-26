@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
-using CreatioHelper.Core;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Tests;
 

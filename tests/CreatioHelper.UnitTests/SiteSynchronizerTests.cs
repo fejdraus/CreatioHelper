@@ -3,8 +3,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Site;
-using CreatioHelper.Core;
-using CreatioHelper.Core.Services;
+using CreatioHelper.Infrastructure.Logging;
+using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 using Moq;
 

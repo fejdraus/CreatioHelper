@@ -7,8 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Core.Services;
-using CreatioHelper.Core;
+using CreatioHelper.Infrastructure.Services;
 
 namespace CreatioHelper.Infrastructure.Services.Site;
 

@@ -3,9 +3,7 @@ using CreatioHelper.Domain.Entities;
 using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
-using CreatioHelper.Core;
 using CreatioHelper.Application.Interfaces;
-
 namespace CreatioHelper.Infrastructure.Services
 {
     [SupportedOSPlatform("windows")]
