@@ -72,9 +72,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
         else
         {
-            // В Linux/MacOS всегда используем Folder режим, поскольку IIS недоступен
             ApplyServerSettings(settings);
-            // Принудительно устанавливаем Folder режим после загрузки настроек
             IsFolderMode = true;
             OnPropertyChanged(nameof(IsFolderMode));
             OnPropertyChanged(nameof(IsIisMode));
