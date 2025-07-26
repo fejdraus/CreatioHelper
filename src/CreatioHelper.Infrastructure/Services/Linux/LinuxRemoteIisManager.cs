@@ -112,7 +112,17 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
         else
         {
-            command = $"sudo {command}";
+            var result = await ExecuteCommand(command, server.Name);
+            if (!result)
+            {
+                _output.WriteLine($"[INFO] {server.Name}: Command failed without sudo, trying with sudo...");
+                _output.WriteLine($"[INFO] {server.Name}: Note: For GUI application to work with sudo, consider configuring passwordless sudo for systemctl commands");
+                _output.WriteLine($"[INFO] {server.Name}: Add to /etc/sudoers: {Environment.UserName} ALL=(ALL) NOPASSWD: /bin/systemctl");
+                
+                command = $"sudo {command}";
+                return await ExecuteCommand(command, server.Name);
+            }
+            return result;
         }
 
         return await ExecuteCommand(command, server.Name);
@@ -124,22 +134,79 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         {
             _output.WriteLine($"[INFO] Executing on {serverName}: {command}");
 
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "/bin/bash",
-                Arguments = $"-c \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            ProcessStartInfo startInfo;
 
-            using var process = new Process();
-            process.StartInfo = startInfo;
+            if (command.Contains("sudo"))
+            {
+                if (File.Exists("/usr/bin/pkexec"))
+                {
+                    var modifiedCommand = command.Replace("sudo ", "");
+                    startInfo = new ProcessStartInfo
+                    {
+                        FileName = "/usr/bin/pkexec",
+                        Arguments = modifiedCommand,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    _output.WriteLine($"[INFO] {serverName}: Using pkexec for GUI privilege escalation");
+                }
+                else if (File.Exists("/usr/bin/gksudo"))
+                {
+                    startInfo = new ProcessStartInfo
+                    {
+                        FileName = "/usr/bin/gksudo",
+                        Arguments = $"'{command.Replace("sudo ", "")}'",
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    _output.WriteLine($"[INFO] {serverName}: Using gksudo for GUI privilege escalation");
+                }
+                else
+                {
+                    _output.WriteLine($"[WARNING] {serverName}: GUI application cannot handle sudo password prompt interactively.");
+                    _output.WriteLine($"[INFO] {serverName}: Consider configuring passwordless sudo or installing pkexec/gksudo");
+                    _output.WriteLine($"[INFO] {serverName}: Run: echo '{Environment.UserName} ALL=(ALL) NOPASSWD: /bin/systemctl' | sudo tee /etc/sudoers.d/systemctl-nopasswd");
+                    
+                    startInfo = new ProcessStartInfo
+                    {
+                        FileName = "/bin/bash",
+                        Arguments = $"-c \"{command}\"",
+                        UseShellExecute = true,
+                        CreateNoWindow = false
+                    };
+                }
+            }
+            else
+            {
+                startInfo = new ProcessStartInfo
+                {
+                    FileName = "/bin/bash",
+                    Arguments = $"-c \"{command}\"",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+            }
+
+            using var process = new Process { StartInfo = startInfo };
             process.Start();
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
+            string output = "";
+            string error = "";
+
+            if (startInfo.RedirectStandardOutput)
+            {
+                output = await process.StandardOutput.ReadToEndAsync();
+            }
+            if (startInfo.RedirectStandardError)
+            {
+                error = await process.StandardError.ReadToEndAsync();
+            }
 
             await process.WaitForExitAsync();
 
@@ -158,7 +225,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
             return success;
         }
-        catch (Exception ex)
+        catch (System.Exception ex)
         {
             _output.WriteLine($"[ERROR] Failed to execute command on {serverName}: {ex.Message}");
             return false;
