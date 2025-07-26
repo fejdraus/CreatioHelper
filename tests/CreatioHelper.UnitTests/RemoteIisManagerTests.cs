@@ -1,6 +1,6 @@
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services;
-using CreatioHelper.Core;
+using CreatioHelper.Infrastructure.Logging;
 
 namespace CreatioHelper.Tests;
 

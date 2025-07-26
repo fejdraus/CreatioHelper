@@ -40,7 +40,6 @@
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
     <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
     <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
     <ProjectReference Include="..\CreatioHelper.Infrastructure\CreatioHelper.Infrastructure.csproj" />

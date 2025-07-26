@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Core;
+using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Tests;

@@ -3,7 +3,7 @@ using System;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Shared.Utils;
 
 public sealed class Job : IDisposable
 {

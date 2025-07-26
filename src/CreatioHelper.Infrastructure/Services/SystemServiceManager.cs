@@ -1,7 +1,6 @@
 using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
-using CreatioHelper.Core;
 using CreatioHelper.Application.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services

@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using CreatioHelper.Core;
+using CreatioHelper.Infrastructure.Logging;
 
 namespace CreatioHelper.Tests;
 

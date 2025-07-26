@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Avalonia.Data.Converters;
-using CreatioHelper.Core;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Converters;
 

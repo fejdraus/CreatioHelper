@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Timers;
 
-namespace CreatioHelper.Core
+using CreatioHelper.Application.Interfaces;
+namespace CreatioHelper.Infrastructure.Logging
 {
     public class BufferingOutputWriter : IOutputWriter
     {

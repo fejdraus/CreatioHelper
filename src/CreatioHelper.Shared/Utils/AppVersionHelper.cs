@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Reflection;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Shared.Utils;
 
 /// <summary>
 /// Provides helper methods for reading the application version
