@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Core;
 using CreatioHelper.Core.Services;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;

@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using CreatioHelper.Core;
+using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Tests;
 
