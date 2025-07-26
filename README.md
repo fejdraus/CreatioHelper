@@ -28,6 +28,19 @@ Each component can be executed directly with `dotnet run`:
 
 Published binaries can be produced with `dotnet publish` if desired.
 
+
+## Architecture
+- **Domain** – core entities and enums shared across the solution
+- **Application** – interfaces, Mediator handlers and use cases
+- **Infrastructure** – implementations of external integrations (IIS, file system, configuration)
+- **Desktop** – Avalonia UI that depends only on the Application layer
+- **Agent** – background web API using Application and Infrastructure
+- **Contracts** – DTOs for API requests and responses
+- **Shared** – common helpers
+
+Dependency injection is configured via `AddApplication()` and `AddInfrastructure()` extension methods. Commands and queries are executed through a simple Mediator.
+Tests reside under `tests/CreatioHelper.UnitTests` using xUnit and Moq.
+
 ## Wiki
 
 For more information, please refer to the [Read the User Guide](./USER_GUIDE.md).
