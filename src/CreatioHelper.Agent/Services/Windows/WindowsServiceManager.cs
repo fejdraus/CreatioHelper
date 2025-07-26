@@ -274,10 +274,17 @@ public class WindowsServiceManager : IWebServerService
     {
         try
         {
-            // Try to find the port via netstat and process association
-            var result = await ExecuteServiceCommandWithOutputAsync($"Get-WmiObject -Class Win32_Service | Where-Object {{$_.Name -eq '{serviceName}'}} | Select-Object ProcessId");
-            // TODO: add logic to determine the port by ProcessId
-            return ""; // Return an empty string for now
+            var pidText = await ExecuteServiceCommandWithOutputAsync(
+                $"(Get-WmiObject -Class Win32_Service -Filter \"Name='{serviceName}'\").ProcessId");
+
+            if (int.TryParse(pidText?.Split('\n', '\r').LastOrDefault()?.Trim(), out var pid) && pid > 0)
+            {
+                var portText = await ExecuteServiceCommandWithOutputAsync(
+                    $"Get-NetTCPConnection -OwningProcess {pid} -State Listen | Select-Object -First 1 -ExpandProperty LocalPort");
+                return portText?.Split('\n', '\r').FirstOrDefault()?.Trim() ?? string.Empty;
+            }
+
+            return string.Empty;
         }
         catch
         {
