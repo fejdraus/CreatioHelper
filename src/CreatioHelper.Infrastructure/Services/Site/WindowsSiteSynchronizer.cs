@@ -4,7 +4,7 @@ using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services.Site;
 
-public class SiteSynchronizer : ISiteSynchronizer
+public class WindowsSiteSynchronizer : ISiteSynchronizer
     {
         private readonly IOutputWriter _output;
     private readonly IRemoteIisManager _remoteIisManager;
@@ -13,7 +13,7 @@ public class SiteSynchronizer : ISiteSynchronizer
         private const int MaxConcurrentCopies = 7;
         private static readonly SemaphoreSlim CopySemaphore = new(MaxConcurrentCopies);
 
-    public SiteSynchronizer(IOutputWriter output,
+    public WindowsSiteSynchronizer(IOutputWriter output,
         IRemoteIisManager remoteIisManager,
         IFileCopyHelper fileCopyHelper,
         ServerStatusService statusService)

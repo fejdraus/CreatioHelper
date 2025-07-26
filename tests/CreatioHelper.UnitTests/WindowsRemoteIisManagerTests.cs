@@ -4,13 +4,13 @@ using CreatioHelper.Infrastructure.Logging;
 
 namespace CreatioHelper.Tests;
 
-public class RemoteIisManagerTests
+public class WindowsRemoteIisManagerTests
 {
     [Fact]
     public async Task StartAppPoolAsync_Throws_WhenPoolNameMissing()
     {
         var writer = new BufferingOutputWriter(_ => { });
-        var manager = new RemoteIisManager(writer);
+        var manager = new WindowsRemoteIisManager(writer);
         var server = new ServerInfo { Name = "srv" };
         await Assert.ThrowsAsync<ArgumentNullException>(() => manager.StartAppPoolAsync(server));
     }
@@ -19,7 +19,7 @@ public class RemoteIisManagerTests
     public async Task StartServiceAsync_ReturnsFalse_WhenServiceNameMissing()
     {
         var writer = new BufferingOutputWriter(_ => { });
-        var manager = new RemoteIisManager(writer);
+        var manager = new WindowsRemoteIisManager(writer);
         var server = new ServerInfo { Name = "srv" };
         var result = await manager.StartServiceAsync(server);
         Assert.False(result);

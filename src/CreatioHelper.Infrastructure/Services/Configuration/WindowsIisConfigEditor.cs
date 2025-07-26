@@ -3,7 +3,7 @@ using Microsoft.Web.Administration;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
 
-public class IisConfigEditor : IIisConfigEditor
+public class WindowsIisConfigEditor : IIisConfigEditor
 {
     public void SetPhysicalPath(string siteName, string physicalPath)
     {

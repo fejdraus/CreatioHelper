@@ -4,7 +4,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
 namespace CreatioHelper.Infrastructure.Services
 {
-    public class RemoteIisManager(IOutputWriter output) : IRemoteIisManager
+    public class WindowsRemoteIisManager(IOutputWriter output) : IRemoteIisManager
     {
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
         private readonly SystemServiceManager _systemServiceManager = new(output);

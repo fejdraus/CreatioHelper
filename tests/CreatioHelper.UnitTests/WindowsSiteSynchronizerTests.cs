@@ -6,7 +6,7 @@ using CreatioHelper.Application.Interfaces;
 using Moq;
 namespace CreatioHelper.Tests;
 
-public class SiteSynchronizerTests
+public class WindowsSiteSynchronizerTests
 {
     [Fact]
     public async Task SynchronizeAsync_Throws_When_SitePathNull()
@@ -15,7 +15,7 @@ public class SiteSynchronizerTests
         var remote = new Mock<IRemoteIisManager>();
         var copy = new Mock<IFileCopyHelper>();
         var status = new ServerStatusService(writer, remote.Object);
-        var sync = new SiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sync.SynchronizeAsync(null!, new List<ServerInfo>()));
     }
@@ -35,7 +35,7 @@ public class SiteSynchronizerTests
         var copy = new Mock<IFileCopyHelper>();
         var server = new ServerInfo { Name = "srv", NetworkPath = "\\srv" , PoolName = "p", SiteName = "s"};
         var status = new ServerStatusService(writer, remote.Object);
-        var sync = new SiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         var result = await sync.SynchronizeAsync("c:/site", new List<ServerInfo> { server });
 
@@ -75,7 +75,7 @@ public class SiteSynchronizerTests
 
         var server = new ServerInfo { Name = "srv", NetworkPath = "\\srv" , PoolName = "p", SiteName = "s"};
         var status = new ServerStatusService(writer, remote.Object);
-        var sync = new SiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         var result = await sync.SynchronizeAsync("c:/site", new List<ServerInfo> { server });
 

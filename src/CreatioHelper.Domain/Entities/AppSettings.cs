@@ -20,5 +20,13 @@ public class AppSettings
 
     public bool IsIisMode { get; set; }
 
+    /// <summary>
+    /// Определяет тип управления сервисами в Windows:
+    /// true - использовать IIS (AppPools, Sites)
+    /// false - использовать Windows Services
+    /// Игнорируется в Linux/macOS
+    /// </summary>
+    public bool UseIisManagement { get; set; } = true;
+
     public bool IsServerPanelVisible { get; set; }
 }
