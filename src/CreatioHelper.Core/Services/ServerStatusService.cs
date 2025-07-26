@@ -8,10 +8,12 @@ namespace CreatioHelper.Core.Services
     public class ServerStatusService
     {
         private readonly IOutputWriter _output;
+        private readonly IRemoteIisManager _remoteIisManager;
 
-        public ServerStatusService(IOutputWriter output)
+        public ServerStatusService(IOutputWriter output, IRemoteIisManager remoteIisManager)
         {
             _output = output ?? throw new ArgumentNullException(nameof(output));
+            _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
         }
 
         [SupportedOSPlatform("windows")]
@@ -34,9 +36,8 @@ namespace CreatioHelper.Core.Services
 
             try
             {
-                var manager = new RemoteIisManager(_output);
-                await manager.GetAppPoolStatusAsync(server);
-                await manager.GetWebsiteStatusAsync(server);
+                await _remoteIisManager.GetAppPoolStatusAsync(server);
+                await _remoteIisManager.GetWebsiteStatusAsync(server);
             }
             catch (Exception ex)
             {

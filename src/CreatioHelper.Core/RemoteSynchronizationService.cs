@@ -18,10 +18,10 @@ namespace CreatioHelper.Core
         private const int MaxConcurrentCopies = 7;
         private static readonly SemaphoreSlim CopySemaphore = new(MaxConcurrentCopies);
 
-        public RemoteSynchronizationService(IOutputWriter output)
+        public RemoteSynchronizationService(IOutputWriter output, IRemoteIisManager remoteIisManager)
         {
             _output = output ?? throw new ArgumentNullException(nameof(output));
-            _statusService = new ServerStatusService(output);
+            _statusService = new ServerStatusService(output, remoteIisManager);
         }
 
         public async Task<bool> SynchronizeAsync(string sitePath, List<ServerInfo> targetServers, CancellationToken cancellationToken = default)
