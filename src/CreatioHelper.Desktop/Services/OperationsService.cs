@@ -35,10 +35,10 @@ public partial class OperationsService : ObservableObject, IOperationsService
     [ObservableProperty]
     private bool _isStopButtonEnabled;
 
-    public OperationsService(IOutputWriter output)
+    public OperationsService(IOutputWriter output, IRemoteIisManager remoteIisManager)
     {
         _output = output;
-        _remoteIisManager = new RemoteIisManager(output);
+        _remoteIisManager = remoteIisManager;
     }
 
     private bool ExecutePreparerAction(Func<int> action, string errorMessage, CancellationToken token)
@@ -107,7 +107,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         SiteName = siteName ?? string.Empty,
                         AppVersion = appVersion
                     };
-                    var manager = new RemoteIisManager(_output);
+                    var manager = _remoteIisManager;
                     if (OperatingSystem.IsWindows())
                     {
                         if (File.Exists(nestedPath))
@@ -185,7 +185,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible) 
                     {
                         IsStopButtonEnabled = false;
-                        var syncService = new RemoteSynchronizationService(_output);
+                        var syncService = new RemoteSynchronizationService(_output, _remoteIisManager);
                         if (!cancellationToken.IsCancellationRequested) 
                         {
                             var syncStatus = await syncService.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken);

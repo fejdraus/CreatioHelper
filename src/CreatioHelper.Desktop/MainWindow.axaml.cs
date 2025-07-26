@@ -61,9 +61,12 @@ namespace CreatioHelper
 
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
             var mediator = provider.GetRequiredService<IMediator>();
+            var remoteManager = new RemoteIisManager(_writer);
+            var statusService = new ServerStatusService(_writer, remoteManager);
             var dialogService = new DialogService(StorageProvider);
-            var operationsService = new OperationsService(_writer);
-            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService);
+            var operationsService = new OperationsService(_writer, remoteManager);
+            var iisService = new IisService();
+            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService);
             DataContext = _viewModel;
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;

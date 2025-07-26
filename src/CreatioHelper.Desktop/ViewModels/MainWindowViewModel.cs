@@ -34,7 +34,14 @@ public partial class MainWindowViewModel : ObservableObject
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
     
-    public MainWindowViewModel(IOutputWriter output, IMediator mediator, IOperationsService operationsService, IDialogService dialogService)
+    public MainWindowViewModel(
+        IOutputWriter output,
+        IMediator mediator,
+        IOperationsService operationsService,
+        IDialogService dialogService,
+        ServerStatusService statusService,
+        IRemoteIisManager remoteIisManager,
+        IisService iisService)
     {
         _output = output;
         _mediator = mediator;
@@ -49,10 +56,10 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsStopButtonEnabled));
         };
         _dialogService = dialogService;
-        _statusService = new ServerStatusService(output);
+        _statusService = statusService;
         _isInitializing = true;
-        _remoteIisManager = new RemoteIisManager(output);
-        _iisService = new IisService();
+        _remoteIisManager = remoteIisManager;
+        _iisService = iisService;
         
         var settings = _mediator.Send(new LoadSettingsQuery()).GetAwaiter().GetResult();
         
