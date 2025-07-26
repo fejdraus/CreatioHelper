@@ -5,11 +5,11 @@ using System.Diagnostics;
 
 namespace CreatioHelper.Infrastructure.Services.Linux;
 
-public class LinuxRemoteIisManager : IRemoteIisManager
+public class MacOsRemoteIisManager : IRemoteIisManager
 {
     private readonly IOutputWriter _output;
 
-    public LinuxRemoteIisManager(IOutputWriter output)
+    public MacOsRemoteIisManager(IOutputWriter output)
     {
         _output = output;
     }
@@ -45,7 +45,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
         try
         {
-            return await ExecuteSystemdCommand("start", serviceName, server);
+            return await ExecuteLaunchctlCommand("start", serviceName, server);
         }
         catch (Exception ex)
         {
@@ -65,7 +65,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
         try
         {
-            return await ExecuteSystemdCommand("stop", serviceName, server);
+            return await ExecuteLaunchctlCommand("stop", serviceName, server);
         }
         catch (Exception ex)
         {
@@ -94,7 +94,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
         try
         {
-            await ExecuteSystemdCommand("status", serviceName, server);
+            await ExecuteLaunchctlCommand("status", serviceName, server);
         }
         catch (Exception ex)
         {
@@ -102,17 +102,38 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
     }
 
-    private async Task<bool> ExecuteSystemdCommand(string action, string serviceName, ServerInfo server)
+    private async Task<bool> ExecuteLaunchctlCommand(string action, string serviceName, ServerInfo server)
     {
-        var command = $"systemctl {action} {serviceName}";
+        string command;
         
+        switch (action.ToLower())
+        {
+            case "start":
+                command = $"launchctl bootstrap gui/$(id -u) {serviceName}";
+                break;
+            case "stop":
+                command = $"launchctl bootout gui/$(id -u) {serviceName}";
+                break;
+            case "status":
+                command = $"launchctl print gui/$(id -u)/{serviceName}";
+                break;
+            case "list":
+                command = $"launchctl list | grep {serviceName}";
+                break;
+            case "enable":
+                command = $"launchctl enable gui/$(id -u)/{serviceName}";
+                break;
+            case "disable":
+                command = $"launchctl disable gui/$(id -u)/{serviceName}";
+                break;
+            default:
+                command = $"launchctl {action} {serviceName}";
+                break;
+        }
+
         if (!string.IsNullOrEmpty(server.NetworkPath) && server.NetworkPath != "localhost" && server.NetworkPath != "127.0.0.1")
         {
-            command = $"ssh {server.NetworkPath} 'sudo {command}'";
-        }
-        else
-        {
-            command = $"sudo {command}";
+            command = $"ssh {server.NetworkPath} '{command}'";
         }
 
         return await ExecuteCommand(command, server.Name);
@@ -126,7 +147,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
             var startInfo = new ProcessStartInfo
             {
-                FileName = "/bin/bash",
+                FileName = "/bin/zsh",
                 Arguments = $"-c \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,

@@ -18,15 +18,25 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddTransient<ISiteConfigEditor, SiteConfigEditor>();
+        
         if (OperatingSystem.IsWindows())
         {
-            services.AddTransient<IIisConfigEditor, IisConfigEditor>();
-            services.AddSingleton<IRemoteIisManager, RemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, SiteSynchronizer>();
+            services.AddTransient<IIisConfigEditor, WindowsIisConfigEditor>();
+            services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
+            services.AddTransient<ISiteSynchronizer, WindowsSiteSynchronizer>();
+        }
+        else if (OperatingSystem.IsLinux())
+        {
+            services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
+            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
+        }
+        else if (OperatingSystem.IsMacOS())
+        {
+            services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
+            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
         else
         {
-            // Заглушки для Linux/MacOS
             services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
             services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
