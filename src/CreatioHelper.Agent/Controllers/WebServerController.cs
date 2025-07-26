@@ -3,6 +3,8 @@ using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
+using WebServerResultDto = CreatioHelper.Contracts.Responses.WebServerResult;
+using DataDto = CreatioHelper.Contracts.Responses.Data;
 using System;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -119,11 +121,11 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopSiteAsync(siteName);
-            var dto = new WebServerResult
+            var dto = new WebServerResultDto
             {
                 Success = result.Success,
                 Message = result.Message,
-                Data = result.Data is null ? null : new Data
+                Data = result.Data is null ? null : new DataDto
                 {
                     ServiceName = result.Data.ServiceName,
                     Status = result.Data.Status,
@@ -160,11 +162,11 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartAppPoolAsync(poolName);
-            var dto = new WebServerResult
+            var dto = new WebServerResultDto
             {
                 Success = result.Success,
                 Message = result.Message,
-                Data = result.Data is null ? null : new Data
+                Data = result.Data is null ? null : new DataDto
                 {
                     ServiceName = result.Data.ServiceName,
                     Status = result.Data.Status,
@@ -201,11 +203,11 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StopAppPoolAsync(poolName);
-            var dto = new WebServerResult
+            var dto = new WebServerResultDto
             {
                 Success = result.Success,
                 Message = result.Message,
-                Data = result.Data is null ? null : new Data
+                Data = result.Data is null ? null : new DataDto
                 {
                     ServiceName = result.Data.ServiceName,
                     Status = result.Data.Status,
@@ -260,11 +262,11 @@ public class WebServerController : ControllerBase
 
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var siteResult = await webServerService.GetSiteStatusAsync(siteName);
-            var resultDto = new WebServerResult
+        var resultDto = new WebServerResultDto
             {
                 Success = siteResult.Success,
                 Message = siteResult.Message,
-                Data = siteResult.Data is null ? null : new Data
+                Data = siteResult.Data is null ? null : new DataDto
                 {
                     ServiceName = siteResult.Data.ServiceName,
                     Status = siteResult.Data.Status,
@@ -510,11 +512,11 @@ public class WebServerController : ControllerBase
         {
             var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
             var result = await webServerService.StartSiteAsync(siteName);
-            var dto = new WebServerResult
+            var dto = new WebServerResultDto
             {
                 Success = result.Success,
                 Message = result.Message,
-                Data = result.Data is null ? null : new Data
+            Data = result.Data is null ? null : new DataDto
                 {
                     ServiceName = result.Data.ServiceName,
                     Status = result.Data.Status,

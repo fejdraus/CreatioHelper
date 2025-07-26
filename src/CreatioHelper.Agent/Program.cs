@@ -1,6 +1,7 @@
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;
+using CreatioHelper.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
