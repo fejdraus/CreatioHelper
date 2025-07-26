@@ -6,6 +6,7 @@ using CreatioHelper.Infrastructure.Services.Site;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Workspace;
+using CreatioHelper.Infrastructure.Services.Linux;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
@@ -22,6 +23,12 @@ public static class ServiceCollectionExtensions
             services.AddTransient<IIisConfigEditor, IisConfigEditor>();
             services.AddSingleton<IRemoteIisManager, RemoteIisManager>();
             services.AddTransient<ISiteSynchronizer, SiteSynchronizer>();
+        }
+        else
+        {
+            // Заглушки для Linux/MacOS
+            services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
+            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
 
         services.AddTransient<ISystemServiceManager, SystemServiceManager>();
