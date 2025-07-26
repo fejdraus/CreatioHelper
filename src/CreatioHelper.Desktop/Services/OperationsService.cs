@@ -14,7 +14,6 @@ using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Core;
-using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.ViewModels;
 
@@ -26,6 +25,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
     private readonly IOutputWriter _output;
     private CancellationTokenSource? _cancellationTokenSource;
     private readonly IRemoteIisManager _remoteIisManager;
+    private readonly ISiteSynchronizer _siteSynchronizer;
 
     [ObservableProperty]
     private bool _isBusy;
@@ -36,10 +36,11 @@ public partial class OperationsService : ObservableObject, IOperationsService
     [ObservableProperty]
     private bool _isStopButtonEnabled;
 
-    public OperationsService(IOutputWriter output, IRemoteIisManager remoteIisManager)
+    public OperationsService(IOutputWriter output, IRemoteIisManager remoteIisManager, ISiteSynchronizer siteSynchronizer)
     {
         _output = output;
         _remoteIisManager = remoteIisManager;
+        _siteSynchronizer = siteSynchronizer;
     }
 
     private bool ExecutePreparerAction(Func<int> action, string errorMessage, CancellationToken token)
@@ -186,10 +187,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible) 
                     {
                         IsStopButtonEnabled = false;
-                        var syncService = new RemoteSynchronizationService(_output, _remoteIisManager);
-                        if (!cancellationToken.IsCancellationRequested) 
+                        if (!cancellationToken.IsCancellationRequested)
                         {
-                            var syncStatus = await syncService.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken);
+                            var syncStatus = await _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken);
                             if (syncStatus) 
                             {
                                 _output.WriteLine("[OK] All servers are successfully synchronized.");

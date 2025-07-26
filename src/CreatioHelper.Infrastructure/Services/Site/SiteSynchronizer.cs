@@ -10,21 +10,28 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Core.Services;
 using CreatioHelper.Core;
 
-namespace CreatioHelper.Infrastructure.Services
-{
-    [SupportedOSPlatform("windows")]
-    public class RemoteSynchronizationService : IRemoteSynchronizationService
+namespace CreatioHelper.Infrastructure.Services.Site;
+
+[SupportedOSPlatform("windows")]
+public class SiteSynchronizer : ISiteSynchronizer
     {
         private readonly IOutputWriter _output;
-        private readonly ServerStatusService _statusService;
+    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IFileCopyHelper _fileCopyHelper;
+    private readonly ServerStatusService _statusService;
         private const int MaxConcurrentCopies = 7;
         private static readonly SemaphoreSlim CopySemaphore = new(MaxConcurrentCopies);
 
-        public RemoteSynchronizationService(IOutputWriter output, IRemoteIisManager remoteIisManager)
-        {
-            _output = output ?? throw new ArgumentNullException(nameof(output));
-            _statusService = new ServerStatusService(output, remoteIisManager);
-        }
+    public SiteSynchronizer(IOutputWriter output,
+        IRemoteIisManager remoteIisManager,
+        IFileCopyHelper fileCopyHelper,
+        ServerStatusService statusService)
+    {
+        _output = output ?? throw new ArgumentNullException(nameof(output));
+        _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
+        _fileCopyHelper = fileCopyHelper ?? throw new ArgumentNullException(nameof(fileCopyHelper));
+        _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
+    }
 
         public async Task<bool> SynchronizeAsync(string sitePath, List<ServerInfo> targetServers, CancellationToken cancellationToken = default)
         {
@@ -81,14 +88,13 @@ namespace CreatioHelper.Infrastructure.Services
                 {
                     return false;
                 }
-                var manager = new RemoteIisManager(_output);
                 if (!string.IsNullOrWhiteSpace(server.PoolName))
                 {
-                    stopTasks.Add(manager.StopAppPoolAsync(server));
+                    stopTasks.Add(_remoteIisManager.StopAppPoolAsync(server));
                 }
                 if (!string.IsNullOrWhiteSpace(server.SiteName))
                 {
-                    stopTasks.Add(manager.StopWebsiteAsync(server));
+                    stopTasks.Add(_remoteIisManager.StopWebsiteAsync(server));
                 }
             }
             if (stopTasks.Count == 0)
@@ -158,23 +164,22 @@ namespace CreatioHelper.Infrastructure.Services
                         {
                             return;
                         }
-                        await FileCopyHelper.CopyAsync(server, confPath, destConfPath, _output, cancellationToken);
+                        await _fileCopyHelper.CopyAsync(server, confPath, destConfPath, cancellationToken);
                         if (cancellationToken.IsCancellationRequested)
                         {
                             return;
                         }
-                        await FileCopyHelper.CopyAsync(server, configPath, destConfigPath, _output, cancellationToken);
+                        await _fileCopyHelper.CopyAsync(server, configPath, destConfigPath, cancellationToken);
                         if (cancellationToken.IsCancellationRequested)
                         {
                             return;
                         }
                         _output.WriteLine($"[INFO] File copying to {server.Name} completed, starting services...");
-                        var manager = new RemoteIisManager(_output);
                         bool appPoolStarted = true;
                         bool websiteStarted = true;
                         if (!string.IsNullOrWhiteSpace(server.PoolName))
                         {
-                            appPoolStarted = await manager.StartAppPoolAsync(server);
+                            appPoolStarted = await _remoteIisManager.StartAppPoolAsync(server);
                             if (!appPoolStarted)
                             {
                                 _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name}");
@@ -182,7 +187,7 @@ namespace CreatioHelper.Infrastructure.Services
                         }
                         if (!string.IsNullOrWhiteSpace(server.SiteName))
                         {
-                            websiteStarted = await manager.StartWebsiteAsync(server);
+                            websiteStarted = await _remoteIisManager.StartWebsiteAsync(server);
                             if (!websiteStarted)
                             {
                                 _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name}");
@@ -245,4 +250,3 @@ namespace CreatioHelper.Infrastructure.Services
             }
         }
     }
-}
