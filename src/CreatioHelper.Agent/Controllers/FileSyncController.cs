@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Contracts.Requests;
+using CreatioHelper.Contracts.Responses;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -37,11 +39,18 @@ public class FileSyncController : ControllerBase
         try
         {
             var result = await _fileSyncService.SyncAsync(request.SourcePath, request.DestinationPath);
-            return Ok(result);
+            var dto = new SyncResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                BytesTransferred = result.BytesTransferred,
+                Duration = result.Duration
+            };
+            return Ok(dto);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error syncing files from {Source} to {Destination}", 
+            _logger.LogError(ex, "Error syncing files from {Source} to {Destination}",
                 request.SourcePath, request.DestinationPath);
             return StatusCode(500, ex.Message);
         }
@@ -52,8 +61,23 @@ public class FileSyncController : ControllerBase
     {
         try
         {
-            var result = await _fileSyncService.SyncAsync(options);
-            return Ok(result);
+            var domainOptions = new CreatioHelper.Domain.Entities.SyncOptions
+            {
+                SourcePath = options.SourcePath,
+                DestinationPath = options.DestinationPath,
+                OverwriteExisting = options.OverwriteExisting,
+                Recursive = options.Recursive,
+                ExcludePatterns = options.ExcludePatterns
+            };
+            var result = await _fileSyncService.SyncAsync(domainOptions);
+            var dto = new SyncResult
+            {
+                Success = result.Success,
+                Message = result.Message,
+                BytesTransferred = result.BytesTransferred,
+                Duration = result.Duration
+            };
+            return Ok(dto);
         }
         catch (Exception ex)
         {
@@ -61,15 +85,4 @@ public class FileSyncController : ControllerBase
             return StatusCode(500, ex.Message);
         }
     }
-}
-
-public class ValidatePathRequest
-{
-    public string Path { get; set; } = "";
-}
-
-public class SyncRequest
-{
-    public string SourcePath { get; set; } = "";
-    public string DestinationPath { get; set; } = "";
 }
