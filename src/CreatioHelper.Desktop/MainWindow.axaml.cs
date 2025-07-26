@@ -21,6 +21,7 @@ using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using System.Runtime.Versioning;
+using CreatioHelper.Infrastructure.Services.Workspace;
 
 namespace CreatioHelper
 {
@@ -68,7 +69,7 @@ namespace CreatioHelper
             var statusService = provider.GetRequiredService<ServerStatusService>();
             var dialogService = new DialogService(StorageProvider);
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
-            var workspacePreparer = provider.GetRequiredService<IWorkspacePreparer>();
+            var workspacePreparer = new WorkspacePreparer(_writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var operationsService = new OperationsService(_writer, remoteManager, siteSync, workspacePreparer, redisFactory);
             var iisService = new IisService();
