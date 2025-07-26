@@ -3,7 +3,7 @@ using CreatioHelper.Domain.Entities;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Application.Interfaces
 {
     public interface IRemoteSynchronizationService
     {
