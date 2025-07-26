@@ -1,13 +1,9 @@
-﻿using System;
-using CreatioHelper.Domain.Entities;
+﻿using CreatioHelper.Domain.Entities;
 using System.Diagnostics;
-using System.Runtime.Versioning;
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
 namespace CreatioHelper.Infrastructure.Services
 {
-    [SupportedOSPlatform("windows")]
     public class RemoteIisManager(IOutputWriter output) : IRemoteIisManager
     {
         private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
@@ -493,7 +489,7 @@ namespace CreatioHelper.Infrastructure.Services
                     return null;
                 }
 
-                return outputText?.Trim();
+                return outputText.Trim();
             }
             catch (Exception ex)
             {

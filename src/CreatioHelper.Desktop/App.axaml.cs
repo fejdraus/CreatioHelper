@@ -18,8 +18,7 @@ public partial class App : Avalonia.Application
     {
         AvaloniaXamlLoader.Load(this);
     }
-
-    [SupportedOSPlatform("windows")]
+    
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)

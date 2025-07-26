@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Runtime.Versioning;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Logging;
@@ -10,7 +6,6 @@ using CreatioHelper.Application.Interfaces;
 using Moq;
 namespace CreatioHelper.Tests;
 
-[SupportedOSPlatform("windows")]
 public class SiteSynchronizerTests
 {
     [Fact]

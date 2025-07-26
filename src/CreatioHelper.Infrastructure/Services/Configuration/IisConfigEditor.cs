@@ -1,12 +1,8 @@
-using System;
-using System.Linq;
-using System.Runtime.Versioning;
 using CreatioHelper.Application.Interfaces;
 using Microsoft.Web.Administration;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
 
-[SupportedOSPlatform("windows")]
 public class IisConfigEditor : IIisConfigEditor
 {
     public void SetPhysicalPath(string siteName, string physicalPath)

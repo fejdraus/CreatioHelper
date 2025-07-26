@@ -1,18 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.Versioning;
-using System.Threading;
-using System.Threading.Tasks;
-using CreatioHelper.Domain.Entities;
+﻿using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
-using CreatioHelper.Infrastructure.Services;
 
 namespace CreatioHelper.Infrastructure.Services.Site;
 
-[SupportedOSPlatform("windows")]
 public class SiteSynchronizer : ISiteSynchronizer
     {
         private readonly IOutputWriter _output;
@@ -39,8 +30,6 @@ public class SiteSynchronizer : ISiteSynchronizer
             if (targetServers == null) throw new ArgumentNullException(nameof(targetServers));
 
             sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            string currentServer = Environment.MachineName;
-            var serversToUpdate = targetServers.Where(s => !s.Name.Equals(currentServer, StringComparison.OrdinalIgnoreCase)).ToList();
             if (!await StopAllServicesAsync(targetServers, cancellationToken))
             {
                 return false;

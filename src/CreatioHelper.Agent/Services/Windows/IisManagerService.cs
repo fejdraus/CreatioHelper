@@ -1,12 +1,8 @@
 using System.Diagnostics;
-using System.Runtime.Versioning;
-using System.Text.Json;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
-[SupportedOSPlatform("windows")]
 public class IisManagerService : IWebServerService
 {
     private readonly ILogger<IisManagerService> _logger;
@@ -401,7 +397,7 @@ public class IisManagerService : IWebServerService
                 return null;
             }
 
-            return outputText?.Trim();
+            return outputText.Trim();
         }
         catch (Exception ex)
         {
