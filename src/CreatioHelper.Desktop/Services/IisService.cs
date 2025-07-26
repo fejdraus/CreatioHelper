@@ -52,56 +52,68 @@ public class IisService
             return;
         }
         
-        Dispatcher.UIThread.Post(() =>
+        System.Threading.Tasks.Task.Run(() =>
         {
             try
             {
                 using var manager = new ServerManager();
                 var sites = manager.Sites.ToList();
-                iisSites.Clear();
-            
-                if (sites.Count == 0)
-                {
-                    onCompletion(true);
-                    return;
-                }
-            
-                foreach (var site in manager.Sites)
+
+                var results = new List<IisSiteInfo>();
+
+                foreach (var site in sites)
                 {
                     var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
                     var appVdir = app?.VirtualDirectories["/"];
                     var rootApp = site.Applications["/"];
                     var rootVdir = rootApp?.VirtualDirectories["/"];
-                    string sitePath = rootVdir?.PhysicalPath ?? "";
-                    string appPath = appVdir?.PhysicalPath ?? "";
-                    string poolName = rootApp?.ApplicationPoolName ?? "";
+                    string sitePath = rootVdir?.PhysicalPath ?? string.Empty;
+                    string appPath = appVdir?.PhysicalPath ?? string.Empty;
+                    string poolName = rootApp?.ApplicationPoolName ?? string.Empty;
+
                     var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
+
                     if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
-                    {
                         continue;
-                    }
                     if (!File.Exists(Path.Combine(appPath, "Web.config")))
-                    {
                         continue;
-                    }
                     if (!File.Exists(connectionStrings))
-                    {
                         continue;
-                    }
                     if (!File.Exists(Path.Combine(sitePath, "Web.config")))
-                    {
                         continue;
-                    }
+
                     var assemblyName = AppVersionHelper.GetAppVersion(sitePath);
-                    iisSites.Add(new IisSiteInfo {Id = site.Id, Name = site.Name, Path = sitePath, PoolName = poolName, Version = assemblyName});
+                    results.Add(new IisSiteInfo
+                    {
+                        Id = site.Id,
+                        Name = site.Name,
+                        Path = sitePath,
+                        PoolName = poolName,
+                        Version = assemblyName
+                    });
                 }
-                onCompletion(true);
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    iisSites.Clear();
+                    foreach (var site in results)
+                        iisSites.Add(site);
+                    onCompletion(true);
+                });
             }
             catch (Exception ex)
             {
-                iisSites.Clear();
-                iisSites.Add(new IisSiteInfo { Name = $"[Error loading IIS] {ex.Message}", Path = "", PoolName = "" });
-                onCompletion(false);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    iisSites.Clear();
+                    iisSites.Add(new IisSiteInfo
+                    {
+                        Name = $"[Error loading IIS] {ex.Message}",
+                        Path = string.Empty,
+                        PoolName = string.Empty
+                    });
+                    onCompletion(false);
+                });
             }
         });
     }
