@@ -1,6 +1,6 @@
 using AvaloniaEdit;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Converters;
 
 public class UpdateLogDisplay
 {

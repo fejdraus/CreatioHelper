@@ -4,7 +4,7 @@ using System.Globalization;
 using Avalonia.Data.Converters;
 using Avalonia.Media;
 
-namespace CreatioHelper.Core;
+namespace CreatioHelper.Converters;
 
 public class StatusToColorConverter : IValueConverter
 {
