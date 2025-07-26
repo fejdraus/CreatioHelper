@@ -1,4 +1,3 @@
-#if WINDOWS
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -86,4 +85,3 @@ public class SiteSynchronizerTests
         Assert.True(result);
     }
 }
-#endif

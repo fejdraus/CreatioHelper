@@ -1,4 +1,3 @@
-#if WINDOWS
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Logging;
@@ -27,4 +26,3 @@ public class RemoteIisManagerTests
         Assert.False(result);
     }
 }
-#endif
