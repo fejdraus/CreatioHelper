@@ -1,5 +1,7 @@
 using System;
 using System.Threading.Tasks;
+using CreatioHelper.Infrastructure.Services.Site;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Core;
 using CreatioHelper.Domain.Entities;
 
@@ -17,7 +19,8 @@ public class FileCopyHelperTests
 
         var server = new ServerInfo { Name = "test" };
         var writer = new BufferingOutputWriter(_ => { }, () => { });
+        IFileCopyHelper helper = new RobocopyFileCopyHelper(writer);
         await Assert.ThrowsAsync<PlatformNotSupportedException>(async () =>
-            await FileCopyHelper.CopyAsync(server, "/tmp/src", "/tmp/dest", writer));
+            await helper.CopyAsync(server, "/tmp/src", "/tmp/dest"));
     }
 }

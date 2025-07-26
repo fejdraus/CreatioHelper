@@ -64,10 +64,11 @@ namespace CreatioHelper
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
             var mediator = provider.GetRequiredService<IMediator>();
             var systemServiceManager = provider.GetRequiredService<ISystemServiceManager>();
-            var remoteManager = new RemoteIisManager(_writer);
-            var statusService = new ServerStatusService(_writer, remoteManager);
+            var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
+            var statusService = provider.GetRequiredService<ServerStatusService>();
             var dialogService = new DialogService(StorageProvider);
-            var operationsService = new OperationsService(_writer, remoteManager);
+            var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
+            var operationsService = new OperationsService(_writer, remoteManager, siteSync);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager);
             DataContext = _viewModel;
