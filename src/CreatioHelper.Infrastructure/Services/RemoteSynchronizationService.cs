@@ -5,10 +5,12 @@ using System.Linq;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
-using CreatioHelper.Core.Services;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Core.Services;
+using CreatioHelper.Core;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Infrastructure.Services
 {
     [SupportedOSPlatform("windows")]
     public class RemoteSynchronizationService : IRemoteSynchronizationService

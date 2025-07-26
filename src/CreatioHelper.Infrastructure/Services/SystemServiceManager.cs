@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics;
 using System.Threading.Tasks;
 
-namespace CreatioHelper.Core.Services
+namespace CreatioHelper.Infrastructure.Services
 {
     public class SystemServiceManager
     {

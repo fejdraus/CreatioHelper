@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
     <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
+    <ProjectReference Include="..\CreatioHelper.Core\CreatioHelper.Core.csproj" />
   </ItemGroup>
 
 </Project>

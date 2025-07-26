@@ -1,7 +1,7 @@
 ﻿using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
 
-namespace CreatioHelper.Core
+namespace CreatioHelper.Application.Interfaces
 {
     public interface IRemoteIisManager
     {
