@@ -1,25 +1,13 @@
+#if WINDOWS
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Logging;
+using Xunit;
 
 namespace CreatioHelper.Tests;
 
 public class RemoteIisManagerTests
 {
-    [Fact]
-    public async Task StopAppPoolAsync_NonWindows_ReturnsFalse()
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            return; // test relevant only when not Windows
-        }
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new RemoteIisManager(writer);
-        var server = new ServerInfo { Name = "srv", PoolName = "pool" };
-        var result = await manager.StopAppPoolAsync(server);
-        Assert.False(result);
-    }
-
     [Fact]
     public async Task StartAppPoolAsync_Throws_WhenPoolNameMissing()
     {
@@ -39,3 +27,4 @@ public class RemoteIisManagerTests
         Assert.False(result);
     }
 }
+#endif

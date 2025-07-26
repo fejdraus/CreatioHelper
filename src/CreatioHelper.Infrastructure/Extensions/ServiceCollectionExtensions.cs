@@ -17,14 +17,18 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
         services.AddSingleton<ISettingsService, SettingsService>();
         services.AddTransient<ISiteConfigEditor, SiteConfigEditor>();
-        services.AddTransient<IIisConfigEditor, IisConfigEditor>();
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddTransient<IIisConfigEditor, IisConfigEditor>();
+            services.AddSingleton<IRemoteIisManager, RemoteIisManager>();
+            services.AddTransient<ISiteSynchronizer, SiteSynchronizer>();
+        }
+
         services.AddTransient<ISystemServiceManager, SystemServiceManager>();
-        services.AddSingleton<IRemoteIisManager, RemoteIisManager>();
         services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
         services.AddTransient<IRedisManagerFactory, RedisManagerFactory>();
         services.AddTransient<ServerStatusService>();
-        services.AddTransient<ISiteSynchronizer, SiteSynchronizer>();
         return services;
     }
 }
