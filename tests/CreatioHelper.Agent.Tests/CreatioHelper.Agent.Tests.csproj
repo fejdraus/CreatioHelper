@@ -25,6 +25,10 @@
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
   </ItemGroup>
+  <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
+    <Compile Remove="RemoteIisManagerTests.cs" />
+    <Compile Remove="SiteSynchronizerTests.cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CreatioHelper.Agent\CreatioHelper.Agent.csproj" />
