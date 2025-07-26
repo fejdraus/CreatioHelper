@@ -5,15 +5,14 @@ namespace CreatioHelper.Infrastructure.Services;
 
 public class SettingsService : ISettingsService
 {
-    public AppSettings Load()
+    private readonly IAppSettingsManager _manager;
+
+    public SettingsService(IAppSettingsManager manager)
     {
-        return AppSettingsService.SettingsFileExists()
-            ? AppSettingsService.Load()
-            : new AppSettings { IsIisMode = true };
+        _manager = manager;
     }
 
-    public void Save(AppSettings settings)
-    {
-        AppSettingsService.Save(settings);
-    }
+    public AppSettings Load() => _manager.Load();
+
+    public void Save(AppSettings settings) => _manager.Save(settings);
 }
