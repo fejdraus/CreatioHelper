@@ -1,55 +1,84 @@
 # CreatioHelper
 
-CreatioHelper is a graphical user interface (GUI) for the Creatio WorkspaceConsole. It simplifies and automates the process of managing packages, builds, and deployments within the Creatio platform:
+**CreatioHelper** is a tool for managing Terrasoft Creatio installations via UI or API. It provides:
 
-- **CreatioHelper** – cross-platform graphical application for managing WorkspaceConsole, developed with AvaloniaUI.
-- **CreatioHelper.Agent** – lightweight background service that provides APIs for monitoring and managing the Creatio environment. This agent can run on a server in the background and accept commands via HTTP.
+- A graphical application for managing Creatio installations (Desktop).
+- A background service (Agent) with HTTP API for automation.
+- A clean architecture with separated business logic, infrastructure, and domain model.
 
-Projects are organized under the `src` folder while tests live under `tests`:
+## Project Structure
 
-```
-src/CreatioHelper.Desktop/      # GUI application
-src/CreatioHelper.Agent/        # Background web API
-src/CreatioHelper.Domain/       # Domain models
-src/CreatioHelper.Application/  # Use cases and interfaces
-src/CreatioHelper.Infrastructure/ # Infrastructure services
-```
+All source projects are located in `src/`, and test projects in `tests/`. Main projects:
 
-## Building
+### 🧠 Business Logic and Models
 
-This solution targets **.NET 8**. Make sure the .NET 8 SDK is installed, then build everything using:
+- `CreatioHelper.Domain`: domain entities and enums, independent of other layers.
+- `CreatioHelper.Application`: use-cases (commands and handlers via MediatR), logic interfaces.
+
+### 🧱 Infrastructure and Shared Utilities
+
+- `CreatioHelper.Infrastructure`: implementations of interfaces, interaction with IIS, file system, etc.
+- `CreatioHelper.Shared`: utilities for file operations, logging, and configuration.
+- `CreatioHelper.Contracts`: DTO classes for data exchange between Agent and other parts.
+
+### 🖥️ UI and Services
+
+- `CreatioHelper.Desktop`: Avalonia-based GUI application.
+- `CreatioHelper.Agent`: minimal ASP.NET Core web service providing remote control API.
+
+## Build and Run
+
+### Requirements:
+
+- .NET 8 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
+- Git
+
+### Build the solution:
 
 ```bash
-# Restore packages and compile all projects
- dotnet build CreatioHelper.sln
+dotnet build CreatioHelper.sln
 ```
 
-## Running
-
-Each component can be executed directly with `dotnet run`:
+### Run GUI (Desktop):
 
 ```bash
-# Launch the desktop GUI
- dotnet run --project src/CreatioHelper.Desktop
-
-# Start the agent service
- dotnet run --project src/CreatioHelper.Agent
+dotnet run --project src/CreatioHelper.Desktop
 ```
 
-Published binaries can be produced with `dotnet publish` if desired.
+### Run API (Agent):
+
+```bash
+dotnet run --project src/CreatioHelper.Agent
+```
+
+## CI/CD
+
+Build and test pipelines are configured with GitHub Actions:
+
+- `dotnet-build.yml` — CI pipeline: build, test, multiplatform (Windows and Linux).
+- `release-build.yml` — CD pipeline: package release builds (`.zip`) for Windows and Linux, upload to GitHub Releases.
+
+## Testing
+
+Testing is done using `xUnit`, `Moq`, and `coverlet`:
+
+- `tests/CreatioHelper.Tests`: unit tests for business logic, utilities, and infrastructure.
+- `tests/CreatioHelper.Agent.Tests`: unit tests for Agent API controllers.
+
+Run tests:
+
+```bash
+dotnet test
+```
 
 ## Architecture
 
-- **Domain** – core entities and enums shared across the solution
-- **Application** – interfaces, Mediator handlers and use cases
-- **Infrastructure** – implementations of external integrations (IIS, file system, configuration)
-- **Desktop** – Avalonia UI that depends only on the Application layer
-- **Agent** – background web API using Application and Infrastructure
-- **Contracts** – DTOs for API requests and responses
-- **Shared** – common helpers
+The project follows Clean Architecture principles:
 
-Dependency injection is configured via `AddApplication()` and `AddInfrastructure()` extension methods. Commands and queries are executed through a simple Mediator.
-Tests reside under `tests/CreatioHelper.UnitTests` using xUnit and Moq.
+- `Domain` — models and business logic without dependencies.
+- `Application` — use-case interfaces and commands.
+- `Infrastructure` — implementation of external integrations.
+- `Desktop` and `Agent` — UI and API clients.
 
 ## Wiki
 
