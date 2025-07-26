@@ -1,6 +1,7 @@
 using System.IO;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services;
+using CreatioHelper.Infrastructure.Services.Configuration;
 
 namespace CreatioHelper.Tests;
 
@@ -14,7 +15,8 @@ public class SettingsServiceTests
         Directory.SetCurrentDirectory(tempDir.FullName);
         try
         {
-            var service = new SettingsService();
+            var manager = new AppSettingsManager();
+            var service = new SettingsService(manager);
             var settings = service.Load();
             Assert.True(settings.IsIisMode);
         }
@@ -33,7 +35,8 @@ public class SettingsServiceTests
         Directory.SetCurrentDirectory(tempDir.FullName);
         try
         {
-            var service = new SettingsService();
+            var manager = new AppSettingsManager();
+            var service = new SettingsService(manager);
             var original = new AppSettings
             {
                 SitePath = "site",
