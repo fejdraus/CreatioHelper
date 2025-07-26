@@ -1,4 +1,6 @@
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Application.Extensions;
+using CreatioHelper.Infrastructure.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -6,6 +8,8 @@ builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddApplication();
+builder.Services.AddInfrastructure();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -18,8 +22,7 @@ builder.Services.AddCors(options =>
 });
 builder.Services.Configure<AgentConfig>(builder.Configuration.GetSection("AgentConfig"));
 builder.Services.AddPlatformServices();
-builder.Services.AddSingleton<MonitoringService>();
-builder.Services.AddHostedService(provider => provider.GetRequiredService<MonitoringService>());
+builder.Services.AddHostedService<MonitoringService>();
 var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {

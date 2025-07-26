@@ -6,3 +6,5 @@ global using System.Text.Json;
 global using CreatioHelper.Domain.Entities;
 global using CreatioHelper.Application.Interfaces;
 global using CreatioHelper.Agent.Extensions;
+global using CreatioHelper.Application.Extensions;
+global using CreatioHelper.Infrastructure.Extensions;
