@@ -5,6 +5,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Enums;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Contracts.Requests;
+using SetWebServerTypeRequestDto = CreatioHelper.Contracts.Requests.SetWebServerTypeRequest;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -49,7 +50,7 @@ public class WebServerControllerTests
     public async Task SetWebServerType_ReturnsStringCurrentType()
     {
         var controller = CreateController("IIS");
-        var request = new SetWebServerTypeRequest { Type = "IIS" };
+        var request = new SetWebServerTypeRequestDto { Type = "IIS" };
 
         var result = await controller.SetWebServerType(request);
 

@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.SignalR;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Domain.Enums;
+using CreatioHelper.Domain.Entities;
 using System;
 
 namespace CreatioHelper.Agent.Services;
