@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddSingleton<IMediator, Mediator>();
+        services.AddSingleton<IMediator, CreatioHelper.Application.Mediator.Mediator>();
         services.AddTransient<IRequestHandler<LoadSettingsQuery, AppSettings>, LoadSettingsHandler>();
         services.AddTransient<IRequestHandler<SaveSettingsCommand, Unit>, SaveSettingsHandler>();
         return services;
