@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
@@ -159,7 +160,7 @@ public class SystemdServiceManager : IWebServerService
                                 Name = serviceName,
                                 Status = activeState,
                                 Type = "SystemdService",
-                                Port = "", // TODO: add logic to obtain the port from config
+                                Port = await GetServicePortAsync(serviceName),
                                 IsRunning = string.Equals(activeState, "active", StringComparison.OrdinalIgnoreCase),
                                 LastChecked = DateTime.UtcNow
                             });
@@ -269,6 +270,43 @@ public class SystemdServiceManager : IWebServerService
     {
         var result = await ExecuteSystemctlWithOutputAsync($"status {serviceName} --no-pager --lines=0");
         return result?.Trim();
+    }
+
+    private async Task<string> GetServicePortAsync(string serviceName)
+    {
+        try
+        {
+            var pidText = await ExecuteSystemctlWithOutputAsync($"show -p MainPID --value {serviceName}");
+            if (int.TryParse(pidText?.Trim(), out var pid) && pid > 0)
+            {
+                var startInfo = new ProcessStartInfo
+                {
+                    FileName = "sh",
+                    Arguments = $"-c 'ss -ltnp | grep \"${pid},\"'",
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
+
+                using var process = Process.Start(startInfo);
+                if (process == null)
+                    return string.Empty;
+
+                var output = await process.StandardOutput.ReadToEndAsync();
+                await process.WaitForExitAsync();
+
+                var match = System.Text.RegularExpressions.Regex.Match(output, @":(\d+)\s");
+                if (match.Success)
+                    return match.Groups[1].Value;
+            }
+        }
+        catch
+        {
+            // ignore errors
+        }
+
+        return string.Empty;
     }
 
     private async Task<bool> WaitForServiceStateAsync(string serviceName, string desiredState)

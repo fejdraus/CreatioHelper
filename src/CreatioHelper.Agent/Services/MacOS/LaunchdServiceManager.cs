@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
@@ -167,7 +168,7 @@ public class LaunchdServiceManager : IWebServerService
                                 Name = serviceName,
                                 Status = isRunning ? "running" : "loaded",
                                 Type = "LaunchdService",
-                                Port = "", // TODO: add logic for retrieving the port
+                                Port = await GetServicePortAsync(pid),
                                 IsRunning = isRunning,
                                 LastChecked = DateTime.UtcNow
                             });
@@ -295,6 +296,48 @@ public class LaunchdServiceManager : IWebServerService
     {
         var result = await ExecuteLaunchctlWithOutputAsync($"print {serviceName}");
         return result?.Trim();
+    }
+
+    private async Task<string> GetServicePortAsync(string pid)
+    {
+        if (string.IsNullOrWhiteSpace(pid))
+            return string.Empty;
+
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "lsof",
+                Arguments = $"-Pan -p {pid} -iTCP -sTCP:LISTEN -Fn",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process == null)
+                return string.Empty;
+
+            var output = await process.StandardOutput.ReadToEndAsync();
+            await process.WaitForExitAsync();
+
+            foreach (var line in output.Split('\n'))
+            {
+                if (line.StartsWith("n"))
+                {
+                    var parts = line[1..].Split(":", StringSplitOptions.RemoveEmptyEntries);
+                    if (parts.Length > 1)
+                        return parts[^1].Trim();
+                }
+            }
+        }
+        catch
+        {
+            // ignore errors and return empty string
+        }
+
+        return string.Empty;
     }
 
     private async Task<bool> WaitForServiceStateAsync(string serviceName, string desiredState)
