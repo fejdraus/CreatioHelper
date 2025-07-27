@@ -238,12 +238,12 @@
                                         <Button Content="Start Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartPoolCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                IsEnabled="{Binding !IsStatusLoading}"
                                                 Width="70"/>
                                         <Button Content="Stop Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StopPoolCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                IsEnabled="{Binding !IsStatusLoading}"
                                                 Width="70"/>
                                     </StackPanel>
                                     
@@ -251,12 +251,12 @@
                                         <Button Content="Start Site" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartSiteCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                IsEnabled="{Binding !IsStatusLoading}"
                                                 Width="70"/>
                                         <Button Content="Stop Site" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StopSiteCommand, FallbackValue={x:Null}}"
                                                 CommandParameter="{Binding .}"
-                                                IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"
+                                                IsEnabled="{Binding !IsStatusLoading}"
                                                 Width="70"/>
                                     </StackPanel>
                                 </StackPanel>

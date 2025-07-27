@@ -164,6 +164,9 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLogToFileEnabled;
     
+    [ObservableProperty]
+    private bool _isServerControlsEnabled = true;
+    
     public bool IsBusy => _operationsService.IsBusy;
     
     public string StartButtonText => _operationsService.StartButtonText;
@@ -235,18 +238,35 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
-        if (result.IsSuccess)
+        // Устанавливаем индикацию загрузки для конкретного сервера
+        server.IsStatusLoading = true;
+        
+        try
         {
-            if (!OperatingSystem.IsWindows())
+            _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            
+            var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
+            if (result.IsSuccess)
             {
-                return;
+                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' stopped successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                if (OperatingSystem.IsWindows())
+                {
+                    await _statusService.RefreshServerStatusAsync(server);
+                }
             }
-            await _statusService.RefreshServerStatusAsync(server);
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop pool: {result.ErrorMessage}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to stop pool: {result.ErrorMessage}");
+            _output.WriteLine($"[ERROR] Failed to stop application pool '{server.PoolName}': {ex.Message}");
+        }
+        finally
+        {
+            // Убираем индикацию загрузки
+            server.IsStatusLoading = false;
         }
     }
 
@@ -259,18 +279,35 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
-        if (result.IsSuccess)
+        // Устанавливаем индикацию загрузки для конкретного сервера
+        server.IsStatusLoading = true;
+        
+        try
         {
-            if (!OperatingSystem.IsWindows())
+            _output.WriteLine($"[INFO] Starting application pool '{server.PoolName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            
+            var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
+            if (result.IsSuccess)
             {
-                return;
+                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' started successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                if (OperatingSystem.IsWindows())
+                {
+                    await _statusService.RefreshServerStatusAsync(server);
+                }
             }
-            await _statusService.RefreshServerStatusAsync(server);
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to start pool: {result.ErrorMessage}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to start pool: {result.ErrorMessage}");
+            _output.WriteLine($"[ERROR] Failed to start application pool '{server.PoolName}': {ex.Message}");
+        }
+        finally
+        {
+            // Убираем индикацию загрузки
+            server.IsStatusLoading = false;
         }
     }
 
@@ -283,23 +320,37 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
-        if (result.IsSuccess)
+        // Устанавливаем индикацию загрузки для конкретного сервера
+        server.IsStatusLoading = true;
+        
+        try
         {
-            if (!OperatingSystem.IsWindows())
+            _output.WriteLine($"[INFO] Stopping website '{server.SiteName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            
+            var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
+            if (result.IsSuccess)
             {
-                return;
+                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' stopped successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                if (OperatingSystem.IsWindows())
+                {
+                    await _statusService.RefreshServerStatusAsync(server);
+                }
             }
-            await _statusService.RefreshServerStatusAsync(server);
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop website: {result.ErrorMessage}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to stop website: {result.ErrorMessage}");
+            _output.WriteLine($"[ERROR] Failed to stop website '{server.SiteName}': {ex.Message}");
+        }
+        finally
+        {
+            // Убираем индикацию загрузки
+            server.IsStatusLoading = false;
         }
     }
-    
-    [ObservableProperty]
-    private bool _isServerControlsEnabled = true;
 
     [RelayCommand]
     private async Task StartSite(ServerInfo server)
@@ -310,18 +361,35 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
-        if (result.IsSuccess)
+        // Устанавливаем индикацию загрузки для конкретного сервера
+        server.IsStatusLoading = true;
+        
+        try
         {
-            if (!OperatingSystem.IsWindows())
+            _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            
+            var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
+            if (result.IsSuccess)
             {
-                return;
+                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' started successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                if (OperatingSystem.IsWindows())
+                {
+                    await _statusService.RefreshServerStatusAsync(server);
+                }
             }
-            await _statusService.RefreshServerStatusAsync(server);
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to start website: {result.ErrorMessage}");
+            }
         }
-        else
+        catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to start website: {result.ErrorMessage}");
+            _output.WriteLine($"[ERROR] Failed to start website '{server.SiteName}': {ex.Message}");
+        }
+        finally
+        {
+            // Убираем индикацию загрузки
+            server.IsStatusLoading = false;
         }
     }
     
@@ -525,7 +593,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             var result = await _systemServiceManager.StopServiceAsync(ServiceName);
-            
+
             if (result)
             {
                 _output.WriteLine($"[SUCCESS] Service '{ServiceName}' stopped successfully.");
