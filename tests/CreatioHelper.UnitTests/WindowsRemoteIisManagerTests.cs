@@ -1,17 +1,32 @@
-using CreatioHelper.Domain.Entities;
-using CreatioHelper.Domain.ValueObjects;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Logging;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Common;
+using Moq;
 
 namespace CreatioHelper.Tests;
 
 public class WindowsRemoteIisManagerTests
 {
+    private WindowsRemoteIisManager CreateManager()
+    {
+        var writer = new BufferingOutputWriter(_ => { }, () => { });
+        var mockMetrics = new Mock<IMetricsService>();
+        
+        // Настраиваем мок так, чтобы MeasureAsync выполнял переданную функцию
+        mockMetrics.Setup(m => m.MeasureAsync<Result>(It.IsAny<string>(), It.IsAny<Func<Task<Result>>>(), It.IsAny<Dictionary<string, string>>()))
+            .Returns<string, Func<Task<Result>>, Dictionary<string, string>>((name, func, tags) => func());
+            
+        mockMetrics.Setup(m => m.MeasureAsync<Result>(It.IsAny<string>(), It.IsAny<Func<Task<Result>>>()))
+            .Returns<string, Func<Task<Result>>>((name, func) => func());
+        
+        return new WindowsRemoteIisManager(writer, mockMetrics.Object);
+    }
+
     [Fact]
     public async Task StopAppPoolAsync_ReturnsFailure_WhenNotWindows()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var poolName = "TestAppPool";
         
         var result = await manager.StopAppPoolAsync(poolName, CancellationToken.None);
@@ -30,8 +45,7 @@ public class WindowsRemoteIisManagerTests
     [Fact]
     public async Task StopAppPoolAsync_ReturnsFailure_WhenPoolNameEmpty()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         
         var result = await manager.StopAppPoolAsync("", CancellationToken.None);
         
@@ -42,23 +56,21 @@ public class WindowsRemoteIisManagerTests
     [Fact]
     public async Task StartAppPoolAsync_ReturnsResult_WithValidPoolName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var poolName = "TestAppPool";
         
         var result = await manager.StartAppPoolAsync(poolName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
+        Assert.IsType<Domain.Common.Result>(result);
     }
 
     [Fact]
     public async Task StartAppPoolAsync_ReturnsFailure_WhenPoolNameEmpty()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         
-        var result = await manager.StartAppPoolAsync(null!, CancellationToken.None);
+        var result = await manager.StartAppPoolAsync(string.Empty, CancellationToken.None);
         
         Assert.False(result.IsSuccess);
         Assert.Contains("Pool name is required", result.ErrorMessage);
@@ -67,21 +79,19 @@ public class WindowsRemoteIisManagerTests
     [Fact]
     public async Task GetAppPoolStatusAsync_ReturnsResultString_WithValidPoolName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var poolName = "DefaultAppPool";
         
         var result = await manager.GetAppPoolStatusAsync(poolName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result<string>>(result);
+        Assert.IsType<Domain.Common.Result<string>>(result);
     }
 
     [Fact]
     public async Task GetAppPoolStatusAsync_ReturnsFailure_WhenPoolNameEmpty()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         
         var result = await manager.GetAppPoolStatusAsync("", CancellationToken.None);
         
@@ -92,23 +102,21 @@ public class WindowsRemoteIisManagerTests
     [Fact]
     public async Task StartWebsiteAsync_ReturnsResult_WithValidSiteName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var siteName = "Default Web Site";
         
         var result = await manager.StartWebsiteAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
+        Assert.IsType<Domain.Common.Result>(result);
     }
 
     [Fact]
     public async Task StartWebsiteAsync_ReturnsFailure_WhenSiteNameEmpty()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         
-        var result = await manager.StartWebsiteAsync(null!, CancellationToken.None);
+        var result = await manager.StartWebsiteAsync(string.Empty, CancellationToken.None);
         
         Assert.False(result.IsSuccess);
         Assert.Contains("Site name is required", result.ErrorMessage);
@@ -117,39 +125,36 @@ public class WindowsRemoteIisManagerTests
     [Fact]
     public async Task StopWebsiteAsync_ReturnsResult_WithValidSiteName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var siteName = "Default Web Site";
         
         var result = await manager.StopWebsiteAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
+        Assert.IsType<Domain.Common.Result>(result);
     }
 
     [Fact]
     public async Task GetWebsiteStatusAsync_ReturnsResultString_WithValidSiteName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var siteName = "Default Web Site";
         
         var result = await manager.GetWebsiteStatusAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result<string>>(result);
+        Assert.IsType<Domain.Common.Result<string>>(result);
     }
 
     [Fact]
     public async Task StartServiceAsync_ReturnsResult_WithValidServiceName()
     {
-        var writer = new BufferingOutputWriter(_ => { });
-        var manager = new WindowsRemoteIisManager(writer);
+        var manager = CreateManager();
         var serviceName = "TestService";
         
         var result = await manager.StartServiceAsync(serviceName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
+        Assert.IsType<Domain.Common.Result>(result);
     }
 }

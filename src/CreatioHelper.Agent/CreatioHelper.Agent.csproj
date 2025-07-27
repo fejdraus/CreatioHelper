@@ -4,12 +4,8 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dotnet-CreatioHelper.Agent-20240101-1234</UserSecretsId>
     <OutputType>Exe</OutputType>
-    <PublishSingleFile>true</PublishSingleFile>
-    <SelfContained>true</SelfContained>
-    <EnableConfigurationBinding>true</EnableConfigurationBinding>
-
+    
     <!-- Define compilation symbols for different platforms -->
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(DefineConstants);LINUX</DefineConstants>
@@ -21,6 +17,12 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.7" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.7" />
+    
+    <!-- Application Insights для телеметрии -->
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
+    
+    <!-- Health Checks -->
+    <PackageReference Include="Microsoft.Extensions.Diagnostics.HealthChecks" Version="8.0.0" />
   </ItemGroup>
 
   <!-- OpenAPI packages - for Development or when Swagger is enabled -->
@@ -39,6 +41,7 @@
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Linux'))">
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" Version="8.0.0" />
   </ItemGroup>
+  
   <ItemGroup>
     <ProjectReference Include="..\CreatioHelper.Application\CreatioHelper.Application.csproj" />
     <ProjectReference Include="..\CreatioHelper.Infrastructure\CreatioHelper.Infrastructure.csproj" />

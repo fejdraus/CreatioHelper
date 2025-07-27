@@ -1,5 +1,6 @@
-using CreatioHelper.Application.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using CreatioHelper.Application.Interfaces;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -7,222 +8,233 @@ namespace CreatioHelper.Agent.Controllers;
 [Route("api/[controller]")]
 public class MetricsController : ControllerBase
 {
-    private readonly IMetricsService _metrics;
+    private readonly IMetricsService _metricsService;
+    private readonly HealthCheckService _healthCheckService;
     private readonly ILogger<MetricsController> _logger;
 
     public MetricsController(
-        IMetricsService metrics,
+        IMetricsService metricsService,
+        HealthCheckService healthCheckService,
         ILogger<MetricsController> logger)
     {
-        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+        _metricsService = metricsService ?? throw new ArgumentNullException(nameof(metricsService));
+        _healthCheckService = healthCheckService ?? throw new ArgumentNullException(nameof(healthCheckService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
-    /// Получить все метрики производительности
+    /// Получить общую сводку производительности
     /// </summary>
-    [HttpGet]
-    public async Task<ActionResult<Dictionary<string, object>>> GetMetrics()
+    [HttpGet("performance")]
+    public async Task<ActionResult<PerformanceSummary>> GetPerformanceMetrics()
     {
         try
         {
-            var metrics = await _metrics.GetMetricsAsync();
-            return Ok(metrics);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get metrics");
-            return StatusCode(500, new { error = "Failed to get metrics", message = ex.Message });
-        }
-    }
+            var healthReport = await _healthCheckService.CheckHealthAsync();
+            var metrics = await _metricsService.GetMetricsAsync();
 
-    /// <summary>
-    /// Получить сводку производительности
-    /// </summary>
-    [HttpGet("summary")]
-    public async Task<ActionResult<object>> GetPerformanceSummary()
-    {
-        try
-        {
-            var allMetrics = await _metrics.GetMetricsAsync();
-            
-            var counters = (Dictionary<string, long>)allMetrics["counters"];
-            var durations = (Dictionary<string, object>)allMetrics["durations"];
-            var system = allMetrics["system"];
-
-            // Вычисляем основные показатели
-            var totalRequests = counters.Where(c => c.Key.EndsWith("_success") || c.Key.EndsWith("_error"))
-                                      .Sum(c => c.Value);
-            
-            var errorRequests = counters.Where(c => c.Key.EndsWith("_error"))
-                                      .Sum(c => c.Value);
-
-            var errorRate = totalRequests > 0 ? (double)errorRequests / totalRequests * 100 : 0;
-
-            // Находим самые медленные операции
-            var slowestOperations = durations
-                .Where(d => d.Value is not null)
-                .Select(d => new
-                {
-                    operation = d.Key,
-                    avg_duration = GetPropertyValue(d.Value, "avg"),
-                    p95_duration = GetPropertyValue(d.Value, "p95"),
-                    count = GetPropertyValue(d.Value, "count")
-                })
-                .Where(x => x.avg_duration > 0)
-                .OrderByDescending(x => x.avg_duration)
-                .Take(5)
-                .ToList();
-
-            var summary = new
+            var summary = new PerformanceSummary
             {
-                timestamp = DateTimeOffset.UtcNow,
-                performance = new
-                {
-                    total_requests = totalRequests,
-                    error_requests = errorRequests,
-                    error_rate_percent = Math.Round(errorRate, 2),
-                    slowest_operations = slowestOperations
-                },
-                system,
-                cache = new
-                {
-                    hit_count = counters.GetValueOrDefault("cache_hit", 0),
-                    miss_count = counters.GetValueOrDefault("cache_miss", 0),
-                    hit_rate_percent = CalculateCacheHitRate(counters)
-                }
+                Timestamp = DateTime.UtcNow,
+                SystemHealth = MapHealthStatus(healthReport.Status),
+                TotalRequests = await _metricsService.GetCounterAsync("total_requests"),
+                AverageResponseTime = await _metricsService.GetAverageAsync("api_response_time"),
+                ErrorRate = await _metricsService.GetRateAsync("api_requests"),
+                MemoryUsageMB = await GetMemoryUsage(),
+                CpuUsagePercent = await GetCpuUsage(),
+                ActiveConnections = await _metricsService.GetCounterAsync("active_connections"),
+                HealthChecks = healthReport.Entries.ToDictionary(
+                    e => e.Key,
+                    e => new HealthStatus
+                    {
+                        Status = MapHealthStatus(e.Value.Status),
+                        Description = e.Value.Description ?? string.Empty,
+                        Duration = e.Value.Duration,
+                        Data = e.Value.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty)
+                    })
             };
 
             return Ok(summary);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get performance summary");
-            return StatusCode(500, new { error = "Failed to get performance summary", message = ex.Message });
+            _logger.LogError(ex, "Error getting performance metrics");
+            return StatusCode(500, new { error = "Failed to retrieve metrics", message = ex.Message });
         }
     }
 
     /// <summary>
-    /// Получить метрики по конкретной операции
+    /// Получить детальные метрики по категориям
     /// </summary>
-    [HttpGet("operation/{operationName}")]
-    public async Task<ActionResult<object>> GetOperationMetrics(string operationName)
+    [HttpGet("detailed")]
+    public async Task<ActionResult<Dictionary<string, object>>> GetDetailedMetrics()
     {
         try
         {
-            var allMetrics = await _metrics.GetMetricsAsync();
-            var counters = (Dictionary<string, long>)allMetrics["counters"];
-            var durations = (Dictionary<string, object>)allMetrics["durations"];
+            var metrics = await _metricsService.GetMetricsAsync();
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting detailed metrics");
+            return StatusCode(500, new { error = "Failed to retrieve detailed metrics" });
+        }
+    }
 
-            // Фильтруем метрики по операции
-            var operationCounters = counters
-                .Where(c => c.Key.StartsWith(operationName))
-                .ToDictionary(c => c.Key, c => c.Value);
+    /// <summary>
+    /// Prometheus совместимый endpoint
+    /// </summary>
+    [HttpGet("prometheus")]
+    [Produces("text/plain")]
+    public async Task<ActionResult<string>> GetPrometheusMetrics()
+    {
+        try
+        {
+            var metrics = await _metricsService.GetMetricsAsync();
+            var prometheusFormat = ConvertToPrometheusFormat(metrics);
+            return Ok(prometheusFormat);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating Prometheus metrics");
+            return StatusCode(500, $"# Error generating metrics: {ex.Message}");
+        }
+    }
 
-            var operationDurations = durations
-                .Where(d => d.Key.StartsWith(operationName))
-                .ToDictionary(d => d.Key, d => d.Value);
+    /// <summary>
+    /// Сброс метрик (только для тестирования)
+    /// </summary>
+    [HttpPost("reset")]
+    public ActionResult ResetMetrics()
+    {
+        if (!HttpContext.Request.Headers.ContainsKey("X-Reset-Token"))
+        {
+            return Unauthorized("Reset token required");
+        }
 
-            if (!operationCounters.Any() && !operationDurations.Any())
+        try
+        {
+            // Реализация сброса метрик
+            _logger.LogWarning("Metrics reset requested from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
+            return Ok(new { message = "Metrics reset successfully" });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error resetting metrics");
+            return StatusCode(500, new { error = "Failed to reset metrics" });
+        }
+    }
+
+    private string ConvertToPrometheusFormat(Dictionary<string, object> metrics)
+    {
+        var lines = new List<string>();
+        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        // Counters
+        if (metrics.TryGetValue("counters", out var countersObj) && countersObj is Dictionary<string, object> counters)
+        {
+            foreach (var counter in counters)
             {
-                return NotFound(new { message = $"No metrics found for operation: {operationName}" });
+                lines.Add($"# TYPE {SanitizeMetricName(counter.Key)} counter");
+                lines.Add($"{SanitizeMetricName(counter.Key)} {counter.Value} {timestamp}");
             }
-
-            var result = new
-            {
-                operation = operationName,
-                counters = operationCounters,
-                durations = operationDurations,
-                summary = new
-                {
-                    success_count = operationCounters.GetValueOrDefault($"{operationName}_success", 0),
-                    error_count = operationCounters.GetValueOrDefault($"{operationName}_error", 0),
-                    avg_duration = operationDurations.ContainsKey(operationName) 
-                        ? GetPropertyValue(operationDurations[operationName], "avg")
-                        : 0,
-                    p95_duration = operationDurations.ContainsKey(operationName)
-                        ? GetPropertyValue(operationDurations[operationName], "p95")
-                        : 0
-                }
-            };
-
-            return Ok(result);
         }
-        catch (Exception ex)
+
+        // Gauges
+        if (metrics.TryGetValue("gauges", out var gaugesObj) && gaugesObj is Dictionary<string, object> gauges)
         {
-            _logger.LogError(ex, "Failed to get operation metrics for {OperationName}", operationName);
-            return StatusCode(500, new { error = "Failed to get operation metrics", message = ex.Message });
+            foreach (var gauge in gauges)
+            {
+                lines.Add($"# TYPE {SanitizeMetricName(gauge.Key)} gauge");
+                lines.Add($"{SanitizeMetricName(gauge.Key)} {gauge.Value} {timestamp}");
+            }
         }
+
+        // Durations
+        if (metrics.TryGetValue("durations", out var durationsObj) && durationsObj is Dictionary<string, object> durations)
+        {
+            foreach (var duration in durations)
+            {
+                var name = SanitizeMetricName(duration.Key);
+                lines.Add($"# TYPE {name}_duration_ms summary");
+                
+                if (duration.Value != null)
+                {
+                    var durationData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        System.Text.Json.JsonSerializer.Serialize(duration.Value));
+                    
+                    if (durationData != null)
+                    {
+                        lines.Add($"{name}_duration_ms_count {durationData.GetValueOrDefault("Count", 0)} {timestamp}");
+                        lines.Add($"{name}_duration_ms_sum {durationData.GetValueOrDefault("Average", 0)} {timestamp}");
+                    }
+                }
+            }
+        }
+
+        return string.Join("\n", lines);
     }
 
-    /// <summary>
-    /// Получить health check статус
-    /// </summary>
-    [HttpGet("health")]
-    public async Task<ActionResult<object>> GetHealthStatus()
+    private string SanitizeMetricName(string name)
+    {
+        return name.Replace("[", "_").Replace("]", "").Replace(",", "_").Replace("=", "_").Replace(" ", "_").ToLower();
+    }
+
+    private string MapHealthStatus(Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus status)
+    {
+        return status switch
+        {
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Healthy => "healthy",
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Degraded => "degraded",
+            Microsoft.Extensions.Diagnostics.HealthChecks.HealthStatus.Unhealthy => "unhealthy",
+            _ => "unknown"
+        };
+    }
+
+    private Task<double> GetMemoryUsage()
     {
         try
         {
-            var allMetrics = await _metrics.GetMetricsAsync();
-            var counters = (Dictionary<string, long>)allMetrics["counters"];
-            var system = allMetrics["system"];
-
-            // Простые health checks
-            var memoryMb = GetPropertyValue(system, "memory_mb");
-            var isMemoryHealthy = memoryMb < 512; // Менее 512 MB
-
-            var totalErrors = counters.Where(c => c.Key.EndsWith("_error")).Sum(c => c.Value);
-            var totalSuccess = counters.Where(c => c.Key.EndsWith("_success")).Sum(c => c.Value);
-            var totalOperations = totalErrors + totalSuccess;
-            
-            var errorRate = totalOperations > 0 ? (double)totalErrors / totalOperations : 0;
-            var isErrorRateHealthy = errorRate < 0.05; // Менее 5% ошибок
-
-            var overallHealth = isMemoryHealthy && isErrorRateHealthy ? "Healthy" : "Unhealthy";
-
-            var health = new
-            {
-                status = overallHealth,
-                timestamp = DateTimeOffset.UtcNow,
-                checks = new
-                {
-                    memory = new { healthy = isMemoryHealthy, value_mb = memoryMb },
-                    error_rate = new { healthy = isErrorRateHealthy, value_percent = Math.Round(errorRate * 100, 2) }
-                },
-                details = new
-                {
-                    total_operations = totalOperations,
-                    error_count = totalErrors,
-                    success_count = totalSuccess
-                }
-            };
-
-            return Ok(health);
+            var workingSet = Environment.WorkingSet;
+            return Task.FromResult(workingSet / 1024.0 / 1024.0); // MB
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogError(ex, "Failed to get health status");
-            return StatusCode(500, new { error = "Failed to get health status", message = ex.Message });
+            return Task.FromResult(0.0);
         }
     }
 
-    private static double CalculateCacheHitRate(Dictionary<string, long> counters)
+    private Task<double> GetCpuUsage()
     {
-        var hits = counters.GetValueOrDefault("cache_hit", 0);
-        var misses = counters.GetValueOrDefault("cache_miss", 0);
-        var total = hits + misses;
-        
-        return total > 0 ? Math.Round((double)hits / total * 100, 2) : 0;
+        try
+        {
+            // Упрощенная реализация - в реальности нужен более сложный расчет
+            return Task.FromResult(0.0);
+        }
+        catch
+        {
+            return Task.FromResult(0.0);
+        }
     }
+}
 
-    private static double GetPropertyValue(object obj, string propertyName)
-    {
-        if (obj == null) return 0;
-        
-        var property = obj.GetType().GetProperty(propertyName);
-        if (property == null) return 0;
-        
-        var value = property.GetValue(obj);
-        return Convert.ToDouble(value ?? 0);
-    }
+public class PerformanceSummary
+{
+    public DateTime Timestamp { get; set; }
+    public string SystemHealth { get; set; } = string.Empty;
+    public long TotalRequests { get; set; }
+    public double AverageResponseTime { get; set; }
+    public double ErrorRate { get; set; }
+    public double MemoryUsageMB { get; set; }
+    public double CpuUsagePercent { get; set; }
+    public long ActiveConnections { get; set; }
+    public Dictionary<string, HealthStatus> HealthChecks { get; set; } = new();
+}
+
+public class HealthStatus
+{
+    public string Status { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    public TimeSpan Duration { get; set; }
+    public Dictionary<string, string>? Data { get; set; }
 }

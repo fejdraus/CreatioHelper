@@ -5,12 +5,24 @@ using CreatioHelper.Domain.Entities;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Добавляем Application Insights
+builder.Services.AddApplicationInsightsTelemetry();
+
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Health Checks
+builder.Services.AddHealthChecks();
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices();
+
+// Добавляем новые сервисы производительности
+builder.Services.AddScoped<BatchOperationService>();
+builder.Services.AddScoped<ApplicationInsightsMetricsService>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -21,21 +33,36 @@ builder.Services.AddCors(options =>
             .AllowCredentials();
     });
 });
+
 builder.Services.Configure<AgentConfig>(builder.Configuration.GetSection("AgentConfig"));
 builder.Services.AddPlatformServices();
-builder.Services.AddHostedService<MonitoringService>();
+builder.Services.AddPerformanceServices(); // Добавляем систему метрик
+
 var app = builder.Build();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
+// Добавляем Health Checks endpoint
+app.MapHealthChecks("/health");
+
 app.UseCors("AllowAll");
 app.UseRouting();
 app.MapControllers();
-//app.UseAuthorization();
+
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
+
+// Prometheus метрики endpoint
+app.MapGet("/metrics", async (CreatioHelper.Application.Interfaces.IMetricsService metricsService) =>
+{
+    var metrics = await metricsService.GetMetricsAsync();
+    var prometheusFormat = ConvertToPrometheusFormat(metrics);
+    return Results.Text(prometheusFormat, "text/plain");
+});
+
 app.MapGet("/test-signalr", () => Results.Content("""
                                                   <!DOCTYPE html>
                                                   <html>
@@ -69,4 +96,39 @@ app.MapGet("/test-signalr", () => Results.Content("""
                                                   </body>
                                                   </html>
                                                   """, "text/html"));
+
 app.Run();
+
+// Вспомогательная функция для конвертации в Prometheus формат
+string ConvertToPrometheusFormat(Dictionary<string, object> metrics)
+{
+    var lines = new List<string>();
+    var timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    if (metrics.TryGetValue("counters", out var countersObj) && countersObj is Dictionary<string, object> counters)
+    {
+        foreach (var counter in counters)
+        {
+            var name = SanitizeMetricName(counter.Key);
+            lines.Add($"# TYPE {name} counter");
+            lines.Add($"{name} {counter.Value} {timestamp}");
+        }
+    }
+
+    if (metrics.TryGetValue("gauges", out var gaugesObj) && gaugesObj is Dictionary<string, object> gauges)
+    {
+        foreach (var gauge in gauges)
+        {
+            var name = SanitizeMetricName(gauge.Key);
+            lines.Add($"# TYPE {name} gauge");
+            lines.Add($"{name} {gauge.Value} {timestamp}");
+        }
+    }
+
+    return string.Join("\n", lines);
+}
+
+string SanitizeMetricName(string name)
+{
+    return name.Replace("[", "_").Replace("]", "").Replace(",", "_").Replace("=", "_").Replace(" ", "_").ToLower();
+}
