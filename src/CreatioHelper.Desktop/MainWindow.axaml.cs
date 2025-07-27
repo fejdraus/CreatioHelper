@@ -16,12 +16,13 @@ using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Workspace;
+using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper
 {
     public partial class MainWindow : Window
     {
-        private readonly BufferingOutputWriter _writer;
+        private readonly IOutputWriter _writer;
         private readonly MainWindowViewModel _viewModel;
         private const string LogFilePath = "log.txt";
 
