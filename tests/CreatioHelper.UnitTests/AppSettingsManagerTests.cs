@@ -17,11 +17,26 @@ public class AppSettingsManagerTests
             var manager = new AppSettingsManager();
             var settings = manager.Load();
             Assert.True(settings.IsIisMode);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         finally
         {
             Directory.SetCurrentDirectory(originalDir);
-            tempDir.Delete(true);
+            for (int i = 0; i < 3; i++)
+            {
+                try
+                {
+                    tempDir.Delete(true);
+                    break;
+                }
+                catch (IOException) when (i < 2)
+                {
+                    Thread.Sleep(100);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
+            }
         }
     }
 
@@ -52,11 +67,27 @@ public class AppSettingsManagerTests
             Assert.Equal(original.PackagesToDeleteAfter, loaded.PackagesToDeleteAfter);
             Assert.Equal(original.IsIisMode, loaded.IsIisMode);
             Assert.Equal(original.IsServerPanelVisible, loaded.IsServerPanelVisible);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
         }
         finally
         {
             Directory.SetCurrentDirectory(originalDir);
-            tempDir.Delete(true);
+            for (int i = 0; i < 3; i++)
+            {
+                try
+                {
+                    tempDir.Delete(true);
+                    break;
+                }
+                catch (IOException) when (i < 2)
+                {
+                    // Ждем немного и пытаемся снова
+                    Thread.Sleep(100);
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                }
+            }
         }
     }
 }
