@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Infrastructure.Services.Linux;
+using CreatioHelper.Infrastructure.Services.MacOs;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
