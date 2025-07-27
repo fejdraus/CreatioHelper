@@ -1,7 +1,7 @@
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.ValueObjects;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
 using System.Diagnostics;
 
@@ -9,132 +9,100 @@ namespace CreatioHelper.Infrastructure.Services.Linux;
 
 public class LinuxRemoteIisManager : IRemoteIisManager
 {
+    private const string SystemctlCommand = "systemctl";
+    private const string RunningStatus = "Running";
+    private const string StoppedStatus = "Stopped";
+    private const string ActiveStatus = "active";
+    private const string OperationCancelledMessage = "Operation was cancelled";
+    
     private readonly IOutputWriter _output;
+    private readonly Func<ServerId, ServerInfo?> _getServerInfo;
 
-    public LinuxRemoteIisManager(IOutputWriter output)
+    public LinuxRemoteIisManager(IOutputWriter output, Func<ServerId, ServerInfo?> getServerInfo)
     {
-        _output = output;
+        _output = output ?? throw new ArgumentNullException(nameof(output));
+        _getServerInfo = getServerInfo ?? throw new ArgumentNullException(nameof(getServerInfo));
     }
 
     public Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return StopServiceAsync(serverId, cancellationToken);
-    }
+        => StopServiceAsync(serverId, cancellationToken);
 
     public Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return StopServiceAsync(serverId, cancellationToken);
-    }
+        => StopServiceAsync(serverId, cancellationToken);
 
     public Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return StartServiceAsync(serverId, cancellationToken);
-    }
+        => StartServiceAsync(serverId, cancellationToken);
 
     public Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return StartServiceAsync(serverId, cancellationToken);
-    }
+        => StartServiceAsync(serverId, cancellationToken);
 
     public async Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        try
-        {
-            // На Linux сервисы управляются через systemctl
-            var serviceName = $"creatio-{serverId.Value}";
-            
-            if (cancellationToken.IsCancellationRequested)
-                return Result.Failure("Operation was cancelled");
-
-            var result = await ExecuteSystemctlCommand("start", serviceName, cancellationToken);
-            
-            if (result)
-            {
-                _output.WriteLine($"[INFO] Service {serviceName} started successfully");
-                return Result.Success();
-            }
-            else
-            {
-                var errorMsg = $"Failed to start service {serviceName}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            return Result.Failure("Operation was cancelled");
-        }
-        catch (Exception ex)
-        {
-            var errorMsg = $"Failed to start service for server {serverId}: {ex.Message}";
-            _output.WriteLine($"[ERROR] {errorMsg}");
-            return Result.Failure(errorMsg, ex);
-        }
-    }
+        => await ExecuteServiceOperationAsync(serverId, "start", "started", cancellationToken);
 
     public async Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        => await ExecuteServiceOperationAsync(serverId, "stop", "stopped", cancellationToken);
+
+    public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        => await GetServiceStatusAsync(serverId, cancellationToken);
+
+    public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        => await GetServiceStatusAsync(serverId, cancellationToken);
+
+    private async Task<Result> ExecuteServiceOperationAsync(
+        ServerId serverId, 
+        string action, 
+        string actionPastTense, 
+        CancellationToken cancellationToken)
     {
         try
         {
-            // На Linux сервисы управляются через systemctl
-            var serviceName = $"creatio-{serverId.Value}";
+            cancellationToken.ThrowIfCancellationRequested();
             
-            if (cancellationToken.IsCancellationRequested)
-                return Result.Failure("Operation was cancelled");
-
-            var result = await ExecuteSystemctlCommand("stop", serviceName, cancellationToken);
+            var serviceName = GetServiceName(serverId);
+            var result = await ExecuteSystemctlCommandAsync(action, serviceName, cancellationToken);
             
-            if (result)
+            if (result.IsSuccess)
             {
-                _output.WriteLine($"[INFO] Service {serviceName} stopped successfully");
+                _output.WriteLine($"[INFO] Service {serviceName} {actionPastTense} successfully");
                 return Result.Success();
             }
-            else
-            {
-                var errorMsg = $"Failed to stop service {serviceName}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg);
-            }
+            
+            var errorMsg = $"Failed to {action} service {serviceName}: {result.ErrorMessage}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result.Failure(errorMsg);
         }
         catch (OperationCanceledException)
         {
-            return Result.Failure("Operation was cancelled");
+            return Result.Failure(OperationCancelledMessage);
         }
         catch (Exception ex)
         {
-            var errorMsg = $"Failed to stop service for server {serverId}: {ex.Message}";
+            var errorMsg = $"Failed to {action} service for server {serverId}: {ex.Message}";
             _output.WriteLine($"[ERROR] {errorMsg}");
             return Result.Failure(errorMsg, ex);
         }
-    }
-
-    public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return await GetServiceStatusAsync(serverId, cancellationToken);
-    }
-
-    public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
-    {
-        return await GetServiceStatusAsync(serverId, cancellationToken);
     }
 
     private async Task<Result<string>> GetServiceStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
         try
         {
-            var serviceName = $"creatio-{serverId.Value}";
+            cancellationToken.ThrowIfCancellationRequested();
             
-            if (cancellationToken.IsCancellationRequested)
-                return Result<string>.Failure("Operation was cancelled");
-
-            var isRunning = await CheckServiceStatus(serviceName, cancellationToken);
-            var status = isRunning ? "Running" : "Stopped";
+            var serviceName = GetServiceName(serverId);
+            var statusResult = await CheckServiceStatusAsync(serviceName, cancellationToken);
             
+            if (!statusResult.IsSuccess)
+            {
+                return Result<string>.Failure(statusResult.ErrorMessage);
+            }
+            
+            var status = statusResult.Value ? RunningStatus : StoppedStatus;
             return Result<string>.Success(status);
         }
         catch (OperationCanceledException)
         {
-            return Result<string>.Failure("Operation was cancelled");
+            return Result<string>.Failure(OperationCancelledMessage);
         }
         catch (Exception ex)
         {
@@ -144,22 +112,24 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
     }
 
-    private async Task<bool> ExecuteSystemctlCommand(string action, string serviceName, CancellationToken cancellationToken)
+    private async Task<Result> ExecuteSystemctlCommandAsync(string action, string serviceName, CancellationToken cancellationToken)
     {
         try
         {
-            var processStartInfo = new ProcessStartInfo
+            using var process = Process.Start(new ProcessStartInfo
             {
-                FileName = "systemctl",
+                FileName = SystemctlCommand,
                 Arguments = $"{action} {serviceName}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
-            };
+            });
 
-            using var process = new Process { StartInfo = processStartInfo };
-            process.Start();
+            if (process == null)
+            {
+                return Result.Failure($"Failed to start {SystemctlCommand} process");
+            }
 
             var outputTask = process.StandardOutput.ReadToEndAsync();
             var errorTask = process.StandardError.ReadToEndAsync();
@@ -171,51 +141,85 @@ public class LinuxRemoteIisManager : IRemoteIisManager
 
             if (process.ExitCode == 0)
             {
-                if (!string.IsNullOrEmpty(output))
-                    _output.WriteLine($"[INFO] systemctl output: {output}");
-                return true;
+                if (!string.IsNullOrWhiteSpace(output))
+                    _output.WriteLine($"[INFO] {SystemctlCommand} output: {output.Trim()}");
+                return Result.Success();
             }
-            else
-            {
-                if (!string.IsNullOrEmpty(error))
-                    _output.WriteLine($"[ERROR] systemctl error: {error}");
-                return false;
-            }
+            
+            var errorMessage = !string.IsNullOrWhiteSpace(error) ? error.Trim() : $"Command failed with exit code {process.ExitCode}";
+            _output.WriteLine($"[ERROR] {SystemctlCommand} error: {errorMessage}");
+            return Result.Failure(errorMessage);
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to execute systemctl command: {ex.Message}");
-            return false;
+            var errorMsg = $"Failed to execute {SystemctlCommand} command: {ex.Message}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result.Failure(errorMsg, ex);
         }
     }
 
-    private async Task<bool> CheckServiceStatus(string serviceName, CancellationToken cancellationToken)
+    private async Task<Result<bool>> CheckServiceStatusAsync(string serviceName, CancellationToken cancellationToken)
     {
         try
         {
-            var processStartInfo = new ProcessStartInfo
+            using var process = Process.Start(new ProcessStartInfo
             {
-                FileName = "systemctl",
+                FileName = SystemctlCommand,
                 Arguments = $"is-active {serviceName}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
-            };
+            });
 
-            using var process = new Process { StartInfo = processStartInfo };
-            process.Start();
+            if (process == null)
+            {
+                return Result<bool>.Failure($"Failed to start {SystemctlCommand} process");
+            }
 
-            var output = await process.StandardOutput.ReadToEndAsync();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
             await process.WaitForExitAsync(cancellationToken);
-
-            // systemctl is-active возвращает "active" если сервис запущен
-            return output.Trim().Equals("active", StringComparison.OrdinalIgnoreCase);
+            
+            var output = await outputTask;
+            var isActive = process.ExitCode == 0 && 
+                          !string.IsNullOrWhiteSpace(output) && 
+                          output.Trim().Equals(ActiveStatus, StringComparison.OrdinalIgnoreCase);
+            
+            return Result<bool>.Success(isActive);
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to check service status: {ex.Message}");
-            return false;
+            var errorMsg = $"Failed to check service status: {ex.Message}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result<bool>.Failure(errorMsg, ex);
         }
+    }
+
+    /// <summary>
+    /// Получает имя сервиса для управления в systemctl.
+    /// Использует ServiceName из ServerInfo, если доступно, иначе ServerName.
+    /// </summary>
+    private string GetServiceName(ServerId serverId)
+    {
+        var serverInfo = _getServerInfo(serverId);
+        if (serverInfo == null)
+        {
+            _output.WriteLine($"[WARNING] ServerInfo not found for {serverId}, using ID as service name");
+            return serverId.ToString();
+        }
+
+        // Приоритет: ServiceName -> ServerName -> ServerId
+        if (!string.IsNullOrWhiteSpace(serverInfo.ServiceName))
+        {
+            return serverInfo.ServiceName;
+        }
+        
+        if (!string.IsNullOrWhiteSpace(serverInfo.Name?.Value))
+        {
+            return serverInfo.Name.Value;
+        }
+
+        _output.WriteLine($"[WARNING] No service name found for server {serverId}, using ID");
+        return serverId.ToString();
     }
 }
