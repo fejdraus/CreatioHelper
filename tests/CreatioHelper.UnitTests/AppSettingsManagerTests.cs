@@ -4,12 +4,14 @@ using CreatioHelper.Infrastructure.Services.Configuration;
 
 namespace CreatioHelper.Tests;
 
-public class AppSettingsManagerTests
+public class AppSettingsManagerTests : IDisposable
 {
+    private readonly List<DirectoryInfo> _tempDirectories = new();
+
     [Fact]
     public void Load_WhenNoFile_ReturnsDefaultSettings()
     {
-        var tempDir = Directory.CreateTempSubdirectory();
+        var tempDir = CreateTempDirectory();
         var originalDir = Directory.GetCurrentDirectory();
         Directory.SetCurrentDirectory(tempDir.FullName);
         try
@@ -17,33 +19,17 @@ public class AppSettingsManagerTests
             var manager = new AppSettingsManager();
             var settings = manager.Load();
             Assert.True(settings.IsIisMode);
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
         }
         finally
         {
             Directory.SetCurrentDirectory(originalDir);
-            for (int i = 0; i < 3; i++)
-            {
-                try
-                {
-                    tempDir.Delete(true);
-                    break;
-                }
-                catch (IOException) when (i < 2)
-                {
-                    Thread.Sleep(100);
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
-                }
-            }
         }
     }
 
     [Fact]
     public void Save_And_Load_RoundTrip()
     {
-        var tempDir = Directory.CreateTempSubdirectory();
+        var tempDir = CreateTempDirectory();
         var originalDir = Directory.GetCurrentDirectory();
         Directory.SetCurrentDirectory(tempDir.FullName);
         try
@@ -67,27 +53,77 @@ public class AppSettingsManagerTests
             Assert.Equal(original.PackagesToDeleteAfter, loaded.PackagesToDeleteAfter);
             Assert.Equal(original.IsIisMode, loaded.IsIisMode);
             Assert.Equal(original.IsServerPanelVisible, loaded.IsServerPanelVisible);
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
         }
         finally
         {
             Directory.SetCurrentDirectory(originalDir);
-            for (int i = 0; i < 3; i++)
+        }
+    }
+
+    private DirectoryInfo CreateTempDirectory()
+    {
+        var tempDir = Directory.CreateTempSubdirectory();
+        _tempDirectories.Add(tempDir);
+        return tempDir;
+    }
+
+    public void Dispose()
+    {
+        foreach (var tempDir in _tempDirectories)
+        {
+            if (tempDir.Exists)
             {
-                try
-                {
-                    tempDir.Delete(true);
-                    break;
-                }
-                catch (IOException) when (i < 2)
-                {
-                    // Ждем немного и пытаемся снова
-                    Thread.Sleep(100);
-                    GC.Collect();
-                    GC.WaitForPendingFinalizers();
-                }
+                TryDeleteDirectory(tempDir);
             }
+        }
+    }
+
+    private static void TryDeleteDirectory(DirectoryInfo directory)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            try
+            {
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+                
+                SetDirectoryAttributesRecursive(directory, FileAttributes.Normal);
+                directory.Delete(true);
+                break;
+            }
+            catch (IOException) when (i < 4)
+            {
+                Thread.Sleep(200);
+            }
+            catch (UnauthorizedAccessException) when (i < 4)
+            {
+                Thread.Sleep(200);
+            }
+        }
+    }
+
+    private static void SetDirectoryAttributesRecursive(DirectoryInfo directory, FileAttributes attributes)
+    {
+        if (!directory.Exists)
+            return;
+
+        foreach (var file in directory.EnumerateFiles())
+        {
+            if (file.Exists && (file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+            {
+                file.Attributes = attributes;
+            }
+        }
+
+        foreach (var subDir in directory.EnumerateDirectories())
+        {
+            SetDirectoryAttributesRecursive(subDir, attributes);
+        }
+
+        if ((directory.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+        {
+            directory.Attributes = attributes;
         }
     }
 }
