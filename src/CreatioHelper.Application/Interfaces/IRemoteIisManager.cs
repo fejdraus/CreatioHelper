@@ -1,5 +1,4 @@
-﻿using System.Threading.Tasks;
-using CreatioHelper.Domain.Entities;
+﻿using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Application.Interfaces
 {

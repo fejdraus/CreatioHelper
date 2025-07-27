@@ -1,9 +1,9 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
-namespace CreatioHelper.Infrastructure.Services.Linux;
+namespace CreatioHelper.Infrastructure.Services.MacOS;
 
-public class LinuxSiteSynchronizer : ISiteSynchronizer
+public class MacOsSiteSynchronizer : ISiteSynchronizer
 {
     public Task<bool> SynchronizeAsync(
         string sitePath,

@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
 

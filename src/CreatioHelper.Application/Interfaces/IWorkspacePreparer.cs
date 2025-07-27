@@ -1,8 +1,5 @@
 namespace CreatioHelper.Application.Interfaces;
 
-/// <summary>
-/// Предоставляет методы для подготовки и сборки рабочего пространства приложения.
-/// </summary>
 public interface IWorkspacePreparer
 {
     void Prepare(string sitePath, out bool quartzIsActiveOriginal);
