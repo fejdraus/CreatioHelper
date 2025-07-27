@@ -5,9 +5,12 @@ using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
 using CreatioHelper.Infrastructure.Services.Site;
+using CreatioHelper.Infrastructure.Services.Redis;
+using CreatioHelper.Infrastructure.Services.Performance;
+using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Shared.Interfaces;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Extensions;
@@ -19,28 +22,36 @@ public static class ServiceCollectionExtensions
         // Базовые сервисы
         services.AddSingleton<IMetricsService, MetricsService>();
         
-        // Простое in-memory кэширование для desktop приложения
-        services.AddMemoryCache();
-        services.AddSingleton<ICacheService, MemoryCacheService>();
+        // OutputWriter для логирования
+        services.AddSingleton<IOutputWriter>(provider => 
+        {
+            // Создаем BufferingOutputWriter который будет использоваться всеми сервисами
+            return new BufferingOutputWriter(
+                line => Console.WriteLine(line), // Выводим в консоль
+                () => Console.Clear()
+            );
+        });
         
-        // Настройки с кэшированием
-        services.AddSingleton<SettingsService>();
-        services.AddSingleton<ISettingsService>(provider =>
+        // Сервис копирования файлов
+        services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
+        
+        // Redis Manager Factory для работы с Redis
+        services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
+        
+        // Системные метрики - фоновый сервис для мониторинга ресурсов (только для Windows)
+        if (OperatingSystem.IsWindows())
         {
-            var settingsService = provider.GetRequiredService<SettingsService>();
-            var cache = provider.GetRequiredService<ICacheService>();
-            var metrics = provider.GetRequiredService<IMetricsService>();
-            return new CachedSettingsService(settingsService, cache, metrics, provider.GetRequiredService<ILogger<CachedSettingsService>>());
-        });
+            services.AddHostedService<SystemMetricsCollector>();
+        }
+        
+        // Настройки - простая реализация без кэширования для актуальных данных
+        services.AddSingleton<ISettingsService, SettingsService>();
 
-        // Статус серверов с метриками
-        services.AddSingleton<IServerStatusService>(provider =>
-        {
-            var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
-            var cache = provider.GetRequiredService<ICacheService>();
-            var metrics = provider.GetRequiredService<IMetricsService>();
-            return new ServerStatusService(remoteManager, cache, metrics);
-        });
+        // Статус серверов - получение актуальных данных без кэширования
+        services.AddSingleton<IServerStatusService, ServerStatusService>();
+
+        // Менеджер системных сервисов
+        services.AddSingleton<ISystemServiceManager, SystemServiceManager>();
 
         // Платформо-зависимые сервисы IIS
         if (OperatingSystem.IsWindows())
@@ -53,19 +64,15 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, MacOsSiteSynchronizer>();
         }
-        else
+        else if (OperatingSystem.IsLinux())
         {
             services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
 
-        // Конфигурационные сервисы
-        services.AddSingleton<SiteConfigEditor>();
+        // Менеджеры конфигурации
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
         
-        // Output writer
-        services.AddSingleton<IOutputWriter, ConsoleOutputWriter>();
-
         return services;
     }
 }
