@@ -28,8 +28,6 @@ namespace CreatioHelper.Infrastructure.Services
 
             try
             {
-                // Для упрощения используем serverId как имя пула
-                // В реальном приложении здесь должна быть логика получения данных сервера по ID
                 var poolName = $"creatio-pool-{serverId.Value}";
                 var serverName = Environment.MachineName;
 
@@ -437,7 +435,7 @@ namespace CreatioHelper.Infrastructure.Services
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
 
             string? currentState;
-            var maxAttempts = 12; // 1 minute total with 5-second intervals
+            var maxAttempts = 12;
             var attempts = 0;
 
             do
