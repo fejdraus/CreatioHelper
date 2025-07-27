@@ -10,10 +10,12 @@ namespace CreatioHelper.Infrastructure.Services
     {
         private readonly IOutputWriter _output;
         private readonly SystemServiceManager _systemServiceManager;
+        private readonly IMetricsService _metrics;
 
-        public WindowsRemoteIisManager(IOutputWriter output)
+        public WindowsRemoteIisManager(IOutputWriter output, IMetricsService metrics)
         {
             _output = output ?? throw new ArgumentNullException(nameof(output));
+            _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
             _systemServiceManager = new SystemServiceManager(output);
         }
 
@@ -31,40 +33,43 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Pool name is required");
             }
 
-            try
+            return await _metrics.MeasureAsync("iis_command_duration", async () =>
             {
-                var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result.Failure("Operation was cancelled");
-
-                var currentState = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
-                if (currentState == "Started")
+                try
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{poolName}'", cancellationToken))
+                    var serverName = Environment.MachineName;
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return Result.Failure("Operation was cancelled");
+
+                    var currentState = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                    if (currentState == "Started")
                     {
-                        return Result.Failure($"Failed to stop app pool {poolName}");
+                        if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{poolName}'", cancellationToken))
+                        {
+                            return Result.Failure($"Failed to stop app pool {poolName}");
+                        }
+
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"App pool {poolName}", cancellationToken))
+                        {
+                            return Result.Failure($"App pool {poolName} did not reach stopped state");
+                        }
                     }
 
-                    if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"App pool {poolName}", cancellationToken))
-                    {
-                        return Result.Failure($"App pool {poolName} did not reach stopped state");
-                    }
+                    _output.WriteLine($"[INFO] App pool {poolName} stopped successfully");
+                    return Result.Success();
                 }
-
-                _output.WriteLine($"[INFO] App pool {poolName} stopped successfully");
-                return Result.Success();
-            }
-            catch (OperationCanceledException)
-            {
-                return Result.Failure("Operation was cancelled");
-            }
-            catch (Exception ex)
-            {
-                var errorMsg = $"Failed to stop app pool {poolName}: {ex.Message}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg, ex);
-            }
+                catch (OperationCanceledException)
+                {
+                    return Result.Failure("Operation was cancelled");
+                }
+                catch (Exception ex)
+                {
+                    var errorMsg = $"Failed to stop app pool {poolName}: {ex.Message}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg, ex);
+                }
+            }, new() { ["operation"] = "stop_app_pool", ["pool_name"] = poolName });
         }
 
         public async Task<Result> StopWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
@@ -79,40 +84,43 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Site name is required");
             }
 
-            try
+            return await _metrics.MeasureAsync("iis_command_duration", async () =>
             {
-                var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result.Failure("Operation was cancelled");
-
-                var currentState = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
-                if (currentState == "Started")
+                try
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{siteName}'", cancellationToken))
+                    var serverName = Environment.MachineName;
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return Result.Failure("Operation was cancelled");
+
+                    var currentState = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                    if (currentState == "Started")
                     {
-                        return Result.Failure($"Failed to stop website {siteName}");
+                        if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{siteName}'", cancellationToken))
+                        {
+                            return Result.Failure($"Failed to stop website {siteName}");
+                        }
+
+                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken))
+                        {
+                            return Result.Failure($"Website {siteName} did not reach stopped state");
+                        }
                     }
 
-                    if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken))
-                    {
-                        return Result.Failure($"Website {siteName} did not reach stopped state");
-                    }
+                    _output.WriteLine($"[INFO] Website {siteName} stopped successfully");
+                    return Result.Success();
                 }
-
-                _output.WriteLine($"[INFO] Website {siteName} stopped successfully");
-                return Result.Success();
-            }
-            catch (OperationCanceledException)
-            {
-                return Result.Failure("Operation was cancelled");
-            }
-            catch (Exception ex)
-            {
-                var errorMsg = $"Failed to stop website {siteName}: {ex.Message}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg, ex);
-            }
+                catch (OperationCanceledException)
+                {
+                    return Result.Failure("Operation was cancelled");
+                }
+                catch (Exception ex)
+                {
+                    var errorMsg = $"Failed to stop website {siteName}: {ex.Message}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg, ex);
+                }
+            }, new() { ["operation"] = "stop_website", ["site_name"] = siteName });
         }
 
         public async Task<Result> StartAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
@@ -127,40 +135,43 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Pool name is required");
             }
 
-            try
+            return await _metrics.MeasureAsync("iis_command_duration", async () =>
             {
-                var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result.Failure("Operation was cancelled");
-
-                var poolStatus = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
-                if (poolStatus == "Stopped")
+                try
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{poolName}'", cancellationToken))
+                    var serverName = Environment.MachineName;
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return Result.Failure("Operation was cancelled");
+
+                    var poolStatus = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                    if (poolStatus == "Stopped")
                     {
-                        return Result.Failure($"Failed to start app pool {poolName}");
+                        if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{poolName}'", cancellationToken))
+                        {
+                            return Result.Failure($"Failed to start app pool {poolName}");
+                        }
+
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"App pool {poolName}", cancellationToken))
+                        {
+                            return Result.Failure($"App pool {poolName} did not reach started state");
+                        }
                     }
 
-                    if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"App pool {poolName}", cancellationToken))
-                    {
-                        return Result.Failure($"App pool {poolName} did not reach started state");
-                    }
+                    _output.WriteLine($"[INFO] App pool {poolName} started successfully");
+                    return Result.Success();
                 }
-
-                _output.WriteLine($"[INFO] App pool {poolName} started successfully");
-                return Result.Success();
-            }
-            catch (OperationCanceledException)
-            {
-                return Result.Failure("Operation was cancelled");
-            }
-            catch (Exception ex)
-            {
-                var errorMsg = $"Failed to start app pool {poolName}: {ex.Message}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg, ex);
-            }
+                catch (OperationCanceledException)
+                {
+                    return Result.Failure("Operation was cancelled");
+                }
+                catch (Exception ex)
+                {
+                    var errorMsg = $"Failed to start app pool {poolName}: {ex.Message}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg, ex);
+                }
+            }, new() { ["operation"] = "start_app_pool", ["pool_name"] = poolName });
         }
 
         public async Task<Result> StartWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
@@ -175,40 +186,43 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Site name is required");
             }
 
-            try
+            return await _metrics.MeasureAsync("iis_command_duration", async () =>
             {
-                var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result.Failure("Operation was cancelled");
-
-                var siteStatus = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
-                if (siteStatus == "Stopped")
+                try
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{siteName}'", cancellationToken))
+                    var serverName = Environment.MachineName;
+
+                    if (cancellationToken.IsCancellationRequested)
+                        return Result.Failure("Operation was cancelled");
+
+                    var siteStatus = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                    if (siteStatus == "Stopped")
                     {
-                        return Result.Failure($"Failed to start website {siteName}");
+                        if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{siteName}'", cancellationToken))
+                        {
+                            return Result.Failure($"Failed to start website {siteName}");
+                        }
+
+                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken))
+                        {
+                            return Result.Failure($"Website {siteName} did not reach started state");
+                        }
                     }
 
-                    if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken))
-                    {
-                        return Result.Failure($"Website {siteName} did not reach started state");
-                    }
+                    _output.WriteLine($"[INFO] Website {siteName} started successfully");
+                    return Result.Success();
                 }
-
-                _output.WriteLine($"[INFO] Website {siteName} started successfully");
-                return Result.Success();
-            }
-            catch (OperationCanceledException)
-            {
-                return Result.Failure("Operation was cancelled");
-            }
-            catch (Exception ex)
-            {
-                var errorMsg = $"Failed to start website {siteName}: {ex.Message}";
-                _output.WriteLine($"[ERROR] {errorMsg}");
-                return Result.Failure(errorMsg, ex);
-            }
+                catch (OperationCanceledException)
+                {
+                    return Result.Failure("Operation was cancelled");
+                }
+                catch (Exception ex)
+                {
+                    var errorMsg = $"Failed to start website {siteName}: {ex.Message}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg, ex);
+                }
+            }, new() { ["operation"] = "start_website", ["site_name"] = siteName });
         }
 
         public async Task<Result> StartServiceAsync(string serviceName, CancellationToken cancellationToken = default)

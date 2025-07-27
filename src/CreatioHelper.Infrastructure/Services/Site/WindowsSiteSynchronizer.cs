@@ -10,14 +10,14 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
     private readonly IOutputWriter _output;
     private readonly IRemoteIisManager _remoteIisManager;
     private readonly IFileCopyHelper _fileCopyHelper;
-    private readonly ServerStatusService _statusService;
+    private readonly IServerStatusService _statusService;
     private const int MaxConcurrentCopies = 7;
     private static readonly SemaphoreSlim CopySemaphore = new(MaxConcurrentCopies);
 
     public WindowsSiteSynchronizer(IOutputWriter output,
         IRemoteIisManager remoteIisManager,
         IFileCopyHelper fileCopyHelper,
-        ServerStatusService statusService)
+        IServerStatusService statusService)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
         _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
@@ -120,12 +120,12 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             if (!string.IsNullOrWhiteSpace(server.PoolName) && 
                 !string.Equals(server.PoolStatus, "Stopped", StringComparison.OrdinalIgnoreCase))
             {
-                failedStops.Add($"Pool '{server.PoolName}' on {server.Name}: {server.PoolStatus}");
+                failedStops.Add($"Pool '{server.PoolName}' on {server.Name?.Value}: {server.PoolStatus}");
             }
             if (!string.IsNullOrWhiteSpace(server.SiteName) && 
                 !string.Equals(server.SiteStatus, "Stopped", StringComparison.OrdinalIgnoreCase))
             {
-                failedStops.Add($"Site '{server.SiteName}' on {server.Name}: {server.SiteStatus}");
+                failedStops.Add($"Site '{server.SiteName}' on {server.Name?.Value}: {server.SiteStatus}");
             }
         }
         if (failedStops.Count > 0)
@@ -175,7 +175,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     {
                         return;
                     }
-                    _output.WriteLine($"[INFO] File copying to {server.Name} completed, starting services...");
+                    _output.WriteLine($"[INFO] File copying to {server.Name?.Value} completed, starting services...");
                     
                     bool appPoolStarted = true;
                     bool websiteStarted = true;
@@ -204,7 +204,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     }
                     else
                     {
-                        _output.WriteLine($"[WARN] {server.Name} - File copy completed, but some services failed to start");
+                        _output.WriteLine($"[WARN] {server.Name?.Value} - File copy completed, but some services failed to start");
                     }
                 }, cancellationToken);
             }
@@ -215,19 +215,19 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         catch (OperationCanceledException)
         {
-            _output.WriteLine($"[INFO] Synchronization for {server.Name} was cancelled.");
+            _output.WriteLine($"[INFO] Synchronization for {server.Name?.Value} was cancelled.");
             throw;
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] File copy operation failed for {server.Name}: {ex.Message}");
+            _output.WriteLine($"[ERROR] File copy operation failed for {server.Name?.Value}: {ex.Message}");
             throw;
         }
     }
     
     private async Task VerifyServerStartedAsync(ServerInfo server, CancellationToken cancellationToken)
     {
-        _output.WriteLine($"[INFO] Verifying services started on {server.Name}...");
+        _output.WriteLine($"[INFO] Verifying services started on {server.Name?.Value}...");
         await Task.Delay(3000, cancellationToken);
         await _statusService.RefreshServerStatusAsync(server);
         var issues = new List<string>();
@@ -243,7 +243,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         if (issues.Count > 0)
         {
-            _output.WriteLine($"[WARN] {server.Name} - Some services may not have started properly:");
+            _output.WriteLine($"[WARN] {server.Name?.Value} - Some services may not have started properly:");
             foreach (var issue in issues)
             {
                 _output.WriteLine($"[WARN]   - {issue}");
@@ -251,7 +251,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         else
         {
-            _output.WriteLine($"[OK] {server.Name} - All services confirmed started and running");
+            _output.WriteLine($"[OK] {server.Name?.Value} - All services confirmed started and running");
         }
     }
 }

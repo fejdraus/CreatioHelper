@@ -26,7 +26,7 @@ public partial class MainWindowViewModel : ObservableObject
 {
     private readonly bool _isInitializing;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
-    private readonly ServerStatusService _statusService;
+    private readonly IServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
     private readonly IisService _iisService;
     private readonly IMediator _mediator;
@@ -41,7 +41,7 @@ public partial class MainWindowViewModel : ObservableObject
         IMediator mediator,
         IOperationsService operationsService,
         IDialogService dialogService,
-        ServerStatusService statusService,
+        IServerStatusService statusService,
         IRemoteIisManager remoteIisManager,
         IisService iisService,
         ISystemServiceManager systemServiceManager)
