@@ -19,16 +19,20 @@ namespace CreatioHelper.Infrastructure.Services
 
         private bool IsLocal(string serverName) => string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
 
-        public async Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StopAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return Result.Failure("Pool management is only available on Windows.");
             }
 
+            if (string.IsNullOrWhiteSpace(poolName))
+            {
+                return Result.Failure("Pool name is required");
+            }
+
             try
             {
-                var poolName = $"creatio-pool-{serverId.Value}";
                 var serverName = Environment.MachineName;
 
                 if (cancellationToken.IsCancellationRequested)
@@ -57,22 +61,26 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to stop app pool for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to stop app pool {poolName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StopWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return Result.Failure("Website management is only available on Windows.");
             }
 
+            if (string.IsNullOrWhiteSpace(siteName))
+            {
+                return Result.Failure("Site name is required");
+            }
+
             try
             {
-                var siteName = $"creatio-site-{serverId.Value}";
                 var serverName = Environment.MachineName;
 
                 if (cancellationToken.IsCancellationRequested)
@@ -101,22 +109,26 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to stop website for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to stop website {siteName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StartAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return Result.Failure("Pool management is only available on Windows.");
             }
 
+            if (string.IsNullOrWhiteSpace(poolName))
+            {
+                return Result.Failure("Pool name is required");
+            }
+
             try
             {
-                var poolName = $"creatio-pool-{serverId.Value}";
                 var serverName = Environment.MachineName;
 
                 if (cancellationToken.IsCancellationRequested)
@@ -145,22 +157,26 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to start app pool for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to start app pool {poolName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StartWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return Result.Failure("Website management is only available on Windows.");
             }
 
+            if (string.IsNullOrWhiteSpace(siteName))
+            {
+                return Result.Failure("Site name is required");
+            }
+
             try
             {
-                var siteName = $"creatio-site-{serverId.Value}";
                 var serverName = Environment.MachineName;
 
                 if (cancellationToken.IsCancellationRequested)
@@ -189,18 +205,21 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to start website for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to start website {siteName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StartServiceAsync(string serviceName, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(serviceName))
+            {
+                return Result.Failure("Service name is required");
+            }
+
             try
             {
-                var serviceName = $"creatio-service-{serverId.Value}";
-
                 if (cancellationToken.IsCancellationRequested)
                     return Result.Failure("Operation was cancelled");
 
@@ -224,18 +243,21 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to start service for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to start service {serviceName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result> StopServiceAsync(string serviceName, CancellationToken cancellationToken = default)
         {
+            if (string.IsNullOrWhiteSpace(serviceName))
+            {
+                return Result.Failure("Service name is required");
+            }
+
             try
             {
-                var serviceName = $"creatio-service-{serverId.Value}";
-
                 if (cancellationToken.IsCancellationRequested)
                     return Result.Failure("Operation was cancelled");
 
@@ -259,63 +281,59 @@ namespace CreatioHelper.Infrastructure.Services
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to stop service for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to stop service {serviceName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result<string>> GetAppPoolStatusAsync(string poolName, CancellationToken cancellationToken = default)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Result<string>.Failure("Pool status check is only available on Windows.");
+            }
+
+            if (string.IsNullOrWhiteSpace(poolName))
+            {
+                return Result<string>.Failure("Pool name is required");
+            }
+
             try
             {
-                var poolName = $"creatio-pool-{serverId.Value}";
                 var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result<string>.Failure("Operation was cancelled");
-
                 var status = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
-                
-                return string.IsNullOrEmpty(status) 
-                    ? Result<string>.Failure($"Failed to get status for app pool {poolName}")
-                    : Result<string>.Success(status);
-            }
-            catch (OperationCanceledException)
-            {
-                return Result<string>.Failure("Operation was cancelled");
+                return Result<string>.Success(status ?? "Unknown");
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to get app pool status for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to get app pool status for {poolName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result<string>.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        public async Task<Result<string>> GetWebsiteStatusAsync(string siteName, CancellationToken cancellationToken = default)
         {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Result<string>.Failure("Website status check is only available on Windows.");
+            }
+
+            if (string.IsNullOrWhiteSpace(siteName))
+            {
+                return Result<string>.Failure("Site name is required");
+            }
+
             try
             {
-                var siteName = $"creatio-site-{serverId.Value}";
                 var serverName = Environment.MachineName;
-
-                if (cancellationToken.IsCancellationRequested)
-                    return Result<string>.Failure("Operation was cancelled");
-
                 var status = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
-                
-                return string.IsNullOrEmpty(status) 
-                    ? Result<string>.Failure($"Failed to get status for website {siteName}")
-                    : Result<string>.Success(status);
-            }
-            catch (OperationCanceledException)
-            {
-                return Result<string>.Failure("Operation was cancelled");
+                return Result<string>.Success(status ?? "Unknown");
             }
             catch (Exception ex)
             {
-                var errorMsg = $"Failed to get website status for server {serverId}: {ex.Message}";
+                var errorMsg = $"Failed to get website status for {siteName}: {ex.Message}";
                 _output.WriteLine($"[ERROR] {errorMsg}");
                 return Result<string>.Failure(errorMsg, ex);
             }

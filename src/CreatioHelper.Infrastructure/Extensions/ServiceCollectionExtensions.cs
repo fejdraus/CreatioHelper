@@ -4,6 +4,7 @@ using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
 using CreatioHelper.Infrastructure.Services.Site;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Infrastructure.Services.Linux;
@@ -18,7 +19,19 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IOutputWriter, ConsoleOutputWriter>();
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
-        services.AddSingleton<ISettingsService, SettingsService>();
+        services.AddMemoryCache();
+        services.AddSingleton<ICacheService, MemoryCacheService>();
+        services.AddSingleton<IMetricsService, MetricsService>();
+        services.AddSingleton<SettingsService>();
+        services.AddSingleton<ISettingsService>(provider =>
+        {
+            var baseService = provider.GetRequiredService<SettingsService>();
+            var cache = provider.GetRequiredService<ICacheService>();
+            var metrics = provider.GetRequiredService<IMetricsService>();
+            var logger = provider.GetRequiredService<ILogger<CachedSettingsService>>();
+            return new CachedSettingsService(baseService, cache, metrics, logger);
+        });
+        
         services.AddTransient<ISiteConfigEditor, SiteConfigEditor>();
         
         if (OperatingSystem.IsWindows())
@@ -43,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
         services.AddTransient<IRedisManagerFactory, RedisManagerFactory>();
         services.AddTransient<ServerStatusService>();
+        
         return services;
     }
 }

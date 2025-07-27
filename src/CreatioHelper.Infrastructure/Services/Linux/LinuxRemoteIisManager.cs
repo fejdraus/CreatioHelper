@@ -1,7 +1,5 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Common;
-using CreatioHelper.Domain.ValueObjects;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
 using System.Diagnostics;
 
@@ -16,40 +14,74 @@ public class LinuxRemoteIisManager : IRemoteIisManager
     private const string OperationCancelledMessage = "Operation was cancelled";
     
     private readonly IOutputWriter _output;
-    private readonly Func<ServerId, ServerInfo?> _getServerInfo;
 
-    public LinuxRemoteIisManager(IOutputWriter output, Func<ServerId, ServerInfo?> getServerInfo)
+    public LinuxRemoteIisManager(IOutputWriter output)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
-        _getServerInfo = getServerInfo ?? throw new ArgumentNullException(nameof(getServerInfo));
     }
 
-    public Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => StopServiceAsync(serverId, cancellationToken);
+    public Task<Result> StopAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(poolName))
+        {
+            return Task.FromResult(Result.Failure("Pool name is required"));
+        }
+        return StopServiceAsync(poolName, cancellationToken);
+    }
 
-    public Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => StopServiceAsync(serverId, cancellationToken);
+    public Task<Result> StopWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(siteName))
+        {
+            return Task.FromResult(Result.Failure("Site name is required"));
+        }
+        return StopServiceAsync(siteName, cancellationToken);
+    }
 
-    public Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => StartServiceAsync(serverId, cancellationToken);
+    public Task<Result> StartAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(poolName))
+        {
+            return Task.FromResult(Result.Failure("Pool name is required"));
+        }
+        return StartServiceAsync(poolName, cancellationToken);
+    }
 
-    public Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => StartServiceAsync(serverId, cancellationToken);
+    public Task<Result> StartWebsiteAsync(string siteName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(siteName))
+        {
+            return Task.FromResult(Result.Failure("Site name is required"));
+        }
+        return StartServiceAsync(siteName, cancellationToken);
+    }
 
-    public async Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => await ExecuteServiceOperationAsync(serverId, "start", "started", cancellationToken);
+    public async Task<Result> StartServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+        => await ExecuteServiceOperationAsync(serviceName, "start", "started", cancellationToken);
 
-    public async Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => await ExecuteServiceOperationAsync(serverId, "stop", "stopped", cancellationToken);
+    public async Task<Result> StopServiceAsync(string serviceName, CancellationToken cancellationToken = default)
+        => await ExecuteServiceOperationAsync(serviceName, "stop", "stopped", cancellationToken);
 
-    public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => await GetServiceStatusAsync(serverId, cancellationToken);
+    public async Task<Result<string>> GetAppPoolStatusAsync(string poolName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(poolName))
+        {
+            return Result<string>.Failure("Pool name is required");
+        }
+        return await GetServiceStatusAsync(poolName, cancellationToken);
+    }
 
-    public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
-        => await GetServiceStatusAsync(serverId, cancellationToken);
+    public async Task<Result<string>> GetWebsiteStatusAsync(string siteName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(siteName))
+        {
+            return Result<string>.Failure("Site name is required");
+        }
+        return await GetServiceStatusAsync(siteName, cancellationToken);
+    }
 
     private async Task<Result> ExecuteServiceOperationAsync(
-        ServerId serverId, 
+        string serviceName, 
         string action, 
         string actionPastTense, 
         CancellationToken cancellationToken)
@@ -58,7 +90,6 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            var serviceName = GetServiceName(serverId);
             var result = await ExecuteSystemctlCommandAsync(action, serviceName, cancellationToken);
             
             if (result.IsSuccess)
@@ -77,19 +108,18 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
         catch (Exception ex)
         {
-            var errorMsg = $"Failed to {action} service for server {serverId}: {ex.Message}";
+            var errorMsg = $"Failed to {action} service {serviceName}: {ex.Message}";
             _output.WriteLine($"[ERROR] {errorMsg}");
             return Result.Failure(errorMsg, ex);
         }
     }
 
-    private async Task<Result<string>> GetServiceStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+    private async Task<Result<string>> GetServiceStatusAsync(string serviceName, CancellationToken cancellationToken = default)
     {
         try
         {
             cancellationToken.ThrowIfCancellationRequested();
             
-            var serviceName = GetServiceName(serverId);
             var statusResult = await CheckServiceStatusAsync(serviceName, cancellationToken);
             
             if (!statusResult.IsSuccess)
@@ -106,7 +136,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
         catch (Exception ex)
         {
-            var errorMsg = $"Failed to get status for server {serverId}: {ex.Message}";
+            var errorMsg = $"Failed to get status for service {serviceName}: {ex.Message}";
             _output.WriteLine($"[ERROR] {errorMsg}");
             return Result<string>.Failure(errorMsg, ex);
         }
@@ -193,33 +223,5 @@ public class LinuxRemoteIisManager : IRemoteIisManager
             _output.WriteLine($"[ERROR] {errorMsg}");
             return Result<bool>.Failure(errorMsg, ex);
         }
-    }
-
-    /// <summary>
-    /// Получает имя сервиса для управления в systemctl.
-    /// Использует ServiceName из ServerInfo, если доступно, иначе ServerName.
-    /// </summary>
-    private string GetServiceName(ServerId serverId)
-    {
-        var serverInfo = _getServerInfo(serverId);
-        if (serverInfo == null)
-        {
-            _output.WriteLine($"[WARNING] ServerInfo not found for {serverId}, using ID as service name");
-            return serverId.ToString();
-        }
-
-        // Приоритет: ServiceName -> ServerName -> ServerId
-        if (!string.IsNullOrWhiteSpace(serverInfo.ServiceName))
-        {
-            return serverInfo.ServiceName;
-        }
-        
-        if (!string.IsNullOrWhiteSpace(serverInfo.Name?.Value))
-        {
-            return serverInfo.Name.Value;
-        }
-
-        _output.WriteLine($"[WARNING] No service name found for server {serverId}, using ID");
-        return serverId.ToString();
     }
 }

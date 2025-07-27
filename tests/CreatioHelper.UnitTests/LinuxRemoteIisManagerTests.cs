@@ -1,5 +1,3 @@
-using CreatioHelper.Domain.ValueObjects;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Shared.Interfaces;
 using Moq;
@@ -9,38 +7,26 @@ namespace CreatioHelper.Tests;
 public class LinuxRemoteIisManagerTests
 {
     private readonly Mock<IOutputWriter> _mockOutputWriter;
-    private readonly Mock<Func<ServerId, ServerInfo?>> _mockGetServerInfo;
     private readonly LinuxRemoteIisManager _manager;
-    private readonly ServerId _testServerId;
+    private const string TestServiceName = "test-service";
 
     public LinuxRemoteIisManagerTests()
     {
         _mockOutputWriter = new Mock<IOutputWriter>();
-        _mockGetServerInfo = new Mock<Func<ServerId, ServerInfo?>>();
-        _testServerId = ServerId.Create();
-        var testServerInfo = new ServerInfo(_testServerId, new ServerName("test-service"), new NetworkPath("/opt/test"));
-        _mockGetServerInfo.Setup(x => x(_testServerId)).Returns(testServerInfo);
-        
-        _manager = new LinuxRemoteIisManager(_mockOutputWriter.Object, _mockGetServerInfo.Object);
+        _manager = new LinuxRemoteIisManager(_mockOutputWriter.Object);
     }
 
     [Fact]
     public void Constructor_WhenOutputWriterIsNull_ShouldThrowArgumentNullException()
     {
-        Assert.Throws<ArgumentNullException>(() => new LinuxRemoteIisManager(null!, _mockGetServerInfo.Object));
-    }
-
-    [Fact]
-    public void Constructor_WhenGetServerInfoIsNull_ShouldThrowArgumentNullException()
-    {
-        Assert.Throws<ArgumentNullException>(() => new LinuxRemoteIisManager(_mockOutputWriter.Object, null!));
+        Assert.Throws<ArgumentNullException>(() => new LinuxRemoteIisManager(null!));
     }
 
     [Fact]
     public async Task StartAppPoolAsync_ShouldCallStartServiceAsync()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartAppPoolAsync(_testServerId, cancellationToken);
+        var result = await _manager.StartAppPoolAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(x => x.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
     }
@@ -49,7 +35,7 @@ public class LinuxRemoteIisManagerTests
     public async Task StopAppPoolAsync_ShouldCallStopServiceAsync()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StopAppPoolAsync(_testServerId, cancellationToken);
+        var result = await _manager.StopAppPoolAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(x => x.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
     }
@@ -58,7 +44,7 @@ public class LinuxRemoteIisManagerTests
     public async Task StartWebsiteAsync_ShouldCallStartServiceAsync()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartWebsiteAsync(_testServerId, cancellationToken);
+        var result = await _manager.StartWebsiteAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(x => x.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
     }
@@ -67,7 +53,7 @@ public class LinuxRemoteIisManagerTests
     public async Task StopWebsiteAsync_ShouldCallStopServiceAsync()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StopWebsiteAsync(_testServerId, cancellationToken);
+        var result = await _manager.StopWebsiteAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(x => x.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
     }
@@ -76,7 +62,7 @@ public class LinuxRemoteIisManagerTests
     public async Task GetAppPoolStatusAsync_ShouldReturnStatusResult()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.GetAppPoolStatusAsync(_testServerId, cancellationToken);
+        var result = await _manager.GetAppPoolStatusAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         if (result.IsSuccess)
         {
@@ -88,7 +74,7 @@ public class LinuxRemoteIisManagerTests
     public async Task GetWebsiteStatusAsync_ShouldReturnStatusResult()
     {
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.GetWebsiteStatusAsync(_testServerId, cancellationToken);
+        var result = await _manager.GetWebsiteStatusAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         if (result.IsSuccess)
         {
@@ -101,7 +87,7 @@ public class LinuxRemoteIisManagerTests
     {
         var cts = new CancellationTokenSource();
         await cts.CancelAsync();
-        var result = await _manager.StartServiceAsync(_testServerId, cts.Token);
+        var result = await _manager.StartServiceAsync(TestServiceName, cts.Token);
         Assert.NotNull(result);
         Assert.False(result.IsSuccess);
         Assert.Equal("Operation was cancelled", result.ErrorMessage);
@@ -112,7 +98,7 @@ public class LinuxRemoteIisManagerTests
     {
         var cts = new CancellationTokenSource();
         await cts.CancelAsync();
-        var result = await _manager.StopServiceAsync(_testServerId, cts.Token);
+        var result = await _manager.StopServiceAsync(TestServiceName, cts.Token);
         Assert.NotNull(result);
         Assert.False(result.IsSuccess);
         Assert.Equal("Operation was cancelled", result.ErrorMessage);
@@ -125,8 +111,8 @@ public class LinuxRemoteIisManagerTests
     {
         var cancellationToken = CancellationToken.None;
         var result = operation == "start" 
-            ? await _manager.StartServiceAsync(_testServerId, cancellationToken)
-            : await _manager.StopServiceAsync(_testServerId, cancellationToken);
+            ? await _manager.StartServiceAsync(TestServiceName, cancellationToken)
+            : await _manager.StopServiceAsync(TestServiceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(
             x => x.WriteLine(It.Is<string>(msg => 
@@ -135,11 +121,11 @@ public class LinuxRemoteIisManagerTests
     }
 
     [Fact]
-    public async Task StartServiceAsync_WithValidServerId_ShouldUseCorrectServiceName()
+    public async Task StartServiceAsync_WithValidServiceName_ShouldExecuteSystemctl()
     {
-        var serverId = ServerId.Create();
+        const string serviceName = "nginx";
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartServiceAsync(serverId, cancellationToken);
+        var result = await _manager.StartServiceAsync(serviceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(
             x => x.WriteLine(It.Is<string>(msg => 
@@ -148,11 +134,11 @@ public class LinuxRemoteIisManagerTests
     }
 
     [Fact]
-    public async Task StopServiceAsync_WithValidServerId_ShouldUseCorrectServiceName()
+    public async Task StopServiceAsync_WithValidServiceName_ShouldExecuteSystemctl()
     {
-        var serverId = ServerId.Create();
+        const string serviceName = "apache2";
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StopServiceAsync(serverId, cancellationToken);
+        var result = await _manager.StopServiceAsync(serviceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(
             x => x.WriteLine(It.Is<string>(msg => 
@@ -163,49 +149,90 @@ public class LinuxRemoteIisManagerTests
     [Fact]
     public async Task StartServiceAsync_ShouldHandleSystemctlFailure()
     {
-        var serverId = ServerId.Create();
+        const string serviceName = "non-existent-service";
         var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartServiceAsync(serverId, cancellationToken);
+        var result = await _manager.StartServiceAsync(serviceName, cancellationToken);
         Assert.NotNull(result);
         _mockOutputWriter.Verify(x => x.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
     }
 
-    [Fact]
-    public async Task StartServiceAsync_ShouldUseServerNameAsServiceName()
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task StartAppPoolAsync_WithInvalidPoolName_ShouldReturnFailure(string poolName)
     {
-        var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartServiceAsync(_testServerId, cancellationToken);
+        var result = await _manager.StartAppPoolAsync(poolName, CancellationToken.None);
         Assert.NotNull(result);
-        _mockGetServerInfo.Verify(x => x(_testServerId), Times.Once);
-        _mockOutputWriter.Verify(
-            x => x.WriteLine(It.Is<string>(msg => msg.Contains("test-service"))), 
-            Times.AtLeastOnce);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Pool name is required", result.ErrorMessage);
     }
 
     [Fact]
-    public async Task StartServiceAsync_WhenServerInfoNotFound_ShouldFallbackToGuid()
+    public async Task StartAppPoolAsync_WithNullPoolName_ShouldReturnFailure()
     {
-        var unknownServerId = ServerId.Create();
-        _mockGetServerInfo.Setup(x => x(unknownServerId)).Returns((ServerInfo?)null);
-        var cancellationToken = CancellationToken.None;
-        var result = await _manager.StartServiceAsync(unknownServerId, cancellationToken);
+        var result = await _manager.StartAppPoolAsync(null!, CancellationToken.None);
         Assert.NotNull(result);
-        _mockOutputWriter.Verify(
-            x => x.WriteLine(It.Is<string>(msg => 
-                msg.Contains("[WARNING]") && msg.Contains("ServerInfo not found"))), 
-            Times.AtLeastOnce);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Pool name is required", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task StartWebsiteAsync_WithInvalidSiteName_ShouldReturnFailure(string siteName)
+    {
+        var result = await _manager.StartWebsiteAsync(siteName, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Site name is required", result.ErrorMessage);
     }
 
     [Fact]
-    public async Task GetServiceName_ShouldUseServerNameCorrectly()
+    public async Task StartWebsiteAsync_WithNullSiteName_ShouldReturnFailure()
     {
-        var customServerId = ServerId.Create();
-        var customServerInfo = new ServerInfo(customServerId, new ServerName("nginx-production"), new NetworkPath("/etc/nginx"));
-        _mockGetServerInfo.Setup(x => x(customServerId)).Returns(customServerInfo);
-        var result = await _manager.StartServiceAsync(customServerId, CancellationToken.None);
+        var result = await _manager.StartWebsiteAsync(null!, CancellationToken.None);
         Assert.NotNull(result);
-        _mockOutputWriter.Verify(
-            x => x.WriteLine(It.Is<string>(msg => msg.Contains("nginx-production"))), 
-            Times.AtLeastOnce);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Site name is required", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetAppPoolStatusAsync_WithInvalidPoolName_ShouldReturnFailure(string poolName)
+    {
+        var result = await _manager.GetAppPoolStatusAsync(poolName, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Pool name is required", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetAppPoolStatusAsync_WithNullPoolName_ShouldReturnFailure()
+    {
+        var result = await _manager.GetAppPoolStatusAsync(null!, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Pool name is required", result.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task GetWebsiteStatusAsync_WithInvalidSiteName_ShouldReturnFailure(string siteName)
+    {
+        var result = await _manager.GetWebsiteStatusAsync(siteName, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Site name is required", result.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task GetWebsiteStatusAsync_WithNullSiteName_ShouldReturnFailure()
+    {
+        var result = await _manager.GetWebsiteStatusAsync(null!, CancellationToken.None);
+        Assert.NotNull(result);
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Site name is required", result.ErrorMessage);
     }
 }

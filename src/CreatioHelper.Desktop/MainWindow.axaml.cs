@@ -61,7 +61,10 @@ namespace CreatioHelper
             var mediator = provider.GetRequiredService<IMediator>();
             var systemServiceManager = provider.GetRequiredService<ISystemServiceManager>();
             var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
-            var statusService = new ServerStatusService(_writer, remoteManager);
+            var cacheService = provider.GetRequiredService<ICacheService>();
+            var metricsService = provider.GetRequiredService<IMetricsService>();
+            var statusService = new ServerStatusService(_writer, remoteManager, cacheService, metricsService);
+            
             var dialogService = new DialogService(StorageProvider);
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(_writer);

@@ -26,7 +26,7 @@
   <!-- OpenAPI packages - for Development or when Swagger is enabled -->
   <ItemGroup Condition="'$(Configuration)' == 'Debug' OR '$(EnableSwagger)' == 'true'">
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.18" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.4" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.3" />
   </ItemGroup>
 
   <!-- Windows-specific packages -->
