@@ -32,6 +32,7 @@ namespace CreatioHelper
             LogTextEditor.TextArea.TextView.LineTransformers.Add(
                 new LogLineColorizer()
             );
+            
             _writer = new BufferingOutputWriter(
                 line =>
                 {

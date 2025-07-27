@@ -59,15 +59,7 @@ public class FileSyncController : ControllerBase
     {
         try
         {
-            var domainOptions = new SyncOptions
-            {
-                SourcePath = options.SourcePath,
-                DestinationPath = options.DestinationPath,
-                OverwriteExisting = options.OverwriteExisting,
-                Recursive = options.Recursive,
-                ExcludePatterns = options.ExcludePatterns
-            };
-            var result = await _fileSyncService.SyncAsync(domainOptions);
+            var result = await _fileSyncService.SyncAsync(options);
             var dto = new SyncResult
             {
                 Success = result.Success,
