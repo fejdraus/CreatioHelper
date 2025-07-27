@@ -1,9 +1,12 @@
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.ValueObjects;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 using Moq;
+
 namespace CreatioHelper.Tests;
 
 public class WindowsSiteSynchronizerTests
@@ -25,19 +28,32 @@ public class WindowsSiteSynchronizerTests
     {
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
-        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerInfo>())).ReturnsAsync(false);
-        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.GetAppPoolStatusAsync(It.IsAny<ServerInfo>())).Returns(Task.CompletedTask);
-        remote.Setup(r => r.GetWebsiteStatusAsync(It.IsAny<ServerInfo>())).Returns(Task.CompletedTask);
+        
+        // Настройка mock для новой архитектуры с Result Pattern
+        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Failure("Stop failed"));
+        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
 
         var copy = new Mock<IFileCopyHelper>();
-        var server = new ServerInfo { Name = "srv", NetworkPath = "\\srv" , PoolName = "p", SiteName = "s"};
         var status = new ServerStatusService(writer, remote.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
-        var result = await sync.SynchronizeAsync("c:/site", new List<ServerInfo> { server });
+        var servers = new List<ServerInfo>
+        {
+            new ServerInfo
+            {
+                Name = "TestServer",
+                NetworkPath = @"\\testserver\share",
+                PoolName = "TestPool"
+            }
+        };
+
+        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers);
 
         Assert.False(result);
     }
@@ -45,40 +61,77 @@ public class WindowsSiteSynchronizerTests
     [Fact]
     public async Task SynchronizeAsync_ReturnsTrue_When_AllOperationsSucceed()
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return; // Test relies on Windows-specific behavior
-        }
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
-        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<ServerInfo>())).ReturnsAsync(true);
-
-        int statusCall = 0;
-        remote.Setup(r => r.GetAppPoolStatusAsync(It.IsAny<ServerInfo>())).Returns<ServerInfo>(s =>
-        {
-            s.PoolStatus = statusCall < 2 ? "Stopped" : "Started";
-            statusCall++;
-            return Task.CompletedTask;
-        });
-        remote.Setup(r => r.GetWebsiteStatusAsync(It.IsAny<ServerInfo>())).Returns<ServerInfo>(s =>
-        {
-            s.SiteStatus = statusCall < 4 ? "Stopped" : "Started";
-            statusCall++;
-            return Task.CompletedTask;
-        });
+        
+        // Настройка mock для успешных операций
+        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.GetAppPoolStatusAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result<string>.Success("Stopped"));
+        remote.Setup(r => r.GetWebsiteStatusAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result<string>.Success("Stopped"));
 
         var copy = new Mock<IFileCopyHelper>();
-        copy.Setup(c => c.CopyAsync(It.IsAny<ServerInfo>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        copy.Setup(c => c.CopyAsync(It.IsAny<ServerInfo>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(0)); // Исправление: используем Task.FromResult вместо Task.CompletedTask
 
-        var server = new ServerInfo { Name = "srv", NetworkPath = "\\srv" , PoolName = "p", SiteName = "s"};
         var status = new ServerStatusService(writer, remote.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
-        var result = await sync.SynchronizeAsync("c:/site", new List<ServerInfo> { server });
+        var servers = new List<ServerInfo>
+        {
+            new ServerInfo
+            {
+                Name = "TestServer",
+                NetworkPath = @"\\testserver\share",
+                PoolName = "TestPool",
+                SiteName = "TestSite"
+            }
+        };
+
+        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers);
 
         Assert.True(result);
+    }
+
+    [Fact]
+    public async Task SynchronizeAsync_HandlesCancellation()
+    {
+        var writer = new BufferingOutputWriter(_ => { });
+        var remote = new Mock<IRemoteIisManager>();
+        
+        // Настройка mock для операций
+        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<ServerId>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+
+        var copy = new Mock<IFileCopyHelper>();
+        var status = new ServerStatusService(writer, remote.Object);
+        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
+
+        var servers = new List<ServerInfo>
+        {
+            new ServerInfo
+            {
+                Name = "TestServer",
+                NetworkPath = @"\\testserver\share",
+                PoolName = "TestPool"
+            }
+        };
+
+        using var cts = new CancellationTokenSource();
+        cts.Cancel(); // Отменяем операцию
+
+        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers, cts.Token);
+
+        Assert.False(result);
     }
 }

@@ -119,28 +119,42 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
                             {
-                                await manager.StopAppPoolAsync(localServerInfo);
-                                _output.WriteLine("[INFO] Main Pool stopped.");
+                                var stopPoolResult = await manager.StopAppPoolAsync(localServerInfo.Id, cancellationToken);
+                                if (stopPoolResult.IsSuccess)
+                                {
+                                    _output.WriteLine("[INFO] Main Pool stopped.");
+                                }
+                                else
+                                {
+                                    _output.WriteLine($"[ERROR] Failed to stop pool: {stopPoolResult.ErrorMessage}");
+                                }
                             }
 
                             if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
                             {
-                                await manager.StopWebsiteAsync(localServerInfo);
-                                _output.WriteLine("[INFO] Main Website stopped.");
+                                var stopSiteResult = await manager.StopWebsiteAsync(localServerInfo.Id, cancellationToken);
+                                if (stopSiteResult.IsSuccess)
+                                {
+                                    _output.WriteLine("[INFO] Main Website stopped.");
+                                }
+                                else
+                                {
+                                    _output.WriteLine($"[ERROR] Failed to stop website: {stopSiteResult.ErrorMessage}");
+                                }
                             }
                         }
                         
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
-                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
-                            if (serviceStopResult)
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.Id, cancellationToken);
+                            if (serviceStopResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service stopped.");
                             }
                             else
                             {
-                                _output.WriteLine("[WARNING] Failed to stop main service or service was not running.");
+                                _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
                             }
                         }
                     }
@@ -149,14 +163,14 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
-                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo);
-                            if (serviceStopResult)
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.Id, cancellationToken);
+                            if (serviceStopResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service stopped.");
                             }
                             else
                             {
-                                _output.WriteLine("[WARNING] Failed to stop main service or service was not running.");
+                                _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
                             }
                         }
                     }
@@ -230,20 +244,34 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                             {
-                                await manager.StartAppPoolAsync(localServerInfo);
-                                _output.WriteLine("[INFO] Main Pool is running.");
+                                var startPoolResult = await manager.StartAppPoolAsync(localServerInfo.Id, cancellationToken);
+                                if (startPoolResult.IsSuccess)
+                                {
+                                    _output.WriteLine("[INFO] Main Pool is running.");
+                                }
+                                else
+                                {
+                                    _output.WriteLine($"[ERROR] Failed to start pool: {startPoolResult.ErrorMessage}");
+                                }
                             }
                             if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
                             {
-                                await manager.StartWebsiteAsync(localServerInfo);
-                                _output.WriteLine("[INFO] Main Website is running.");
+                                var startSiteResult = await manager.StartWebsiteAsync(localServerInfo.Id, cancellationToken);
+                                if (startSiteResult.IsSuccess)
+                                {
+                                    _output.WriteLine("[INFO] Main Website is running.");
+                                }
+                                else
+                                {
+                                    _output.WriteLine($"[ERROR] Failed to start website: {startSiteResult.ErrorMessage}");
+                                }
                             }
                         }
 
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
-                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
-                            if (serviceStartResult)
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.Id, cancellationToken);
+                            if (serviceStartResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service is running.");
                             }
@@ -257,8 +285,8 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
-                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo);
-                            if (serviceStartResult)
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.Id, cancellationToken);
+                            if (serviceStartResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service is running.");
                             }

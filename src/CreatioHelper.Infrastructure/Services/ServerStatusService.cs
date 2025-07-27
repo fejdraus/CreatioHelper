@@ -34,8 +34,29 @@ namespace CreatioHelper.Infrastructure.Services
 
             try
             {
-                await _remoteIisManager.GetAppPoolStatusAsync(server);
-                await _remoteIisManager.GetWebsiteStatusAsync(server);
+                // Get app pool status
+                var poolStatusResult = await _remoteIisManager.GetAppPoolStatusAsync(server.Id, CancellationToken.None);
+                if (poolStatusResult.IsSuccess)
+                {
+                    server.PoolStatus = poolStatusResult.Value ?? "Unknown";
+                }
+                else
+                {
+                    server.PoolStatus = "Error";
+                    _output.WriteLine($"[ERROR] Failed to get pool status for server '{server.Name}': {poolStatusResult.ErrorMessage}");
+                }
+
+                // Get website status
+                var siteStatusResult = await _remoteIisManager.GetWebsiteStatusAsync(server.Id, CancellationToken.None);
+                if (siteStatusResult.IsSuccess)
+                {
+                    server.SiteStatus = siteStatusResult.Value ?? "Unknown";
+                }
+                else
+                {
+                    server.SiteStatus = "Error";
+                    _output.WriteLine($"[ERROR] Failed to get site status for server '{server.Name}': {siteStatusResult.ErrorMessage}");
+                }
             }
             catch (Exception ex)
             {

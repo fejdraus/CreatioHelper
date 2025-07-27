@@ -1,12 +1,16 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.ValueObjects;
+using CreatioHelper.Domain.Events;
+using CreatioHelper.Domain.Specifications;
 
 namespace CreatioHelper.Domain.Entities;
 
-public class ServerInfo : INotifyPropertyChanged
+public class ServerInfo : AggregateRoot, INotifyPropertyChanged
 {
-    private string _name = "";
-    private string _networkPath = "";
+    private ServerName _name = new("Default");
+    private NetworkPath _networkPath = new("C:\\");
     private string? _poolName;
     private string? _siteName;
     private string? _serviceName;
@@ -16,16 +20,41 @@ public class ServerInfo : INotifyPropertyChanged
     private bool _isStatusLoading;
     private Version? _appVersion = new();
 
-    public string Name
+    // Конструкторы
+    public ServerInfo(ServerId id, ServerName name, NetworkPath networkPath) : base(id.Value)
     {
-        get => _name;
-        set => SetField(ref _name, value);
+        _name = name ?? throw new ArgumentNullException(nameof(name));
+        _networkPath = networkPath ?? throw new ArgumentNullException(nameof(networkPath));
     }
 
-    public string NetworkPath
+    public ServerInfo() : base(ServerId.Create().Value) 
+    {
+        // Id уже установлен в базовом конструкторе
+    }
+
+    // Свойства с типобезопасными Value Objects
+    public new ServerId Id => new(base.Id);
+
+    public ServerName Name
+    {
+        get => _name;
+        set 
+        { 
+            if (SetField(ref _name, value ?? throw new ArgumentNullException(nameof(value))))
+            {
+                // Доменное событие при изменении имени сервера
+                Apply(new ServerStatusChangedEvent(Id, _name, "Name", value));
+            }
+        }
+    }
+
+    public NetworkPath NetworkPath
     {
         get => _networkPath;
-        set => SetField(ref _networkPath, value);
+        set 
+        { 
+            SetField(ref _networkPath, value ?? throw new ArgumentNullException(nameof(value))); 
+        }
     }
 
     public string? PoolName
@@ -49,19 +78,57 @@ public class ServerInfo : INotifyPropertyChanged
     public string PoolStatus
     {
         get => _poolStatus;
-        set => SetField(ref _poolStatus, value);
+        set 
+        { 
+            var oldStatus = _poolStatus;
+            if (SetField(ref _poolStatus, value))
+            {
+                // Доменное событие при изменении статуса
+                Apply(new ServerStatusChangedEvent(Id, Name, oldStatus, value));
+                
+                // Специфичные события для остановки/запуска
+                if (oldStatus == "Running" && value == "Stopped")
+                    Apply(new ServerStoppedEvent(Id, Name, "Pool"));
+                else if (oldStatus == "Stopped" && value == "Running")
+                    Apply(new ServerStartedEvent(Id, Name, "Pool"));
+            }
+        }
     }
 
     public string SiteStatus
     {
         get => _siteStatus;
-        set => SetField(ref _siteStatus, value);
+        set 
+        { 
+            var oldStatus = _siteStatus;
+            if (SetField(ref _siteStatus, value))
+            {
+                Apply(new ServerStatusChangedEvent(Id, Name, oldStatus, value));
+                
+                if (oldStatus == "Running" && value == "Stopped")
+                    Apply(new ServerStoppedEvent(Id, Name, "Site"));
+                else if (oldStatus == "Stopped" && value == "Running")
+                    Apply(new ServerStartedEvent(Id, Name, "Site"));
+            }
+        }
     }
 
     public string ServiceStatus
     {
         get => _serviceStatus;
-        set => SetField(ref _serviceStatus, value);
+        set 
+        { 
+            var oldStatus = _serviceStatus;
+            if (SetField(ref _serviceStatus, value))
+            {
+                Apply(new ServerStatusChangedEvent(Id, Name, oldStatus, value));
+                
+                if (oldStatus == "Running" && value == "Stopped")
+                    Apply(new ServerStoppedEvent(Id, Name, "Service"));
+                else if (oldStatus == "Stopped" && value == "Running")
+                    Apply(new ServerStartedEvent(Id, Name, "Service"));
+            }
+        }
     }
 
     public bool IsStatusLoading
@@ -85,5 +152,52 @@ public class ServerInfo : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
+    }
+
+    // Доменные методы с бизнес-логикой
+    public bool CanBeStopped(DateTime currentTime)
+    {
+        var specification = new ServerCanBeStoppedSpecification(currentTime);
+        return specification.IsSatisfiedBy(this);
+    }
+
+    public bool IsHealthy()
+    {
+        var specification = new ServerIsHealthySpecification();
+        return specification.IsSatisfiedBy(this);
+    }
+
+    public bool RequiresMaintenance()
+    {
+        var specification = new ServerRequiresMaintenanceSpecification();
+        return specification.IsSatisfiedBy(this);
+    }
+
+    public void UpdateHealthStatus(bool isHealthy, string? errorMessage = null)
+    {
+        Apply(new ServerHealthCheckCompletedEvent(Id, isHealthy, errorMessage));
+    }
+
+    // Реализация AggregateRoot
+    public override bool IsValid()
+    {
+        return GetBrokenRules().Any() == false;
+    }
+
+    public override IEnumerable<string> GetBrokenRules()
+    {
+        var rules = new List<string>();
+
+        if (string.IsNullOrWhiteSpace(Name.Value))
+            rules.Add("Server name is required");
+
+        if (string.IsNullOrWhiteSpace(NetworkPath.Value))
+            rules.Add("Network path is required");
+
+        if (_isStatusLoading && DomainEvents.Any() && 
+            (DateTime.UtcNow - DomainEvents.Last().OccurredOn).TotalMinutes > 5)
+            rules.Add("Status loading has been running too long");
+
+        return rules;
     }
 }
