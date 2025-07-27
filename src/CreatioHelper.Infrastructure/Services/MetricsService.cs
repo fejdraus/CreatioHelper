@@ -58,9 +58,7 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(counterName))
             throw new ArgumentException("Counter name cannot be null or empty", nameof(counterName));
 
-        var tagsString = tags != null ? string.Join(",", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
-        var key = string.IsNullOrEmpty(tagsString) ? counterName : $"{counterName}[{tagsString}]";
-        
+        var key = BuildMetricKey(counterName, tags);
         _counters.AddOrUpdate(key, 1, (_, current) => current + 1);
     }
 
@@ -69,21 +67,20 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(metricName))
             throw new ArgumentException("Metric name cannot be null or empty", nameof(metricName));
 
-        var tagsString = tags != null ? string.Join(",", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
-        var key = string.IsNullOrEmpty(tagsString) ? metricName : $"{metricName}[{tagsString}]";
-        
+        var key = BuildMetricKey(metricName, tags);
         _durations.AddOrUpdate(key, 
             new List<double> { duration.TotalMilliseconds },
-            (_, existing) =>
+            (_, current) => 
             {
-                lock (existing)
+                lock (current)
                 {
-                    existing.Add(duration.TotalMilliseconds);
-                    if (existing.Count > 1000)
+                    current.Add(duration.TotalMilliseconds);
+                    // Ограничиваем количество записей для экономии памяти
+                    if (current.Count > 1000)
                     {
-                        existing.RemoveRange(0, 500);
+                        current.RemoveRange(0, 500);
                     }
-                    return existing;
+                    return current;
                 }
             });
     }
@@ -93,57 +90,91 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(gaugeName))
             throw new ArgumentException("Gauge name cannot be null or empty", nameof(gaugeName));
 
-        var tagsString = tags != null ? string.Join(",", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
-        var key = string.IsNullOrEmpty(tagsString) ? gaugeName : $"{gaugeName}[{tagsString}]";
-        
-        _gauges[key] = value;
+        var key = BuildMetricKey(gaugeName, tags);
+        _gauges.AddOrUpdate(key, value, (_, _) => value);
     }
 
     public Task<Dictionary<string, object>> GetMetricsAsync()
     {
-        var result = new Dictionary<string, object>();
-        if (_counters.Any())
+        var metrics = new Dictionary<string, object>();
+
+        // Счетчики
+        var counters = new Dictionary<string, long>();
+        foreach (var counter in _counters)
         {
-            result["counters"] = _counters.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
+            counters[counter.Key] = counter.Value;
         }
-        if (_durations.Any())
+        metrics["counters"] = counters;
+
+        // Длительности со статистикой
+        var durations = new Dictionary<string, object>();
+        foreach (var duration in _durations)
         {
-            var durationStats = new Dictionary<string, object>();
-            foreach (var kvp in _durations)
+            lock (duration.Value)
             {
-                lock (kvp.Value)
+                if (duration.Value.Count > 0)
                 {
-                    if (kvp.Value.Any())
+                    var values = duration.Value.ToArray();
+                    durations[duration.Key] = new
                     {
-                        durationStats[kvp.Key] = new
-                        {
-                            kvp.Value.Count,
-                            Average = kvp.Value.Average(),
-                            Min = kvp.Value.Min(),
-                            Max = kvp.Value.Max(),
-                            P95 = GetPercentile(kvp.Value, 0.95),
-                            P99 = GetPercentile(kvp.Value, 0.99)
-                        };
-                    }
+                        count = values.Length,
+                        min = values.Min(),
+                        max = values.Max(),
+                        avg = values.Average(),
+                        p50 = CalculatePercentile(values, 50),
+                        p95 = CalculatePercentile(values, 95),
+                        p99 = CalculatePercentile(values, 99)
+                    };
                 }
             }
-            result["durations"] = durationStats;
         }
-        if (_gauges.Any())
-        {
-            result["gauges"] = _gauges.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
-        }
+        metrics["durations"] = durations;
 
-        return Task.FromResult(result);
+        // Gauge метрики
+        var gauges = new Dictionary<string, double>();
+        foreach (var gauge in _gauges)
+        {
+            gauges[gauge.Key] = gauge.Value;
+        }
+        metrics["gauges"] = gauges;
+
+        // Системная информация
+        metrics["system"] = new
+        {
+            timestamp = DateTimeOffset.UtcNow,
+            uptime = Environment.TickCount64,
+            memory_mb = GC.GetTotalMemory(false) / 1024 / 1024,
+            processor_count = Environment.ProcessorCount
+        };
+
+        return Task.FromResult(metrics);
     }
 
-    private static double GetPercentile(List<double> values, double percentile)
+    private static string BuildMetricKey(string name, Dictionary<string, string>? tags)
     {
-        if (!values.Any()) return 0;
+        if (tags == null || tags.Count == 0)
+            return name;
+
+        var tagsString = string.Join(",", tags.Select(kv => $"{kv.Key}={kv.Value}"));
+        return $"{name}[{tagsString}]";
+    }
+
+    private static double CalculatePercentile(double[] values, int percentile)
+    {
+        if (values.Length == 0) return 0;
         
-        var sorted = values.OrderBy(x => x).ToList();
-        var index = (int)Math.Ceiling(sorted.Count * percentile) - 1;
-        index = Math.Max(0, Math.Min(sorted.Count - 1, index));
-        return sorted[index];
+        Array.Sort(values);
+        var index = (percentile / 100.0) * (values.Length - 1);
+        
+        if (index == (int)index)
+        {
+            return values[(int)index];
+        }
+        
+        var lower = (int)Math.Floor(index);
+        var upper = (int)Math.Ceiling(index);
+        var weight = index - lower;
+        
+        return values[lower] * (1 - weight) + values[upper] * weight;
     }
 }

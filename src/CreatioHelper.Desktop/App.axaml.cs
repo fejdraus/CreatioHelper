@@ -41,6 +41,6 @@ public partial class App : Avalonia.Application
         });
         
         services.AddApplication();
-        services.AddInfrastructure();
+        services.AddInfrastructureServices();
     }
 }

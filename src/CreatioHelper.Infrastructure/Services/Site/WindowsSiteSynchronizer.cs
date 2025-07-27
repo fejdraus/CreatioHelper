@@ -109,7 +109,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
     {
         _output.WriteLine("[INFO] Verifying that all services are stopped...");
         await Task.Delay(3000, cancellationToken);
-        await _statusService.RefreshMultipleServersStatusAsync(serversToUpdate.ToArray());
+        await _statusService.RefreshMultipleServerStatusAsync(serversToUpdate.ToArray(), cancellationToken);
         var failedStops = new List<string>();
         foreach (var server in serversToUpdate)
         {

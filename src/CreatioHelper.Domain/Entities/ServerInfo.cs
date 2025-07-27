@@ -2,8 +2,6 @@ using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.ValueObjects;
-using CreatioHelper.Domain.Events;
-using CreatioHelper.Domain.Specifications;
 
 namespace CreatioHelper.Domain.Entities;
 
@@ -22,6 +20,7 @@ public class ServerInfo : INotifyPropertyChanged
 
     public ServerInfo() {}
 
+    // Восстанавливаем UniqueKey - нужен для кэширования
     public string UniqueKey => Name?.Value ?? "Unknown";
 
     public ServerName? Name
@@ -93,44 +92,6 @@ public class ServerInfo : INotifyPropertyChanged
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         return true;
-    }
-
-    public bool CanBeStopped()
-    {
-        return !string.IsNullOrEmpty(PoolName);
-    }
-
-    public bool IsHealthy()
-    {
-        return PoolStatus == "Running" && 
-               SiteStatus == "Running" &&
-               !IsStatusLoading;
-    }
-
-    public bool RequiresMaintenance()
-    {
-        return PoolStatus == "Stopped" || 
-               SiteStatus == "Stopped" ||
-               ServiceStatus == "Stopped";
-    }
-
-    public bool IsValid()
-    {
-        return !string.IsNullOrWhiteSpace(Name?.Value) && 
-               !string.IsNullOrWhiteSpace(NetworkPath?.Value);
-    }
-
-    public IEnumerable<string> GetValidationErrors()
-    {
-        var errors = new List<string>();
-
-        if (string.IsNullOrWhiteSpace(Name?.Value))
-            errors.Add("Server name is required");
-
-        if (string.IsNullOrWhiteSpace(NetworkPath?.Value))
-            errors.Add("Network path is required");
-
-        return errors;
     }
 
     public override string ToString() => Name?.Value ?? "Unnamed Server";

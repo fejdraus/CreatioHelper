@@ -8,16 +8,13 @@ namespace CreatioHelper.Agent.Controllers;
 public class MetricsController : ControllerBase
 {
     private readonly IMetricsService _metrics;
-    private readonly ICacheService _cache;
     private readonly ILogger<MetricsController> _logger;
 
     public MetricsController(
         IMetricsService metrics,
-        ICacheService cache,
         ILogger<MetricsController> logger)
     {
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -25,45 +22,74 @@ public class MetricsController : ControllerBase
     /// Получить все метрики производительности
     /// </summary>
     [HttpGet]
-    public async Task<IActionResult> GetMetrics()
+    public async Task<ActionResult<Dictionary<string, object>>> GetMetrics()
     {
         try
         {
             var metrics = await _metrics.GetMetricsAsync();
-            return Ok(new
-            {
-                Timestamp = DateTime.UtcNow,
-                ServerName = Environment.MachineName,
-                Metrics = metrics
-            });
+            return Ok(metrics);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving metrics");
-            return StatusCode(500, new { Error = "Failed to retrieve metrics" });
+            _logger.LogError(ex, "Failed to get metrics");
+            return StatusCode(500, new { error = "Failed to get metrics", message = ex.Message });
         }
     }
 
     /// <summary>
-    /// Получить краткую сводку производительности
+    /// Получить сводку производительности
     /// </summary>
     [HttpGet("summary")]
-    public async Task<IActionResult> GetPerformanceSummary()
+    public async Task<ActionResult<object>> GetPerformanceSummary()
     {
         try
         {
             var allMetrics = await _metrics.GetMetricsAsync();
             
+            var counters = (Dictionary<string, long>)allMetrics["counters"];
+            var durations = (Dictionary<string, object>)allMetrics["durations"];
+            var system = allMetrics["system"];
+
+            // Вычисляем основные показатели
+            var totalRequests = counters.Where(c => c.Key.EndsWith("_success") || c.Key.EndsWith("_error"))
+                                      .Sum(c => c.Value);
+            
+            var errorRequests = counters.Where(c => c.Key.EndsWith("_error"))
+                                      .Sum(c => c.Value);
+
+            var errorRate = totalRequests > 0 ? (double)errorRequests / totalRequests * 100 : 0;
+
+            // Находим самые медленные операции
+            var slowestOperations = durations
+                .Where(d => d.Value is not null)
+                .Select(d => new
+                {
+                    operation = d.Key,
+                    avg_duration = GetPropertyValue(d.Value, "avg"),
+                    p95_duration = GetPropertyValue(d.Value, "p95"),
+                    count = GetPropertyValue(d.Value, "count")
+                })
+                .Where(x => x.avg_duration > 0)
+                .OrderByDescending(x => x.avg_duration)
+                .Take(5)
+                .ToList();
+
             var summary = new
             {
-                Timestamp = DateTime.UtcNow,
-                ServerName = Environment.MachineName,
-                Performance = new
+                timestamp = DateTimeOffset.UtcNow,
+                performance = new
                 {
-                    ServerStatusChecks = GetOperationSummary(allMetrics, "server_status_refresh"),
-                    CacheEfficiency = GetCacheEfficiency(allMetrics),
-                    ErrorRates = GetErrorRates(allMetrics),
-                    SystemHealth = "Healthy" // Базовая проверка
+                    total_requests = totalRequests,
+                    error_requests = errorRequests,
+                    error_rate_percent = Math.Round(errorRate, 2),
+                    slowest_operations = slowestOperations
+                },
+                system,
+                cache = new
+                {
+                    hit_count = counters.GetValueOrDefault("cache_hit", 0),
+                    miss_count = counters.GetValueOrDefault("cache_miss", 0),
+                    hit_rate_percent = CalculateCacheHitRate(counters)
                 }
             };
 
@@ -71,92 +97,132 @@ public class MetricsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving performance summary");
-            return StatusCode(500, new { Error = "Failed to retrieve performance summary" });
+            _logger.LogError(ex, "Failed to get performance summary");
+            return StatusCode(500, new { error = "Failed to get performance summary", message = ex.Message });
         }
     }
 
     /// <summary>
-    /// Очистить кэш метрик (для отладки)
+    /// Получить метрики по конкретной операции
     /// </summary>
-    [HttpPost("clear-cache")]
-    public async Task<IActionResult> ClearCache()
+    [HttpGet("operation/{operationName}")]
+    public async Task<ActionResult<object>> GetOperationMetrics(string operationName)
     {
         try
         {
-            await _cache.ClearAsync();
-            _metrics.IncrementCounter("metrics_cache_cleared_manually");
-            _logger.LogInformation("Metrics cache cleared manually");
-            
-            return Ok(new { Message = "Cache cleared successfully" });
+            var allMetrics = await _metrics.GetMetricsAsync();
+            var counters = (Dictionary<string, long>)allMetrics["counters"];
+            var durations = (Dictionary<string, object>)allMetrics["durations"];
+
+            // Фильтруем метрики по операции
+            var operationCounters = counters
+                .Where(c => c.Key.StartsWith(operationName))
+                .ToDictionary(c => c.Key, c => c.Value);
+
+            var operationDurations = durations
+                .Where(d => d.Key.StartsWith(operationName))
+                .ToDictionary(d => d.Key, d => d.Value);
+
+            if (!operationCounters.Any() && !operationDurations.Any())
+            {
+                return NotFound(new { message = $"No metrics found for operation: {operationName}" });
+            }
+
+            var result = new
+            {
+                operation = operationName,
+                counters = operationCounters,
+                durations = operationDurations,
+                summary = new
+                {
+                    success_count = operationCounters.GetValueOrDefault($"{operationName}_success", 0),
+                    error_count = operationCounters.GetValueOrDefault($"{operationName}_error", 0),
+                    avg_duration = operationDurations.ContainsKey(operationName) 
+                        ? GetPropertyValue(operationDurations[operationName], "avg")
+                        : 0,
+                    p95_duration = operationDurations.ContainsKey(operationName)
+                        ? GetPropertyValue(operationDurations[operationName], "p95")
+                        : 0
+                }
+            };
+
+            return Ok(result);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error clearing cache");
-            return StatusCode(500, new { Error = "Failed to clear cache" });
+            _logger.LogError(ex, "Failed to get operation metrics for {OperationName}", operationName);
+            return StatusCode(500, new { error = "Failed to get operation metrics", message = ex.Message });
         }
     }
 
-    private static object? GetOperationSummary(Dictionary<string, object> metrics, string operationName)
+    /// <summary>
+    /// Получить health check статус
+    /// </summary>
+    [HttpGet("health")]
+    public async Task<ActionResult<object>> GetHealthStatus()
     {
-        if (!metrics.TryGetValue("durations", out var durationsObj) || 
-            durationsObj is not Dictionary<string, object> durations)
-            return null;
-
-        var operationMetrics = durations
-            .Where(kv => kv.Key.StartsWith(operationName))
-            .ToDictionary(kv => kv.Key, kv => kv.Value);
-
-        if (!operationMetrics.Any())
-            return null;
-
-        return new
+        try
         {
-            Operations = operationMetrics.Count,
-            Details = operationMetrics
-        };
+            var allMetrics = await _metrics.GetMetricsAsync();
+            var counters = (Dictionary<string, long>)allMetrics["counters"];
+            var system = allMetrics["system"];
+
+            // Простые health checks
+            var memoryMb = GetPropertyValue(system, "memory_mb");
+            var isMemoryHealthy = memoryMb < 512; // Менее 512 MB
+
+            var totalErrors = counters.Where(c => c.Key.EndsWith("_error")).Sum(c => c.Value);
+            var totalSuccess = counters.Where(c => c.Key.EndsWith("_success")).Sum(c => c.Value);
+            var totalOperations = totalErrors + totalSuccess;
+            
+            var errorRate = totalOperations > 0 ? (double)totalErrors / totalOperations : 0;
+            var isErrorRateHealthy = errorRate < 0.05; // Менее 5% ошибок
+
+            var overallHealth = isMemoryHealthy && isErrorRateHealthy ? "Healthy" : "Unhealthy";
+
+            var health = new
+            {
+                status = overallHealth,
+                timestamp = DateTimeOffset.UtcNow,
+                checks = new
+                {
+                    memory = new { healthy = isMemoryHealthy, value_mb = memoryMb },
+                    error_rate = new { healthy = isErrorRateHealthy, value_percent = Math.Round(errorRate * 100, 2) }
+                },
+                details = new
+                {
+                    total_operations = totalOperations,
+                    error_count = totalErrors,
+                    success_count = totalSuccess
+                }
+            };
+
+            return Ok(health);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get health status");
+            return StatusCode(500, new { error = "Failed to get health status", message = ex.Message });
+        }
     }
 
-    private static object GetCacheEfficiency(Dictionary<string, object> metrics)
+    private static double CalculateCacheHitRate(Dictionary<string, long> counters)
     {
-        if (!metrics.TryGetValue("counters", out var countersObj) || 
-            countersObj is not Dictionary<string, object> counters)
-            return new { HitRate = 0, Hits = 0, Misses = 0 };
-
-        var hits = GetCounterValue(counters, "server_status_cache_hit");
-        var misses = GetCounterValue(counters, "server_status_cache_miss");
+        var hits = counters.GetValueOrDefault("cache_hit", 0);
+        var misses = counters.GetValueOrDefault("cache_miss", 0);
         var total = hits + misses;
-
-        return new
-        {
-            HitRate = total > 0 ? Math.Round((double)hits / total * 100, 2) : 0,
-            Hits = hits,
-            Misses = misses,
-            Total = total
-        };
+        
+        return total > 0 ? Math.Round((double)hits / total * 100, 2) : 0;
     }
 
-    private static object GetErrorRates(Dictionary<string, object> metrics)
+    private static double GetPropertyValue(object obj, string propertyName)
     {
-        if (!metrics.TryGetValue("counters", out var countersObj) || 
-            countersObj is not Dictionary<string, object> counters)
-            return new { ErrorCount = 0, ExceptionCount = 0 };
-
-        var errors = GetCounterValue(counters, "server_status_error");
-        var exceptions = GetCounterValue(counters, "server_status_exception");
-
-        return new
-        {
-            ErrorCount = errors,
-            ExceptionCount = exceptions,
-            TotalIssues = errors + exceptions
-        };
-    }
-
-    private static long GetCounterValue(Dictionary<string, object> counters, string prefix)
-    {
-        return counters
-            .Where(kv => kv.Key.StartsWith(prefix))
-            .Sum(kv => kv.Value is long value ? value : 0);
+        if (obj == null) return 0;
+        
+        var property = obj.GetType().GetProperty(propertyName);
+        if (property == null) return 0;
+        
+        var value = property.GetValue(obj);
+        return Convert.ToDouble(value ?? 0);
     }
 }

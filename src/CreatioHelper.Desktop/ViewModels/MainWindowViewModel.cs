@@ -223,7 +223,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             return;
         }
-        await _statusService.RefreshMultipleServersStatusAsync(ServerList.ToArray());
+        await _statusService.RefreshMultipleServerStatusAsync(ServerList.ToArray());
     }
     
     [RelayCommand]
