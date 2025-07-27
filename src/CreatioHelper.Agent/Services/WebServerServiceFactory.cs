@@ -1,5 +1,3 @@
-using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Services.Linux;
 using CreatioHelper.Agent.Services.MacOS;

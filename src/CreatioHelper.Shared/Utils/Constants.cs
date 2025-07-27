@@ -1,5 +1,3 @@
-using System;
-
 namespace CreatioHelper.Shared.Utils;
 
 public static class Constants

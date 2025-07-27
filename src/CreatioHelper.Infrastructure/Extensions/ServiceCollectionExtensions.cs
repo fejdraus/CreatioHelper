@@ -8,6 +8,7 @@ using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Infrastructure.Services.MacOs;
+using CreatioHelper.Infrastructure.Services.MacOS;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
@@ -26,15 +27,10 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
             services.AddTransient<ISiteSynchronizer, WindowsSiteSynchronizer>();
         }
-        else if (OperatingSystem.IsLinux())
-        {
-            services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
-        }
         else if (OperatingSystem.IsMacOS())
         {
             services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
+            services.AddTransient<ISiteSynchronizer, MacOsSiteSynchronizer>();
         }
         else
         {

@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Application.Interfaces;

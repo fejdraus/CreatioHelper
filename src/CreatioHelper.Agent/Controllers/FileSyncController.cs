@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
 
@@ -61,15 +59,7 @@ public class FileSyncController : ControllerBase
     {
         try
         {
-            var domainOptions = new CreatioHelper.Domain.Entities.SyncOptions
-            {
-                SourcePath = options.SourcePath,
-                DestinationPath = options.DestinationPath,
-                OverwriteExisting = options.OverwriteExisting,
-                Recursive = options.Recursive,
-                ExcludePatterns = options.ExcludePatterns
-            };
-            var result = await _fileSyncService.SyncAsync(domainOptions);
+            var result = await _fileSyncService.SyncAsync(options);
             var dto = new SyncResult
             {
                 Success = result.Success,

@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Application.Interfaces;
-
 namespace CreatioHelper.Agent.Controllers;
 
 [ApiController]
