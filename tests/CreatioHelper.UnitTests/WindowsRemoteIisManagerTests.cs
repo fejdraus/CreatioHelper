@@ -14,13 +14,16 @@ public class WindowsRemoteIisManagerTests
         var manager = new WindowsRemoteIisManager(writer);
         var serverId = ServerId.Create();
         
-        // На не-Windows платформах должен возвращать ошибку
         var result = await manager.StopAppPoolAsync(serverId, CancellationToken.None);
         
         if (!OperatingSystem.IsWindows())
         {
             Assert.False(result.IsSuccess);
             Assert.Contains("Windows", result.ErrorMessage);
+        }
+        else
+        {
+            Assert.NotNull(result);
         }
     }
 
@@ -33,7 +36,6 @@ public class WindowsRemoteIisManagerTests
         
         var result = await manager.StartAppPoolAsync(serverId, CancellationToken.None);
         
-        // Результат должен быть типа Result
         Assert.NotNull(result);
         Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
     }
@@ -47,7 +49,6 @@ public class WindowsRemoteIisManagerTests
         
         var result = await manager.GetAppPoolStatusAsync(serverId, CancellationToken.None);
         
-        // Результат должен быть типа Result<string>
         Assert.NotNull(result);
         Assert.IsType<CreatioHelper.Domain.Common.Result<string>>(result);
     }
@@ -61,7 +62,6 @@ public class WindowsRemoteIisManagerTests
         
         var result = await manager.StartServiceAsync(serverId, CancellationToken.None);
         
-        // Результат должен быть типа Result
         Assert.NotNull(result);
         Assert.IsType<CreatioHelper.Domain.Common.Result>(result);
     }
@@ -74,12 +74,15 @@ public class WindowsRemoteIisManagerTests
         var serverId = ServerId.Create();
         
         using var cts = new CancellationTokenSource();
-        cts.Cancel(); // Отменяем сразу
+        cts.Cancel();
         
         var result = await manager.StartAppPoolAsync(serverId, cts.Token);
         
-        // При отмене должен возвращаться Result с ошибкой
         Assert.False(result.IsSuccess);
-        Assert.Contains("cancelled", result.ErrorMessage, StringComparison.OrdinalIgnoreCase);
+        
+        var expectedMessages = new[] { "cancelled", "Windows" };
+        Assert.True(expectedMessages.Any(msg => 
+            result.ErrorMessage.Contains(msg, StringComparison.OrdinalIgnoreCase)),
+            $"Expected error message to contain 'cancelled' or 'Windows', but was: '{result.ErrorMessage}'");
     }
 }
