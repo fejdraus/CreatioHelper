@@ -179,7 +179,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void AddServer()
     {
         if (!string.IsNullOrWhiteSpace(NewServerName) &&
-            !ServerList.Any(s => s.Name.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase)))
+            !ServerList.Any(s => s.Name.Value.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase)))
         {
             ServerList.Add(new ServerInfo
             {
@@ -228,22 +228,26 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StopPool(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopAppPoolAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StopAppPoolAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return;
             }
             await _statusService.RefreshServerStatusAsync(server);
+        }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to stop pool: {result.ErrorMessage}");
         }
     }
 
     [RelayCommand]
     private async Task StartPool(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartAppPoolAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StartAppPoolAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
             {
@@ -251,19 +255,27 @@ public partial class MainWindowViewModel : ObservableObject
             }
             await _statusService.RefreshServerStatusAsync(server);
         }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to start pool: {result.ErrorMessage}");
+        }
     }
 
     [RelayCommand]
     private async Task StopSite(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopWebsiteAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StopWebsiteAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return;
             }
             await _statusService.RefreshServerStatusAsync(server);
+        }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to stop website: {result.ErrorMessage}");
         }
     }
     
@@ -273,14 +285,18 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StartSite(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartWebsiteAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StartWebsiteAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
             {
                 return;
             }
             await _statusService.RefreshServerStatusAsync(server);
+        }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to start website: {result.ErrorMessage}");
         }
     }
     
@@ -407,20 +423,28 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StartService(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartServiceAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StartServiceAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
+        }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to start service: {result.ErrorMessage}");
         }
     }
 
     [RelayCommand]
     private async Task StopService(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopServiceAsync(server);
-        if (result)
+        var result = await _remoteIisManager.StopServiceAsync(server.Id, CancellationToken.None);
+        if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
+        }
+        else
+        {
+            _output.WriteLine($"[ERROR] Failed to stop service: {result.ErrorMessage}");
         }
     }
 
