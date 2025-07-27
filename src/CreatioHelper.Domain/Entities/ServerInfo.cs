@@ -55,28 +55,38 @@ public class ServerInfo : INotifyPropertyChanged
         set => SetField(ref _serviceName, value);
     }
 
+    // Обновляем свойства статусов, чтобы они показывали состояние ожидания
     public string PoolStatus
     {
-        get => _poolStatus;
+        get => _isStatusLoading ? "Loading..." : _poolStatus;
         set => SetField(ref _poolStatus, value);
     }
 
     public string SiteStatus
     {
-        get => _siteStatus;
+        get => _isStatusLoading ? "Loading..." : _siteStatus;
         set => SetField(ref _siteStatus, value);
     }
 
     public string ServiceStatus
     {
-        get => _serviceStatus;
+        get => _isStatusLoading ? "Loading..." : _serviceStatus;
         set => SetField(ref _serviceStatus, value);
     }
 
     public bool IsStatusLoading
     {
         get => _isStatusLoading;
-        set => SetField(ref _isStatusLoading, value);
+        set
+        {
+            if (SetField(ref _isStatusLoading, value))
+            {
+                // При изменении IsStatusLoading обновляем все статусы
+                OnPropertyChanged(nameof(PoolStatus));
+                OnPropertyChanged(nameof(SiteStatus));
+                OnPropertyChanged(nameof(ServiceStatus));
+            }
+        }
     }
 
     public Version? AppVersion
@@ -99,12 +109,17 @@ public class ServerInfo : INotifyPropertyChanged
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
     {
         if (EqualityComparer<T>.Default.Equals(field, value))
             return false;
         field = value;
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        OnPropertyChanged(propertyName);
         return true;
     }
 
