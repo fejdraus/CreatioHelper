@@ -31,10 +31,7 @@ public class AppVersionHelperTests
             var sourceAssembly = Assembly.GetExecutingAssembly().Location;
             var destAssembly = Path.Combine(tempDir.FullName, "Terrasoft.Common.dll");
             File.Copy(sourceAssembly, destAssembly);
-
             var actual = AppVersionHelper.GetAppVersion(tempDir.FullName);
-
-            // Проверяем, что возвращена не пустая версия (0.0)
             Assert.NotNull(actual);
             Assert.NotEqual(new Version(), actual);
         }
