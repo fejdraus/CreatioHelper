@@ -1,4 +1,3 @@
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
@@ -127,69 +126,78 @@ public class WindowsServiceManager : IRemoteIisManager
 
     private async Task<bool> StartLocalServiceAsync(string serviceName)
     {
-        try
+        return await Task.Run(() =>
         {
-            _output.WriteLine($"[INFO] Starting local Windows service: {serviceName}");
-            
-            using var service = new ServiceController(serviceName);
-            
-            if (service.Status == ServiceControllerStatus.Running)
+            try
             {
-                _output.WriteLine($"[INFO] Service {serviceName} is already running");
+                _output.WriteLine($"[INFO] Starting local Windows service: {serviceName}");
+                
+                using var service = new ServiceController(serviceName);
+                
+                if (service.Status == ServiceControllerStatus.Running)
+                {
+                    _output.WriteLine($"[INFO] Service {serviceName} is already running");
+                    return true;
+                }
+
+                service.Start();
+                service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
+                
+                _output.WriteLine($"[SUCCESS] Service {serviceName} started successfully");
                 return true;
             }
-
-            service.Start();
-            service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(30));
-            
-            _output.WriteLine($"[SUCCESS] Service {serviceName} started successfully");
-            return true;
-        }
-        catch (System.Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to start local service {serviceName}: {ex.Message}");
-            return false;
-        }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to start local service {serviceName}: {ex.Message}");
+                return false;
+            }
+        });
     }
 
     private async Task<bool> StopLocalServiceAsync(string serviceName)
     {
-        try
+        return await Task.Run(() =>
         {
-            _output.WriteLine($"[INFO] Stopping local Windows service: {serviceName}");
-            
-            using var service = new ServiceController(serviceName);
-            
-            if (service.Status == ServiceControllerStatus.Stopped)
+            try
             {
-                _output.WriteLine($"[INFO] Service {serviceName} is already stopped");
+                _output.WriteLine($"[INFO] Stopping local Windows service: {serviceName}");
+                
+                using var service = new ServiceController(serviceName);
+                
+                if (service.Status == ServiceControllerStatus.Stopped)
+                {
+                    _output.WriteLine($"[INFO] Service {serviceName} is already stopped");
+                    return true;
+                }
+
+                service.Stop();
+                service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
+                
+                _output.WriteLine($"[SUCCESS] Service {serviceName} stopped successfully");
                 return true;
             }
-
-            service.Stop();
-            service.WaitForStatus(ServiceControllerStatus.Stopped, TimeSpan.FromSeconds(30));
-            
-            _output.WriteLine($"[SUCCESS] Service {serviceName} stopped successfully");
-            return true;
-        }
-        catch (System.Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to stop local service {serviceName}: {ex.Message}");
-            return false;
-        }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to stop local service {serviceName}: {ex.Message}");
+                return false;
+            }
+        });
     }
 
     private async Task GetLocalServiceStatusAsync(string serviceName)
     {
-        try
+        await Task.Run(() =>
         {
-            using var service = new ServiceController(serviceName);
-            _output.WriteLine($"[INFO] Service {serviceName} status: {service.Status}");
-        }
-        catch (System.Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to get status for local service {serviceName}: {ex.Message}");
-        }
+            try
+            {
+                using var service = new ServiceController(serviceName);
+                _output.WriteLine($"[INFO] Service {serviceName} status: {service.Status}");
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] Failed to get status for local service {serviceName}: {ex.Message}");
+            }
+        });
     }
 
     private async Task<bool> ExecuteRemoteServiceCommand(string action, string serviceName, ServerInfo server)
@@ -231,7 +239,8 @@ public class WindowsServiceManager : IRemoteIisManager
                 CreateNoWindow = true
             };
 
-            using var process = new Process { StartInfo = startInfo };
+            using var process = new Process();
+            process.StartInfo = startInfo;
             process.Start();
 
             var output = await process.StandardOutput.ReadToEndAsync();
@@ -254,7 +263,7 @@ public class WindowsServiceManager : IRemoteIisManager
 
             return success;
         }
-        catch (System.Exception ex)
+        catch (Exception ex)
         {
             _output.WriteLine($"[ERROR] Failed to execute command on {serverName}: {ex.Message}");
             return false;

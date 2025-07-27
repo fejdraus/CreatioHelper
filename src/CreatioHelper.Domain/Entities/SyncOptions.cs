@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 namespace CreatioHelper.Domain.Entities;
 
 public class SyncOptions

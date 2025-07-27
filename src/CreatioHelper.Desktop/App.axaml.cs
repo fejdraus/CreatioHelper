@@ -1,9 +1,6 @@
-using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
-
 using System;
-using System.Runtime.Versioning;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;

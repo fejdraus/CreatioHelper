@@ -1,4 +1,3 @@
-using System;
 namespace CreatioHelper.Domain.Entities;
 
 public class ServerStatusResponse

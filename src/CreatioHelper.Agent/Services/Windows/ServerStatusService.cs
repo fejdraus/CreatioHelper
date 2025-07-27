@@ -1,3 +1,4 @@
+using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Windows;
