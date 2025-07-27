@@ -1,5 +1,7 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.ValueObjects;
 using CreatioHelper.Shared.Interfaces;
 using System.Diagnostics;
 
@@ -14,183 +16,205 @@ public class MacOsRemoteIisManager : IRemoteIisManager
         _output = output;
     }
 
-    public Task<bool> StopAppPoolAsync(ServerInfo server)
+    public Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
-        return StopServiceAsync(server);
+        return StopServiceAsync(serverId, cancellationToken);
     }
 
-    public Task<bool> StopWebsiteAsync(ServerInfo server)
+    public Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
-        return StopServiceAsync(server);
+        return StopServiceAsync(serverId, cancellationToken);
     }
 
-    public Task<bool> StartAppPoolAsync(ServerInfo server)
+    public Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
-        return StartServiceAsync(server);
+        return StartServiceAsync(serverId, cancellationToken);
     }
 
-    public Task<bool> StartWebsiteAsync(ServerInfo server)
+    public Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
-        return StartServiceAsync(server);
+        return StartServiceAsync(serverId, cancellationToken);
     }
 
-    public async Task<bool> StartServiceAsync(ServerInfo server)
-    {
-        var serviceName = GetServiceName(server);
-        if (string.IsNullOrEmpty(serviceName))
-        {
-            _output.WriteLine($"[ERROR] Service name not specified for server {server.Name}");
-            return false;
-        }
-
-        try
-        {
-            return await ExecuteLaunchctlCommand("start", serviceName, server);
-        }
-        catch (Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to start service {serviceName} on {server.Name}: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task<bool> StopServiceAsync(ServerInfo server)
-    {
-        var serviceName = GetServiceName(server);
-        if (string.IsNullOrEmpty(serviceName))
-        {
-            _output.WriteLine($"[ERROR] Service name not specified for server {server.Name}");
-            return false;
-        }
-
-        try
-        {
-            return await ExecuteLaunchctlCommand("stop", serviceName, server);
-        }
-        catch (Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to stop service {serviceName} on {server.Name}: {ex.Message}");
-            return false;
-        }
-    }
-
-    public async Task GetAppPoolStatusAsync(ServerInfo server)
-    {
-        await GetServiceStatusAsync(server);
-    }
-
-    public async Task GetWebsiteStatusAsync(ServerInfo server)
-    {
-        await GetServiceStatusAsync(server);
-    }
-
-    private async Task GetServiceStatusAsync(ServerInfo server)
-    {
-        var serviceName = GetServiceName(server);
-        if (string.IsNullOrEmpty(serviceName))
-        {
-            return;
-        }
-
-        try
-        {
-            await ExecuteLaunchctlCommand("status", serviceName, server);
-        }
-        catch (Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to get status for service {serviceName} on {server.Name}: {ex.Message}");
-        }
-    }
-
-    private async Task<bool> ExecuteLaunchctlCommand(string action, string serviceName, ServerInfo server)
-    {
-        string command;
-        
-        switch (action.ToLower())
-        {
-            case "start":
-                command = $"launchctl bootstrap gui/$(id -u) {serviceName}";
-                break;
-            case "stop":
-                command = $"launchctl bootout gui/$(id -u) {serviceName}";
-                break;
-            case "status":
-                command = $"launchctl print gui/$(id -u)/{serviceName}";
-                break;
-            case "list":
-                command = $"launchctl list | grep {serviceName}";
-                break;
-            case "enable":
-                command = $"launchctl enable gui/$(id -u)/{serviceName}";
-                break;
-            case "disable":
-                command = $"launchctl disable gui/$(id -u)/{serviceName}";
-                break;
-            default:
-                command = $"launchctl {action} {serviceName}";
-                break;
-        }
-
-        if (!string.IsNullOrEmpty(server.NetworkPath) && server.NetworkPath != "localhost" && server.NetworkPath != "127.0.0.1")
-        {
-            command = $"ssh {server.NetworkPath} '{command}'";
-        }
-
-        return await ExecuteCommand(command, server.Name);
-    }
-
-    private async Task<bool> ExecuteCommand(string command, string serverName)
+    public async Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
     {
         try
         {
-            _output.WriteLine($"[INFO] Executing on {serverName}: {command}");
+            // На macOS сервисы управляются через launchctl
+            var serviceName = $"creatio.service.{serverId.Value}";
+            
+            if (cancellationToken.IsCancellationRequested)
+                return Result.Failure("Operation was cancelled");
 
-            var startInfo = new ProcessStartInfo
+            var result = await ExecuteLaunchctlCommand("start", serviceName, cancellationToken);
+            
+            if (result)
             {
-                FileName = "/bin/zsh",
-                Arguments = $"-c \"{command}\"",
+                _output.WriteLine($"[INFO] Service {serviceName} started successfully");
+                return Result.Success();
+            }
+            else
+            {
+                var errorMsg = $"Failed to start service {serviceName}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return Result.Failure("Operation was cancelled");
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"Failed to start service for server {serverId}: {ex.Message}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result.Failure(errorMsg, ex);
+        }
+    }
+
+    public async Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // На macOS сервисы управляются через launchctl
+            var serviceName = $"creatio.service.{serverId.Value}";
+            
+            if (cancellationToken.IsCancellationRequested)
+                return Result.Failure("Operation was cancelled");
+
+            var result = await ExecuteLaunchctlCommand("stop", serviceName, cancellationToken);
+            
+            if (result)
+            {
+                _output.WriteLine($"[INFO] Service {serviceName} stopped successfully");
+                return Result.Success();
+            }
+            else
+            {
+                var errorMsg = $"Failed to stop service {serviceName}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            return Result.Failure("Operation was cancelled");
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"Failed to stop service for server {serverId}: {ex.Message}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result.Failure(errorMsg, ex);
+        }
+    }
+
+    public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+    {
+        return await GetServiceStatusAsync(serverId, cancellationToken);
+    }
+
+    public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+    {
+        return await GetServiceStatusAsync(serverId, cancellationToken);
+    }
+
+    private async Task<Result<string>> GetServiceStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var serviceName = $"creatio.service.{serverId.Value}";
+            
+            if (cancellationToken.IsCancellationRequested)
+                return Result<string>.Failure("Operation was cancelled");
+
+            var isRunning = await CheckServiceStatus(serviceName, cancellationToken);
+            var status = isRunning ? "Running" : "Stopped";
+            
+            return Result<string>.Success(status);
+        }
+        catch (OperationCanceledException)
+        {
+            return Result<string>.Failure("Operation was cancelled");
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"Failed to get status for server {serverId}: {ex.Message}";
+            _output.WriteLine($"[ERROR] {errorMsg}");
+            return Result<string>.Failure(errorMsg, ex);
+        }
+    }
+
+    private async Task<bool> ExecuteLaunchctlCommand(string action, string serviceName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = "launchctl",
+                Arguments = $"{action} {serviceName}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
 
-            using var process = new Process();
-            process.StartInfo = startInfo;
+            using var process = new Process { StartInfo = processStartInfo };
             process.Start();
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
 
-            await process.WaitForExitAsync();
+            await process.WaitForExitAsync(cancellationToken);
 
-            if (!string.IsNullOrEmpty(output))
+            var output = await outputTask;
+            var error = await errorTask;
+
+            if (process.ExitCode == 0)
             {
-                _output.WriteLine($"[INFO] {serverName}: {output}");
+                if (!string.IsNullOrEmpty(output))
+                    _output.WriteLine($"[INFO] launchctl output: {output}");
+                return true;
             }
-
-            if (!string.IsNullOrEmpty(error))
+            else
             {
-                _output.WriteLine($"[ERROR] {serverName}: {error}");
+                if (!string.IsNullOrEmpty(error))
+                    _output.WriteLine($"[ERROR] launchctl error: {error}");
+                return false;
             }
-
-            var success = process.ExitCode == 0;
-            _output.WriteLine($"[{(success ? "SUCCESS" : "ERROR")}] Command on {serverName} completed with exit code {process.ExitCode}");
-
-            return success;
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] Failed to execute command on {serverName}: {ex.Message}");
+            _output.WriteLine($"[ERROR] Failed to execute launchctl command: {ex.Message}");
             return false;
         }
     }
 
-    private string GetServiceName(ServerInfo server)
+    private async Task<bool> CheckServiceStatus(string serviceName, CancellationToken cancellationToken)
     {
-        if (!string.IsNullOrEmpty(server.ServiceName))
-            return server.ServiceName;
+        try
+        {
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = "launchctl",
+                Arguments = $"list {serviceName}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
 
-        return string.Empty;
+            using var process = new Process { StartInfo = processStartInfo };
+            process.Start();
+
+            await process.WaitForExitAsync(cancellationToken);
+
+            // Если сервис найден и запущен, launchctl list возвращает 0
+            return process.ExitCode == 0;
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to check service status: {ex.Message}");
+            return false;
+        }
     }
 }

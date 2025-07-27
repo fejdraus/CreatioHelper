@@ -1,4 +1,4 @@
-namespace CreatioHelper.Domain.Entities;
+namespace CreatioHelper.Contracts.Responses;
 
 public class AppPoolsInfoDto
 {

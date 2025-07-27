@@ -1,16 +1,18 @@
-﻿using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.Application.Interfaces
 {
     public interface IRemoteIisManager
     {
-        Task<bool> StopAppPoolAsync(ServerInfo server);
-        Task<bool> StopWebsiteAsync(ServerInfo server);
-        Task<bool> StartAppPoolAsync(ServerInfo server);
-        Task<bool> StartWebsiteAsync(ServerInfo server);
-        Task<bool> StartServiceAsync(ServerInfo server);
-        Task<bool> StopServiceAsync(ServerInfo server);
-        Task GetAppPoolStatusAsync(ServerInfo server);
-        Task GetWebsiteStatusAsync(ServerInfo server);
+        Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default);
+        Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default);
     }
 }
