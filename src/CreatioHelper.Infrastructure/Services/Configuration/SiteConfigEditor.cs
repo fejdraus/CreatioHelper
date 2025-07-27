@@ -1,5 +1,3 @@
-using System;
-using System.IO;
 using System.Xml;
 using CreatioHelper.Application.Interfaces;
 
@@ -15,8 +13,7 @@ public class SiteConfigEditor : ISiteConfigEditor
         var xmlDoc = new XmlDocument();
         xmlDoc.Load(configPath);
 
-        var node = xmlDoc.SelectSingleNode($"/connectionStrings/add[@name='{name}']") as XmlElement;
-        if (node != null)
+        if (xmlDoc.SelectSingleNode($"/connectionStrings/add[@name='{name}']") is XmlElement node)
         {
             node.SetAttribute("connectionString", connectionString);
             xmlDoc.Save(configPath);

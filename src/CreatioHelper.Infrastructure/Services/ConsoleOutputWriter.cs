@@ -1,4 +1,3 @@
-using System;
 using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services;

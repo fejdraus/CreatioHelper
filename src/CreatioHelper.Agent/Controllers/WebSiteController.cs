@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Contracts.Requests;
 

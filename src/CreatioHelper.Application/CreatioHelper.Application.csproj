@@ -7,6 +7,7 @@
 </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
     <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
   </ItemGroup>

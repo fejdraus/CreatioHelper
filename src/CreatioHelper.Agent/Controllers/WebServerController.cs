@@ -1,11 +1,8 @@
-using Microsoft.AspNetCore.Mvc;
 using CreatioHelper.Agent.Services.Windows;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
 using WebServerResultDto = CreatioHelper.Contracts.Responses.WebServerResult;
 using DataDto = CreatioHelper.Contracts.Responses.Data;
-using System;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -357,12 +354,7 @@ public class WebServerController : ControllerBase
 
         try
         {
-            var domainRequests = requests.Select(r => new CreatioHelper.Domain.Entities.ServerRequest
-            {
-                SiteName = r.SiteName,
-                PoolName = r.PoolName
-            }).ToArray();
-            var statuses = await _iisStatusService.GetMultipleServersStatusAsync(domainRequests);
+            var statuses = await _iisStatusService.GetMultipleServersStatusAsync(requests);
             var dto = statuses.Select(s => new ServerStatusInfo
             {
                 ServerName = s.ServerName,
