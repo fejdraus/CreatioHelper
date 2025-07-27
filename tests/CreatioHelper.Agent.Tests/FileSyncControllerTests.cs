@@ -41,7 +41,7 @@ public class FileSyncControllerTests
     {
         var serviceMock = new Mock<IFileSyncService>();
         serviceMock.Setup(s => s.SyncAsync("src", "dest", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CreatioHelper.Domain.Entities.SyncResult
+            .ReturnsAsync(new SyncResult
             {
                 Success = true,
                 Message = "done",
@@ -77,10 +77,10 @@ public class FileSyncControllerTests
     public async Task SyncFilesAdvanced_UsesOptions()
     {
         var serviceMock = new Mock<IFileSyncService>();
-        serviceMock.Setup(s => s.SyncAsync(It.Is<CreatioHelper.Domain.Entities.SyncOptions>(o =>
+        serviceMock.Setup(s => s.SyncAsync(It.Is<SyncOptions>(o =>
                 o.SourcePath == "src" && o.DestinationPath == "dest" && o.OverwriteExisting),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new CreatioHelper.Domain.Entities.SyncResult { Success = true });
+            .ReturnsAsync(new SyncResult { Success = true });
         var controller = CreateController(serviceMock);
 
         var result = await controller.SyncFilesAdvanced(new SyncOptions

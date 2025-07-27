@@ -3,7 +3,8 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Domain.Entities;
+using CreatioHelper.Contracts.Responses;
+using CreatioHelper.Contracts.Requests;
 
 namespace CreatioHelper.Agent.Services;
 

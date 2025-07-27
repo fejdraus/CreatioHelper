@@ -1,4 +1,5 @@
-using CreatioHelper.Domain.Entities;
+using CreatioHelper.Contracts.Responses;
+using CreatioHelper.Contracts.Requests;
 
 namespace CreatioHelper.Application.Interfaces;
 

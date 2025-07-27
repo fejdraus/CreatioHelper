@@ -1,5 +1,5 @@
 using CreatioHelper.Contracts.Requests;
-using CreatioHelper.Domain.Entities;
+using CreatioHelper.Contracts.Responses;
 
 namespace CreatioHelper.Agent.Services.Windows;
 

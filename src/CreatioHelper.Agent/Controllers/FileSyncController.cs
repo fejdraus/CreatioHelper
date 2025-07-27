@@ -59,7 +59,7 @@ public class FileSyncController : ControllerBase
     {
         try
         {
-            var domainOptions = new CreatioHelper.Domain.Entities.SyncOptions
+            var domainOptions = new SyncOptions
             {
                 SourcePath = options.SourcePath,
                 DestinationPath = options.DestinationPath,
