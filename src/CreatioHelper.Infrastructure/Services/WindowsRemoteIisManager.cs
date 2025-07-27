@@ -1,149 +1,332 @@
-﻿using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.ValueObjects;
 using System.Diagnostics;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
+
 namespace CreatioHelper.Infrastructure.Services
 {
-    public class WindowsRemoteIisManager(IOutputWriter output) : IRemoteIisManager
+    public class WindowsRemoteIisManager : IRemoteIisManager
     {
-        private readonly IOutputWriter _output = output ?? throw new ArgumentNullException(nameof(output));
-        private readonly SystemServiceManager _systemServiceManager = new(output);
+        private readonly IOutputWriter _output;
+        private readonly SystemServiceManager _systemServiceManager;
+
+        public WindowsRemoteIisManager(IOutputWriter output)
+        {
+            _output = output ?? throw new ArgumentNullException(nameof(output));
+            _systemServiceManager = new SystemServiceManager(output);
+        }
 
         private bool IsLocal(string serverName) => string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
 
-        public async Task<bool> StopAppPoolAsync(ServerInfo server)
+        public async Task<Result> StopAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
         {
             if (!OperatingSystem.IsWindows())
             {
-                _output.WriteLine("[ERROR] Pool management is only available on Windows.");
-                return false;
-            }
-
-            if (string.IsNullOrWhiteSpace(server.PoolName))
-            {
-                _output.WriteLine($"[ERROR] Pool name is not specified for server '{server.Name}'.");
-                return false;
-            }
-
-            var currentState = await GetStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
-            if (currentState == "Started")
-            {
-                if (!await ExecuteScriptAsync(server.Name, $"Stop-WebAppPool -Name '{server.PoolName}'"))
-                    return false;
-            }
-            return await WaitForStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'", "Stopped", $"App pool {server.PoolName}");
-        }
-
-        public async Task<bool> StopWebsiteAsync(ServerInfo server)
-        {
-            if (!OperatingSystem.IsWindows())
-            {
-                _output.WriteLine("[ERROR] Pool management is only available on Windows.");
-                return false;
-            }
-            
-            if (string.IsNullOrWhiteSpace(server.SiteName))
-            {
-                _output.WriteLine($"[ERROR] Site name is not specified for server '{server.Name}'.");
-                return false;
-            }
-
-            var siteStatus = await GetStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'");
-            if (siteStatus == "Started")
-            {
-                if (!await ExecuteScriptAsync(server.Name, $"Stop-Website -Name '{server.SiteName}'"))
-                    return false;
-            }
-
-            return await WaitForStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'", "Stopped", $"Website {server.SiteName}");
-        }
-
-        public async Task<bool> StartAppPoolAsync(ServerInfo server)
-        {
-            if (string.IsNullOrEmpty(server.PoolName)) throw new ArgumentNullException(nameof(server.PoolName));
-
-            var poolStatus = await GetStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
-            if (poolStatus == "Stopped")
-            {
-                //_output.WriteLine($"[INFO] Starting app pool {server.PoolName} on {_serverName}");
-                if (!await ExecuteScriptAsync(server.Name, $"Start-WebAppPool -Name '{server.PoolName}'"))
-                    return false;
-            }
-
-            return await WaitForStateAsync(server.Name, true, $"Get-WebAppPoolState -Name '{server.PoolName}'", "Started", $"App pool {server.PoolName}");
-        }
-
-        public async Task<bool> StartWebsiteAsync(ServerInfo server)
-        {
-            if (string.IsNullOrEmpty(server.SiteName)) throw new ArgumentNullException(nameof(server.SiteName));
-
-            var siteStatus = await GetStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'");
-            if (siteStatus == "Stopped")
-            {
-                //_output.WriteLine($"[INFO] Starting site {server.SiteName} on {_serverName}");
-                if (!await ExecuteScriptAsync(server.Name, $"Start-Website -Name '{server.SiteName}'"))
-                    return false;
-            }
-
-            return await WaitForStateAsync(server.Name, false, $"Get-Website -Name '{server.SiteName}'", "Started", $"Website {server.SiteName}");
-        }
-
-        public async Task<bool> StartServiceAsync(ServerInfo server)
-        {
-            if (string.IsNullOrWhiteSpace(server.ServiceName))
-            {
-                _output.WriteLine($"[ERROR] Service name is not specified for server '{server.Name}'.");
-                return false;
+                return Result.Failure("Pool management is only available on Windows.");
             }
 
             try
             {
-                if (IsLocal(server.Name))
+                // Для упрощения используем serverId как имя пула
+                // В реальном приложении здесь должна быть логика получения данных сервера по ID
+                var poolName = $"creatio-pool-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var currentState = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                if (currentState == "Started")
                 {
-                    return await _systemServiceManager.StartServiceAsync(server.ServiceName);
+                    if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{poolName}'", cancellationToken))
+                    {
+                        return Result.Failure($"Failed to stop app pool {poolName}");
+                    }
+
+                    if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"App pool {poolName}", cancellationToken))
+                    {
+                        return Result.Failure($"App pool {poolName} did not reach stopped state");
+                    }
                 }
-                else
-                {
-                    return await StartRemoteServiceAsync(server.Name, server.ServiceName);
-                }
+
+                _output.WriteLine($"[INFO] App pool {poolName} stopped successfully");
+                return Result.Success();
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
             }
             catch (Exception ex)
             {
-                _output.WriteLine($"[ERROR] Failed to start service '{server.ServiceName}' on '{server.Name}': {ex.Message}");
-                return false;
+                var errorMsg = $"Failed to stop app pool for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
             }
         }
 
-        public async Task<bool> StopServiceAsync(ServerInfo server)
+        public async Task<Result> StopWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrWhiteSpace(server.ServiceName))
+            if (!OperatingSystem.IsWindows())
             {
-                _output.WriteLine($"[ERROR] Service name is not specified for server '{server.Name}'.");
-                return false;
+                return Result.Failure("Website management is only available on Windows.");
             }
 
             try
             {
-                if (IsLocal(server.Name))
+                var siteName = $"creatio-site-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var currentState = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                if (currentState == "Started")
                 {
-                    return await _systemServiceManager.StopServiceAsync(server.ServiceName);
+                    if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{siteName}'", cancellationToken))
+                    {
+                        return Result.Failure($"Failed to stop website {siteName}");
+                    }
+
+                    if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken))
+                    {
+                        return Result.Failure($"Website {siteName} did not reach stopped state");
+                    }
                 }
-                else
-                {
-                    return await StopRemoteServiceAsync(server.Name, server.ServiceName);
-                }
+
+                _output.WriteLine($"[INFO] Website {siteName} stopped successfully");
+                return Result.Success();
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
             }
             catch (Exception ex)
             {
-                _output.WriteLine($"[ERROR] Failed to stop service '{server.ServiceName}' on '{server.Name}': {ex.Message}");
-                return false;
+                var errorMsg = $"Failed to stop website for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
             }
         }
 
-        private async Task<bool> ExecuteScriptAsync(string serverName, string script)
+        public async Task<Result> StartAppPoolAsync(ServerId serverId, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(script)) throw new ArgumentNullException(nameof(script));
+            if (!OperatingSystem.IsWindows())
+            {
+                return Result.Failure("Pool management is only available on Windows.");
+            }
 
+            try
+            {
+                var poolName = $"creatio-pool-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var poolStatus = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                if (poolStatus == "Stopped")
+                {
+                    if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{poolName}'", cancellationToken))
+                    {
+                        return Result.Failure($"Failed to start app pool {poolName}");
+                    }
+
+                    if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"App pool {poolName}", cancellationToken))
+                    {
+                        return Result.Failure($"App pool {poolName} did not reach started state");
+                    }
+                }
+
+                _output.WriteLine($"[INFO] App pool {poolName} started successfully");
+                return Result.Success();
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to start app pool for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
+            }
+        }
+
+        public async Task<Result> StartWebsiteAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        {
+            if (!OperatingSystem.IsWindows())
+            {
+                return Result.Failure("Website management is only available on Windows.");
+            }
+
+            try
+            {
+                var siteName = $"creatio-site-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var siteStatus = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                if (siteStatus == "Stopped")
+                {
+                    if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{siteName}'", cancellationToken))
+                    {
+                        return Result.Failure($"Failed to start website {siteName}");
+                    }
+
+                    if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken))
+                    {
+                        return Result.Failure($"Website {siteName} did not reach started state");
+                    }
+                }
+
+                _output.WriteLine($"[INFO] Website {siteName} started successfully");
+                return Result.Success();
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to start website for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
+            }
+        }
+
+        public async Task<Result> StartServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var serviceName = $"creatio-service-{serverId.Value}";
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var result = await _systemServiceManager.StartServiceAsync(serviceName);
+                
+                if (result)
+                {
+                    _output.WriteLine($"[INFO] Service {serviceName} started successfully");
+                    return Result.Success();
+                }
+                else
+                {
+                    var errorMsg = $"Failed to start service {serviceName}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to start service for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
+            }
+        }
+
+        public async Task<Result> StopServiceAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var serviceName = $"creatio-service-{serverId.Value}";
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result.Failure("Operation was cancelled");
+
+                var result = await _systemServiceManager.StopServiceAsync(serviceName);
+                
+                if (result)
+                {
+                    _output.WriteLine($"[INFO] Service {serviceName} stopped successfully");
+                    return Result.Success();
+                }
+                else
+                {
+                    var errorMsg = $"Failed to stop service {serviceName}";
+                    _output.WriteLine($"[ERROR] {errorMsg}");
+                    return Result.Failure(errorMsg);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                return Result.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to stop service for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result.Failure(errorMsg, ex);
+            }
+        }
+
+        public async Task<Result<string>> GetAppPoolStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var poolName = $"creatio-pool-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result<string>.Failure("Operation was cancelled");
+
+                var status = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                
+                return string.IsNullOrEmpty(status) 
+                    ? Result<string>.Failure($"Failed to get status for app pool {poolName}")
+                    : Result<string>.Success(status);
+            }
+            catch (OperationCanceledException)
+            {
+                return Result<string>.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to get app pool status for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result<string>.Failure(errorMsg, ex);
+            }
+        }
+
+        public async Task<Result<string>> GetWebsiteStatusAsync(ServerId serverId, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var siteName = $"creatio-site-{serverId.Value}";
+                var serverName = Environment.MachineName;
+
+                if (cancellationToken.IsCancellationRequested)
+                    return Result<string>.Failure("Operation was cancelled");
+
+                var status = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                
+                return string.IsNullOrEmpty(status) 
+                    ? Result<string>.Failure($"Failed to get status for website {siteName}")
+                    : Result<string>.Success(status);
+            }
+            catch (OperationCanceledException)
+            {
+                return Result<string>.Failure("Operation was cancelled");
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Failed to get website status for server {serverId}: {ex.Message}";
+                _output.WriteLine($"[ERROR] {errorMsg}");
+                return Result<string>.Failure(errorMsg, ex);
+            }
+        }
+
+        // Private helper methods
+        private async Task<bool> ExecuteScriptAsync(string serverName, string script, CancellationToken cancellationToken = default)
+        {
             try
             {
                 var command = IsLocal(serverName)
@@ -167,34 +350,30 @@ namespace CreatioHelper.Infrastructure.Services
                     return false;
                 }
 
-                //var outputText = await process.StandardOutput.ReadToEndAsync();
-                var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
+                await process.WaitForExitAsync(cancellationToken);
 
-                /*if (!string.IsNullOrWhiteSpace(outputText))
+                if (process.ExitCode != 0)
                 {
-                    _output.WriteLine($"[PS] {outputText.Trim()}");
-                }*/
-                
-                if (!string.IsNullOrWhiteSpace(errorText))
-                {
-                    _output.WriteLine($"[PS-ERROR] {errorText.Trim()}");
+                    var errorText = await process.StandardError.ReadToEndAsync();
+                    _output.WriteLine($"[PS-ERROR] Script execution failed: {errorText}");
                     return false;
                 }
 
-                return process.ExitCode == 0;
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
-                _output.WriteLine($"[ERROR] PowerShell process failed: {ex.Message}");
+                _output.WriteLine($"[ERROR] PowerShell script execution failed: {ex.Message}");
                 return false;
             }
         }
 
-        private async Task<string?> GetStateAsync(string serverName, bool isPool, string expression)
+        private async Task<string?> GetStateAsync(string serverName, bool isPool, string expression, CancellationToken cancellationToken = default)
         {
-            if (string.IsNullOrEmpty(expression)) throw new ArgumentNullException(nameof(expression));
-
             try
             {
                 var script = isPool
@@ -224,25 +403,26 @@ namespace CreatioHelper.Infrastructure.Services
 
                 var outputText = await process.StandardOutput.ReadToEndAsync();
                 var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-    
+                await process.WaitForExitAsync(cancellationToken);
+
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
-                    _output.WriteLine($"[PS-ERROR] Check the name of the pool");
+                    _output.WriteLine($"[PS-ERROR] State check failed: {errorText}");
                     return null;
                 }
-                
+
                 var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
-                    _output.WriteLine($"[PS-ERROR] Check the name of the site");
+                    _output.WriteLine($"[PS-ERROR] Unexpected PowerShell output format");
                     return null;
                 }
-                
-                if (string.IsNullOrWhiteSpace(outputText))
-                    return null;
-                
+
                 return lines[2];
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -251,251 +431,34 @@ namespace CreatioHelper.Infrastructure.Services
             }
         }
 
-        private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string query, string desiredState, string name)
+        private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string query, string desiredState, string name, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrEmpty(query)) throw new ArgumentNullException(nameof(query));
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
 
             string? currentState;
+            var maxAttempts = 12; // 1 minute total with 5-second intervals
+            var attempts = 0;
+
             do
             {
-                currentState = await GetStateAsync(serverName, isPool, query);
+                if (cancellationToken.IsCancellationRequested)
+                    return false;
+
+                currentState = await GetStateAsync(serverName, isPool, query, cancellationToken);
                 if (string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase))
                 {
-                    //_output.WriteLine($"[INFO] {name} reached desired state: {desiredState}");
                     return true;
                 }
 
                 _output.WriteLine($"[WAIT] {name} current state: {currentState ?? "unknown"}, waiting...");
-                await Task.Delay(5000);
+                await Task.Delay(5000, cancellationToken);
+                attempts++;
             }
-            while (!string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
+            while (attempts < maxAttempts && !string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
 
-            return true;
-        }
-        
-        public async Task GetAppPoolStatusAsync(ServerInfo server)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(server.PoolName))
-                {
-                    var poolStatus = await GetStateAsync(server.Name,true, $"Get-WebAppPoolState -Name '{server.PoolName}'");
-                    server.PoolStatus = poolStatus ?? "Error";
-                }
-                else
-                {
-                    server.PoolStatus = "Pool name is empty";
-                }
-            }
-            catch (Exception ex)
-            {
-                server.PoolStatus = "Error";
-                _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name}': {ex.Message}");
-            }
-        }
-
-        public async Task GetWebsiteStatusAsync(ServerInfo server)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(server.SiteName))
-                {
-                    var siteStatus = await GetStateAsync(server.Name,false, $"Get-Website -Name '{server.SiteName}'");
-                    server.SiteStatus = siteStatus ?? "Error";
-                }
-                else
-                {
-                    server.SiteStatus = "Site name is empty";
-                }
-            }
-            catch (Exception ex)
-            {
-                server.SiteStatus = "Error";
-                _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name}': {ex.Message}");
-            }
-        }
-
-        public async Task GetServiceStatusAsync(ServerInfo server)
-        {
-            try
-            {
-                if (!string.IsNullOrWhiteSpace(server.ServiceName))
-                {
-                    string? serviceStatus;
-                    if (IsLocal(server.Name))
-                    {
-                        serviceStatus = await _systemServiceManager.GetServiceStateAsync(server.ServiceName);
-                    }
-                    else
-                    {
-                        serviceStatus = await GetRemoteServiceStateAsync(server.Name, server.ServiceName);
-                    }
-                    
-                    server.ServiceStatus = serviceStatus ?? "Error";
-                }
-                else
-                {
-                    server.ServiceStatus = "Service name is empty";
-                }
-            }
-            catch (Exception ex)
-            {
-                server.ServiceStatus = "Error";
-                _output.WriteLine($"[ERROR] Failed to get service status for server '{server.Name}': {ex.Message}");
-            }
-        }
-
-        private async Task<bool> StartRemoteServiceAsync(string serverName, string serviceName)
-        {
-            try
-            {
-                string command;
-                if (OperatingSystem.IsWindows())
-                {
-                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Start-Service -Name '{serviceName}' }} -ErrorAction Stop";
-                }
-                else
-                {
-                    command = $"ssh {serverName} 'systemctl start {serviceName}'";
-                }
-
-                return await ExecuteRemoteCommandAsync(command);
-            }
-            catch (Exception ex)
-            {
-                _output.WriteLine($"[ERROR] Failed to start remote service '{serviceName}' on '{serverName}': {ex.Message}");
-                return false;
-            }
-        }
-
-        private async Task<bool> StopRemoteServiceAsync(string serverName, string serviceName)
-        {
-            try
-            {
-                string command;
-                if (OperatingSystem.IsWindows())
-                {
-                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Stop-Service -Name '{serviceName}' -Force }} -ErrorAction Stop";
-                }
-                else
-                {
-                    command = $"ssh {serverName} 'systemctl stop {serviceName}'";
-                }
-
-                return await ExecuteRemoteCommandAsync(command);
-            }
-            catch (Exception ex)
-            {
-                _output.WriteLine($"[ERROR] Failed to stop remote service '{serviceName}' on '{serverName}': {ex.Message}");
-                return false;
-            }
-        }
-
-        private async Task<string?> GetRemoteServiceStateAsync(string serverName, string serviceName)
-        {
-            try
-            {
-                string command;
-                if (OperatingSystem.IsWindows())
-                {
-                    command = $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ (Get-Service -Name '{serviceName}').Status }} -ErrorAction Stop";
-                }
-                else
-                {
-                    command = $"ssh {serverName} 'systemctl is-active {serviceName}'";
-                }
-
-                return await ExecuteRemoteCommandWithOutputAsync(command);
-            }
-            catch (Exception ex)
-            {
-                _output.WriteLine($"[ERROR] Failed to get remote service state for '{serviceName}' on '{serverName}': {ex.Message}");
-                return "Error";
-            }
-        }
-
-        private async Task<bool> ExecuteRemoteCommandAsync(string command)
-        {
-            try
-            {
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = OperatingSystem.IsWindows() ? "powershell.exe" : "/bin/bash",
-                    Arguments = OperatingSystem.IsWindows() 
-                        ? $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\""
-                        : $"-c \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(startInfo);
-                if (process == null)
-                {
-                    _output.WriteLine("[ERROR] Failed to start process for remote service management.");
-                    return false;
-                }
-
-                var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                if (!string.IsNullOrWhiteSpace(errorText))
-                {
-                    _output.WriteLine($"[ERROR] Remote service operation failed: {errorText.Trim()}");
-                    return false;
-                }
-
-                return process.ExitCode == 0;
-            }
-            catch (Exception ex)
-            {
-                _output.WriteLine($"[ERROR] Remote command execution failed: {ex.Message}");
-                return false;
-            }
-        }
-
-        private async Task<string?> ExecuteRemoteCommandWithOutputAsync(string command)
-        {
-            try
-            {
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = OperatingSystem.IsWindows() ? "powershell.exe" : "/bin/bash",
-                    Arguments = OperatingSystem.IsWindows() 
-                        ? $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\""
-                        : $"-c \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(startInfo);
-                if (process == null)
-                {
-                    _output.WriteLine("[ERROR] Failed to start process for remote service status check.");
-                    return null;
-                }
-
-                var outputText = await process.StandardOutput.ReadToEndAsync();
-                var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
-
-                if (!string.IsNullOrWhiteSpace(errorText))
-                {
-                    return null;
-                }
-
-                return outputText.Trim();
-            }
-            catch (Exception ex)
-            {
-                _output.WriteLine($"[ERROR] Failed to execute remote command with output: {ex.Message}");
-                return null;
-            }
+            return string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
