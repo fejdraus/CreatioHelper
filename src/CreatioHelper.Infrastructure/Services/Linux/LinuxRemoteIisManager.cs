@@ -134,66 +134,18 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         {
             _output.WriteLine($"[INFO] Executing on {serverName}: {command}");
 
-            ProcessStartInfo startInfo;
-
-            if (command.Contains("sudo"))
+            var startInfo = new ProcessStartInfo
             {
-                if (File.Exists("/usr/bin/pkexec"))
-                {
-                    var modifiedCommand = command.Replace("sudo ", "");
-                    startInfo = new ProcessStartInfo
-                    {
-                        FileName = "/usr/bin/pkexec",
-                        Arguments = modifiedCommand,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    _output.WriteLine($"[INFO] {serverName}: Using pkexec for GUI privilege escalation");
-                }
-                else if (File.Exists("/usr/bin/gksudo"))
-                {
-                    startInfo = new ProcessStartInfo
-                    {
-                        FileName = "/usr/bin/gksudo",
-                        Arguments = $"'{command.Replace("sudo ", "")}'",
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
-                    _output.WriteLine($"[INFO] {serverName}: Using gksudo for GUI privilege escalation");
-                }
-                else
-                {
-                    _output.WriteLine($"[WARNING] {serverName}: GUI application cannot handle sudo password prompt interactively.");
-                    _output.WriteLine($"[INFO] {serverName}: Consider configuring passwordless sudo or installing pkexec/gksudo");
-                    _output.WriteLine($"[INFO] {serverName}: Run: echo '{Environment.UserName} ALL=(ALL) NOPASSWD: /bin/systemctl' | sudo tee /etc/sudoers.d/systemctl-nopasswd");
-                    
-                    startInfo = new ProcessStartInfo
-                    {
-                        FileName = "/bin/bash",
-                        Arguments = $"-c \"{command}\"",
-                        UseShellExecute = true,
-                        CreateNoWindow = false
-                    };
-                }
-            }
-            else
-            {
-                startInfo = new ProcessStartInfo
-                {
-                    FileName = "/bin/bash",
-                    Arguments = $"-c \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-            }
+                FileName = "/bin/bash",
+                Arguments = $"-c \"{command}\"",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
 
-            using var process = new Process { StartInfo = startInfo };
+            using var process = new Process();
+            process.StartInfo = startInfo;
             process.Start();
 
             string output = "";
