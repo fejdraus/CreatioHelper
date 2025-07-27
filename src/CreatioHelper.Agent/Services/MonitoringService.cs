@@ -72,12 +72,20 @@ public class MonitoringService : BackgroundService
                 using var scope = _serviceProvider.CreateScope();
                 var metrics = scope.ServiceProvider.GetService<IMetricsService>();
                 
-                await (metrics?.MeasureAsync("monitoring_cycle", async () =>
+                if (metrics != null)
+                {
+                    await metrics.MeasureAsync<int>("monitoring_cycle", async () =>
+                    {
+                        await MonitorServers();
+                        await BroadcastWebServerOverview();
+                        return 1; // Возвращаем успешное выполнение
+                    });
+                }
+                else
                 {
                     await MonitorServers();
                     await BroadcastWebServerOverview();
-                    return Task.CompletedTask;
-                }) ?? Task.CompletedTask);
+                }
             
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
@@ -106,7 +114,49 @@ public class MonitoringService : BackgroundService
 
         try
         {
-            await (metrics?.MeasureAsync("webserver_overview_broadcast", async () =>
+            if (metrics != null)
+            {
+                await metrics.MeasureAsync<int>("webserver_overview_broadcast", async () =>
+                {
+                    var webServerService = await webServerFactory.CreateWebServerServiceAsync();
+                
+                    var sitesTask = webServerService.GetAllSitesAsync();
+                    var appPoolsTask = webServerService.GetAllAppPoolsAsync();
+                    await Task.WhenAll(sitesTask, appPoolsTask);
+                
+                    var sites = await sitesTask;
+                    var appPools = await appPoolsTask;
+                
+                    var overview = new
+                    {
+                        ServerName = Environment.MachineName,
+                        Platform = GetPlatformName(),
+                        Timestamp = DateTime.UtcNow,
+                        Sites = sites,
+                        AppPools = appPools,
+                        Summary = new
+                        {
+                            TotalSites = sites.Count,
+                            RunningSites = sites.Count(s => s.IsRunning),
+                            TotalAppPools = appPools.Count,
+                            RunningAppPools = appPools.Count(s => s.IsRunning)
+                        }
+                    };
+                    
+                    // Устанавливаем метрики состояния
+                    metrics.SetGauge("webserver_total_sites", sites.Count);
+                    metrics.SetGauge("webserver_running_sites", sites.Count(s => s.IsRunning));
+                    metrics.SetGauge("webserver_total_app_pools", appPools.Count);
+                    metrics.SetGauge("webserver_running_app_pools", appPools.Count(s => s.IsRunning));
+                
+                    await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
+                    
+                    metrics.IncrementCounter("webserver_overview_broadcast_success");
+                    
+                    return 1; // Возвращаем успешное выполнение
+                });
+            }
+            else
             {
                 var webServerService = await webServerFactory.CreateWebServerServiceAsync();
             
@@ -132,18 +182,9 @@ public class MonitoringService : BackgroundService
                         RunningAppPools = appPools.Count(s => s.IsRunning)
                     }
                 };
-                
-                // Устанавливаем метрики состояния
-                metrics?.SetGauge("webserver_total_sites", sites.Count);
-                metrics?.SetGauge("webserver_running_sites", sites.Count(s => s.IsRunning));
-                metrics?.SetGauge("webserver_total_app_pools", appPools.Count);
-                metrics?.SetGauge("webserver_running_app_pools", appPools.Count(s => s.IsRunning));
             
                 await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
-                
-                metrics?.IncrementCounter("webserver_overview_broadcast_success");
-                return Task.CompletedTask;
-            }) ?? Task.CompletedTask);
+            }
         }
         catch (Exception ex)
         {
@@ -193,20 +234,19 @@ public class MonitoringService : BackgroundService
             try
             {
                 var statuses = await (metrics?.MeasureAsync("monitor_servers_status_check", 
-                    () => statusService.GetMultipleServersStatusAsync(serversToMonitor),
-                    new() { ["server_count"] = serversToMonitor.Length.ToString() }) 
+                    () => statusService.GetMultipleServersStatusAsync(serversToMonitor)) 
                     ?? statusService.GetMultipleServersStatusAsync(serversToMonitor));
                 
                 await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
                 
+                // Метрики успешного мониторинга
                 metrics?.IncrementCounter("monitor_servers_success");
-                metrics?.SetGauge("monitor_servers_checked", serversToMonitor.Length);
+                metrics?.SetGauge("monitored_servers_count", serversToMonitor.Length);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error monitoring servers");
                 metrics?.IncrementCounter("monitor_servers_error");
-                throw;
             }
         }
     }

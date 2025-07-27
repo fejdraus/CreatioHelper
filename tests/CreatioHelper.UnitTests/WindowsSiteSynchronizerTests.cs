@@ -121,7 +121,7 @@ public class WindowsSiteSynchronizerTests
                             server.SiteStatus = "Stopped";
                         }
                     })
-                    .Returns(Task.CompletedTask);
+                    .Returns(Task.FromResult(true));
                     
         statusService.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
                     .Callback<ServerInfo, CancellationToken>((server, _) => 

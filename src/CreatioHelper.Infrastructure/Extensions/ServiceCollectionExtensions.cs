@@ -6,12 +6,10 @@ using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Services.Redis;
-using CreatioHelper.Infrastructure.Services.Performance;
 using CreatioHelper.Infrastructure.Logging;
+using CreatioHelper.Infrastructure.Services.Performance;
 using CreatioHelper.Shared.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
@@ -21,6 +19,10 @@ public static class ServiceCollectionExtensions
     {
         // Базовые сервисы
         services.AddSingleton<IMetricsService, MetricsService>();
+        
+        // Health Check сервисы
+        services.AddSingleton<IHealthCheckService, HealthCheckService>();
+        services.AddSingleton<CreatioHelperHealthCheck>();
         
         // OutputWriter для логирования
         services.AddSingleton<IOutputWriter>(provider => 
@@ -38,11 +40,7 @@ public static class ServiceCollectionExtensions
         // Redis Manager Factory для работы с Redis
         services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
         
-        // Системные метрики - фоновый сервис для мониторинга ресурсов (только для Windows)
-        if (OperatingSystem.IsWindows())
-        {
-            services.AddHostedService<SystemMetricsCollector>();
-        }
+        // Убираем регистрацию SystemMetricsCollector отсюда - он регистрируется в Agent проекте
         
         // Настройки - простая реализация без кэширования для актуальных данных
         services.AddSingleton<ISettingsService, SettingsService>();

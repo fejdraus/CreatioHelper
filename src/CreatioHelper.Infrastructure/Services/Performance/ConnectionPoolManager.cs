@@ -3,6 +3,7 @@ using Microsoft.Extensions.ObjectPool;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Interfaces;
 using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
@@ -93,63 +94,109 @@ public class RemoteConnectionPoolPolicy : IPooledObjectPolicy<IRemoteConnection>
 }
 
 /// <summary>
-/// Интерфейс для удаленного соединения
-/// </summary>
-public interface IRemoteConnection : IDisposable
-{
-    bool IsConnected { get; }
-    bool HasErrors { get; }
-    Task<string> ExecuteCommandAsync(string command);
-    Task<PowerShell> CreatePowerShellAsync();
-}
-
-/// <summary>
-/// Реализация PowerShell соединения для пула
+/// Реализация удаленного PowerShell соединения для пула
 /// </summary>
 public class PowerShellRemoteConnection : IRemoteConnection
 {
     private readonly string _serverName;
-    private PowerShell? _powerShell;
+    private Runspace? _runspace;
     private bool _disposed;
+
+    public bool IsConnected => _runspace?.RunspaceStateInfo.State == RunspaceState.Opened;
+    public bool HasErrors { get; private set; }
 
     public PowerShellRemoteConnection(string serverName)
     {
-        _serverName = serverName;
-        _powerShell = PowerShell.Create();
+        _serverName = serverName ?? throw new ArgumentNullException(nameof(serverName));
+        InitializeConnection();
     }
 
-    public bool IsConnected => _powerShell != null && !_disposed;
-    public bool HasErrors => _powerShell?.HadErrors ?? true;
+    private void InitializeConnection()
+    {
+        try
+        {
+            // Для локального сервера используем обычный runspace
+            if (_serverName.Equals("localhost", StringComparison.OrdinalIgnoreCase) || 
+                _serverName.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+            {
+                _runspace = RunspaceFactory.CreateRunspace();
+            }
+            else
+            {
+                // Для удаленного сервера создаем WSMan соединение
+                var connectionInfo = new WSManConnectionInfo(
+                    new Uri($"http://{_serverName}:5985/wsman"), 
+                    "http://schemas.microsoft.com/powershell/Microsoft.PowerShell",
+                    PSCredential.Empty);
+                
+                _runspace = RunspaceFactory.CreateRunspace(connectionInfo);
+            }
+            
+            _runspace.Open();
+            HasErrors = false;
+        }
+        catch (Exception)
+        {
+            HasErrors = true;
+            _runspace?.Dispose();
+            _runspace = null;
+        }
+    }
 
     public async Task<string> ExecuteCommandAsync(string command)
     {
-        if (_disposed || _powerShell == null)
-            throw new ObjectDisposedException(nameof(PowerShellRemoteConnection));
+        if (_disposed || _runspace == null || !IsConnected)
+        {
+            HasErrors = true;
+            throw new InvalidOperationException("Connection is not available");
+        }
 
-        _powerShell.Commands.Clear();
-        _powerShell.AddScript(command);
-        
-        var results = await Task.Run(() => _powerShell.Invoke());
-        return string.Join(Environment.NewLine, results.Select(r => r.ToString()));
+        try
+        {
+            using var powerShell = PowerShell.Create();
+            powerShell.Runspace = _runspace;
+            powerShell.AddScript(command);
+
+            var results = await Task.Factory.FromAsync(
+                powerShell.BeginInvoke(),
+                powerShell.EndInvoke);
+
+            if (powerShell.HadErrors)
+            {
+                HasErrors = true;
+                var errors = string.Join("; ", powerShell.Streams.Error.Select(e => e.ToString()));
+                throw new InvalidOperationException($"PowerShell execution failed: {errors}");
+            }
+
+            return string.Join(Environment.NewLine, results.Select(r => r?.ToString()));
+        }
+        catch (Exception)
+        {
+            HasErrors = true;
+            throw;
+        }
     }
 
-    public async Task<PowerShell> CreatePowerShellAsync()
+    public Task<object> CreatePowerShellAsync()
     {
-        return await Task.FromResult(_powerShell ?? PowerShell.Create());
+        if (_disposed || _runspace == null || !IsConnected)
+        {
+            HasErrors = true;
+            throw new InvalidOperationException("Connection is not available");
+        }
+
+        var powerShell = PowerShell.Create();
+        powerShell.Runspace = _runspace;
+        return Task.FromResult<object>(powerShell);
     }
 
     public void Dispose()
     {
         if (!_disposed)
         {
-            _powerShell?.Dispose();
-            _powerShell = null;
+            _runspace?.Close();
+            _runspace?.Dispose();
             _disposed = true;
         }
     }
-}
-
-public interface IConnectionPoolManager : IDisposable
-{
-    Task<T> ExecuteAsync<T>(string serverName, Func<IRemoteConnection, Task<T>> operation);
 }

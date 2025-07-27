@@ -74,307 +74,300 @@ public partial class OperationsService : ObservableObject, IOperationsService
             return;
         }
 
-        // Измеряем общее время операции развертывания
-        await _metricsService.MeasureAsync("deployment_operation", async () =>
+        // Создаем CancellationTokenSource ДО Task.Run
+        _cancellationTokenSource = new CancellationTokenSource();
+        var cancellationToken = _cancellationTokenSource.Token;
+
+        // Запускаем операцию в фоновом потоке
+        await Task.Run(() =>
         {
             string packagesPath = viewModel.PackagesPath ?? "";
             string packagesBefore = viewModel.PackagesToDeleteBefore?.Trim() ?? "";
             string packagesAfter = viewModel.PackagesToDeleteAfter?.Trim() ?? "";
             var serverList = viewModel.ServerList.ToArray();
-            _cancellationTokenSource = new CancellationTokenSource();
-            var cancellationToken = _cancellationTokenSource.Token;
             var preparer = _workspacePreparer;
             IsBusy = true;
             StartButtonText = "In process...";
             viewModel.IsServerControlsEnabled = false;
 
-            await Task.Run(async () => 
+            var quartzIsActiveOriginal = true;
+            try
             {
-                var quartzIsActiveOriginal = true;
-                try 
-                {
-                    _output.WriteLine("Prepare WorkspaceConsole ...");
-                    
-                    // Измеряем время подготовки workspace
-                    await _metricsService.MeasureAsync("workspace_prepare", async () =>
-                    {
-                        preparer.Prepare(sitePath, out quartzIsActiveOriginal);
-                        return Task.CompletedTask;
-                    });
+                _output.WriteLine("Prepare WorkspaceConsole ...");
 
-                    if (cancellationToken.IsCancellationRequested) 
+                preparer.Prepare(sitePath, out quartzIsActiveOriginal);
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    _metricsService.IncrementCounter("deployment_cancelled");
+                    return;
+                }
+
+                if (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath))
+                {
+                    string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
+                    var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
+                    var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
+                    var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : viewModel.SitePathWithVersion;
+                    if (appVersion < new Version(7, 12, 0, 0))
                     {
-                        _metricsService.IncrementCounter("deployment_cancelled");
+                        _output.WriteLine("[ERROR] Creatio application not found.");
                         return;
                     }
-
-                    if (viewModel.SelectedIisSite != null || !string.IsNullOrWhiteSpace(viewModel.SitePath)) 
+                    var localServerInfo = new ServerInfo
                     {
-                        string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
-                        var poolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null;
-                        var siteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null;
-                        var appVersion = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Version : viewModel.SitePathWithVersion;
-                        if (appVersion < new Version(7, 12, 0, 0)) 
-                        {
-                            _output.WriteLine("[ERROR] Creatio application not found.");
-                            return;
-                        }
-                        var localServerInfo = new ServerInfo
-                        {
-                            Name = new ServerName(Environment.MachineName),
-                            PoolName = poolName ?? string.Empty,
-                            SiteName = siteName ?? string.Empty,
-                            ServiceName = viewModel.ServiceName ?? string.Empty,
-                            AppVersion = appVersion
-                        };
-                        var manager = _remoteIisManager;
-                        if (OperatingSystem.IsWindows())
-                        {
-                            if (File.Exists(nestedPath))
-                            {
-                                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
-                                {
-                                    var stopPoolResult = await manager.StopAppPoolAsync(localServerInfo.PoolName, cancellationToken);
-                                    if (stopPoolResult.IsSuccess)
-                                    {
-                                        _output.WriteLine("[INFO] Main Pool stopped.");
-                                    }
-                                    else
-                                    {
-                                        _output.WriteLine($"[ERROR] Failed to stop pool: {stopPoolResult.ErrorMessage}");
-                                    }
-                                }
+                        Name = new ServerName(Environment.MachineName),
+                        PoolName = poolName ?? string.Empty,
+                        SiteName = siteName ?? string.Empty,
+                        ServiceName = viewModel.ServiceName ?? string.Empty,
+                        AppVersion = appVersion
+                    };
+                    var manager = _remoteIisManager;
 
-                                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
-                                {
-                                    var stopSiteResult = await manager.StopWebsiteAsync(localServerInfo.SiteName, cancellationToken);
-                                    if (stopSiteResult.IsSuccess)
-                                    {
-                                        _output.WriteLine("[INFO] Main Website stopped.");
-                                    }
-                                    else
-                                    {
-                                        _output.WriteLine($"[ERROR] Failed to stop website: {stopSiteResult.ErrorMessage}");
-                                    }
-                                }
-                            }
-                            
-                            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
-                            {
-                                localServerInfo.ServiceName = viewModel.ServiceName;
-                                var serviceStopResult = await manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken);
-                                if (serviceStopResult.IsSuccess)
-                                {
-                                    _output.WriteLine("[INFO] Main Service stopped.");
-                                }
-                                else
-                                {
-                                    _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
-                            {
-                                localServerInfo.ServiceName = viewModel.ServiceName;
-                                var serviceStopResult = await manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken);
-                                if (serviceStopResult.IsSuccess)
-                                {
-                                    _output.WriteLine("[INFO] Main Service stopped.");
-                                }
-                                else
-                                {
-                                    _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
-                                }
-                            }
-                        }
+                    // Измеряем время выполнения IIS операций
+                    _metricsService.Measure("iis_operations", () =>
+                    {
+                        PerformIisOperations(manager, localServerInfo, nestedPath, viewModel, cancellationToken);
+                    });
+
+                    IsStopButtonEnabled = true;
+
+                    if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
+                    {
+                        _output.WriteLine("Deleting packages BEFORE installation...");
                         
-                        IsStopButtonEnabled = true;
-
-                        if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
+                        // Измеряем время удаления пакетов BEFORE
+                        _metricsService.Measure("packages_delete_before", () =>
                         {
-                            _output.WriteLine("Deleting packages BEFORE installation...");
-                            
-                            // Измеряем время удаления пакетов
-                            await _metricsService.MeasureAsync("packages_delete_before", async () =>
-                            {
-                                if (!ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return Task.FromResult(false);
-                                
-                                _metricsService.IncrementCounter("packages_deleted_before");
-                                return Task.FromResult(true);
-                            });
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
-                        {
-                            _output.WriteLine("Start installation packages...");
-                            
-                            // Измеряем время установки пакетов
-                            await _metricsService.MeasureAsync("package_install_duration", async () =>
-                            {
-                                if (!ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return Task.FromResult(false);
-                                
-                                _metricsService.IncrementCounter("packages_installed_count");
-                                return Task.FromResult(true);
-                            });
-                        }
-
-                        if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
-                        {
-                            _output.WriteLine("Deleting packages AFTER installation...");
-                            
-                            // Измеряем время удаления пакетов после установки
-                            await _metricsService.MeasureAsync("packages_delete_after", async () =>
-                            {
-                                if (!ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return Task.FromResult(false);
-                                if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return Task.FromResult(false);
-                                
-                                _metricsService.IncrementCounter("packages_deleted_after");
-                                return Task.FromResult(true);
-                            });
-                        }
-
-                        if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible) 
-                        {
-                            IsStopButtonEnabled = false;
-                            if (!cancellationToken.IsCancellationRequested)
-                            {
-                                // Измеряем время синхронизации серверов
-                                var syncStatus = await _metricsService.MeasureAsync("server_sync_duration", async () =>
-                                {
-                                    return await _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken);
-                                });
-                                
-                                if (syncStatus) 
-                                {
-                                    _output.WriteLine("[OK] All servers are successfully synchronized.");
-                                    _metricsService.IncrementCounter("successful_deployments_count");
-                                    _metricsService.SetGauge("servers_synchronized_count", serverList.Length);
-                                } 
-                                else 
-                                {
-                                    _output.WriteLine("[ERROR] Failed to synchronize servers.");
-                                    _metricsService.IncrementCounter("failed_deployments_count");
-                                    return;
-                                }
-                            }
-                            IsStopButtonEnabled = true;
-                        }
-
-                        if (string.IsNullOrWhiteSpace(packagesPath) &&
-                            string.IsNullOrWhiteSpace(packagesBefore) &&
-                            string.IsNullOrWhiteSpace(packagesAfter) &&
-                            !viewModel.IsServerPanelVisible) 
-                        {
-                            if (!ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken)) return;
-                            if (!ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken)) return;
-                            if (!ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken)) return;
-                        }
-
-                        var redisManager = _redisManagerFactory.Create(sitePath);
-                        var redisStatus = redisManager.CheckStatus();
-                        if (redisStatus) 
-                        {
-                            redisManager.Clear();
-                        }
-
-                        IsStopButtonEnabled = false;
-                        if (OperatingSystem.IsWindows())
-                        {
-                            if (File.Exists(nestedPath))
-                            {
-                                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
-                                {
-                                    var startPoolResult = await manager.StartAppPoolAsync(localServerInfo.PoolName, cancellationToken);
-                                    if (startPoolResult.IsSuccess)
-                                    {
-                                        _output.WriteLine("[INFO] Main Pool is running.");
-                                    }
-                                    else
-                                    {
-                                        _output.WriteLine($"[ERROR] Failed to start pool: {startPoolResult.ErrorMessage}");
-                                    }
-                                }
-                                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
-                                {
-                                    var startSiteResult = await manager.StartWebsiteAsync(localServerInfo.SiteName, cancellationToken);
-                                    if (startSiteResult.IsSuccess)
-                                    {
-                                        _output.WriteLine("[INFO] Main Website is running.");
-                                    }
-                                    else
-                                    {
-                                        _output.WriteLine($"[ERROR] Failed to start website: {startSiteResult.ErrorMessage}");
-                                    }
-                                }
-                            }
-
-                            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
-                            {
-                                var serviceStartResult = await manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken);
-                                if (serviceStartResult.IsSuccess)
-                                {
-                                    _output.WriteLine("[INFO] Main Service is running.");
-                                }
-                                else
-                                {
-                                    _output.WriteLine("[WARNING] Failed to start main service.");
-                                }
-                            }
-                        }
-                        else
-                        {
-                            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
-                            {
-                                var serviceStartResult = await manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken);
-                                if (serviceStartResult.IsSuccess)
-                                {
-                                    _output.WriteLine("[INFO] Main Service is running.");
-                                }
-                                else
-                                {
-                                    _output.WriteLine("[WARNING] Failed to start main service.");
-                                }
-                            }
-                        }
+                            ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        });
+                        _metricsService.IncrementCounter("packages_deleted_before");
                     }
-                } 
-                catch (OperationCanceledException) 
-                {
-                    _output.WriteLine("[INFO] Operation was cancelled.");
-                    _metricsService.IncrementCounter("deployment_cancelled");
-                    IsStopButtonEnabled = true;
-                } 
-                catch (Exception ex) 
-                {
-                    _output.WriteLine($"[ERROR] {ex.Message}");
-                    _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = ex.GetType().Name });
-                    IsStopButtonEnabled = true;
-                } 
-                finally 
-                {
-                    IsBusy = false;
-                    StartButtonText = "Start";
-                    viewModel.IsServerControlsEnabled = true;
-                    IsStopButtonEnabled = true;
-                    if (!quartzIsActiveOriginal)
+
+                    if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
                     {
-                        string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))
-                            ? Path.Combine(sitePath, "Web.config")
-                            : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
-                        preparer.UpdateOutConfig(config, quartzIsActiveOriginal);
+                        _output.WriteLine("Start installation packages...");
+                        
+                        // Измеряем время установки пакетов
+                        _metricsService.Measure("package_install", () =>
+                        {
+                            ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        });
+                        _metricsService.IncrementCounter("packages_installed_count");
+                    }
+
+                    if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
+                    {
+                        _output.WriteLine("Deleting packages AFTER installation...");
+                        
+                        // Измеряем время удаления пакетов AFTER
+                        _metricsService.Measure("packages_delete_after", () =>
+                        {
+                            ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        });
+                        _metricsService.IncrementCounter("packages_deleted_after");
+                    }
+
+                    if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
+                    {
+                        IsStopButtonEnabled = false;
+                        if (!cancellationToken.IsCancellationRequested)
+                        {
+                            // Измеряем время синхронизации серверов
+                            var syncStatus = _metricsService.Measure("server_sync", () =>
+                            {
+                                return _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken).Result;
+                            });
+
+                            if (syncStatus)
+                            {
+                                _output.WriteLine("[OK] All servers are successfully synchronized.");
+                                _metricsService.IncrementCounter("successful_deployments_count");
+                                _metricsService.SetGauge("servers_synchronized_count", serverList.Length);
+                            }
+                            else
+                            {
+                                _output.WriteLine("[ERROR] Failed to synchronize servers.");
+                                _metricsService.IncrementCounter("failed_deployments_count");
+                                return;
+                            }
+                        }
+                        IsStopButtonEnabled = true;
+                    }
+
+                    if (string.IsNullOrWhiteSpace(packagesPath) &&
+                        string.IsNullOrWhiteSpace(packagesBefore) &&
+                        string.IsNullOrWhiteSpace(packagesAfter) &&
+                        !viewModel.IsServerPanelVisible)
+                    {
+                        // Измеряем время операций генерации схем
+                        _metricsService.Measure("schema_operations", () =>
+                        {
+                            ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        });
+                    }
+
+                    var redisManager = _redisManagerFactory.Create(sitePath);
+                    var redisStatus = redisManager.CheckStatus();
+                    if (redisStatus)
+                    {
+                        redisManager.Clear();
+                    }
+
+                    IsStopButtonEnabled = false;
+
+                    // Измеряем время операций запуска
+                    _metricsService.Measure("startup_operations", () =>
+                    {
+                        PerformStartupOperations(manager, localServerInfo, nestedPath, cancellationToken);
+                    });
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                _output.WriteLine("[INFO] Operation was cancelled.");
+                _metricsService.IncrementCounter("deployment_cancelled");
+                IsStopButtonEnabled = true;
+            }
+            catch (Exception ex)
+            {
+                _output.WriteLine($"[ERROR] {ex.Message}");
+                _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = ex.GetType().Name });
+                IsStopButtonEnabled = true;
+            }
+            finally
+            {
+                IsBusy = false;
+                StartButtonText = "Start";
+                viewModel.IsServerControlsEnabled = true;
+                IsStopButtonEnabled = true;
+                if (!quartzIsActiveOriginal)
+                {
+                    string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))
+                        ? Path.Combine(sitePath, "Web.config")
+                        : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+                    preparer.UpdateOutConfig(config, quartzIsActiveOriginal);
+                }
+            }
+        }, cancellationToken);
+    }
+
+    private void PerformIisOperations(IRemoteIisManager manager, ServerInfo localServerInfo, string nestedPath, MainWindowViewModel viewModel, CancellationToken cancellationToken)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            if (File.Exists(nestedPath))
+            {
+                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
+                {
+                    var stopPoolResult = manager.StopAppPoolAsync(localServerInfo.PoolName!, cancellationToken).Result;
+                    if (stopPoolResult.IsSuccess)
+                    {
+                        _output.WriteLine("[INFO] Main Pool stopped.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[ERROR] Failed to stop pool: {stopPoolResult.ErrorMessage}");
                     }
                 }
-            }, _cancellationTokenSource.Token);
-            
-            return new object(); // Dummy return for MeasureAsync
-        });
+
+                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                {
+                    var stopSiteResult = manager.StopWebsiteAsync(localServerInfo.SiteName, cancellationToken).Result;
+                    if (stopSiteResult.IsSuccess)
+                    {
+                        _output.WriteLine("[INFO] Main Website stopped.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[ERROR] Failed to stop website: {stopSiteResult.ErrorMessage}");
+                    }
+                }
+            }
+        }
+        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
+        {
+            localServerInfo.ServiceName = viewModel.ServiceName;
+            var serviceStopResult = manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+            if (serviceStopResult.IsSuccess)
+            {
+                _output.WriteLine("[INFO] Main Service stopped.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
+            }
+        }
+    }
+
+    private void PerformStartupOperations(IRemoteIisManager manager, ServerInfo localServerInfo, string nestedPath, CancellationToken cancellationToken)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            if (File.Exists(nestedPath))
+            {
+                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                {
+                    var startPoolResult = manager.StartAppPoolAsync(localServerInfo.PoolName, cancellationToken).Result;
+                    if (startPoolResult.IsSuccess)
+                    {
+                        _output.WriteLine("[INFO] Main Pool is running.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[ERROR] Failed to start pool: {startPoolResult.ErrorMessage}");
+                    }
+                }
+                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                {
+                    var startSiteResult = manager.StartWebsiteAsync(localServerInfo.SiteName, cancellationToken).Result;
+                    if (startSiteResult.IsSuccess)
+                    {
+                        _output.WriteLine("[INFO] Main Website is running.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[ERROR] Failed to start website: {startSiteResult.ErrorMessage}");
+                    }
+                }
+            }
+
+            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+            {
+                var serviceStartResult = manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+                if (serviceStartResult.IsSuccess)
+                {
+                    _output.WriteLine("[INFO] Main Service is running.");
+                }
+                else
+                {
+                    _output.WriteLine("[WARNING] Failed to start main service.");
+                }
+            }
+        }
+        else
+        {
+            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+            {
+                var serviceStartResult = manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+                if (serviceStartResult.IsSuccess)
+                {
+                    _output.WriteLine("[INFO] Main Service is running.");
+                }
+                else
+                {
+                    _output.WriteLine("[WARNING] Failed to start main service.");
+                }
+            }
+        }
     }
 
     public void StopOperation() 

@@ -33,7 +33,7 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Pool name is required");
             }
 
-            return await _metrics.MeasureAsync("iis_command_duration", async () =>
+            return await _metrics.MeasureAsync<Result>("iis_command_duration", async () =>
             {
                 try
                 {
@@ -84,7 +84,7 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Site name is required");
             }
 
-            return await _metrics.MeasureAsync("iis_command_duration", async () =>
+            return await _metrics.MeasureAsync<Result>("iis_command_duration", async () =>
             {
                 try
                 {
@@ -135,7 +135,7 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Pool name is required");
             }
 
-            return await _metrics.MeasureAsync("iis_command_duration", async () =>
+            return await _metrics.MeasureAsync<Result>("iis_command_duration", async () =>
             {
                 try
                 {
@@ -186,7 +186,7 @@ namespace CreatioHelper.Infrastructure.Services
                 return Result.Failure("Site name is required");
             }
 
-            return await _metrics.MeasureAsync("iis_command_duration", async () =>
+            return await _metrics.MeasureAsync<Result>("iis_command_duration", async () =>
             {
                 try
                 {
