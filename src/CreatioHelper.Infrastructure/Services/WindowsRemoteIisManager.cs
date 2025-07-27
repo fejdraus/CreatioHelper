@@ -1,4 +1,3 @@
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.ValueObjects;
 using System.Diagnostics;
@@ -354,7 +353,7 @@ namespace CreatioHelper.Infrastructure.Services
 
                 if (process.ExitCode != 0)
                 {
-                    var errorText = await process.StandardError.ReadToEndAsync();
+                    var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
                     _output.WriteLine($"[PS-ERROR] Script execution failed: {errorText}");
                     return false;
                 }
@@ -401,8 +400,8 @@ namespace CreatioHelper.Infrastructure.Services
                     return null;
                 }
 
-                var outputText = await process.StandardOutput.ReadToEndAsync();
-                var errorText = await process.StandardError.ReadToEndAsync();
+                var outputText = await process.StandardOutput.ReadToEndAsync(cancellationToken);
+                var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
                 await process.WaitForExitAsync(cancellationToken);
 
                 if (!string.IsNullOrWhiteSpace(errorText))
@@ -411,7 +410,7 @@ namespace CreatioHelper.Infrastructure.Services
                     return null;
                 }
 
-                var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
                     _output.WriteLine($"[PS-ERROR] Unexpected PowerShell output format");
