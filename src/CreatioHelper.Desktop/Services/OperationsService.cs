@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.ValueObjects;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Utils;
 using CreatioHelper.ViewModels;
@@ -107,9 +108,10 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     var localServerInfo = new ServerInfo
                     {
-                        Name = Environment.MachineName,
+                        Name = new ServerName(Environment.MachineName),
                         PoolName = poolName ?? string.Empty,
                         SiteName = siteName ?? string.Empty,
+                        ServiceName = viewModel.ServiceName ?? string.Empty,
                         AppVersion = appVersion
                     };
                     var manager = _remoteIisManager;
@@ -119,7 +121,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
                             {
-                                var stopPoolResult = await manager.StopAppPoolAsync(localServerInfo.Id, cancellationToken);
+                                var stopPoolResult = await manager.StopAppPoolAsync(localServerInfo.PoolName, cancellationToken);
                                 if (stopPoolResult.IsSuccess)
                                 {
                                     _output.WriteLine("[INFO] Main Pool stopped.");
@@ -132,7 +134,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                             if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
                             {
-                                var stopSiteResult = await manager.StopWebsiteAsync(localServerInfo.Id, cancellationToken);
+                                var stopSiteResult = await manager.StopWebsiteAsync(localServerInfo.SiteName, cancellationToken);
                                 if (stopSiteResult.IsSuccess)
                                 {
                                     _output.WriteLine("[INFO] Main Website stopped.");
@@ -147,7 +149,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
-                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.Id, cancellationToken);
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken);
                             if (serviceStopResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service stopped.");
@@ -163,7 +165,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
                         {
                             localServerInfo.ServiceName = viewModel.ServiceName;
-                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.Id, cancellationToken);
+                            var serviceStopResult = await manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken);
                             if (serviceStopResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service stopped.");
@@ -244,7 +246,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                             {
-                                var startPoolResult = await manager.StartAppPoolAsync(localServerInfo.Id, cancellationToken);
+                                var startPoolResult = await manager.StartAppPoolAsync(localServerInfo.PoolName, cancellationToken);
                                 if (startPoolResult.IsSuccess)
                                 {
                                     _output.WriteLine("[INFO] Main Pool is running.");
@@ -256,7 +258,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             }
                             if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName)) 
                             {
-                                var startSiteResult = await manager.StartWebsiteAsync(localServerInfo.Id, cancellationToken);
+                                var startSiteResult = await manager.StartWebsiteAsync(localServerInfo.SiteName, cancellationToken);
                                 if (startSiteResult.IsSuccess)
                                 {
                                     _output.WriteLine("[INFO] Main Website is running.");
@@ -270,7 +272,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
-                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.Id, cancellationToken);
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken);
                             if (serviceStartResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service is running.");
@@ -285,7 +287,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
                         {
-                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.Id, cancellationToken);
+                            var serviceStartResult = await manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken);
                             if (serviceStartResult.IsSuccess)
                             {
                                 _output.WriteLine("[INFO] Main Service is running.");

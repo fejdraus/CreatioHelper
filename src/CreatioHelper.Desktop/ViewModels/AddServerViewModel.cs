@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.ViewModels;
 
@@ -10,14 +11,14 @@ public class AddServerViewModel(ServerInfo? server = null) : INotifyPropertyChan
 
     public string ServerName
     {
-        get => Server.Name;
-        set { Server.Name = value; OnPropertyChanged(); }
+        get => Server.Name?.Value ?? string.Empty;
+        set { Server.Name = string.IsNullOrEmpty(value) ? null : new ServerName(value); OnPropertyChanged(); }
     }
 
     public string NetworkPath
     {
-        get => Server.NetworkPath;
-        set { Server.NetworkPath = value; OnPropertyChanged(); }
+        get => Server.NetworkPath?.Value ?? string.Empty;
+        set { Server.NetworkPath = string.IsNullOrEmpty(value) ? null : new NetworkPath(value); OnPropertyChanged(); }
     }
 
     public string SiteName

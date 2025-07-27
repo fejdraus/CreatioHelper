@@ -80,11 +80,11 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             }
             if (!string.IsNullOrWhiteSpace(server.PoolName))
             {
-                stopTasks.Add(_remoteIisManager.StopAppPoolAsync(server.Id, cancellationToken));
+                stopTasks.Add(_remoteIisManager.StopAppPoolAsync(server.PoolName, cancellationToken));
             }
             if (!string.IsNullOrWhiteSpace(server.SiteName))
             {
-                stopTasks.Add(_remoteIisManager.StopWebsiteAsync(server.Id, cancellationToken));
+                stopTasks.Add(_remoteIisManager.StopWebsiteAsync(server.SiteName, cancellationToken));
             }
         }
         if (stopTasks.Count == 0)
@@ -150,10 +150,17 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             {
                 await Task.Run(async () =>
                 {
-                    string destConfPath = Path.Combine(server.NetworkPath, "Terrasoft.WebApp", "conf");
-                    string destConfigPath = Path.Combine(server.NetworkPath, "Terrasoft.WebApp", "Terrasoft.Configuration");
+                    var networkPath = server.NetworkPath?.Value;
+                    if (string.IsNullOrEmpty(networkPath))
+                    {
+                        _output.WriteLine($"[ERROR] Network path is not set for server '{server.Name?.Value ?? "Unknown"}'");
+                        return;
+                    }
 
-                    _output.WriteLine($"[INFO] Starting to copy files to {server.Name}...");
+                    string destConfPath = Path.Combine(networkPath, "Terrasoft.WebApp", "conf");
+                    string destConfigPath = Path.Combine(networkPath, "Terrasoft.WebApp", "Terrasoft.Configuration");
+
+                    _output.WriteLine($"[INFO] Starting to copy files to {server.Name?.Value ?? "Unknown"}...");
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
@@ -175,20 +182,20 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     
                     if (!string.IsNullOrWhiteSpace(server.PoolName))
                     {
-                        var startPoolResult = await _remoteIisManager.StartAppPoolAsync(server.Id, cancellationToken);
+                        var startPoolResult = await _remoteIisManager.StartAppPoolAsync(server.PoolName, cancellationToken);
                         appPoolStarted = startPoolResult.IsSuccess;
                         if (!appPoolStarted)
                         {
-                            _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name}: {startPoolResult.ErrorMessage}");
+                            _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name?.Value ?? "Unknown"}: {startPoolResult.ErrorMessage}");
                         }
                     }
                     if (!string.IsNullOrWhiteSpace(server.SiteName))
                     {
-                        var startSiteResult = await _remoteIisManager.StartWebsiteAsync(server.Id, cancellationToken);
+                        var startSiteResult = await _remoteIisManager.StartWebsiteAsync(server.SiteName, cancellationToken);
                         websiteStarted = startSiteResult.IsSuccess;
                         if (!websiteStarted)
                         {
-                            _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name}: {startSiteResult.ErrorMessage}");
+                            _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name?.Value ?? "Unknown"}: {startSiteResult.ErrorMessage}");
                         }
                     }
                     if (appPoolStarted && websiteStarted)

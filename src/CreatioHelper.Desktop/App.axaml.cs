@@ -2,6 +2,7 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using System;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;
 
@@ -32,6 +33,13 @@ public partial class App : Avalonia.Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
+        // Добавляем логирование для поддержки MetricsService и других сервисов
+        services.AddLogging(builder =>
+        {
+            builder.AddConsole();
+            builder.SetMinimumLevel(LogLevel.Information);
+        });
+        
         services.AddApplication();
         services.AddInfrastructure();
     }

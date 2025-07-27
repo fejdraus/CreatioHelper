@@ -18,6 +18,7 @@ using CreatioHelper.Application.Mediator;
 using CreatioHelper.Application.Settings;
 using System.Diagnostics;
 using System.Threading;
+using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.ViewModels;
 
@@ -179,12 +180,12 @@ public partial class MainWindowViewModel : ObservableObject
     private void AddServer()
     {
         if (!string.IsNullOrWhiteSpace(NewServerName) &&
-            !ServerList.Any(s => s.Name.Value.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase)))
+            !ServerList.Any(s => s.Name?.Value?.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase) == true))
         {
             ServerList.Add(new ServerInfo
             {
-                Name = NewServerName.Trim(),
-                NetworkPath = NewServerName.Trim()
+                Name = new ServerName(NewServerName.Trim()),
+                NetworkPath = new NetworkPath(NewServerName.Trim())
             });
 
             NewServerName = string.Empty;
@@ -228,7 +229,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StopPool(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopAppPoolAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.PoolName))
+        {
+            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
         if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
@@ -246,7 +253,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StartPool(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartAppPoolAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.PoolName))
+        {
+            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
         if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
@@ -264,7 +277,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StopSite(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopWebsiteAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.SiteName))
+        {
+            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
         if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
@@ -285,7 +304,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StartSite(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartWebsiteAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.SiteName))
+        {
+            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
         if (result.IsSuccess)
         {
             if (!OperatingSystem.IsWindows())
@@ -423,7 +448,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StartService(ServerInfo server)
     {
-        var result = await _remoteIisManager.StartServiceAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.ServiceName))
+        {
+            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StartServiceAsync(server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
@@ -437,7 +468,13 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StopService(ServerInfo server)
     {
-        var result = await _remoteIisManager.StopServiceAsync(server.Id, CancellationToken.None);
+        if (string.IsNullOrWhiteSpace(server.ServiceName))
+        {
+            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            return;
+        }
+
+        var result = await _remoteIisManager.StopServiceAsync(server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
