@@ -19,7 +19,7 @@ public class WindowsSiteSynchronizerTests
         var copy = new Mock<IFileCopyHelper>();
         var cache = new Mock<ICacheService>();
         var metrics = new Mock<IMetricsService>();
-        var status = new ServerStatusService(writer, remote.Object, cache.Object, metrics.Object);
+        var status = new ServerStatusService(remote.Object, cache.Object, metrics.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sync.SynchronizeAsync(null!, new List<ServerInfo>()));
@@ -45,11 +45,11 @@ public class WindowsSiteSynchronizerTests
         var cache = new Mock<ICacheService>();
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<Task>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<Task>> operation, Dictionary<string, string> _) => operation());
+        // Настройка мока для метрик - убираем Task<Task>, используем ServerInfo
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
+              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
         
-        var status = new ServerStatusService(writer, remote.Object, cache.Object, metrics.Object);
+        var status = new ServerStatusService(remote.Object, cache.Object, metrics.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         var servers = new List<ServerInfo>
@@ -94,11 +94,11 @@ public class WindowsSiteSynchronizerTests
         var cache = new Mock<ICacheService>();
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<Task>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<Task>> operation, Dictionary<string, string> _) => operation());
+        // Настройка мока для метрик - исправляем тип
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
+              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
 
-        var status = new ServerStatusService(writer, remote.Object, cache.Object, metrics.Object);
+        var status = new ServerStatusService(remote.Object, cache.Object, metrics.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         var servers = new List<ServerInfo>
@@ -139,11 +139,11 @@ public class WindowsSiteSynchronizerTests
         var cache = new Mock<ICacheService>();
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<Task>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<Task>> operation, Dictionary<string, string> _) => operation());
+        // Настройка мока для метрик - исправляем тип
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
+              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
         
-        var status = new ServerStatusService(writer, remote.Object, cache.Object, metrics.Object);
+        var status = new ServerStatusService(remote.Object, cache.Object, metrics.Object);
         var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
 
         var servers = new List<ServerInfo>

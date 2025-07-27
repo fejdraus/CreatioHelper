@@ -1,62 +1,71 @@
-using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
-using CreatioHelper.Infrastructure.Services.Site;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using CreatioHelper.Infrastructure.Services.Redis;
-using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
+using CreatioHelper.Infrastructure.Services.Site;
+using CreatioHelper.Shared.Interfaces;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
-        services.AddSingleton<IOutputWriter, ConsoleOutputWriter>();
-        services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
+        // Базовые сервисы
+        services.AddSingleton<IMetricsService, MetricsService>();
+        
+        // Простое in-memory кэширование для desktop приложения
         services.AddMemoryCache();
         services.AddSingleton<ICacheService, MemoryCacheService>();
-        services.AddSingleton<IMetricsService, MetricsService>();
+        
+        // Настройки с кэшированием
         services.AddSingleton<SettingsService>();
         services.AddSingleton<ISettingsService>(provider =>
         {
-            var baseService = provider.GetRequiredService<SettingsService>();
+            var settingsService = provider.GetRequiredService<SettingsService>();
             var cache = provider.GetRequiredService<ICacheService>();
             var metrics = provider.GetRequiredService<IMetricsService>();
-            var logger = provider.GetRequiredService<ILogger<CachedSettingsService>>();
-            return new CachedSettingsService(baseService, cache, metrics, logger);
+            return new CachedSettingsService(settingsService, cache, metrics, provider.GetRequiredService<ILogger<CachedSettingsService>>());
         });
-        
-        services.AddTransient<ISiteConfigEditor, SiteConfigEditor>();
-        
+
+        // Статус серверов с метриками
+        services.AddSingleton<IServerStatusService>(provider =>
+        {
+            var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
+            var cache = provider.GetRequiredService<ICacheService>();
+            var metrics = provider.GetRequiredService<IMetricsService>();
+            return new ServerStatusService(remoteManager, cache, metrics);
+        });
+
+        // Платформо-зависимые сервисы IIS
         if (OperatingSystem.IsWindows())
         {
-            services.AddTransient<IIisConfigEditor, WindowsIisConfigEditor>();
             services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, WindowsSiteSynchronizer>();
+            services.AddSingleton<ISiteSynchronizer, WindowsSiteSynchronizer>();
         }
         else if (OperatingSystem.IsMacOS())
         {
             services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, MacOsSiteSynchronizer>();
+            services.AddSingleton<ISiteSynchronizer, MacOsSiteSynchronizer>();
         }
         else
         {
             services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
-            services.AddTransient<ISiteSynchronizer, LinuxSiteSynchronizer>();
+            services.AddSingleton<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
 
-        services.AddTransient<ISystemServiceManager, SystemServiceManager>();
-        services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
-        services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
-        services.AddTransient<IRedisManagerFactory, RedisManagerFactory>();
-        services.AddTransient<ServerStatusService>();
+        // Конфигурационные сервисы
+        services.AddSingleton<SiteConfigEditor>();
+        services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
         
+        // Output writer
+        services.AddSingleton<IOutputWriter, ConsoleOutputWriter>();
+
         return services;
     }
 }

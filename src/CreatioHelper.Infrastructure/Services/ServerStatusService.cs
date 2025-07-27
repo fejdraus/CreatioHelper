@@ -1,159 +1,221 @@
-using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Domain.Entities;
 
-namespace CreatioHelper.Infrastructure.Services
+namespace CreatioHelper.Infrastructure.Services;
+
+public class ServerStatusService : IServerStatusService
 {
-    public class ServerStatusService
+    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly ICacheService _cache;
+    private readonly IMetricsService _metrics;
+    private static readonly TimeSpan CacheExpiration = TimeSpan.FromSeconds(30);
+
+    public ServerStatusService(
+        IRemoteIisManager remoteIisManager,
+        ICacheService cache,
+        IMetricsService metrics)
     {
-        private readonly IOutputWriter _output;
-        private readonly IRemoteIisManager _remoteIisManager;
-        private readonly ICacheService _cache;
-        private readonly IMetricsService _metrics;
-        private static readonly TimeSpan CacheExpiration = TimeSpan.FromSeconds(30);
+        _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
+        _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+        _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
+    }
 
-        public ServerStatusService(
-            IOutputWriter output, 
-            IRemoteIisManager remoteIisManager,
-            ICacheService cache,
-            IMetricsService metrics)
-        {
-            _output = output ?? throw new ArgumentNullException(nameof(output));
-            _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
-            _cache = cache ?? throw new ArgumentNullException(nameof(cache));
-            _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
-        }
-        
-        public async Task RefreshServerStatusAsync(ServerInfo server)
-        {
-            if (server == null) throw new ArgumentNullException(nameof(server));
+    public async Task<ServerInfo> RefreshServerStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
+    {
+        if (server == null) throw new ArgumentNullException(nameof(server));
 
-            await _metrics.MeasureAsync("server_status_refresh", async () =>
+        return await _metrics.MeasureAsync("server_status_refresh", async () =>
+        {
+            server.IsStatusLoading = true;
+
+            try
             {
-                // Check the platform before executing
-                if (!OperatingSystem.IsWindows())
+                // Обновляем статус пула с кэшированием
+                if (!string.IsNullOrEmpty(server.PoolName))
                 {
-                    server.PoolStatus = "Unsupported";
-                    server.SiteStatus = "Unsupported";
-                    _output.WriteLine("[ERROR] Status check is only available on Windows.");
-                    return Task.CompletedTask;
+                    var poolStatus = await _cache.GetOrSetAsync(
+                        $"pool_status_{server.PoolName}",
+                        () => GetPoolStatusAsync(server.PoolName, cancellationToken),
+                        CacheExpiration,
+                        cancellationToken);
+
+                    server.PoolStatus = poolStatus ?? "Unknown";
                 }
 
-                server.IsStatusLoading = true;
-                server.PoolStatus = "Checking...";
-                server.SiteStatus = "Checking...";
+                // Обновляем статус сайта с кэшированием
+                if (!string.IsNullOrEmpty(server.SiteName))
+                {
+                    var siteStatus = await _cache.GetOrSetAsync(
+                        $"site_status_{server.SiteName}",
+                        () => GetWebsiteStatusAsync(server.SiteName, cancellationToken),
+                        CacheExpiration,
+                        cancellationToken);
 
-                try
-                {
-                    // Проверяем статус пула только если указано имя пула
-                    if (!string.IsNullOrWhiteSpace(server.PoolName))
-                    {
-                        var poolCacheKey = $"pool_status_{server.PoolName}";
-                        var cachedPoolStatus = await _cache.GetAsync<string>(poolCacheKey);
-                        
-                        if (cachedPoolStatus != null)
-                        {
-                            server.PoolStatus = cachedPoolStatus;
-                            _metrics.IncrementCounter("server_status_cache_hit", new() { ["type"] = "pool" });
-                        }
-                        else
-                        {
-                            var poolStatusResult = await _remoteIisManager.GetAppPoolStatusAsync(server.PoolName, CancellationToken.None);
-                            if (poolStatusResult.IsSuccess)
-                            {
-                                server.PoolStatus = poolStatusResult.Value ?? "Unknown";
-                                await _cache.SetAsync(poolCacheKey, server.PoolStatus, CacheExpiration);
-                                _metrics.IncrementCounter("server_status_cache_miss", new() { ["type"] = "pool" });
-                            }
-                            else
-                            {
-                                server.PoolStatus = "Error";
-                                _output.WriteLine($"[ERROR] Failed to get pool status for '{server.PoolName}': {poolStatusResult.ErrorMessage}");
-                                _metrics.IncrementCounter("server_status_error", new() { ["type"] = "pool" });
-                            }
-                        }
-                    }
-                    else
-                    {
-                        server.PoolStatus = "Not configured";
-                    }
+                    server.SiteStatus = siteStatus ?? "Unknown";
+                }
 
-                    // Проверяем статус сайта только если указано имя сайта
-                    if (!string.IsNullOrWhiteSpace(server.SiteName))
-                    {
-                        var siteCacheKey = $"site_status_{server.SiteName}";
-                        var cachedSiteStatus = await _cache.GetAsync<string>(siteCacheKey);
-                        
-                        if (cachedSiteStatus != null)
-                        {
-                            server.SiteStatus = cachedSiteStatus;
-                            _metrics.IncrementCounter("server_status_cache_hit", new() { ["type"] = "site" });
-                        }
-                        else
-                        {
-                            var siteStatusResult = await _remoteIisManager.GetWebsiteStatusAsync(server.SiteName, CancellationToken.None);
-                            if (siteStatusResult.IsSuccess)
-                            {
-                                server.SiteStatus = siteStatusResult.Value ?? "Unknown";
-                                await _cache.SetAsync(siteCacheKey, server.SiteStatus, CacheExpiration);
-                                _metrics.IncrementCounter("server_status_cache_miss", new() { ["type"] = "site" });
-                            }
-                            else
-                            {
-                                server.SiteStatus = "Error";
-                                _output.WriteLine($"[ERROR] Failed to get site status for '{server.SiteName}': {siteStatusResult.ErrorMessage}");
-                                _metrics.IncrementCounter("server_status_error", new() { ["type"] = "site" });
-                            }
-                        }
-                    }
-                    else
-                    {
-                        server.SiteStatus = "Not configured";
-                    }
-                }
-                catch (Exception ex)
+                // Обновляем статус сервиса с кэшированием
+                if (!string.IsNullOrEmpty(server.ServiceName))
                 {
-                    server.PoolStatus = "Error";
-                    server.SiteStatus = "Error";
-                    _output.WriteLine($"[ERROR] Failed to get status for server '{server.Name?.Value ?? "Unknown"}': {ex.Message}");
-                    _metrics.IncrementCounter("server_status_exception");
+                    var serviceStatus = await _cache.GetOrSetAsync(
+                        $"service_status_{server.ServiceName}",
+                        () => GetServiceStatusAsync(server.ServiceName, cancellationToken),
+                        CacheExpiration,
+                        cancellationToken);
+
+                    server.ServiceStatus = serviceStatus ?? "Unknown";
                 }
-                finally
-                {
-                    server.IsStatusLoading = false;
-                }
-                
-                return Task.CompletedTask;
-            }, new() { ["server"] = server.Name?.Value ?? "Unknown" });
-        }
-        
-        public async Task RefreshMultipleServersStatusAsync(params ServerInfo[] servers)
-        {
-            await _metrics.MeasureAsync("multiple_servers_status_refresh", async () =>
+
+                _metrics.IncrementCounter("server_status_refresh_success", new() 
+                { 
+                    ["server"] = server.UniqueKey 
+                });
+
+                return server;
+            }
+            catch (OperationCanceledException)
             {
-                var tasks = new Task[servers.Length];
-                for (int i = 0; i < servers.Length; i++)
-                {
-                    tasks[i] = RefreshServerStatusAsync(servers[i]);
-                }
+                _metrics.IncrementCounter("server_status_refresh_cancelled", new() 
+                { 
+                    ["server"] = server.UniqueKey 
+                });
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _metrics.IncrementCounter("server_status_refresh_error", new() 
+                { 
+                    ["server"] = server.UniqueKey,
+                    ["error_type"] = ex.GetType().Name
+                });
                 
-                await Task.WhenAll(tasks);
-                return Task.CompletedTask;
-            }, new() { ["server_count"] = servers.Length.ToString() });
-        }
+                // При ошибке устанавливаем статусы как неизвестные
+                server.PoolStatus = "Error";
+                server.SiteStatus = "Error";
+                server.ServiceStatus = "Error";
+                
+                return server;
+            }
+            finally
+            {
+                server.IsStatusLoading = false;
+            }
+        }, new() { ["server"] = server.UniqueKey });
+    }
 
-        public async Task ClearServerStatusCacheAsync(ServerInfo server)
+    public async Task RefreshMultipleServerStatusAsync(ServerInfo[] servers, CancellationToken cancellationToken = default)
+    {
+        if (servers == null) throw new ArgumentNullException(nameof(servers));
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
         {
-            if (server == null) throw new ArgumentNullException(nameof(server));
+            var tasks = new Task[servers.Length];
+            for (int i = 0; i < servers.Length; i++)
+            {
+                tasks[i] = RefreshServerStatusAsync(servers[i], cancellationToken);
+            }
             
-            var serverKey = server.UniqueKey;
-            var poolCacheKey = $"pool_status_{serverKey}";
-            var siteCacheKey = $"site_status_{serverKey}";
+            await Task.WhenAll(tasks);
             
-            await _cache.RemoveAsync(poolCacheKey);
-            await _cache.RemoveAsync(siteCacheKey);
-            
-            _metrics.IncrementCounter("server_status_cache_cleared");
+            stopwatch.Stop();
+            _metrics.RecordDuration("server_status_refresh_multiple", stopwatch.Elapsed, new() { ["server_count"] = servers.Length.ToString() });
+            _metrics.IncrementCounter("server_status_refresh_multiple_success", new() { ["server_count"] = servers.Length.ToString() });
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _metrics.IncrementCounter("server_status_refresh_multiple_error", new() 
+            { 
+                ["server_count"] = servers.Length.ToString(),
+                ["error_type"] = ex.GetType().Name
+            });
+            throw;
+        }
+    }
+
+    public async Task ClearServerStatusCacheAsync(ServerInfo server, CancellationToken cancellationToken = default)
+    {
+        if (server == null) throw new ArgumentNullException(nameof(server));
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            var tasks = new List<Task>();
+
+            if (!string.IsNullOrEmpty(server.PoolName))
+            {
+                tasks.Add(_cache.RemoveAsync($"pool_status_{server.PoolName}", cancellationToken));
+            }
+
+            if (!string.IsNullOrEmpty(server.SiteName))
+            {
+                tasks.Add(_cache.RemoveAsync($"site_status_{server.SiteName}", cancellationToken));
+            }
+
+            if (!string.IsNullOrEmpty(server.ServiceName))
+            {
+                tasks.Add(_cache.RemoveAsync($"service_status_{server.ServiceName}", cancellationToken));
+            }
+
+            await Task.WhenAll(tasks);
+
+            stopwatch.Stop();
+            _metrics.RecordDuration("server_status_cache_clear", stopwatch.Elapsed, new() { ["server"] = server.UniqueKey });
+            _metrics.IncrementCounter("server_status_cache_cleared", new()
+            {
+                ["server"] = server.UniqueKey
+            });
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _metrics.IncrementCounter("server_status_cache_clear_error", new()
+            {
+                ["server"] = server.UniqueKey,
+                ["error_type"] = ex.GetType().Name
+            });
+            throw;
+        }
+    }
+
+    private async Task<string?> GetPoolStatusAsync(string poolName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _remoteIisManager.GetAppPoolStatusAsync(poolName, cancellationToken);
+            return result.IsSuccess ? result.Value : "Unknown";
+        }
+        catch
+        {
+            return "Error";
+        }
+    }
+
+    private async Task<string?> GetWebsiteStatusAsync(string siteName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await _remoteIisManager.GetWebsiteStatusAsync(siteName, cancellationToken);
+            return result.IsSuccess ? result.Value : "Unknown";
+        }
+        catch
+        {
+            return "Error";
+        }
+    }
+
+    private async Task<string?> GetServiceStatusAsync(string serviceName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Предполагаем, что есть метод для получения статуса сервиса
+            // Если его нет, можно добавить в IRemoteIisManager
+            return "Unknown"; // Заглушка
+        }
+        catch
+        {
+            return "Error";
         }
     }
 }

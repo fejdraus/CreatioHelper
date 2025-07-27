@@ -63,7 +63,7 @@ namespace CreatioHelper
             var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
             var cacheService = provider.GetRequiredService<ICacheService>();
             var metricsService = provider.GetRequiredService<IMetricsService>();
-            var statusService = new ServerStatusService(_writer, remoteManager, cacheService, metricsService);
+            var statusService = new ServerStatusService(remoteManager, cacheService, metricsService);
             
             var dialogService = new DialogService(StorageProvider);
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
