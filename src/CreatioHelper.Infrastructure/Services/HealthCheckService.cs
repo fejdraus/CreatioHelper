@@ -1,10 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -31,7 +26,7 @@ public class HealthCheckService : IHealthCheckService
 
         var tasks = _healthChecks.Select(async kvp =>
         {
-            var (name, healthCheck) = (kvp.Key, kvp.Value);
+            var (name, _) = (kvp.Key, kvp.Value);
             var result = await CheckAsync(name, cancellationToken);
             return new { Name = name, Result = result };
         });

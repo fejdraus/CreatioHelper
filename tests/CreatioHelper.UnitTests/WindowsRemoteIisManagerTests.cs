@@ -12,14 +12,8 @@ public class WindowsRemoteIisManagerTests
     {
         var writer = new BufferingOutputWriter(_ => { }, () => { });
         var mockMetrics = new Mock<IMetricsService>();
-        
-        // Настраиваем мок так, чтобы MeasureAsync выполнял переданную функцию
-        mockMetrics.Setup(m => m.MeasureAsync<Result>(It.IsAny<string>(), It.IsAny<Func<Task<Result>>>(), It.IsAny<Dictionary<string, string>>()))
-            .Returns<string, Func<Task<Result>>, Dictionary<string, string>>((name, func, tags) => func());
-            
-        mockMetrics.Setup(m => m.MeasureAsync<Result>(It.IsAny<string>(), It.IsAny<Func<Task<Result>>>()))
-            .Returns<string, Func<Task<Result>>>((name, func) => func());
-        
+        mockMetrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<Result>>>(), It.IsAny<Dictionary<string, string>>()))
+            .Returns<string, Func<Task<Result>>, Dictionary<string, string>>((_, func, _) => func());
         return new WindowsRemoteIisManager(writer, mockMetrics.Object);
     }
 
@@ -62,7 +56,7 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.StartAppPoolAsync(poolName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result>(result);
+        Assert.IsType<Result>(result);
     }
 
     [Fact]
@@ -85,7 +79,7 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.GetAppPoolStatusAsync(poolName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result<string>>(result);
+        Assert.IsType<Result<string>>(result);
     }
 
     [Fact]
@@ -108,7 +102,7 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.StartWebsiteAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result>(result);
+        Assert.IsType<Result>(result);
     }
 
     [Fact]
@@ -131,7 +125,7 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.StopWebsiteAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result>(result);
+        Assert.IsType<Result>(result);
     }
 
     [Fact]
@@ -143,7 +137,7 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.GetWebsiteStatusAsync(siteName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result<string>>(result);
+        Assert.IsType<Result<string>>(result);
     }
 
     [Fact]
@@ -155,6 +149,6 @@ public class WindowsRemoteIisManagerTests
         var result = await manager.StartServiceAsync(serviceName, CancellationToken.None);
         
         Assert.NotNull(result);
-        Assert.IsType<Domain.Common.Result>(result);
+        Assert.IsType<Result>(result);
     }
 }

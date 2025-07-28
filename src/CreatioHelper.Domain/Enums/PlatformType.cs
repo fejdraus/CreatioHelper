@@ -4,6 +4,6 @@ public enum PlatformType
 {
     Windows,
     Linux,
-    MacOS,
+    MacOs,
     Unknown
 }

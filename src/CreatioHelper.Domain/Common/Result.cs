@@ -4,7 +4,7 @@ public class Result<T>
 {
     public bool IsSuccess { get; private set; }
     public T? Value { get; private set; }
-    public string ErrorMessage { get; private set; } = string.Empty;
+    public string ErrorMessage { get; private set; }
     public Exception? Exception { get; private set; }
 
     private Result(bool isSuccess, T? value, string errorMessage, Exception? exception = null)
@@ -22,7 +22,7 @@ public class Result<T>
 public class Result
 {
     public bool IsSuccess { get; private set; }
-    public string ErrorMessage { get; private set; } = string.Empty;
+    public string ErrorMessage { get; private set; }
     public Exception? Exception { get; private set; }
 
     private Result(bool isSuccess, string errorMessage, Exception? exception = null)

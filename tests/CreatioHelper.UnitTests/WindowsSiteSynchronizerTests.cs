@@ -94,20 +94,19 @@ public class WindowsSiteSynchronizerTests
         var metrics = new Mock<IMetricsService>();
         
         // Настройка мока для метрик - явно указываем все параметры без опциональных
-        metrics.Setup(m => m.MeasureAsync<ServerInfo>(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
 
-        metrics.Setup(m => m.MeasureAsync<object>(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), It.IsAny<Dictionary<string, string>>()))
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<object>> operation, Dictionary<string, string> _) => operation());
 
         // Также добавляем настройку для версии без tags (когда tags = null)
-        metrics.Setup(m => m.MeasureAsync<ServerInfo>(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), null))
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), null))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
 
-        metrics.Setup(m => m.MeasureAsync<object>(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), null))
+        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), null))
               .Returns((string _, Func<Task<object>> operation, Dictionary<string, string> _) => operation());
 
-        var logger = new Mock<ILogger<ServerStatusService>>();
         var statusService = new Mock<IServerStatusService>();
         
         // Настройка мока для обновления статусов - правильно обновляем статусы серверов

@@ -1,4 +1,3 @@
-using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Performance;
@@ -38,7 +37,7 @@ public class AlertingService
         // - SMS alerts
         // - PagerDuty integration
         
-        await NotifyAdministrators(component, message, exception);
+        await NotifyAdministrators(component);
     }
 
     public async Task SendHealthDegradedAlert(string component, string details)
@@ -49,7 +48,7 @@ public class AlertingService
         await Task.CompletedTask;
     }
 
-    private async Task NotifyAdministrators(string component, string message, Exception? exception)
+    private async Task NotifyAdministrators(string component)
     {
         // Placeholder для интеграции с системами уведомлений
         // В реальном проекте здесь была бы интеграция с:

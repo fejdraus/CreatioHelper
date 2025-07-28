@@ -25,7 +25,7 @@ public class PlatformService : IPlatformService
             FeatureNames.IISManagement => _platform == PlatformType.Windows,
             FeatureNames.WindowsServiceManagement => _platform == PlatformType.Windows,
             FeatureNames.SystemdManagement => _platform == PlatformType.Linux,
-            FeatureNames.LaunchdManagement => _platform == PlatformType.MacOS,
+            FeatureNames.LaunchdManagement => _platform == PlatformType.MacOs,
             FeatureNames.FileSync => true,
             FeatureNames.ProcessManagement => true,
             _ => false
@@ -57,7 +57,7 @@ public class PlatformService : IPlatformService
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             return PlatformType.Linux;
         if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
-            return PlatformType.MacOS;
+            return PlatformType.MacOs;
     
         return PlatformType.Unknown;
     }

@@ -2,13 +2,13 @@ namespace CreatioHelper.Domain.Common;
 
 public abstract class ValueObject
 {
-    protected static bool EqualOperator(ValueObject left, ValueObject right)
+    private static bool EqualOperator(ValueObject left, ValueObject right)
     {
         if (ReferenceEquals(left, null) ^ ReferenceEquals(right, null))
         {
             return false;
         }
-        return ReferenceEquals(left, right) || left!.Equals(right);
+        return ReferenceEquals(left, right) || (left != null && left.Equals(right));
     }
 
     protected static bool NotEqualOperator(ValueObject left, ValueObject right)
@@ -33,7 +33,7 @@ public abstract class ValueObject
     public override int GetHashCode()
     {
         return GetEqualityComponents()
-            .Select(x => x?.GetHashCode() ?? 0)
+            .Select(x => x.GetHashCode())
             .Aggregate((x, y) => x ^ y);
     }
 }

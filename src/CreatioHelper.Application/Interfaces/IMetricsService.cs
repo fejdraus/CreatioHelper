@@ -10,29 +10,14 @@ namespace CreatioHelper.Application.Interfaces;
 public interface IMetricsService
 {
     /// <summary>
-    /// Измерение времени выполнения операции
-    /// </summary>
-    void Measure(string operationName, Action operation);
-    
-    /// <summary>
     /// Измерение времени выполнения операции с тегами
     /// </summary>
     void Measure(string operationName, Action operation, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Измерение времени выполнения операции с возвратом значения
-    /// </summary>
-    T Measure<T>(string operationName, Func<T> operation);
-    
-    /// <summary>
     /// Измерение времени выполнения операции с возвратом значения и тегами
     /// </summary>
     T Measure<T>(string operationName, Func<T> operation, Dictionary<string, string>? tags = null);
-    
-    /// <summary>
-    /// Измерение времени выполнения асинхронной операции (оставляем для реальных async операций)
-    /// </summary>
-    Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation);
     
     /// <summary>
     /// Измерение времени выполнения асинхронной операции с тегами

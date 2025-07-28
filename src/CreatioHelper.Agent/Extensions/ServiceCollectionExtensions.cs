@@ -36,8 +36,8 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection AddPerformanceServices(this IServiceCollection services)
     {
         // Основные сервисы метрик
-        services.AddSingleton<CreatioHelper.Application.Interfaces.IMetricsService, MetricsService>();
-        services.AddSingleton<CreatioHelper.Application.Interfaces.IConnectionPoolManager, ConnectionPoolManager>();
+        services.AddSingleton<IMetricsService, MetricsService>();
+        services.AddSingleton<IConnectionPoolManager, ConnectionPoolManager>();
 
         // Сервисы мониторинга - используем полные имена типов для избежания проблем с поиском
         if (OperatingSystem.IsWindows())

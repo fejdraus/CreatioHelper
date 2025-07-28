@@ -36,4 +36,34 @@ public class AddServerViewModel(ServerInfo? server = null) : INotifyPropertyChan
     public event PropertyChangedEventHandler? PropertyChanged;
     private void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+
+    public bool Validate(out string? validationError)
+    {
+        if (string.IsNullOrWhiteSpace(ServerName))
+        {
+            validationError = "Please enter the server name.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(NetworkPath))
+        {
+            validationError = "Please enter the network path.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(SiteName))
+        {
+            validationError = "Please enter the site name.";
+            return false;
+        }
+
+        if (string.IsNullOrWhiteSpace(PoolName))
+        {
+            validationError = "Please enter the pool name.";
+            return false;
+        }
+
+        validationError = null;
+        return true;
+    }
 }
