@@ -465,11 +465,7 @@ namespace CreatioHelper.Infrastructure.Services
             if (string.IsNullOrEmpty(query)) throw new ArgumentNullException(nameof(query));
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-
             string? currentState;
-            var maxAttempts = 12;
-            var attempts = 0;
-
             do
             {
                 if (cancellationToken.IsCancellationRequested)
@@ -483,10 +479,8 @@ namespace CreatioHelper.Infrastructure.Services
 
                 _output.WriteLine($"[WAIT] {name} current state: {currentState ?? "unknown"}, waiting...");
                 await Task.Delay(5000, cancellationToken);
-                attempts++;
             }
-            while (attempts < maxAttempts && !string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
-
+            while (!string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
             return string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase);
         }
     }
