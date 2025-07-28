@@ -18,6 +18,7 @@ using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
+using AvaloniaEdit;
 
 namespace CreatioHelper
 {
@@ -36,15 +37,22 @@ namespace CreatioHelper
 
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
             _writer = provider.GetRequiredService<IOutputWriter>();
+            var logDisplayHelper = new UpdateLogDisplay();
             OutputWriterHandlers.WriteAction = line =>
             {
-                if (Dispatcher.UIThread.CheckAccess())
+                void append()
                 {
                     LogTextEditor.AppendText(line + Environment.NewLine);
+                    logDisplayHelper.ScrollToBottom(_viewModel.IsAutoScrollEnabled, _viewModel.IsWrapTextEnabled, LogTextEditor);
+                }
+
+                if (Dispatcher.UIThread.CheckAccess())
+                {
+                    append();
                 }
                 else
                 {
-                    Dispatcher.UIThread.Post(() => { LogTextEditor.AppendText(line + Environment.NewLine); });
+                    Dispatcher.UIThread.Post(append);
                 }
             };
             OutputWriterHandlers.ClearAction = () =>
