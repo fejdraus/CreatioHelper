@@ -17,6 +17,7 @@ using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Logging;
 
 namespace CreatioHelper
 {
@@ -33,31 +34,32 @@ namespace CreatioHelper
                 new LogLineColorizer()
             );
 
-            _writer = new BufferingOutputWriter(
-                line =>
-                {
-                    if (Dispatcher.UIThread.CheckAccess())
-                    {
-                        LogTextEditor.AppendText(line + Environment.NewLine);
-                    }
-                    else
-                    {
-                        Dispatcher.UIThread.Post(() => { LogTextEditor.AppendText(line + Environment.NewLine); });
-                    }
-                },
-                () =>
-                {
-                    if (Dispatcher.UIThread.CheckAccess())
-                    {
-                        LogTextEditor.Text = string.Empty;
-                    }
-                    else
-                    {
-                        Dispatcher.UIThread.Post(() => { LogTextEditor.Text = string.Empty; });
-                    }
-                });
-
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
+            _writer = provider.GetRequiredService<IOutputWriter>();
+            OutputWriterHandlers.WriteAction = line =>
+            {
+                if (Dispatcher.UIThread.CheckAccess())
+                {
+                    LogTextEditor.AppendText(line + Environment.NewLine);
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(() => { LogTextEditor.AppendText(line + Environment.NewLine); });
+                }
+            };
+            OutputWriterHandlers.ClearAction = () =>
+            {
+                if (Dispatcher.UIThread.CheckAccess())
+                {
+                    LogTextEditor.Text = string.Empty;
+                }
+                else
+                {
+                    Dispatcher.UIThread.Post(() => { LogTextEditor.Text = string.Empty; });
+                }
+            };
+
+            
             var mediator = provider.GetRequiredService<IMediator>();
             var systemServiceManager = provider.GetRequiredService<ISystemServiceManager>();
             var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
