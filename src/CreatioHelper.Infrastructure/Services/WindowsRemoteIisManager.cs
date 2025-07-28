@@ -440,7 +440,7 @@ namespace CreatioHelper.Infrastructure.Services
                     return null;
                 }
 
-                var lines = outputText.Trim().Split(['\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
+                var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
                     _output.WriteLine($"[PS-ERROR] Unexpected PowerShell output format");
