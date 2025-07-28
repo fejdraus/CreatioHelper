@@ -5,57 +5,57 @@ using System.Threading.Tasks;
 namespace CreatioHelper.Application.Interfaces;
 
 /// <summary>
-/// Сервис для сбора и отправки метрик производительности
+/// Service for collecting and sending performance metrics.
 /// </summary>
 public interface IMetricsService
 {
     /// <summary>
-    /// Измерение времени выполнения операции с тегами
+    /// Measures execution time of an operation with optional tags.
     /// </summary>
     void Measure(string operationName, Action operation, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Измерение времени выполнения операции с возвратом значения и тегами
+    /// Measures execution time of an operation that returns a value.
     /// </summary>
     T Measure<T>(string operationName, Func<T> operation, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Измерение времени выполнения асинхронной операции с тегами
+    /// Measures execution time of an asynchronous operation.
     /// </summary>
     Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Увеличение счетчика операций
+    /// Increments an operation counter.
     /// </summary>
     void IncrementCounter(string counterName, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Запись значения в гистограмму (для времени ответа)
+    /// Records a value into a histogram metric.
     /// </summary>
     void RecordHistogram(string metricName, double value, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Установка значения gauge метрики (для текущих значений)
+    /// Sets a value for a gauge metric.
     /// </summary>
     void SetGauge(string gaugeName, double value, Dictionary<string, string>? tags = null);
     
     /// <summary>
-    /// Получение среднего значения метрики
+    /// Retrieves the average value of a metric.
     /// </summary>
     Task<double> GetAverageAsync(string metricName);
     
     /// <summary>
-    /// Получение значения счетчика
+    /// Retrieves the value of a counter metric.
     /// </summary>
     Task<long> GetCounterAsync(string counterName);
     
     /// <summary>
-    /// Получение коэффициента (rate) метрики
+    /// Retrieves a metric rate value.
     /// </summary>
     Task<double> GetRateAsync(string metricName);
     
     /// <summary>
-    /// Получение всех метрик системы
+    /// Retrieves all metrics collected by the system.
     /// </summary>
     Task<Dictionary<string, object>> GetMetricsAsync();
 }

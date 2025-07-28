@@ -4,7 +4,6 @@ using CreatioHelper.Infrastructure.Services.Performance;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Добавляем Application Insights
 builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddControllers();
@@ -12,17 +11,16 @@ builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Health Checks
 builder.Services.AddHealthChecks();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices();
 
-// Добавляем новые сервисы производительности
+// Register performance services
 builder.Services.AddScoped<BatchOperationService>();
 builder.Services.AddScoped<ApplicationInsightsMetricsService>();
 
-// Добавляем расширенные сервисы поддержки для достижения 10/10
+// Register additional support services
 builder.Services.AddScoped<EnhancedLoggingService>();
 builder.Services.AddScoped<AlertingService>();
 builder.Services.AddScoped<DiagnosticsService>();
@@ -41,7 +39,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.Configure<AgentConfig>(builder.Configuration.GetSection("AgentConfig"));
 builder.Services.AddPlatformServices();
-builder.Services.AddPerformanceServices(); // Добавляем систему метрик
+builder.Services.AddPerformanceServices();
 
 var app = builder.Build();
 
@@ -59,7 +57,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// Добавляем Health Checks endpoint
+// Expose health checks endpoint
 app.MapHealthChecks("/health");
 
 app.UseCors("AllowAll");
@@ -68,7 +66,7 @@ app.MapControllers();
 
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
 
-// Prometheus метрики endpoint
+// Prometheus metrics endpoint
 app.MapGet("/metrics", async (IMetricsService metricsService) =>
 {
     var metrics = await metricsService.GetMetricsAsync();
@@ -112,7 +110,7 @@ app.MapGet("/test-signalr", () => Results.Content("""
 
 app.Run();
 
-// Вспомогательная функция для конвертации в Prometheus формат
+// Helper function to convert metrics to Prometheus format
 string ConvertToPrometheusFormat(Dictionary<string, object> metrics)
 {
     var lines = new List<string>();

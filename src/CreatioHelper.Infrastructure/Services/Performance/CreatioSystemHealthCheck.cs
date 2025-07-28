@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Специализированный Health Check для мониторинга Creatio компонентов
+/// Specialized health check for monitoring Creatio components.
 /// </summary>
 public class CreatioSystemHealthCheck : IHealthCheck
 {
@@ -30,11 +30,11 @@ public class CreatioSystemHealthCheck : IHealthCheck
 
         try
         {
-            // 1. Проверка доступности IIS
+            // Check IIS availability
             var iisCheck = await CheckIisAvailability(cancellationToken);
             checks.Add(("IIS_Availability", iisCheck.IsHealthy, iisCheck.Message, iisCheck.Duration));
 
-            // 2. Проверка настроенных серверов из AppSettings
+            // Check configured servers from AppSettings
             var serversCheck = await CheckConfiguredServers(cancellationToken);
             checks.Add(("Configured_Servers", serversCheck.IsHealthy, serversCheck.Message, serversCheck.Duration));
 
@@ -130,7 +130,7 @@ public class CreatioSystemHealthCheck : IHealthCheck
             {
                 try
                 {
-                    // Проверяем пул, если настроен
+                    // Check the pool if configured
                     if (!string.IsNullOrEmpty(server.PoolName))
                     {
                         var poolResult = await _iisManager.GetAppPoolStatusAsync(server.PoolName, cancellationToken);
@@ -141,7 +141,7 @@ public class CreatioSystemHealthCheck : IHealthCheck
                         }
                     }
 
-                    // Проверяем сайт, если настроен
+                    // Check the site if configured
                     if (!string.IsNullOrEmpty(server.SiteName))
                     {
                         var siteResult = await _iisManager.GetWebsiteStatusAsync(server.SiteName, cancellationToken);
@@ -153,7 +153,7 @@ public class CreatioSystemHealthCheck : IHealthCheck
                 }
                 catch
                 {
-                    // Сервер недоступен - пропускаем
+                    // Skip unreachable servers
                 }
             }
 
