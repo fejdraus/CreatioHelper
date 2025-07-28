@@ -8,8 +8,8 @@ using System.Management.Automation.Runspaces;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Менеджер пула соединений для PowerShell/SSH операций
-/// Снижает накладные расходы на создание новых соединений к серверам
+/// Connection pool manager for PowerShell/SSH operations that reduces the
+/// overhead of creating new connections.
 /// </summary>
 public class ConnectionPoolManager : IConnectionPoolManager
 {
@@ -47,9 +47,9 @@ public class ConnectionPoolManager : IConnectionPoolManager
         _logger.LogDebug("Creating connection pool for server {ServerName}", serverName);
         
         var policy = new RemoteConnectionPoolPolicy(serverName, _logger);
-        var provider = new DefaultObjectPoolProvider 
-        { 
-            MaximumRetained = 5 // Максимум 5 соединений в пуле
+        var provider = new DefaultObjectPoolProvider
+        {
+            MaximumRetained = 5
         };
         
         return provider.Create(policy);
@@ -67,7 +67,7 @@ public class ConnectionPoolManager : IConnectionPoolManager
 }
 
 /// <summary>
-/// Политика создания и валидации соединений в пуле
+/// Creation and validation policy for pooled connections.
 /// </summary>
 public class RemoteConnectionPoolPolicy : IPooledObjectPolicy<IRemoteConnection>
 {
@@ -88,13 +88,12 @@ public class RemoteConnectionPoolPolicy : IPooledObjectPolicy<IRemoteConnection>
 
     public bool Return(IRemoteConnection obj)
     {
-        // Проверяем, что соединение еще активно и можно переиспользовать
         return obj.IsConnected && !obj.HasErrors;
     }
 }
 
 /// <summary>
-/// Реализация удаленного PowerShell соединения для пула
+/// Remote PowerShell connection implementation used by the pool.
 /// </summary>
 public class PowerShellRemoteConnection : IRemoteConnection
 {
@@ -115,20 +114,18 @@ public class PowerShellRemoteConnection : IRemoteConnection
     {
         try
         {
-            // Для локального сервера используем обычный runspace
-            if (_serverName.Equals("localhost", StringComparison.OrdinalIgnoreCase) || 
+            if (_serverName.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
                 _serverName.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase))
             {
                 _runspace = RunspaceFactory.CreateRunspace();
             }
             else
             {
-                // Для удаленного сервера создаем WSMan соединение
                 var connectionInfo = new WSManConnectionInfo(
-                    new Uri($"http://{_serverName}:5985/wsman"), 
+                    new Uri($"http://{_serverName}:5985/wsman"),
                     "http://schemas.microsoft.com/powershell/Microsoft.PowerShell",
                     PSCredential.Empty);
-                
+
                 _runspace = RunspaceFactory.CreateRunspace(connectionInfo);
             }
             

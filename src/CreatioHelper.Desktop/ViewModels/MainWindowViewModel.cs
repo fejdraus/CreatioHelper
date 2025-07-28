@@ -238,7 +238,6 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        // Устанавливаем индикацию загрузки для конкретного сервера
         server.IsStatusLoading = true;
         
         try
@@ -265,7 +264,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
-            // Убираем индикацию загрузки
             server.IsStatusLoading = false;
         }
     }
@@ -279,7 +277,6 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        // Устанавливаем индикацию загрузки для конкретного сервера
         server.IsStatusLoading = true;
         
         try
@@ -306,7 +303,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
-            // Убираем индикацию загрузки
             server.IsStatusLoading = false;
         }
     }
@@ -320,7 +316,6 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        // Устанавливаем индикацию загрузки для конкретного сервера
         server.IsStatusLoading = true;
         
         try
@@ -347,7 +342,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
-            // Убираем индикацию загрузки
             server.IsStatusLoading = false;
         }
     }
@@ -361,7 +355,6 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        // Устанавливаем индикацию загрузки для конкретного сервера
         server.IsStatusLoading = true;
         
         try
@@ -388,7 +381,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
-            // Убираем индикацию загрузки
             server.IsStatusLoading = false;
         }
     }

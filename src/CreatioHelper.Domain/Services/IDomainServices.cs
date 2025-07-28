@@ -1,26 +1,24 @@
 namespace CreatioHelper.Domain.Services;
 
 /// <summary>
-/// Базовый интерфейс для всех доменных сервисов.
-/// Доменные сервисы содержат бизнес-логику, которая не принадлежит конкретной сущности.
+/// Base interface for domain services containing business logic not tied to a specific entity.
 /// </summary>
 public interface IDomainService
 {
 }
 
 /// <summary>
-/// Сервис для работы с серверными операциями в рамках домена.
-/// Содержит бизнес-логику, которая затрагивает несколько сущностей.
+/// Service for server operations within the domain containing cross-entity business logic.
 /// </summary>
 public interface IServerDomainService : IDomainService
 {
     /// <summary>
-    /// Проверяет, может ли сервер быть остановлен согласно бизнес-правилам
+    /// Determines whether a server can be stopped according to business rules.
     /// </summary>
     bool CanServerBeStopped(string serverName, DateTime currentTime);
     
     /// <summary>
-    /// Вычисляет приоритет перезапуска серверов
+    /// Calculates restart priority for servers.
     /// </summary>
     int CalculateRestartPriority(string serverName, string siteName);
 }
