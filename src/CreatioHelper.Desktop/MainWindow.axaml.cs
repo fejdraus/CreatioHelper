@@ -44,6 +44,7 @@ namespace CreatioHelper
                 {
                     LogTextEditor.AppendText(line + Environment.NewLine);
                     logDisplayHelper.ScrollToBottom(_viewModel.IsAutoScrollEnabled, _viewModel.IsWrapTextEnabled, LogTextEditor);
+                    FileLogService.AppendLine(line);
                 }
 
                 if (Dispatcher.UIThread.CheckAccess())
@@ -65,6 +66,8 @@ namespace CreatioHelper
                 {
                     Dispatcher.UIThread.Post(() => { LogTextEditor.Text = string.Empty; });
                 }
+
+                FileLogService.Clear();
             };
 
             
@@ -82,6 +85,15 @@ namespace CreatioHelper
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager);
             DataContext = _viewModel;
+            FileLogService.LogFilePath = LogFilePath;
+            FileLogService.Enabled = _viewModel.IsLogToFileEnabled;
+            _viewModel.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainWindowViewModel.IsLogToFileEnabled))
+                {
+                    FileLogService.Enabled = _viewModel.IsLogToFileEnabled;
+                }
+            };
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
         }
