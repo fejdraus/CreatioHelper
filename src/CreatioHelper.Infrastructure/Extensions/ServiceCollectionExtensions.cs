@@ -9,6 +9,7 @@ using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Infrastructure.Services.Performance;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Logging;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CreatioHelper.Infrastructure.Extensions;
@@ -25,12 +26,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CreatioHelperHealthCheck>();
         
         // OutputWriter для логирования
-        services.AddSingleton<IOutputWriter>(_ => 
+        services.AddSingleton<IOutputWriter>(_ =>
         {
-            // Создаем BufferingOutputWriter который будет использоваться всеми сервисами
             return new BufferingOutputWriter(
-                line => Console.WriteLine(line), // Выводим в консоль
-                () => Console.Clear()
+                line => OutputWriterHandlers.WriteAction(line),
+                () => OutputWriterHandlers.ClearAction()
             );
         });
         
