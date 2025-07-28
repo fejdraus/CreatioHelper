@@ -28,7 +28,7 @@ public class RobocopyFileCopyHelper : IFileCopyHelper
         return await _metrics.MeasureAsync("file_copy_duration", async () =>
         {
             string arguments = $"\"{sourceDir}\" \"{destDir}\" /e /purge /NFL /NDL /NJH /NJS";
-            _output.WriteLine($"[INFO][{server.Name?.Value}] Starting copy from {sourceDir} to {destDir}");
+            _output.WriteLine($"[INFO][{server.Name}] Starting copy from {sourceDir} to {destDir}");
 
             using var process = new Process();
             process.StartInfo = new ProcessStartInfo
@@ -49,19 +49,19 @@ public class RobocopyFileCopyHelper : IFileCopyHelper
             // Robocopy exit codes: 0-7 are success, 8+ are errors
             if (exitCode < 8)
             {
-                _output.WriteLine($"[OK][{server.Name?.Value}] Copy completed successfully (exit code: {exitCode})");
+                _output.WriteLine($"[OK][{server.Name}] Copy completed successfully (exit code: {exitCode})");
                 _metrics.IncrementCounter("file_copy_success", new()
                 {
-                    ["server"] = server.Name?.Value ?? "unknown",
+                    ["server"] = server.Name ?? "unknown",
                     ["exit_code"] = exitCode.ToString()
                 });
             }
             else
             {
-                _output.WriteLine($"[ERROR][{server.Name?.Value}] Copy failed (exit code: {exitCode})");
+                _output.WriteLine($"[ERROR][{server.Name}] Copy failed (exit code: {exitCode})");
                 _metrics.IncrementCounter("file_copy_error", new()
                 {
-                    ["server"] = server.Name?.Value ?? "unknown",
+                    ["server"] = server.Name ?? "unknown",
                     ["exit_code"] = exitCode.ToString()
                 });
             }
@@ -69,7 +69,7 @@ public class RobocopyFileCopyHelper : IFileCopyHelper
             return exitCode;
         }, new()
         {
-            ["server"] = server.Name?.Value ?? "unknown",
+            ["server"] = server.Name ?? "unknown",
             ["source"] = Path.GetFileName(sourceDir),
             ["destination"] = Path.GetFileName(destDir)
         });

@@ -11,14 +11,14 @@ public class AddServerViewModel(ServerInfo? server = null) : INotifyPropertyChan
 
     public string ServerName
     {
-        get => Server.Name?.Value ?? string.Empty;
-        set { Server.Name = string.IsNullOrEmpty(value) ? null : new ServerName(value); OnPropertyChanged(); }
+        get => Server.Name ?? string.Empty;
+        set { Server.Name = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
     }
 
     public string NetworkPath
     {
-        get => Server.NetworkPath?.Value ?? string.Empty;
-        set { Server.NetworkPath = string.IsNullOrEmpty(value) ? null : new NetworkPath(value); OnPropertyChanged(); }
+        get => Server.NetworkPath ?? string.Empty;
+        set { Server.NetworkPath = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
     }
 
     public string SiteName

@@ -120,12 +120,12 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             if (!string.IsNullOrWhiteSpace(server.PoolName) && 
                 !string.Equals(server.PoolStatus, "Stopped", StringComparison.OrdinalIgnoreCase))
             {
-                failedStops.Add($"Pool '{server.PoolName}' on {server.Name?.Value}: {server.PoolStatus}");
+                failedStops.Add($"Pool '{server.PoolName}' on {server.Name}: {server.PoolStatus}");
             }
             if (!string.IsNullOrWhiteSpace(server.SiteName) && 
                 !string.Equals(server.SiteStatus, "Stopped", StringComparison.OrdinalIgnoreCase))
             {
-                failedStops.Add($"Site '{server.SiteName}' on {server.Name?.Value}: {server.SiteStatus}");
+                failedStops.Add($"Site '{server.SiteName}' on {server.Name}: {server.SiteStatus}");
             }
         }
         if (failedStops.Count > 0)
@@ -150,17 +150,17 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             {
                 await Task.Run(async () =>
                 {
-                    var networkPath = server.NetworkPath?.Value;
+                    var networkPath = server.NetworkPath;
                     if (string.IsNullOrEmpty(networkPath))
                     {
-                        _output.WriteLine($"[ERROR] Network path is not set for server '{server.Name?.Value ?? "Unknown"}'");
+                        _output.WriteLine($"[ERROR] Network path is not set for server '{server.Name ?? "Unknown"}'");
                         return;
                     }
 
                     string destConfPath = Path.Combine(networkPath, "Terrasoft.WebApp", "conf");
                     string destConfigPath = Path.Combine(networkPath, "Terrasoft.WebApp", "Terrasoft.Configuration");
 
-                    _output.WriteLine($"[INFO] Starting to copy files to {server.Name?.Value ?? "Unknown"}...");
+                    _output.WriteLine($"[INFO] Starting to copy files to {server.Name ?? "Unknown"}...");
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
@@ -175,7 +175,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     {
                         return;
                     }
-                    _output.WriteLine($"[INFO] File copying to {server.Name?.Value} completed, starting services...");
+                    _output.WriteLine($"[INFO] File copying to {server.Name} completed, starting services...");
                     
                     bool appPoolStarted = true;
                     bool websiteStarted = true;
@@ -186,7 +186,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                         appPoolStarted = startPoolResult.IsSuccess;
                         if (!appPoolStarted)
                         {
-                            _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name?.Value ?? "Unknown"}: {startPoolResult.ErrorMessage}");
+                            _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name ?? "Unknown"}: {startPoolResult.ErrorMessage}");
                         }
                     }
                     if (!string.IsNullOrWhiteSpace(server.SiteName))
@@ -195,7 +195,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                         websiteStarted = startSiteResult.IsSuccess;
                         if (!websiteStarted)
                         {
-                            _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name?.Value ?? "Unknown"}: {startSiteResult.ErrorMessage}");
+                            _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name ?? "Unknown"}: {startSiteResult.ErrorMessage}");
                         }
                     }
                     if (appPoolStarted && websiteStarted)
@@ -204,7 +204,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     }
                     else
                     {
-                        _output.WriteLine($"[WARN] {server.Name?.Value} - File copy completed, but some services failed to start");
+                        _output.WriteLine($"[WARN] {server.Name} - File copy completed, but some services failed to start");
                     }
                 }, cancellationToken);
             }
@@ -215,19 +215,19 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         catch (OperationCanceledException)
         {
-            _output.WriteLine($"[INFO] Synchronization for {server.Name?.Value} was cancelled.");
+            _output.WriteLine($"[INFO] Synchronization for {server.Name} was cancelled.");
             throw;
         }
         catch (Exception ex)
         {
-            _output.WriteLine($"[ERROR] File copy operation failed for {server.Name?.Value}: {ex.Message}");
+            _output.WriteLine($"[ERROR] File copy operation failed for {server.Name}: {ex.Message}");
             throw;
         }
     }
     
     private async Task VerifyServerStartedAsync(ServerInfo server, CancellationToken cancellationToken)
     {
-        _output.WriteLine($"[INFO] Verifying services started on {server.Name?.Value}...");
+        _output.WriteLine($"[INFO] Verifying services started on {server.Name}...");
         await Task.Delay(3000, cancellationToken);
         await _statusService.RefreshServerStatusAsync(server);
         var issues = new List<string>();
@@ -243,7 +243,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         if (issues.Count > 0)
         {
-            _output.WriteLine($"[WARN] {server.Name?.Value} - Some services may not have started properly:");
+            _output.WriteLine($"[WARN] {server.Name} - Some services may not have started properly:");
             foreach (var issue in issues)
             {
                 _output.WriteLine($"[WARN]   - {issue}");
@@ -251,7 +251,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         }
         else
         {
-            _output.WriteLine($"[OK] {server.Name?.Value} - All services confirmed started and running");
+            _output.WriteLine($"[OK] {server.Name} - All services confirmed started and running");
         }
     }
 }

@@ -1,8 +1,8 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 
 namespace CreatioHelper.Domain.Entities;
 
-public class AppSettings
+public class DtoAppSettings
 {
     public string? SitePath { get; set; }
 
@@ -16,7 +16,7 @@ public class AppSettings
 
     public string? PackagesToDeleteAfter { get; set; }
 
-    public ObservableCollection<ServerInfo> ServerList { get; set; } = new();
+    public ObservableCollection<DtoServerInfo> ServerList { get; set; } = new();
 
     public bool IsIisMode { get; set; }
 
