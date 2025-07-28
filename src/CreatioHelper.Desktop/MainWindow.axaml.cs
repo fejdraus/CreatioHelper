@@ -32,28 +32,28 @@ namespace CreatioHelper
             LogTextEditor.TextArea.TextView.LineTransformers.Add(
                 new LogLineColorizer()
             );
-            
+
             _writer = new BufferingOutputWriter(
                 line =>
                 {
                     if (Dispatcher.UIThread.CheckAccess())
                     {
-                        AddLogTextLine(line);
+                        LogTextEditor.AppendText(line + Environment.NewLine);
                     }
                     else
                     {
-                        Dispatcher.UIThread.Post(() => { AddLogTextLine(line); });
+                        Dispatcher.UIThread.Post(() => { LogTextEditor.AppendText(line + Environment.NewLine); });
                     }
                 },
                 () =>
                 {
                     if (Dispatcher.UIThread.CheckAccess())
                     {
-                        ClearLog();
+                        LogTextEditor.Text = string.Empty;
                     }
                     else
                     {
-                        Dispatcher.UIThread.Post(ClearLog);
+                        Dispatcher.UIThread.Post(() => { LogTextEditor.Text = string.Empty; });
                     }
                 });
 
@@ -76,92 +76,6 @@ namespace CreatioHelper
             Closing += OnMainWindowClosing;
         }
 
-        private void AddLogTextLine(string line)
-        {
-            var doc = LogTextEditor.Document;
-            var nl = doc.TextLength > 0 ? Environment.NewLine : "";
-            doc.Insert(doc.TextLength, nl + line);
-            const int maxLines = 1000;
-            const int removeBatch = 200;
-            if (doc.LineCount > maxLines)
-            {
-                var first = doc.GetLineByNumber(1);
-                var last = doc.GetLineByNumber(removeBatch);
-                int lengthToRemove = (last.Offset + last.TotalLength) - first.Offset;
-                doc.Remove(first.Offset, lengthToRemove);
-            }
-            var updateLogDisplay = new UpdateLogDisplay();
-            updateLogDisplay.ScrollToBottom(_viewModel.IsAutoScrollEnabled, _viewModel.IsWrapTextEnabled, LogTextEditor);
-            if (_viewModel.IsLogToFileEnabled)
-            {
-                AppendLogToFile(line);
-            }
-        }
-
-        protected override void OnLoaded(RoutedEventArgs e)
-        {
-            base.OnLoaded(e);
-            SetupLogTextEditorContextMenu();
-        }
-
-        private void SetupLogTextEditorContextMenu()
-        {
-            if (LogTextEditor != null)
-            {
-                var contextMenu = new ContextMenu();
-                
-                var copyMenuItem = new MenuItem
-                {
-                    Header = "Copy"
-                };
-                copyMenuItem.Click += (_, _) => 
-                {
-                    if (LogTextEditor.TextArea.Selection.Length > 0)
-                    {
-                        LogTextEditor.Copy();
-                    }
-                };
-                var clearLogMenuItem = new MenuItem
-                {
-                    Header = "Clear Log"
-                };
-                clearLogMenuItem.Click += (_, _) => 
-                {
-                    if (LogTextEditor.Document != null)
-                    {
-                        ClearLog();
-                    }
-                };
-                contextMenu.Items.Add(copyMenuItem);
-                contextMenu.Items.Add(new Separator());
-                contextMenu.Items.Add(clearLogMenuItem);
-                LogTextEditor.ContextMenu = contextMenu;
-            }
-        }
-        
-        private void SitePathTextBox_TextChanged(object? sender, TextChangedEventArgs e)
-        {
-            if (sender is TextBox textBox && !string.IsNullOrWhiteSpace(textBox.Text))
-            {
-                try
-                {
-                    var path = textBox.Text.Trim();
-                    if (Directory.Exists(path))
-                    {
-                        var version = AppVersionHelper.GetAppVersion(path);
-                        _viewModel.SitePathWithVersion = version;
-                    }
-                }
-                catch
-                {
-                    _viewModel.SitePathWithVersion = new Version();
-                }
-            }
-            else
-            {
-                _viewModel.SitePathWithVersion = new Version();
-            }
-        }
         private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
         {
             if (!_viewModel.IsBusy) return;
@@ -172,11 +86,6 @@ namespace CreatioHelper
                 Icon = Icon,
             };
             await warningWindow.ShowDialog(this);
-        }
-
-        protected virtual void ClearLog()
-        {
-            LogTextEditor.Text = string.Empty;
         }
 
         private async void AddServer_Click(object? sender, RoutedEventArgs e)
@@ -219,16 +128,28 @@ namespace CreatioHelper
                 server.PoolName = updated.PoolName;
             }
         }
-        
-        private void AppendLogToFile(string logEntry)
+
+        private void SitePathTextBox_TextChanged(object? sender, TextChangedEventArgs e)
         {
-            try
+            if (sender is TextBox textBox && !string.IsNullOrWhiteSpace(textBox.Text))
             {
-                File.AppendAllText(LogFilePath, string.Concat(DateTime.Now, " ", logEntry) + Environment.NewLine);
+                try
+                {
+                    var path = textBox.Text.Trim();
+                    if (Directory.Exists(path))
+                    {
+                        var version = AppVersionHelper.GetAppVersion(path);
+                        _viewModel.SitePathWithVersion = version;
+                    }
+                }
+                catch
+                {
+                    _viewModel.SitePathWithVersion = new Version();
+                }
             }
-            catch (Exception ex)
+            else
             {
-                _writer.WriteLine($"[ERROR] Failed to write to log file: {ex.Message}");
+                _viewModel.SitePathWithVersion = new Version();
             }
         }
     }

@@ -4,7 +4,7 @@ public abstract class Entity
 {
     private readonly List<DomainEvent> _domainEvents = new();
 
-    public Guid Id { get; protected set; }
+    public Guid Id { get; }
 
     public IReadOnlyCollection<DomainEvent> DomainEvents => _domainEvents.AsReadOnly();
 

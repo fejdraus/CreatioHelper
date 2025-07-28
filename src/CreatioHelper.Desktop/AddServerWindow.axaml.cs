@@ -22,27 +22,9 @@ public partial class AddServerWindow : Window
 
     private async void OkButton_Click(object? sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(ViewModel.ServerName))
+        if (!ViewModel.Validate(out var validationError))
         {
-            await ShowValidationError("Please enter the server name.");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(ViewModel.NetworkPath))
-        {
-            await ShowValidationError("Please enter the network path.");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(ViewModel.SiteName))
-        {
-            await ShowValidationError("Please enter the site name.");
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(ViewModel.PoolName))
-        {
-            await ShowValidationError("Please enter the pool name.");
+            await ShowValidationError(validationError);
             return;
         }
 
@@ -54,8 +36,13 @@ public partial class AddServerWindow : Window
         Close(null);
     }
 
-    private async Task ShowValidationError(string message)
+    private async Task ShowValidationError(string? message)
     {
+        if (string.IsNullOrWhiteSpace(message))
+        {
+            message = "An unknown validation error occurred.";
+        }
+
         var box = MessageBoxManager
             .GetMessageBoxStandard("Validation error", message, ButtonEnum.Ok, MsBox.Avalonia.Enums.Icon.Warning);
         await box.ShowWindowDialogAsync(this);

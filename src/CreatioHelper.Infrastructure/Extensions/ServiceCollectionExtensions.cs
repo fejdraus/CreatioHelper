@@ -25,7 +25,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<CreatioHelperHealthCheck>();
         
         // OutputWriter для логирования
-        services.AddSingleton<IOutputWriter>(provider => 
+        services.AddSingleton<IOutputWriter>(_ => 
         {
             // Создаем BufferingOutputWriter который будет использоваться всеми сервисами
             return new BufferingOutputWriter(

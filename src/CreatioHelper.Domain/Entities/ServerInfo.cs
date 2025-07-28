@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.Domain.Entities;
@@ -19,11 +18,6 @@ public class ServerInfo : INotifyPropertyChanged
     private Version? _appVersion = new();
     private bool _isOnline;
     private DateTime? _lastUpdated;
-
-    public ServerInfo() {}
-
-    // Восстанавливаем UniqueKey - нужен для кэширования
-    public string UniqueKey => Name?.Value ?? "Unknown";
 
     public ServerName? Name
     {
@@ -133,6 +127,6 @@ public class ServerInfo : INotifyPropertyChanged
 
     public override int GetHashCode()
     {
-        return Name?.Value?.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0;
+        return Name?.Value.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0;
     }
 }

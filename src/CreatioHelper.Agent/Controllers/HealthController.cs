@@ -1,6 +1,4 @@
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Performance;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -36,10 +34,10 @@ public class HealthController : ControllerBase
             var response = new
             {
                 Status = result.IsHealthy ? "Healthy" : "Unhealthy",
-                Message = result.Message,
+                result.Message,
                 Duration = $"{result.Duration.TotalMilliseconds:F1}ms",
                 Timestamp = DateTime.UtcNow,
-                Data = result.Data
+                result.Data
             };
 
             if (result.IsHealthy)
@@ -90,9 +88,9 @@ public class HealthController : ControllerBase
                     kvp => new
                     {
                         Status = kvp.Value.IsHealthy ? "Healthy" : "Unhealthy",
-                        Message = kvp.Value.Message,
+                        kvp.Value.Message,
                         Duration = $"{kvp.Value.Duration.TotalMilliseconds:F1}ms",
-                        Data = kvp.Value.Data
+                        kvp.Value.Data
                     })
             };
 
@@ -126,10 +124,10 @@ public class HealthController : ControllerBase
             {
                 Component = componentName,
                 Status = result.IsHealthy ? "Healthy" : "Unhealthy",
-                Message = result.Message,
+                result.Message,
                 Duration = $"{result.Duration.TotalMilliseconds:F1}ms",
                 Timestamp = DateTime.UtcNow,
-                Data = result.Data
+                result.Data
             };
 
             return Ok(response);

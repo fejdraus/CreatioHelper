@@ -1,6 +1,5 @@
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.DataContracts;
-using CreatioHelper.Application.Interfaces;
 using System.Diagnostics;
 
 namespace CreatioHelper.Agent.Services;

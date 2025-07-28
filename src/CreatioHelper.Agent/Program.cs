@@ -1,6 +1,4 @@
 using CreatioHelper.Agent.Services;
-using CreatioHelper.Application.Extensions;
-using CreatioHelper.Infrastructure.Extensions;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
 
@@ -71,7 +69,7 @@ app.MapControllers();
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
 
 // Prometheus метрики endpoint
-app.MapGet("/metrics", async (CreatioHelper.Application.Interfaces.IMetricsService metricsService) =>
+app.MapGet("/metrics", async (IMetricsService metricsService) =>
 {
     var metrics = await metricsService.GetMetricsAsync();
     var prometheusFormat = ConvertToPrometheusFormat(metrics);

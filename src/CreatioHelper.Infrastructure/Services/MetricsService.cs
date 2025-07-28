@@ -1,9 +1,5 @@
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
@@ -19,11 +15,6 @@ public class MetricsService : IMetricsService
     public MetricsService(ILogger<MetricsService> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-    }
-
-    public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation)
-    {
-        return await MeasureAsync(operationName, operation, null);
     }
 
     public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation, Dictionary<string, string>? tags = null)
@@ -62,11 +53,6 @@ public class MetricsService : IMetricsService
         }
     }
 
-    public void Measure(string operationName, Action operation)
-    {
-        Measure(operationName, operation, null);
-    }
-
     public void Measure(string operationName, Action operation, Dictionary<string, string>? tags = null)
     {
         if (string.IsNullOrEmpty(operationName))
@@ -98,11 +84,6 @@ public class MetricsService : IMetricsService
             
             throw;
         }
-    }
-
-    public T Measure<T>(string operationName, Func<T> operation)
-    {
-        return Measure(operationName, operation, null);
     }
 
     public T Measure<T>(string operationName, Func<T> operation, Dictionary<string, string>? tags = null)
@@ -226,7 +207,7 @@ public class MetricsService : IMetricsService
                 {
                     durationStats[kv.Key] = new
                     {
-                        Count = kv.Value.Count,
+                        kv.Value.Count,
                         Average = kv.Value.Average(),
                         Min = kv.Value.Min(),
                         Max = kv.Value.Max(),

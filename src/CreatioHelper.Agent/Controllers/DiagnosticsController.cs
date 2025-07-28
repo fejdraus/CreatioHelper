@@ -1,5 +1,4 @@
 using CreatioHelper.Infrastructure.Services.Performance;
-using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -9,22 +8,16 @@ namespace CreatioHelper.Agent.Controllers;
 public class DiagnosticsController : ControllerBase
 {
     private readonly DiagnosticsService _diagnosticsService;
-    private readonly AlertingService _alertingService;
     private readonly ILogger<DiagnosticsController> _logger;
 
     public DiagnosticsController(
         DiagnosticsService diagnosticsService,
-        AlertingService alertingService,
         ILogger<DiagnosticsController> logger)
     {
         _diagnosticsService = diagnosticsService;
-        _alertingService = alertingService;
         _logger = logger;
     }
-
-    /// <summary>
-    /// Получить полную диагностическую информацию системы
-    /// </summary>
+    
     [HttpGet("summary")]
     public ActionResult<object> GetDiagnosticsSummary()
     {
@@ -52,7 +45,7 @@ public class DiagnosticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate diagnostics summary");
-            return StatusCode(500, new { Error = "Failed to generate diagnostics", Message = ex.Message });
+            return StatusCode(500, new { Error = "Failed to generate diagnostics", ex.Message });
         }
     }
 
@@ -88,7 +81,7 @@ public class DiagnosticsController : ControllerBase
         {
             _logger.LogError(ex, "Force system check failed");
             diagnosticContext.MarkFailure(ex.Message);
-            return StatusCode(500, new { Error = "System check failed", Message = ex.Message });
+            return StatusCode(500, new { Error = "System check failed", ex.Message });
         }
     }
 
@@ -103,12 +96,9 @@ public class DiagnosticsController : ControllerBase
             var summary = _diagnosticsService.GetDiagnosticsSummary();
             var issues = new List<object>();
 
-            // Извлекаем проблемы из каждой операции
             foreach (var operation in summary)
             {
-                if (operation.Value != null)
                 {
-                    // Упрощенная логика извлечения проблем
                     var operationName = operation.Key;
                     issues.Add(new
                     {
@@ -129,7 +119,7 @@ public class DiagnosticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get recent issues");
-            return StatusCode(500, new { Error = "Failed to get issues", Message = ex.Message });
+            return StatusCode(500, new { Error = "Failed to get issues", ex.Message });
         }
     }
 }

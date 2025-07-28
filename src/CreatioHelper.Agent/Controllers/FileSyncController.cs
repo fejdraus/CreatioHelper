@@ -22,7 +22,7 @@ public class FileSyncController : ControllerBase
         try
         {
             var isValid = await _fileSyncService.ValidatePathAsync(request.Path);
-            return Ok(new { Path = request.Path, IsValid = isValid });
+            return Ok(new { request.Path, IsValid = isValid });
         }
         catch (Exception ex)
         {

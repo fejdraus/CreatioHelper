@@ -1,12 +1,5 @@
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Shared.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Performance;
@@ -56,10 +49,10 @@ public class CreatioHelperHealthCheck : IHealthCheck
                 kvp => kvp.Key,
                 kvp => new
                 {
-                    IsHealthy = kvp.Value.IsHealthy,
-                    Message = kvp.Value.Message,
+                    kvp.Value.IsHealthy,
+                    kvp.Value.Message,
                     DurationMs = kvp.Value.Duration.TotalMilliseconds,
-                    Data = kvp.Value.Data
+                    kvp.Value.Data
                 })
         };
 
@@ -125,7 +118,7 @@ internal class FileSystemHealthCheck : IHealthCheck
             await File.WriteAllTextAsync(testFile, "health check test", cancellationToken);
             
             // Проверяем возможность чтения
-            var content = await File.ReadAllTextAsync(testFile, cancellationToken);
+            await File.ReadAllTextAsync(testFile, cancellationToken);
             
             // Удаляем тестовый файл
             File.Delete(testFile);
@@ -205,9 +198,6 @@ internal class MemoryHealthCheck : IHealthCheck
     }
 }
 
-/// <summary>
-/// Health Check для проверки IIS подключения
-/// </summary>
 internal class IisConnectivityHealthCheck : IHealthCheck
 {
     private readonly IRemoteIisManager _iisManager;
@@ -221,8 +211,6 @@ internal class IisConnectivityHealthCheck : IHealthCheck
     {
         try
         {
-            // Попробуем получить статус любого стандартного пула для проверки подключения к IIS
-            // Используем общеизвестные имена пулов, которые обычно существуют в IIS
             var testPoolNames = new[] { "DefaultAppPool", ".NET v4.5", ".NET v4.5 Classic" };
             
             foreach (var poolName in testPoolNames)
@@ -230,28 +218,28 @@ internal class IisConnectivityHealthCheck : IHealthCheck
                 try
                 {
                     var appPoolStatus = await _iisManager.GetAppPoolStatusAsync(poolName, cancellationToken);
-                    
+
                     var data = new Dictionary<string, object>
                     {
                         ["test_pool_name"] = poolName,
                         ["pool_accessible"] = appPoolStatus.IsSuccess,
                         ["pool_status"] = appPoolStatus.IsSuccess ? appPoolStatus.Value ?? "Unknown" : "Not accessible",
-                        ["error_message"] = appPoolStatus.IsSuccess ? "None" : (appPoolStatus.ErrorMessage ?? "Unknown error")
+                        ["error_message"] = appPoolStatus.IsSuccess ? "None" : (appPoolStatus.ErrorMessage)
                     };
 
                     if (appPoolStatus.IsSuccess)
                     {
-                        return HealthCheckResult.Healthy($"IIS is accessible via pool '{poolName}', status: {appPoolStatus.Value ?? "Unknown"}", data);
+                        return HealthCheckResult.Healthy(
+                            $"IIS is accessible via pool '{poolName}', status: {appPoolStatus.Value ?? "Unknown"}",
+                            data);
                     }
                 }
                 catch
                 {
-                    // Пробуем следующий пул
-                    continue;
+                    // ignored
                 }
             }
             
-            // Если ни один из тестовых пулов не найден, но исключений нет - IIS доступен, но пулы не найдены
             var fallbackData = new Dictionary<string, object>
             {
                 ["test_pools_tried"] = testPoolNames,

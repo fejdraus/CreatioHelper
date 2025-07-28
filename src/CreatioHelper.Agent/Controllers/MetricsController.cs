@@ -1,5 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -31,7 +29,7 @@ public class MetricsController : ControllerBase
         try
         {
             var healthReport = await _healthCheckService.CheckHealthAsync();
-            var metrics = await _metricsService.GetMetricsAsync();
+            await _metricsService.GetMetricsAsync();
 
             var summary = new PerformanceSummary
             {
@@ -40,7 +38,7 @@ public class MetricsController : ControllerBase
                 TotalRequests = await _metricsService.GetCounterAsync("total_requests"),
                 AverageResponseTime = await _metricsService.GetAverageAsync("api_response_time"),
                 ErrorRate = await _metricsService.GetRateAsync("api_requests"),
-                MemoryUsageMB = await GetMemoryUsage(),
+                MemoryUsageMb = await GetMemoryUsage(),
                 CpuUsagePercent = await GetCpuUsage(),
                 ActiveConnections = await _metricsService.GetCounterAsync("active_connections"),
                 HealthChecks = healthReport.Entries.ToDictionary(
@@ -50,7 +48,7 @@ public class MetricsController : ControllerBase
                         Status = MapHealthStatus(e.Value.Status),
                         Description = e.Value.Description ?? string.Empty,
                         Duration = e.Value.Duration,
-                        Data = e.Value.Data?.ToDictionary(kv => kv.Key, kv => kv.Value?.ToString() ?? string.Empty)
+                        Data = e.Value.Data.ToDictionary(kv => kv.Key, kv => kv.Value.ToString() ?? string.Empty)
                     })
             };
 
@@ -157,11 +155,10 @@ public class MetricsController : ControllerBase
             {
                 var name = SanitizeMetricName(duration.Key);
                 lines.Add($"# TYPE {name}_duration_ms summary");
-                
-                if (duration.Value != null)
+
                 {
-                    var durationData = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object>>(
-                        System.Text.Json.JsonSerializer.Serialize(duration.Value));
+                    var durationData = JsonSerializer.Deserialize<Dictionary<string, object>>(
+                        JsonSerializer.Serialize(duration.Value));
                     
                     if (durationData != null)
                     {
@@ -225,7 +222,7 @@ public class PerformanceSummary
     public long TotalRequests { get; set; }
     public double AverageResponseTime { get; set; }
     public double ErrorRate { get; set; }
-    public double MemoryUsageMB { get; set; }
+    public double MemoryUsageMb { get; set; }
     public double CpuUsagePercent { get; set; }
     public long ActiveConnections { get; set; }
     public Dictionary<string, HealthStatus> HealthChecks { get; set; } = new();

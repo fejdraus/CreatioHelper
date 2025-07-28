@@ -202,7 +202,7 @@ public class MonitoringService : BackgroundService
         {
             PlatformType.Windows => "Windows/IIS",
             PlatformType.Linux => "Linux/Systemd", 
-            PlatformType.MacOS => "macOS/Launchd",
+            PlatformType.MacOs => "macOS/Launchd",
             _ => "Unknown"
         };
     }
