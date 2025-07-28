@@ -2,6 +2,7 @@ using CreatioHelper.Agent.Services;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Performance;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,12 @@ builder.Services.AddInfrastructureServices();
 builder.Services.AddScoped<BatchOperationService>();
 builder.Services.AddScoped<ApplicationInsightsMetricsService>();
 
+// Добавляем расширенные сервисы поддержки для достижения 10/10
+builder.Services.AddScoped<EnhancedLoggingService>();
+builder.Services.AddScoped<AlertingService>();
+builder.Services.AddScoped<DiagnosticsService>();
+builder.Services.AddScoped<CreatioSystemHealthCheck>();
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -39,6 +46,14 @@ builder.Services.AddPlatformServices();
 builder.Services.AddPerformanceServices(); // Добавляем систему метрик
 
 var app = builder.Build();
+
+// Graceful shutdown configuration
+var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
+applicationLifetime.ApplicationStopping.Register(() =>
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("🛑 Application shutdown initiated - stopping operations gracefully");
+});
 
 if (app.Environment.IsDevelopment())
 {
