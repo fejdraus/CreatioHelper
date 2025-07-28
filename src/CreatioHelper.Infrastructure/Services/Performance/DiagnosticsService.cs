@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Сервис детальной диагностики операций для troubleshooting
+/// Provides detailed diagnostics for operations to assist troubleshooting.
 /// </summary>
 public class DiagnosticsService
 {
@@ -48,7 +48,6 @@ public class DiagnosticsService
             
             _operationHistory[trace.OperationName].Add(trace);
             
-            // Сохраняем только последние 100 операций каждого типа
             if (_operationHistory[trace.OperationName].Count > 100)
                 _operationHistory[trace.OperationName].RemoveAt(0);
         }

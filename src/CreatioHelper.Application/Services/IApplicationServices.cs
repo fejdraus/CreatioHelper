@@ -4,16 +4,16 @@ using CreatioHelper.Domain.Common;
 namespace CreatioHelper.Application.Services;
 
 /// <summary>
-/// Базовый интерфейс для всех прикладных сервисов.
-/// Координирует выполнение бизнес-операций и управляет транзакциями.
+/// Base interface for application services coordinating business operations and
+/// managing transactions.
 /// </summary>
 public interface IApplicationService
 {
 }
 
 /// <summary>
-/// Прикладной сервис для управления серверами.
-/// Координирует работу с доменными сервисами и репозиториями.
+/// Application service for managing servers. Coordinates domain services and
+/// repositories.
 /// </summary>
 public interface IServerApplicationService : IApplicationService
 {

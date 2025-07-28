@@ -33,7 +33,7 @@ public partial class App : Avalonia.Application
 
     private static void ConfigureServices(IServiceCollection services)
     {
-        // Добавляем логирование для поддержки MetricsService и других сервисов
+        // Enable logging for MetricsService and other services
         services.AddLogging(builder =>
         {
             builder.AddConsole();

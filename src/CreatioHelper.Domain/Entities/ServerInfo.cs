@@ -49,7 +49,6 @@ public class ServerInfo : INotifyPropertyChanged
         set => SetField(ref _serviceName, value);
     }
 
-    // Обновляем свойства статусов, чтобы они показывали состояние ожидания
     public string PoolStatus
     {
         get => _isStatusLoading ? "Loading..." : _poolStatus;
@@ -75,7 +74,6 @@ public class ServerInfo : INotifyPropertyChanged
         {
             if (SetField(ref _isStatusLoading, value))
             {
-                // При изменении IsStatusLoading обновляем все статусы
                 OnPropertyChanged(nameof(PoolStatus));
                 OnPropertyChanged(nameof(SiteStatus));
                 OnPropertyChanged(nameof(ServiceStatus));
