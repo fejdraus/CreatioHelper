@@ -40,20 +40,20 @@ namespace CreatioHelper
             var logDisplayHelper = new UpdateLogDisplay();
             OutputWriterHandlers.WriteAction = line =>
             {
-                void append()
+                void Append()
                 {
                     LogTextEditor.AppendText(line + Environment.NewLine);
-                    logDisplayHelper.ScrollToBottom(_viewModel.IsAutoScrollEnabled, _viewModel.IsWrapTextEnabled, LogTextEditor);
+                    logDisplayHelper.ScrollToBottom(_viewModel != null && _viewModel.IsAutoScrollEnabled, _viewModel != null && _viewModel.IsWrapTextEnabled, LogTextEditor);
                     FileLogService.AppendLine(line);
                 }
 
                 if (Dispatcher.UIThread.CheckAccess())
                 {
-                    append();
+                    Append();
                 }
                 else
                 {
-                    Dispatcher.UIThread.Post(append);
+                    Dispatcher.UIThread.Post(Append);
                 }
             };
             OutputWriterHandlers.ClearAction = () =>

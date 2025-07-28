@@ -30,7 +30,6 @@ public class ServerStatusService : IServerStatusService
 
             try
             {
-                // Получаем актуальный статус пула (без кэширования - нужны свежие данные)
                 if (!string.IsNullOrEmpty(server.PoolName))
                 {
                     var poolStatus = await GetPoolStatusAsync(server.PoolName, cancellationToken);
@@ -38,7 +37,6 @@ public class ServerStatusService : IServerStatusService
                     _logger.LogDebug("Retrieved pool status for {PoolName}: {Status}", server.PoolName, poolStatus);
                 }
 
-                // Получаем актуальный статус сайта (без кэширования - нужны свежие данные)
                 if (!string.IsNullOrEmpty(server.SiteName))
                 {
                     var siteStatus = await GetWebsiteStatusAsync(server.SiteName, cancellationToken);
@@ -50,20 +48,20 @@ public class ServerStatusService : IServerStatusService
                 server.IsOnline = DetermineServerOnlineStatus(server);
                 
                 _metrics.IncrementCounter("server_status_success", new() { 
-                    ["server_name"] = server.Name?.Value ?? "unknown" 
+                    ["server_name"] = server.Name ?? "unknown" 
                 });
 
                 return server;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name?.Value);
+                _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name);
                 server.PoolStatus = "Error";
                 server.SiteStatus = "Error";
                 server.IsOnline = false;
                 
                 _metrics.IncrementCounter("server_status_error", new() { 
-                    ["server_name"] = server.Name?.Value ?? "unknown",
+                    ["server_name"] = server.Name ?? "unknown",
                     ["error_type"] = ex.GetType().Name
                 });
                 
@@ -73,18 +71,17 @@ public class ServerStatusService : IServerStatusService
             {
                 server.IsStatusLoading = false;
             }
-        }, new() { ["server_name"] = server.Name?.Value ?? "unknown" });
+        }, new() { ["server_name"] = server.Name ?? "unknown" });
     }
 
-    public async Task RefreshMultipleServerStatusAsync(ServerInfo[] servers, CancellationToken cancellationToken = default)
+    public async Task RefreshMultipleServerStatusAsync(ServerInfo[]? servers, CancellationToken cancellationToken = default)
     {
         if (servers == null || servers.Length == 0) return;
 
         await _metrics.MeasureAsync("multiple_server_status_refresh", async () =>
         {
             _logger.LogInformation("Refreshing status for {ServerCount} servers", servers.Length);
-
-            // Ограничиваем параллелизм для предотвращения перегрузки
+            
             var semaphore = new SemaphoreSlim(Math.Min(servers.Length, Environment.ProcessorCount));
             
             var tasks = servers.Select(async server =>
@@ -96,7 +93,7 @@ public class ServerStatusService : IServerStatusService
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name?.Value);
+                    _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name);
                 }
                 finally
                 {
@@ -113,7 +110,7 @@ public class ServerStatusService : IServerStatusService
             _metrics.SetGauge("servers_online", successCount);
             _metrics.SetGauge("servers_total", servers.Length);
             
-            return new object(); // Возвращаем dummy объект для соответствия сигнатуре
+            return new object();
         });
     }
 

@@ -2,6 +2,7 @@
 using System.Text.Json;
 
 using CreatioHelper.Domain.Entities;
+using Mapster;
 
 namespace CreatioHelper.Infrastructure.Services
 {
@@ -22,7 +23,8 @@ namespace CreatioHelper.Infrastructure.Services
             try
             {
                 string json = File.ReadAllText(SettingsFile);
-                return JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+                var dtoAppSettings =  JsonSerializer.Deserialize<DtoAppSettings>(json) ?? new DtoAppSettings();
+                return dtoAppSettings.Adapt<AppSettings>();
             }
             catch (Exception)
             {
@@ -35,7 +37,8 @@ namespace CreatioHelper.Infrastructure.Services
         {
             try
             {
-                string json = JsonSerializer.Serialize(settings, JsonOptions);
+                var newSettings = settings.Adapt<DtoAppSettings>();
+                string json = JsonSerializer.Serialize(newSettings, JsonOptions);
                 File.WriteAllText(SettingsFile, json);
             }
             catch (Exception)

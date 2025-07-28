@@ -183,7 +183,7 @@ public partial class MainWindowViewModel : ObservableObject
     private void AddServer()
     {
         if (!string.IsNullOrWhiteSpace(NewServerName) &&
-            !ServerList.Any(s => s.Name?.Value?.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase) == true))
+            !ServerList.Any(s => s.Name?.Equals(NewServerName.Trim(), StringComparison.OrdinalIgnoreCase) == true))
         {
             ServerList.Add(new ServerInfo
             {
@@ -234,7 +234,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.PoolName))
         {
-            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 
@@ -242,12 +242,12 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
-            _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' stopped successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' stopped successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
                     await _statusService.RefreshServerStatusAsync(server);
@@ -273,7 +273,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.PoolName))
         {
-            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Pool name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 
@@ -281,12 +281,12 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
-            _output.WriteLine($"[INFO] Starting application pool '{server.PoolName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            _output.WriteLine($"[INFO] Starting application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' started successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' started successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
                     await _statusService.RefreshServerStatusAsync(server);
@@ -312,7 +312,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.SiteName))
         {
-            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 
@@ -320,12 +320,12 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
-            _output.WriteLine($"[INFO] Stopping website '{server.SiteName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            _output.WriteLine($"[INFO] Stopping website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' stopped successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' stopped successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
                     await _statusService.RefreshServerStatusAsync(server);
@@ -351,7 +351,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.SiteName))
         {
-            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Site name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 
@@ -359,12 +359,12 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
-            _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name?.Value ?? "Unknown"}'...");
+            _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' started successfully on server '{server.Name?.Value ?? "Unknown"}'.");
+                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' started successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
                     await _statusService.RefreshServerStatusAsync(server);
@@ -510,7 +510,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.ServiceName))
         {
-            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 
@@ -530,7 +530,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (string.IsNullOrWhiteSpace(server.ServiceName))
         {
-            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name?.Value ?? "Unknown"}'");
+            _output.WriteLine($"[ERROR] Service name is not configured for server '{server.Name ?? "Unknown"}'");
             return;
         }
 

@@ -4,13 +4,8 @@ using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.Domain.Entities;
 
-public class ServerInfo : INotifyPropertyChanged
+public class ServerInfo : DtoServerInfo
 {
-    private ServerName? _name;
-    private NetworkPath? _networkPath;
-    private string? _poolName;
-    private string? _siteName;
-    private string? _serviceName;
     private string _poolStatus = "";
     private string _siteStatus = "";
     private string _serviceStatus = "";
@@ -18,36 +13,6 @@ public class ServerInfo : INotifyPropertyChanged
     private Version? _appVersion = new();
     private bool _isOnline;
     private DateTime? _lastUpdated;
-
-    public ServerName? Name
-    {
-        get => _name;
-        set => SetField(ref _name, value);
-    }
-
-    public NetworkPath? NetworkPath
-    {
-        get => _networkPath;
-        set => SetField(ref _networkPath, value);
-    }
-
-    public string? PoolName
-    {
-        get => _poolName;
-        set => SetField(ref _poolName, value);
-    }
-
-    public string? SiteName
-    {
-        get => _siteName;
-        set => SetField(ref _siteName, value);
-    }
-
-    public string? ServiceName
-    {
-        get => _serviceName;
-        set => SetField(ref _serviceName, value);
-    }
 
     public string PoolStatus
     {
@@ -97,34 +62,5 @@ public class ServerInfo : INotifyPropertyChanged
     {
         get => _lastUpdated;
         set => SetField(ref _lastUpdated, value);
-    }
-
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
-    {
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-    }
-
-    private bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
-    {
-        if (EqualityComparer<T>.Default.Equals(field, value))
-            return false;
-        field = value;
-        OnPropertyChanged(propertyName);
-        return true;
-    }
-
-    public override string ToString() => Name?.Value ?? "Unnamed Server";
-
-    public override bool Equals(object? obj)
-    {
-        return obj is ServerInfo other && 
-               string.Equals(Name?.Value, other.Name?.Value, StringComparison.OrdinalIgnoreCase);
-    }
-
-    public override int GetHashCode()
-    {
-        return Name?.Value.GetHashCode(StringComparison.OrdinalIgnoreCase) ?? 0;
     }
 }
