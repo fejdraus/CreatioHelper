@@ -8,7 +8,7 @@ public abstract class AggregateRoot : Entity
     protected AggregateRoot() : base() { }
 
     /// <summary>
-    /// Применяет доменное событие к агрегату
+    /// Applies a domain event to the aggregate.
     /// </summary>
     protected void Apply(DomainEvent domainEvent)
     {
@@ -16,12 +16,12 @@ public abstract class AggregateRoot : Entity
     }
 
     /// <summary>
-    /// Проверяет инварианты агрегата
+    /// Validates aggregate invariants.
     /// </summary>
     public abstract bool IsValid();
 
     /// <summary>
-    /// Получает все нарушения бизнес-правил
+    /// Returns all broken business rules.
     /// </summary>
     public abstract IEnumerable<string> GetBrokenRules();
 }

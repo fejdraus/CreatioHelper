@@ -6,7 +6,7 @@ using CreatioHelper.Application.Interfaces;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Фоновый сервис для сбора системных метрик производительности
+/// Background service that collects system performance metrics.
 /// </summary>
 public class SystemMetricsCollector : BackgroundService
 {
@@ -25,11 +25,11 @@ public class SystemMetricsCollector : BackgroundService
         {
             if (OperatingSystem.IsWindows())
             {
-                // Инициализация счетчиков производительности для Windows
+                // Initialize performance counters for Windows
                 _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
                 _memoryCounter = new PerformanceCounter("Memory", "Available MBytes");
                 
-                // Первый вызов NextValue() для инициализации счетчиков
+                // First NextValue() call initializes counters
                 _cpuCounter.NextValue();
                 _memoryCounter.NextValue();
                 
@@ -38,19 +38,19 @@ public class SystemMetricsCollector : BackgroundService
             }
             else if (OperatingSystem.IsLinux())
             {
-                // Linux поддерживается через /proc файловую систему
+                // Linux is supported via the /proc filesystem
                 _isInitialized = true;
                 _logger.LogInformation("SystemMetricsCollector initialized successfully for Linux");
             }
             else if (OperatingSystem.IsMacOS())
             {
-                // macOS поддерживается (базовая реализация)
+                // Basic macOS implementation
                 _isInitialized = true;
                 _logger.LogInformation("SystemMetricsCollector initialized successfully for macOS");
             }
             else
             {
-                // Даже на неподдерживаемых платформах собираем базовые метрики
+                // Collect basic metrics even on unsupported platforms
                 _isInitialized = true;
                 _logger.LogInformation("SystemMetricsCollector initialized with basic cross-platform metrics");
             }
@@ -85,7 +85,7 @@ public class SystemMetricsCollector : BackgroundService
             }
             catch (OperationCanceledException)
             {
-                // Нормальная остановка сервиса
+                // Graceful service stop
                 break;
             }
             catch (Exception ex)
@@ -102,10 +102,10 @@ public class SystemMetricsCollector : BackgroundService
     {
         try
         {
-            // Кроссплатформенные метрики
+            // Cross-platform metrics
             CollectCrossPlatformMetrics();
             
-            // Windows-специфичные метрики (если доступны)
+            // Windows-specific metrics (if available)
             if (OperatingSystem.IsWindows() && _isInitialized && _cpuCounter != null && _memoryCounter != null)
             {
                 CollectWindowsSpecificMetrics();
@@ -118,26 +118,26 @@ public class SystemMetricsCollector : BackgroundService
     }
 
     /// <summary>
-    /// Сбор кроссплатформенных метрик, доступных на всех ОС
+    /// Collects cross-platform metrics available on all operating systems.
     /// </summary>
     private void CollectCrossPlatformMetrics()
     {
-        // Process-specific metrics (работают на всех платформах)
+        // Process-specific metrics
         var currentProcess = Process.GetCurrentProcess();
         _metrics.SetGauge("process_memory_usage_mb", currentProcess.WorkingSet64 / (1024.0 * 1024.0));
         _metrics.SetGauge("process_thread_count", currentProcess.Threads.Count);
         
-        // GC метрики (работают на всех платформах)
+        // GC metrics
         _metrics.SetGauge("gc_total_memory_mb", GC.GetTotalMemory(false) / (1024.0 * 1024.0));
         _metrics.SetGauge("gc_generation_0_collections", GC.CollectionCount(0));
         _metrics.SetGauge("gc_generation_1_collections", GC.CollectionCount(1));
         _metrics.SetGauge("gc_generation_2_collections", GC.CollectionCount(2));
         
-        // Environment метрики
+        // Environment metrics
         _metrics.SetGauge("environment_processor_count", Environment.ProcessorCount);
         _metrics.SetGauge("environment_tick_count", Environment.TickCount64);
         
-        // Платформо-специфичные метрики
+        // Platform specific metrics
         if (OperatingSystem.IsLinux())
         {
             CollectLinuxMetrics();
@@ -151,18 +151,18 @@ public class SystemMetricsCollector : BackgroundService
     }
 
     /// <summary>
-    /// Сбор Windows-специфичных метрик через PerformanceCounter
+    /// Collects Windows-specific metrics using PerformanceCounter.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private void CollectWindowsSpecificMetrics()
     {
         try
         {
-            // CPU usage (только Windows)
+            // CPU usage (Windows only)
             var cpuUsage = _cpuCounter!.NextValue();
             _metrics.SetGauge("system_cpu_usage", cpuUsage);
 
-            // Memory usage (только Windows)
+            // Memory usage (Windows only)
             var availableMemoryMb = _memoryCounter!.NextValue();
             var totalMemoryMb = GC.GetTotalMemory(false) / (1024 * 1024);
             var memoryUsagePercent = availableMemoryMb > 0 ? 
@@ -180,14 +180,14 @@ public class SystemMetricsCollector : BackgroundService
     }
 
     /// <summary>
-    /// Сбор Linux-специфичных метрик через /proc файловую систему
+    /// Collects Linux-specific metrics via the /proc filesystem.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("linux")]
     private void CollectLinuxMetrics()
     {
         try
         {
-            // CPU метрики через /proc/stat
+            // CPU metrics via /proc/stat
             if (File.Exists("/proc/stat"))
             {
                 var cpuUsage = GetLinuxCpuUsage();
@@ -197,7 +197,7 @@ public class SystemMetricsCollector : BackgroundService
                 }
             }
 
-            // Memory метрики через /proc/meminfo
+            // Memory metrics via /proc/meminfo
             if (File.Exists("/proc/meminfo"))
             {
                 var memoryInfo = GetLinuxMemoryInfo();
@@ -209,7 +209,7 @@ public class SystemMetricsCollector : BackgroundService
                 }
             }
 
-            // Load average через /proc/loadavg
+            // Load average via /proc/loadavg
             if (File.Exists("/proc/loadavg"))
             {
                 var loadAvg = GetLinuxLoadAverage();
@@ -228,15 +228,15 @@ public class SystemMetricsCollector : BackgroundService
     }
 
     /// <summary>
-    /// Сбор macOS-специфичных метрик
+    /// Collects macOS-specific metrics.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("macos")]
     private void CollectMacOSMetrics()
     {
         try
         {
-            // Для macOS можно использовать команды system_profiler, top, vm_stat
-            // Здесь базовая реализация, которую можно расширить
+            // For macOS one could use system_profiler, top or vm_stat.
+            // This is a basic implementation that can be extended.
             _logger.LogDebug("macOS-specific metrics collection - basic implementation");
         }
         catch (Exception ex)

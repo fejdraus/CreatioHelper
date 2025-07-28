@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 namespace CreatioHelper.Application.Interfaces;
 
 /// <summary>
-/// Результат проверки здоровья компонента
+/// Result of a component health check.
 /// </summary>
 public class HealthCheckResult
 {
@@ -23,7 +23,7 @@ public class HealthCheckResult
 }
 
 /// <summary>
-/// Контекст для выполнения проверки здоровья
+/// Context information for a health check.
 /// </summary>
 public class HealthCheckContext
 {
@@ -32,7 +32,7 @@ public class HealthCheckContext
 }
 
 /// <summary>
-/// Интерфейс для проверки здоровья компонентов
+/// Interface for performing component health checks.
 /// </summary>
 public interface IHealthCheck
 {
@@ -40,7 +40,7 @@ public interface IHealthCheck
 }
 
 /// <summary>
-/// Сервис для выполнения всех health checks
+/// Service that executes all registered health checks.
 /// </summary>
 public interface IHealthCheckService
 {
