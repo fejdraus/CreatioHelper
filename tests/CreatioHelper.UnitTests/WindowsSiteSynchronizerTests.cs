@@ -32,7 +32,7 @@ public class WindowsSiteSynchronizerTests
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
         
-        // Настройка моков для новых методов с именами вместо ServerId
+        // Configure mocks for new methods using names instead of ServerId
         remote.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Failure("Stop failed"));
         remote.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -45,7 +45,7 @@ public class WindowsSiteSynchronizerTests
         var copy = new Mock<IFileCopyHelper>();
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик - убираем Task<Task>, используем ServerInfo
+        // Configure metrics mock - remove Task<Task>, use ServerInfo
         metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
         
@@ -73,7 +73,7 @@ public class WindowsSiteSynchronizerTests
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
         
-        // Настройка моков для новых методов с именами
+        // Configure mocks for new methods by name
         remote.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
         remote.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
@@ -93,14 +93,14 @@ public class WindowsSiteSynchronizerTests
 
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик - явно указываем все параметры без опциональных
+        // Configure metrics mock - explicitly specify all parameters without optionals
         metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
 
         metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<object>> operation, Dictionary<string, string> _) => operation());
 
-        // Также добавляем настройку для версии без tags (когда tags = null)
+        // Also configure version without tags (when tags = null)
         metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), null))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
 
@@ -109,11 +109,11 @@ public class WindowsSiteSynchronizerTests
 
         var statusService = new Mock<IServerStatusService>();
         
-        // Настройка мока для обновления статусов - правильно обновляем статусы серверов
+        // Configure status update mock - correctly update server statuses
         statusService.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
                     .Callback<ServerInfo[], CancellationToken>((servers, _) =>
                     {
-                        // Устанавливаем статусы как "Stopped" для всех серверов
+                        // Set statuses to "Stopped" for all servers
                         foreach (var server in servers)
                         {
                             server.PoolStatus = "Stopped";
@@ -125,7 +125,7 @@ public class WindowsSiteSynchronizerTests
         statusService.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
                     .Callback<ServerInfo, CancellationToken>((server, _) => 
                     {
-                        // Устанавливаем статусы как "Started" для проверки после запуска
+                        // Set statuses to "Started" for post-start check
                         server.PoolStatus = "Started";
                         server.SiteStatus = "Started";
                     })
@@ -163,7 +163,7 @@ public class WindowsSiteSynchronizerTests
         var copy = new Mock<IFileCopyHelper>();
         var metrics = new Mock<IMetricsService>();
         
-        // Настройка мока для метрик - исправляем тип
+        // Configure metrics mock - fix the type
         metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
               .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
         

@@ -74,11 +74,11 @@ public partial class OperationsService : ObservableObject, IOperationsService
             return;
         }
 
-        // Создаем CancellationTokenSource ДО Task.Run
+        // Create CancellationTokenSource BEFORE Task.Run
         _cancellationTokenSource = new CancellationTokenSource();
         var cancellationToken = _cancellationTokenSource.Token;
 
-        // Запускаем операцию в фоновом потоке
+        // Launch the operation on a background thread
         await Task.Run(() =>
         {
             string packagesPath = viewModel.PackagesPath ?? "";
@@ -124,7 +124,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     };
                     var manager = _remoteIisManager;
 
-                    // Измеряем время выполнения IIS операций
+                    // Measure IIS operation time
                     _metricsService.Measure("iis_operations", () =>
                     {
                         PerformIisOperations(manager, localServerInfo, nestedPath, viewModel, cancellationToken);
@@ -136,7 +136,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         _output.WriteLine("Deleting packages BEFORE installation...");
                         
-                        // Измеряем время удаления пакетов BEFORE
+                        // Measure package deletion time BEFORE
                         _metricsService.Measure("packages_delete_before", () =>
                         {
                             ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
@@ -150,7 +150,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         _output.WriteLine("Start installation packages...");
                         
-                        // Измеряем время установки пакетов
+                        // Measure package installation time
                         _metricsService.Measure("package_install", () =>
                         {
                             ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
@@ -164,7 +164,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         _output.WriteLine("Deleting packages AFTER installation...");
                         
-                        // Измеряем время удаления пакетов AFTER
+                        // Measure package deletion time AFTER
                         _metricsService.Measure("packages_delete_after", () =>
                         {
                             ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
@@ -179,7 +179,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         IsStopButtonEnabled = false;
                         if (!cancellationToken.IsCancellationRequested)
                         {
-                            // Измеряем время синхронизации серверов
+                            // Measure server synchronization time
                             var syncStatus = _metricsService.Measure("server_sync", () =>
                             {
                                 return _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken).Result;
@@ -206,7 +206,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         string.IsNullOrWhiteSpace(packagesAfter) &&
                         !viewModel.IsServerPanelVisible)
                     {
-                        // Измеряем время операций генерации схем
+                        // Measure schema generation operations time
                         _metricsService.Measure("schema_operations", () =>
                         {
                             ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
@@ -224,7 +224,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     IsStopButtonEnabled = false;
 
-                    // Измеряем время операций запуска
+                    // Measure startup operation time
                     _metricsService.Measure("startup_operations", () =>
                     {
                         PerformStartupOperations(manager, localServerInfo, nestedPath, cancellationToken);

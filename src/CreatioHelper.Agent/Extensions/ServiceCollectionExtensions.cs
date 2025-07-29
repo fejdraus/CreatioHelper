@@ -31,15 +31,15 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
-    /// Добавляет сервисы системы метрик и мониторинга производительности
+    /// Adds metrics and performance monitoring services
     /// </summary>
     public static IServiceCollection AddPerformanceServices(this IServiceCollection services)
     {
-        // Основные сервисы метрик
+        // Core metric services
         services.AddSingleton<IMetricsService, MetricsService>();
         services.AddSingleton<IConnectionPoolManager, ConnectionPoolManager>();
 
-        // Сервисы мониторинга - используем полные имена типов для избежания проблем с поиском
+        // Monitoring services - use full type names to avoid resolution issues
         if (OperatingSystem.IsWindows())
         {
             services.AddHostedService<SystemMetricsCollector>();
