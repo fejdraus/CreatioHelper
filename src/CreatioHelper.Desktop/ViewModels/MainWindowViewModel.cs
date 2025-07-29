@@ -257,14 +257,13 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
-            
             var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' stopped successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
-                    await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' status {serverInfo.PoolStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
             else
@@ -300,10 +299,10 @@ public partial class MainWindowViewModel : ObservableObject
             var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' started successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
-                    await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    _output.WriteLine($"[SUCCESS] Application pool '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
             else
@@ -339,10 +338,10 @@ public partial class MainWindowViewModel : ObservableObject
             var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' stopped successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
-                    await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
             else
@@ -378,10 +377,10 @@ public partial class MainWindowViewModel : ObservableObject
             var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
-                _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' started successfully on server '{server.Name ?? "Unknown"}'.");
                 if (OperatingSystem.IsWindows())
                 {
-                    await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
             else

@@ -55,8 +55,6 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"App pool {poolName} did not reach stopped state");
                         }
                     }
-
-                    _output.WriteLine($"[INFO] App pool {poolName} stopped successfully");
                     return Result.Success();
                 }
                 catch (OperationCanceledException)
@@ -106,8 +104,6 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"Website {siteName} did not reach stopped state");
                         }
                     }
-
-                    _output.WriteLine($"[INFO] Website {siteName} stopped successfully");
                     return Result.Success();
                 }
                 catch (OperationCanceledException)
@@ -157,8 +153,6 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"App pool {poolName} did not reach started state");
                         }
                     }
-
-                    _output.WriteLine($"[INFO] App pool {poolName} started successfully");
                     return Result.Success();
                 }
                 catch (OperationCanceledException)
@@ -208,8 +202,6 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"Website {siteName} did not reach started state");
                         }
                     }
-
-                    _output.WriteLine($"[INFO] Website {siteName} started successfully");
                     return Result.Success();
                 }
                 catch (OperationCanceledException)
@@ -436,6 +428,11 @@ namespace CreatioHelper.Infrastructure.Services
 
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
+                    if (errorText.Contains("ObjectNotFound") || errorText.Contains("PathNotFound"))
+                    {
+                        _output.WriteLine($"[PS-ERROR] App pool not found.");
+                        return null;
+                    }
                     _output.WriteLine($"[PS-ERROR] State check failed: {errorText}");
                     return null;
                 }
@@ -443,7 +440,7 @@ namespace CreatioHelper.Infrastructure.Services
                 var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
-                    _output.WriteLine($"[PS-ERROR] Unexpected PowerShell output format");
+                    _output.WriteLine($"[PS-ERROR] App site not found.");
                     return null;
                 }
 
