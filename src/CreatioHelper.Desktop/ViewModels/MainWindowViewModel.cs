@@ -142,10 +142,6 @@ public partial class MainWindowViewModel : ObservableObject
     private string? _serviceName;
 
     [ObservableProperty]
-    private string _redisServiceName = "redis";
-
-
-    [ObservableProperty]
     private string? _packagesPath;
 
     [ObservableProperty]
@@ -431,14 +427,6 @@ public partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsIisMode));
         SaveServerSettings();
-        if (value && !string.IsNullOrWhiteSpace(SitePath))
-        {
-            RedisServiceName = ReadRedisServiceName(Path.Combine(SitePath, "ConnectionStrings.config"));
-        }
-        else if (!value && SelectedIisSite != null)
-        {
-            RedisServiceName = SelectedIisSite.RedisServiceName;
-        }
     }
 
     partial void OnIsServerPanelVisibleChanged(bool value)
@@ -450,19 +438,9 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
-    partial void OnSitePathChanged(string? value)
-    {
-        SaveServerSettings();
-        if (!string.IsNullOrWhiteSpace(value))
-            RedisServiceName = ReadRedisServiceName(Path.Combine(value, "ConnectionStrings.config"));
-    }
+    partial void OnSitePathChanged(string? value) => SaveServerSettings();
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
-    partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
-    {
-        SaveServerSettings();
-        if (value != null)
-            RedisServiceName = value.RedisServiceName;
-    }
+    partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
     
     private void LoadIisSites(AppSettings? settings)
     {
@@ -495,14 +473,6 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         IsFolderMode = !settings.IsIisMode;
-        if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath))
-        {
-            RedisServiceName = ReadRedisServiceName(Path.Combine(SitePath, "ConnectionStrings.config"));
-        }
-        else if (IsIisMode && SelectedIisSite != null)
-        {
-            RedisServiceName = SelectedIisSite.RedisServiceName;
-        }
         IsServerPanelVisible = settings.IsServerPanelVisible;
 
         ServerList.Clear();
@@ -659,10 +629,30 @@ public partial class MainWindowViewModel : ObservableObject
         return "redis";
     }
 
+    private string? GetRedisServiceName()
+    {
+        string? configPath = null;
+
+        if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath))
+            configPath = Path.Combine(SitePath, "ConnectionStrings.config");
+        else if (IsIisMode && !string.IsNullOrWhiteSpace(SelectedIisSite?.Path))
+            configPath = Path.Combine(SelectedIisSite!.Path, "ConnectionStrings.config");
+
+        if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
+            return null;
+
+        return ReadRedisServiceName(configPath);
+    }
+
     [RelayCommand]
     private async Task StartRedis()
     {
-        var service = RedisServiceName;
+        var service = GetRedisServiceName();
+        if (service == null)
+        {
+            _output.WriteLine("[ERROR] Could not locate ConnectionStrings.config");
+            return;
+        }
         try
         {
             var result = await _systemServiceManager.StartServiceAsync(service);
@@ -684,7 +674,12 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task StopRedis()
     {
-        var service = RedisServiceName;
+        var service = GetRedisServiceName();
+        if (service == null)
+        {
+            _output.WriteLine("[ERROR] Could not locate ConnectionStrings.config");
+            return;
+        }
         try
         {
             var result = await _systemServiceManager.StopServiceAsync(service);

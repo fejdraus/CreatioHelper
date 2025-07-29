@@ -83,15 +83,13 @@ public class IisService
                         continue;
 
                     var assemblyName = AppVersionHelper.GetAppVersion(sitePath);
-                    var redisService = ReadRedisServiceName(connectionStrings);
                     results.Add(new IisSiteInfo
                     {
                         Id = site.Id,
                         Name = site.Name,
                         Path = sitePath,
                         PoolName = poolName,
-                        Version = assemblyName,
-                        RedisServiceName = redisService
+                        Version = assemblyName
                     });
                 }
 
@@ -120,30 +118,4 @@ public class IisService
         });
     }
 
-    private static string ReadRedisServiceName(string configPath)
-    {
-        try
-        {
-            var xml = new System.Xml.XmlDocument();
-            xml.Load(configPath);
-            var node = xml.SelectSingleNode("/connectionStrings/add[@name='redis']") as System.Xml.XmlElement;
-            if (node != null)
-            {
-                var conn = node.GetAttribute("connectionString");
-                var parts = conn.Split(';', StringSplitOptions.RemoveEmptyEntries);
-                foreach (var part in parts)
-                {
-                    var kv = part.Split('=', 2);
-                    if (kv.Length == 2 && kv[0].Trim().Equals("ServiceName", StringComparison.OrdinalIgnoreCase))
-                        return kv[1].Trim();
-                }
-            }
-        }
-        catch
-        {
-            // ignore parsing errors
-        }
-
-        return "redis";
-    }
 }
