@@ -218,6 +218,11 @@ public partial class MainWindowViewModel : ObservableObject
     {
         IsServerPanelVisible = !IsServerPanelVisible;
     }
+
+    public void ClearLogCommand()
+    {
+        _output.Clear();
+    }
     
     [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task RefreshServerStatus(ServerInfo server)
@@ -716,16 +721,6 @@ public partial class MainWindowViewModel : ObservableObject
         };
     }
 
-    private string? GetRedisServiceName()
-    {
-        if (!string.IsNullOrWhiteSpace(RedisServiceName))
-            return RedisServiceName;
-
-        LoadRedisConnectionInfo();
-        return RedisServiceName;
-    }
-
-
     [RelayCommand]
     private void ClearRedis()
     {
@@ -739,18 +734,15 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private async Task CheckRedisStatus()
+    private void CheckRedisStatus()
     {
-        var service = GetRedisServiceName();
-        if (service == null)
+        var manager = CreateRedisManager();
+        if (manager == null)
         {
-            _output.WriteLine("[ERROR] Could not locate ConnectionStrings.config");
-            RedisServiceStatus = "unknown";
+            _output.WriteLine("[ERROR] Could not initialize Redis manager.");
             return;
         }
-        var state = await _systemServiceManager.GetServiceStateAsync(service);
-        RedisServiceStatus = state ?? "unknown";
-        _output.WriteLine($"[INFO] Redis service '{service}' status: {RedisServiceStatus}");
+        manager.CheckStatus();
     }
 
     private IRedisManager? CreateRedisManager()
