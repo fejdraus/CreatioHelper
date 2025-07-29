@@ -95,13 +95,13 @@
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
                          Watermark="Package names to delete before installation (one per line)"
-                         AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
                          Watermark="Package names to delete after installation (one per line)"
-                         AcceptsReturn="True" TextWrapping="Wrap" Height="60" />
+                         AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
             <!-- Row 5: Start/Stop buttons and server sync -->
