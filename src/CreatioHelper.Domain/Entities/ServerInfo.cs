@@ -10,9 +10,6 @@ public class ServerInfo : DtoServerInfo
     private string _siteStatus = "";
     private string _serviceStatus = "";
     private bool _isStatusLoading;
-    private Version? _appVersion = new();
-    private bool _isOnline;
-    private DateTime? _lastUpdated;
 
     public string PoolStatus
     {
@@ -44,23 +41,5 @@ public class ServerInfo : DtoServerInfo
                 OnPropertyChanged(nameof(ServiceStatus));
             }
         }
-    }
-
-    public Version? AppVersion
-    {
-        get => _appVersion;
-        set => SetField(ref _appVersion, value);
-    }
-
-    public bool IsOnline
-    {
-        get => _isOnline;
-        set => SetField(ref _isOnline, value);
-    }
-
-    public DateTime? LastUpdated
-    {
-        get => _lastUpdated;
-        set => SetField(ref _lastUpdated, value);
     }
 }

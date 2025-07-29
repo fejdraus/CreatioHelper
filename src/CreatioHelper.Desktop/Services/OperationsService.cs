@@ -119,8 +119,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         Name = new ServerName(Environment.MachineName),
                         PoolName = poolName ?? string.Empty,
                         SiteName = siteName ?? string.Empty,
-                        ServiceName = viewModel.ServiceName ?? string.Empty,
-                        AppVersion = appVersion
+                        ServiceName = viewModel.ServiceName ?? string.Empty
                     };
                     var manager = _remoteIisManager;
 
@@ -268,7 +267,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             {
                 if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
                 {
-                    var stopPoolResult = manager.StopAppPoolAsync(localServerInfo.PoolName!, cancellationToken).Result;
+                    var stopPoolResult = manager.StopAppPoolAsync(localServerInfo.PoolName, cancellationToken).Result;
                     if (stopPoolResult.IsSuccess)
                     {
                         _output.WriteLine("[INFO] Main Pool stopped.");

@@ -44,9 +44,6 @@ public class ServerStatusService : IServerStatusService
                     _logger.LogDebug("Retrieved site status for {SiteName}: {Status}", server.SiteName, siteStatus);
                 }
 
-                server.LastUpdated = DateTime.UtcNow;
-                server.IsOnline = DetermineServerOnlineStatus(server);
-                
                 _metrics.IncrementCounter("server_status_success", new() { 
                     ["server_name"] = server.Name ?? "unknown" 
                 });
@@ -58,7 +55,6 @@ public class ServerStatusService : IServerStatusService
                 _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name);
                 server.PoolStatus = "Error";
                 server.SiteStatus = "Error";
-                server.IsOnline = false;
                 
                 _metrics.IncrementCounter("server_status_error", new() { 
                     ["server_name"] = server.Name ?? "unknown",
@@ -140,13 +136,5 @@ public class ServerStatusService : IServerStatusService
             _logger.LogWarning(ex, "Failed to get website status for {SiteName}", siteName);
             return "Error";
         }
-    }
-
-    private static bool DetermineServerOnlineStatus(ServerInfo server)
-    {
-        return server.PoolStatus != "Error" && 
-               server.SiteStatus != "Error" && 
-               server.PoolStatus != "Unknown" && 
-               server.SiteStatus != "Unknown";
     }
 }
