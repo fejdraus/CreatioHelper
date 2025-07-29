@@ -35,9 +35,8 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly ISystemServiceManager _systemServiceManager;
     private readonly IRedisManagerFactory _redisManagerFactory;
-    private RedisInfo? _redisInfo;
     private Version _sitePathWithVersion = new();
-    private IOutputWriter _output;
+    private readonly IOutputWriter _output;
     
     public MainWindowViewModel(
         IOutputWriter output,

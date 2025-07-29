@@ -424,7 +424,7 @@ public class WorkspacePreparer : IWorkspacePreparer
             _output.WriteLine($"Path to log file: {logPath}");
             string webAppPath = GetWebAppPath(sitePath);
             string configPath = GetConfigurationPath(sitePath);
-            string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{packageList}\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+            string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{string.Join(",", packageList.Split(new[] {'\n', '\r'}, StringSplitOptions.RemoveEmptyEntries))}\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
             _output.WriteLine($"Deleting packages: {packageList}");
             return RunWorkspaceConsole(sitePath, arguments, consoleDir);
         }
