@@ -233,21 +233,37 @@
                                         <Run Text="{Binding NetworkPath}" />
                                     </TextBlock>
                                     
-                                    <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="310">
-                                        <Run Text="Pool name: " />
-                                        <Run Text="{Binding PoolName}" />
-                                        <Run Text=" [" />
-                                        <Run Text="{Binding PoolStatus}" Foreground="{Binding PoolStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" />
-                                        <Run Text="]" />
-                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" MaxWidth="310">
+                                        <TextBlock Text="Pool name: " FontSize="11" Width="60" Foreground="Gray" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding PoolName}"
+                                                   FontSize="11"
+                                                   Foreground="Gray"
+                                                   TextTrimming="CharacterEllipsis"
+                                                   MaxWidth="196"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text=" [" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding PoolStatus}"
+                                                   FontSize="11"
+                                                   Foreground="{Binding PoolStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                    </StackPanel>
                                     
-                                    <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="310">
-                                        <Run Text="Site name: " />
-                                        <Run Text="{Binding SiteName}" />
-                                        <Run Text=" [" />
-                                        <Run Text="{Binding SiteStatus}" Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" />
-                                        <Run Text="]" />
-                                    </TextBlock>
+                                    <StackPanel Orientation="Horizontal" MaxWidth="310">
+                                        <TextBlock Text="Site name: " FontSize="11" Width="60" Foreground="Gray" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SiteName}" 
+                                                   FontSize="11" 
+                                                   Foreground="Gray" 
+                                                   TextTrimming="CharacterEllipsis" 
+                                                   MaxWidth="196"
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text=" [" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SiteStatus}" 
+                                                   FontSize="11" 
+                                                   Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" 
+                                                   VerticalAlignment="Center"/>
+                                        <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                    </StackPanel>
 
                                     <!-- Buttons to control pool and site -->
                                     <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,5,0,0">
