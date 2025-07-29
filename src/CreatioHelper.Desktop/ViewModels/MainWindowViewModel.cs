@@ -19,6 +19,7 @@ using CreatioHelper.Application.Settings;
 using System.Diagnostics;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
+using System.Xml;
 
 namespace CreatioHelper.ViewModels;
 
@@ -139,6 +140,10 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _serviceName;
+
+    [ObservableProperty]
+    private string _redisServiceName = "redis";
+
 
     [ObservableProperty]
     private string? _packagesPath;
@@ -426,6 +431,14 @@ public partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsIisMode));
         SaveServerSettings();
+        if (value && !string.IsNullOrWhiteSpace(SitePath))
+        {
+            RedisServiceName = ReadRedisServiceName(Path.Combine(SitePath, "ConnectionStrings.config"));
+        }
+        else if (!value && SelectedIisSite != null)
+        {
+            RedisServiceName = SelectedIisSite.RedisServiceName;
+        }
     }
 
     partial void OnIsServerPanelVisibleChanged(bool value)
@@ -437,9 +450,19 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
-    partial void OnSitePathChanged(string? value) => SaveServerSettings();
+    partial void OnSitePathChanged(string? value)
+    {
+        SaveServerSettings();
+        if (!string.IsNullOrWhiteSpace(value))
+            RedisServiceName = ReadRedisServiceName(Path.Combine(value, "ConnectionStrings.config"));
+    }
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
-    partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
+    partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
+    {
+        SaveServerSettings();
+        if (value != null)
+            RedisServiceName = value.RedisServiceName;
+    }
     
     private void LoadIisSites(AppSettings? settings)
     {
@@ -472,6 +495,14 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         IsFolderMode = !settings.IsIisMode;
+        if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath))
+        {
+            RedisServiceName = ReadRedisServiceName(Path.Combine(SitePath, "ConnectionStrings.config"));
+        }
+        else if (IsIisMode && SelectedIisSite != null)
+        {
+            RedisServiceName = SelectedIisSite.RedisServiceName;
+        }
         IsServerPanelVisible = settings.IsServerPanelVisible;
 
         ServerList.Clear();
@@ -599,5 +630,83 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _output.WriteLine($"[ERROR] Failed to stop service '{ServiceName}': {ex.Message}");
         }
+    }
+
+    private static string ReadRedisServiceName(string configPath)
+    {
+        try
+        {
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(configPath);
+            var node = xmlDoc.SelectSingleNode("/connectionStrings/add[@name='redis']") as XmlElement;
+            if (node != null)
+            {
+                var conn = node.GetAttribute("connectionString");
+                var parts = conn.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var kv = part.Split('=', 2);
+                    if (kv.Length == 2 && kv[0].Trim().Equals("ServiceName", StringComparison.OrdinalIgnoreCase))
+                        return kv[1].Trim();
+                }
+            }
+        }
+        catch
+        {
+            // ignore parsing errors
+        }
+
+        return "redis";
+    }
+
+    [RelayCommand]
+    private async Task StartRedis()
+    {
+        var service = RedisServiceName;
+        try
+        {
+            var result = await _systemServiceManager.StartServiceAsync(service);
+            if (result)
+            {
+                _output.WriteLine($"[SUCCESS] Redis service '{service}' started successfully.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to start Redis service '{service}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to start Redis service '{service}': {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task StopRedis()
+    {
+        var service = RedisServiceName;
+        try
+        {
+            var result = await _systemServiceManager.StopServiceAsync(service);
+            if (result)
+            {
+                _output.WriteLine($"[SUCCESS] Redis service '{service}' stopped successfully.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop Redis service '{service}'.");
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to stop Redis service '{service}': {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    private async Task RestartRedis()
+    {
+        await StopRedis();
+        await StartRedis();
     }
 }
