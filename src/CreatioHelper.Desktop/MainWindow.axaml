@@ -94,13 +94,13 @@
                 <TextBox Grid.Row="1" Grid.Column="0"
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
-                         Watermark="Package names to delete before installation (one per line)"
+                         Watermark="Package names to delete before installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
-                         Watermark="Package names to delete after installation (one per line)"
+                         Watermark="Package names to delete after installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
