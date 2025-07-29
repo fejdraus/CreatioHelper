@@ -19,7 +19,6 @@ using CreatioHelper.Application.Settings;
 using System.Diagnostics;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
-using System.Xml;
 
 namespace CreatioHelper.ViewModels;
 
