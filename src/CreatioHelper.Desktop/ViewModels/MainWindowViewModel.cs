@@ -208,7 +208,7 @@ public partial class MainWindowViewModel : ObservableObject
         IsServerPanelVisible = !IsServerPanelVisible;
     }
     
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task RefreshServerStatus(ServerInfo server)
     {
         if (!OperatingSystem.IsWindows())
