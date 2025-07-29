@@ -16,6 +16,7 @@ public class AppSettings
 
     public string? PackagesToDeleteAfter { get; set; }
 
+
     public ObservableCollection<ServerInfo> ServerList { get; set; } = new();
 
     public bool IsIisMode { get; set; }

@@ -28,6 +28,11 @@
                     <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource"
                                  Margin="15,0,0,0" />
                 </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,5,0,0" >
+                    <Button Content="Start Redis" Command="{Binding StartRedisCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Stop Redis" Command="{Binding StopRedisCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Restart Redis" Command="{Binding RestartRedisCommand}" Height="28"/>
+                </StackPanel>
             </StackPanel>
 
             <!-- Row 1: Folder Mode -->

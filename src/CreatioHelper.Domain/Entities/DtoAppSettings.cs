@@ -16,6 +16,7 @@ public class DtoAppSettings
 
     public string? PackagesToDeleteAfter { get; set; }
 
+
     public ObservableCollection<DtoServerInfo> ServerList { get; set; } = new();
 
     public bool IsIisMode { get; set; }
