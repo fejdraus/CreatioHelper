@@ -106,10 +106,10 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 
 ---
 
-## 🇺🇦 Support Ukraine Armed Forces (ЗСУ)
+## 🇺🇦 Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
-All funds raised via the links below will be **fully transferred to support the Ukrainian Armed Forces (Збройні Сили України, ЗСУ)** and defenders on the front line.
+All funds raised via the links below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** and defenders on the front line.
 
 [![Support on Patreon](https://img.shields.io/badge/Support%20on-Patreon-orange)](https://www.patreon.com/yourpatreonlink)
 [![Support on Buy Me a Coffee](https://img.shields.io/badge/Support%20via-Buy%20Me%20a%20Coffee-yellow)](https://www.buymeacoffee.com/yourcoffeelink)
@@ -117,4 +117,4 @@ All funds raised via the links below will be **fully transferred to support the 
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
-**Слава Україні! Героям слава!** 🇺🇦
+**Glory to Ukraine! Glory to the Heroes!** 🇺🇦
