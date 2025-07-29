@@ -274,7 +274,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        _output.WriteLine($"[ERROR] Failed to stop pool: {stopPoolResult.ErrorMessage}");
+                        _output.WriteLine($"[ERROR] Failed to stop application pool: {stopPoolResult.ErrorMessage}");
                     }
                 }
 
@@ -322,7 +322,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
                     else
                     {
-                        _output.WriteLine($"[ERROR] Failed to start pool: {startPoolResult.ErrorMessage}");
+                        _output.WriteLine($"[ERROR] Failed to start application pool: {startPoolResult.ErrorMessage}");
                     }
                 }
                 if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))

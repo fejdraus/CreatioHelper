@@ -268,7 +268,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
             else
             {
-                _output.WriteLine($"[ERROR] Failed to stop pool: {result.ErrorMessage}");
+                _output.WriteLine($"[ERROR] Failed to stop application pool: {result.ErrorMessage}");
             }
         }
         catch (Exception ex)
@@ -307,7 +307,7 @@ public partial class MainWindowViewModel : ObservableObject
             }
             else
             {
-                _output.WriteLine($"[ERROR] Failed to start pool: {result.ErrorMessage}");
+                _output.WriteLine($"[ERROR] Failed to start application pool: {result.ErrorMessage}");
             }
         }
         catch (Exception ex)
