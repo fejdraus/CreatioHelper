@@ -21,7 +21,5 @@ public class IisSiteInfo
 
     public Version Version { get; set; } = new();
 
-    public string RedisServiceName { get; set; } = "redis";
-
     public override string ToString() => Name;
 }
