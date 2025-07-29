@@ -50,12 +50,17 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"Failed to stop app pool {poolName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"App pool {poolName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"Application pool {poolName}", cancellationToken))
                         {
-                            return Result.Failure($"App pool {poolName} did not reach stopped state");
+                            return Result.Failure($"Application pool {poolName} did not reach stopped state");
                         }
+                        return Result.Success();
                     }
-                    return Result.Success();
+                    if (currentState == "Stopped")
+                    {
+                        return Result.Success();
+                    }
+                    return Result.Failure(currentState ?? "Unknown application pool status");
                 }
                 catch (OperationCanceledException)
                 {
@@ -103,8 +108,13 @@ namespace CreatioHelper.Infrastructure.Services
                         {
                             return Result.Failure($"Website {siteName} did not reach stopped state");
                         }
+                        return Result.Success();
                     }
-                    return Result.Success();
+                    if (currentState == "Stopped")
+                    {
+                        return Result.Success();
+                    }
+                    return Result.Failure(currentState ?? "Unknown website status");
                 }
                 catch (OperationCanceledException)
                 {
@@ -148,12 +158,17 @@ namespace CreatioHelper.Infrastructure.Services
                             return Result.Failure($"Failed to start app pool {poolName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"App pool {poolName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"Application pool {poolName}", cancellationToken))
                         {
-                            return Result.Failure($"App pool {poolName} did not reach started state");
+                            return Result.Failure($"Application pool {poolName} did not reach started state");
                         }
+                        return Result.Success();
                     }
-                    return Result.Success();
+                    if (poolStatus == "Started")
+                    {
+                        return Result.Success();
+                    }
+                    return Result.Failure(poolStatus ?? "Unknown application pool status");
                 }
                 catch (OperationCanceledException)
                 {
@@ -201,8 +216,13 @@ namespace CreatioHelper.Infrastructure.Services
                         {
                             return Result.Failure($"Website {siteName} did not reach started state");
                         }
+                        return Result.Success();
                     }
-                    return Result.Success();
+                    if (siteStatus == "Started")
+                    {
+                        return Result.Success();
+                    }
+                    return Result.Failure(siteStatus ?? "Unknown website status");
                 }
                 catch (OperationCanceledException)
                 {
@@ -430,18 +450,15 @@ namespace CreatioHelper.Infrastructure.Services
                 {
                     if (errorText.Contains("ObjectNotFound") || errorText.Contains("PathNotFound"))
                     {
-                        _output.WriteLine($"[PS-ERROR] App pool not found.");
-                        return null;
+                        return "not found";
                     }
-                    _output.WriteLine($"[PS-ERROR] State check failed: {errorText}");
-                    return null;
+                    return $"State check failed: {errorText}";
                 }
 
                 var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
-                    _output.WriteLine($"[PS-ERROR] App site not found.");
-                    return null;
+                    return "not found";
                 }
 
                 return lines[2];
