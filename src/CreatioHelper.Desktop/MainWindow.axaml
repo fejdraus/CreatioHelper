@@ -29,9 +29,12 @@
                                  Margin="15,0,0,0" />
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,5,0,0" >
-                    <Button Content="Start Redis" Command="{Binding StartRedisCommand}" Margin="0,0,5,0" Height="28"/>
-                    <Button Content="Stop Redis" Command="{Binding StopRedisCommand}" Margin="0,0,5,0" Height="28"/>
-                    <Button Content="Restart Redis" Command="{Binding RestartRedisCommand}" Height="28"/>
+                    <TextBlock Text="{Binding RedisServiceStatus}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                    <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Start" Command="{Binding StartRedisCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Stop" Command="{Binding StopRedisCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Restart" Command="{Binding RestartRedisCommand}" Margin="0,0,5,0" Height="28"/>
+                    <Button Content="Clear" Command="{Binding ClearRedisCommand}" Height="28"/>
                 </StackPanel>
             </StackPanel>
 
