@@ -19,6 +19,7 @@ using CreatioHelper.Application.Settings;
 using System.Diagnostics;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
+using System.Xml;
 
 namespace CreatioHelper.ViewModels;
 
@@ -33,6 +34,8 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IOperationsService _operationsService;
     private readonly IDialogService _dialogService;
     private readonly ISystemServiceManager _systemServiceManager;
+    private readonly IRedisManagerFactory _redisManagerFactory;
+    private RedisInfo? _redisInfo;
     private Version _sitePathWithVersion = new();
     private IOutputWriter _output;
     
@@ -44,7 +47,8 @@ public partial class MainWindowViewModel : ObservableObject
         IServerStatusService statusService,
         IRemoteIisManager remoteIisManager,
         IisService iisService,
-        ISystemServiceManager systemServiceManager)
+        ISystemServiceManager systemServiceManager,
+        IRedisManagerFactory redisManagerFactory)
     {
         _output = output;
         _mediator = mediator;
@@ -64,6 +68,7 @@ public partial class MainWindowViewModel : ObservableObject
         _remoteIisManager = remoteIisManager;
         _iisService = iisService;
         _systemServiceManager = systemServiceManager;
+        _redisManagerFactory = redisManagerFactory;
         
         var settings = _mediator.Send(new LoadSettingsQuery()).GetAwaiter().GetResult();
         
@@ -166,6 +171,12 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isServerControlsEnabled = true;
+
+    [ObservableProperty]
+    private string _redisServiceStatus = "";
+
+    [ObservableProperty]
+    private string? _redisServiceName;
     
     public bool IsBusy => _operationsService.IsBusy;
     
@@ -206,6 +217,11 @@ public partial class MainWindowViewModel : ObservableObject
     private void ToggleServerPanel()
     {
         IsServerPanelVisible = !IsServerPanelVisible;
+    }
+
+    public void ClearLogCommand()
+    {
+        _output.Clear();
     }
     
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -437,9 +453,17 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
-    partial void OnSitePathChanged(string? value) => SaveServerSettings();
+    partial void OnSitePathChanged(string? value)
+    {
+        SaveServerSettings();
+        LoadRedisConnectionInfo();
+    }
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
-    partial void OnSelectedIisSiteChanged(IisSiteInfo? value) => SaveServerSettings();
+    partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
+    {
+        SaveServerSettings();
+        LoadRedisConnectionInfo();
+    }
     
     private void LoadIisSites(AppSettings? settings)
     {
@@ -477,6 +501,8 @@ public partial class MainWindowViewModel : ObservableObject
         ServerList.Clear();
         foreach (var server in settings.ServerList)
             ServerList.Add(server);
+
+        LoadRedisConnectionInfo();
     }
 
     private void SaveServerSettings()
@@ -599,5 +625,166 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _output.WriteLine($"[ERROR] Failed to stop service '{ServiceName}': {ex.Message}");
         }
+    }
+
+    private static (RedisInfo Info, string ServiceName) ReadRedisConnectionInfo(string configPath)
+    {
+        var info = new RedisInfo();
+        string serviceName = "redis";
+
+        try
+        {
+            var xmlDoc = new XmlDocument();
+            xmlDoc.Load(configPath);
+            var node = xmlDoc.SelectSingleNode("/connectionStrings/add[@name='redis']") as XmlElement;
+            if (node != null)
+            {
+                var conn = node.GetAttribute("connectionString");
+                info = ParseRedisConnectionString(conn);
+                var parts = conn.Split(';', StringSplitOptions.RemoveEmptyEntries);
+                foreach (var part in parts)
+                {
+                    var kv = part.Split('=', 2);
+                    if (kv.Length == 2 && kv[0].Trim().Equals("ServiceName", StringComparison.OrdinalIgnoreCase))
+                    {
+                        serviceName = kv[1].Trim();
+                        break;
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // ignore
+        }
+
+        return (info, serviceName);
+    }
+
+    private static RedisInfo ParseRedisConnectionString(string connectionString)
+    {
+        var parts = connectionString.Split(';', StringSplitOptions.RemoveEmptyEntries);
+        string host = "localhost";
+        string[] clusterHosts = [];
+        string port = "6379";
+        string db = "0";
+        string password = "";
+        bool useTls = false;
+        string certificatePath = "";
+        string certificatePassword = "";
+
+        foreach (var part in parts)
+        {
+            var keyValue = part.Split('=', 2);
+            if (keyValue.Length != 2) continue;
+
+            string key = keyValue[0].Trim().ToLowerInvariant();
+            string value = keyValue[1].Trim();
+
+            switch (key)
+            {
+                case "host":
+                    host = value;
+                    break;
+                case "clusterhosts":
+                    clusterHosts = value.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                    break;
+                case "port":
+                    port = value;
+                    break;
+                case "db":
+                    db = value;
+                    break;
+                case "password":
+                    password = value;
+                    break;
+                case "usetls":
+                    useTls = bool.TryParse(value, out var tls) && tls;
+                    break;
+                case "certificatepath":
+                    certificatePath = value;
+                    break;
+                case "certificatepassword":
+                    certificatePassword = value;
+                    break;
+            }
+        }
+
+        return new RedisInfo
+        {
+            Hosts = clusterHosts.Length > 0 ? clusterHosts : new[] { $"{host}:{port}" },
+            DataBase = db,
+            Password = password,
+            UseTls = useTls,
+            CertificatePath = certificatePath,
+            CertificatePassword = certificatePassword
+        };
+    }
+
+    [RelayCommand]
+    private void ClearRedis()
+    {
+        var manager = CreateRedisManager();
+        if (manager == null)
+        {
+            _output.WriteLine("[ERROR] Could not initialize Redis manager.");
+            return;
+        }
+        manager.Clear();
+    }
+
+    [RelayCommand]
+    private void CheckRedisStatus()
+    {
+        var manager = CreateRedisManager();
+        if (manager == null)
+        {
+            _output.WriteLine("[ERROR] Could not initialize Redis manager.");
+            return;
+        }
+        manager.CheckStatus();
+    }
+
+    private IRedisManager? CreateRedisManager()
+    {
+        string? path = null;
+        if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath))
+            path = SitePath;
+        else if (IsIisMode && !string.IsNullOrWhiteSpace(SelectedIisSite?.Path))
+            path = SelectedIisSite!.Path;
+
+        if (string.IsNullOrWhiteSpace(path) || !Directory.Exists(path))
+            return null;
+
+        try
+        {
+            return _redisManagerFactory.Create(path);
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to create Redis manager: {ex.Message}");
+            return null;
+        }
+    }
+
+    private void LoadRedisConnectionInfo()
+    {
+        string? configPath = null;
+        if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath))
+            configPath = Path.Combine(SitePath, "ConnectionStrings.config");
+        else if (IsIisMode && !string.IsNullOrWhiteSpace(SelectedIisSite?.Path))
+            configPath = Path.Combine(SelectedIisSite!.Path, "ConnectionStrings.config");
+
+        if (string.IsNullOrWhiteSpace(configPath) || !File.Exists(configPath))
+        {
+            _redisInfo = null;
+            RedisServiceName = null;
+            RedisServiceStatus = string.Empty;
+            return;
+        }
+
+        var result = ReadRedisConnectionInfo(configPath);
+        _redisInfo = result.Info;
+        RedisServiceName = result.ServiceName;
     }
 }
