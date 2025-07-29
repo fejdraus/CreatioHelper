@@ -19,7 +19,7 @@ public class FileCopyHelperTests
         var server = new ServerInfo { Name = "test" };
         var writer = new BufferingOutputWriter(_ => { }, () => { });
         
-        // Создаем mock для IMetricsService
+        // Create a mock for IMetricsService
         var mockMetrics = new Mock<IMetricsService>();
         
         IFileCopyHelper helper = new RobocopyFileCopyHelper(writer, mockMetrics.Object);

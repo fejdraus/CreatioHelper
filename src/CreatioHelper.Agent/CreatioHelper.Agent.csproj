@@ -18,7 +18,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR" Version="1.2.0" />
     <PackageReference Include="System.ServiceProcess.ServiceController" Version="9.0.7" />
     
-    <!-- Application Insights для телеметрии -->
+    <!-- Application Insights for telemetry -->
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.22.0" />
     
     <!-- Health Checks -->

@@ -21,7 +21,7 @@ public class BatchOperationService
     }
 
     /// <summary>
-    /// Выполнение пакетных операций с группировкой по серверам
+    /// Execute batch operations grouped by servers
     /// </summary>
     public async Task<BatchOperationResult[]> ExecuteBatchAsync(BatchOperation[] operations, CancellationToken cancellationToken = default)
     {
@@ -34,7 +34,7 @@ public class BatchOperationService
 
             _logger.LogInformation("Starting batch execution of {Count} operations", operations.Length);
 
-            // Группировка операций по серверам для оптимизации
+            // Group operations by server for optimization
             var serverGroups = operations
                 .GroupBy(op => op.ServerId ?? "local")
                 .ToArray();
@@ -44,7 +44,7 @@ public class BatchOperationService
 
             try
             {
-                // Параллельное выполнение по серверам с ограничением
+                // Parallel execution per server with a limit
                 var semaphore = new SemaphoreSlim(Environment.ProcessorCount);
                 var tasks = serverGroups.Select(async group =>
                 {
@@ -83,7 +83,7 @@ public class BatchOperationService
     }
 
     /// <summary>
-    /// Выполнение операций для конкретного сервера
+    /// Execute operations for a specific server
     /// </summary>
     private async Task<BatchOperationResult[]> ExecuteServerBatchAsync(string serverId, BatchOperation[] operations, CancellationToken cancellationToken)
     {
@@ -142,7 +142,7 @@ public class BatchOperationService
     }
 
     /// <summary>
-    /// Выполнение одной операции
+    /// Execute a single operation
     /// </summary>
     private async Task<OperationResult> ExecuteSingleOperationAsync(IServiceScope scope, BatchOperation operation, CancellationToken cancellationToken)
     {
@@ -200,15 +200,15 @@ public class BatchOperationService
 
     private async Task<Result> ExecuteFileSyncOperation(IServiceScope scope, BatchOperation operation, CancellationToken cancellationToken)
     {
-        // Реализация синхронизации файлов
-        await Task.Delay(100, cancellationToken); // Заглушка
+        // File synchronization implementation
+        await Task.Delay(100, cancellationToken); // Stub
         return Result.Success();
     }
 
     private async Task<Result> ExecuteHealthCheckOperation(IServiceScope scope, BatchOperation operation, CancellationToken cancellationToken)
     {
-        // Реализация проверки здоровья
-        await Task.Delay(50, cancellationToken); // Заглушка
+        // Health check implementation
+        await Task.Delay(50, cancellationToken); // Stub
         return Result.Success();
     }
 }

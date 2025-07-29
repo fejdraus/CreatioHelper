@@ -86,27 +86,27 @@ public class SettingsServiceTests : IDisposable
         if (!directory.Exists)
             return;
 
-        for (int i = 0; i < 10; i++) // Увеличиваем количество попыток
+        for (int i = 0; i < 10; i++) // Increase number of attempts
         {
             try
             {
-                // Принудительная сборка мусора
+                // Force garbage collection
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
                 GC.Collect();
 
-                // Сначала пытаемся разблокировать все файлы
+                // First try to unlock all files
                 SetDirectoryAttributesRecursive(directory, FileAttributes.Normal);
                 
-                // Пытаемся закрыть все открытые файловые дескрипторы
+                // Attempt to close all open file handles
                 ForceCloseFileHandles(directory);
                 
                 directory.Delete(true);
-                return; // Успешно удалили
+                return; // Successfully deleted
             }
             catch (IOException) when (i < 9)
             {
-                Thread.Sleep(500); // Увеличиваем время ожидания
+                Thread.Sleep(500); // Increase wait time
             }
             catch (UnauthorizedAccessException) when (i < 9)
             {
@@ -114,18 +114,18 @@ public class SettingsServiceTests : IDisposable
             }
             catch (DirectoryNotFoundException)
             {
-                return; // Директория уже удалена
+                return; // Directory already deleted
             }
         }
         
-        // Если не удалось удалить, попробуем пометить для удаления при перезагрузке
+        // If deletion fails, mark directory for deletion on reboot
         try
         {
             MarkDirectoryForDeletion(directory);
         }
         catch
         {
-            // Игнорируем ошибки, это последняя попытка
+            // Ignore errors, this is the last attempt
         }
     }
 
@@ -147,7 +147,7 @@ public class SettingsServiceTests : IDisposable
                 }
                 catch
                 {
-                    // Игнорируем ошибки для отдельных файлов
+                    // Ignore errors for individual files
                 }
             }
 
@@ -162,13 +162,13 @@ public class SettingsServiceTests : IDisposable
                 }
                 catch
                 {
-                    // Игнорируем ошибки для отдельных директорий
+                    // Ignore errors for individual directories
                 }
             }
         }
         catch
         {
-            // Игнорируем ошибки при обходе файлов
+            // Ignore errors while scanning files
         }
     }
 
@@ -176,7 +176,7 @@ public class SettingsServiceTests : IDisposable
     {
         try
         {
-            // Попытка принудительно закрыть все дескрипторы в директории
+            // Try to forcibly close all handles in the directory
             var processes = System.Diagnostics.Process.GetProcesses();
             foreach (var process in processes)
             {
@@ -186,13 +186,13 @@ public class SettingsServiceTests : IDisposable
                 }
                 catch
                 {
-                    // Игнорируем ошибки
+                    // Ignore errors
                 }
             }
         }
         catch
         {
-            // Игнорируем ошибки
+            // Ignore errors
         }
     }
 
@@ -200,13 +200,13 @@ public class SettingsServiceTests : IDisposable
     {
         try
         {
-            // Попытка переименовать директорию для удаления
+            // Try renaming the directory to delete it
             var newName = Path.Combine(Path.GetTempPath(), $"ToDelete_{Guid.NewGuid():N}");
             directory.MoveTo(newName);
         }
         catch
         {
-            // Последняя попытка - пометить файлы как временные
+            // Final attempt - mark files as temporary
             try
             {
                 foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))

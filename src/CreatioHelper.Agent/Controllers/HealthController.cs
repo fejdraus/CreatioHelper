@@ -21,7 +21,7 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Получить общий статус здоровья системы
+    /// Get overall system health status
     /// </summary>
     [HttpGet]
     public async Task<ActionResult<object>> GetHealth()
@@ -64,7 +64,7 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Получить детальную информацию о всех компонентах
+    /// Get detailed information about all components
     /// </summary>
     [HttpGet("detailed")]
     public async Task<ActionResult<object>> GetDetailedHealth()
@@ -111,7 +111,7 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Проверить здоровье конкретного компонента
+    /// Check the health of a specific component
     /// </summary>
     [HttpGet("component/{componentName}")]
     public async Task<ActionResult<object>> GetComponentHealth(string componentName)
@@ -147,7 +147,7 @@ public class HealthController : ControllerBase
     }
 
     /// <summary>
-    /// Простая проверка доступности для мониторинга
+    /// Simple availability check for monitoring
     /// </summary>
     [HttpGet("ping")]
     public ActionResult<object> Ping()
