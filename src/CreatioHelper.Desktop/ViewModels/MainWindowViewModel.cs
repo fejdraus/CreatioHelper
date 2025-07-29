@@ -725,68 +725,6 @@ public partial class MainWindowViewModel : ObservableObject
         return RedisServiceName;
     }
 
-    [RelayCommand]
-    private async Task StartRedis()
-    {
-        var service = GetRedisServiceName();
-        if (service == null)
-        {
-            _output.WriteLine("[ERROR] Could not locate ConnectionStrings.config");
-            return;
-        }
-        try
-        {
-            var result = await _systemServiceManager.StartServiceAsync(service);
-            if (result)
-            {
-                _output.WriteLine($"[SUCCESS] Redis service '{service}' started successfully.");
-            }
-            else
-            {
-                _output.WriteLine($"[ERROR] Failed to start Redis service '{service}'.");
-            }
-            RedisServiceStatus = await _systemServiceManager.GetServiceStateAsync(service) ?? "unknown";
-        }
-        catch (Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to start Redis service '{service}': {ex.Message}");
-        }
-    }
-
-    [RelayCommand]
-    private async Task StopRedis()
-    {
-        var service = GetRedisServiceName();
-        if (service == null)
-        {
-            _output.WriteLine("[ERROR] Could not locate ConnectionStrings.config");
-            return;
-        }
-        try
-        {
-            var result = await _systemServiceManager.StopServiceAsync(service);
-            if (result)
-            {
-                _output.WriteLine($"[SUCCESS] Redis service '{service}' stopped successfully.");
-            }
-            else
-            {
-                _output.WriteLine($"[ERROR] Failed to stop Redis service '{service}'.");
-            }
-            RedisServiceStatus = await _systemServiceManager.GetServiceStateAsync(service) ?? "unknown";
-        }
-        catch (Exception ex)
-        {
-            _output.WriteLine($"[ERROR] Failed to stop Redis service '{service}': {ex.Message}");
-        }
-    }
-
-    [RelayCommand]
-    private async Task RestartRedis()
-    {
-        await StopRedis();
-        await StartRedis();
-    }
 
     [RelayCommand]
     private void ClearRedis()
