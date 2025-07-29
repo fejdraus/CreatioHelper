@@ -34,8 +34,8 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
                     <TextBlock Text="Redis:" HorizontalAlignment="Right"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="28" Margin="5,0" ToolTip.Tip="Check Redis status"/>
-                        <Button Content="Clear" Command="{Binding ClearRedisCommand}" Width="80" Height="28" ToolTip.Tip="Clear Redis cache"/>
+                        <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="32" Margin="5,0" ToolTip.Tip="Check Redis status"/>
+                        <Button Content="Clear" Command="{Binding ClearRedisCommand}" Width="80" Height="32" ToolTip.Tip="Clear Redis cache"/>
                     </StackPanel>
                 </StackPanel>
             </Grid>
