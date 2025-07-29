@@ -19,17 +19,27 @@
 
     <Grid ColumnDefinitions="*,Auto">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
-            
-            <!-- Row 0: Source selection -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}" IsVisible="{Binding IsWindows}">
-                <TextBlock Text="Site path source:" />
-                <StackPanel x:Name="SiteSourcePanel" Orientation="Horizontal" >
-                    <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" />
-                    <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource"
-                                 Margin="15,0,0,0" />
+            <Grid Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}" IsVisible="{Binding IsWindows}" VerticalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" >
+                    <TextBlock Text="Site path source:" />
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0" VerticalAlignment="Center">
+                        <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" VerticalAlignment="Center"/>
+                        <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource" Margin="15,0,0,0" VerticalAlignment="Center"/>
+                    </StackPanel>
                 </StackPanel>
-            </StackPanel>
-
+                <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                    <TextBlock Text="Redis:" HorizontalAlignment="Right"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                        <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="28" Margin="5,0" ToolTip.Tip="Check Redis status"/>
+                        <Button Content="Clear" Command="{Binding ClearRedisCommand}" Width="80" Height="28" ToolTip.Tip="Clear Redis cache"/>
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+            
             <!-- Row 1: Folder Mode -->
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
                 <TextBlock Text="Site Path:" />
@@ -46,6 +56,7 @@
 
             <!-- Row 2: IIS Mode -->
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+                <TextBlock Text="Site IIS:" />
                 <ComboBox x:Name="IisSitesComboBox"
                           HorizontalAlignment="Stretch"
                           IsEnabled="{Binding HasIisSites}"
@@ -130,10 +141,15 @@
 
             <!-- Row 6: "Auto Scroll" checkbox -->
             <StackPanel Grid.Row="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
+                <Button Content="Clear" 
+                        Command="{Binding ClearLogCommand}" 
+                        Height="28" 
+                        VerticalAlignment="Center"/>
                 <CheckBox x:Name="AutoScrollCheckBox"
                           Content="Auto Scroll"
                           IsChecked="{Binding IsAutoScrollEnabled, Mode=TwoWay}"
-                          VerticalAlignment="Center"/>
+                          VerticalAlignment="Center"
+                          Margin="10,0,0,0"/>
                 <CheckBox x:Name="WrapTextCheckBox"
                           Content="Wrap Text"
                           IsChecked="{Binding IsWrapTextEnabled, Mode=TwoWay}"

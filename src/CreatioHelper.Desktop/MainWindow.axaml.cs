@@ -83,7 +83,7 @@ namespace CreatioHelper
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var operationsService = new OperationsService(_writer, remoteManager, siteSync, workspacePreparer, redisFactory, metricsService);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager);
+            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager, redisFactory);
             DataContext = _viewModel;
             FileLogService.LogFilePath = LogFilePath;
             FileLogService.Enabled = _viewModel.IsLogToFileEnabled;
