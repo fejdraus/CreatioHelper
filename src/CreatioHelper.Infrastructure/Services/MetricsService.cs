@@ -191,13 +191,13 @@ public class MetricsService : IMetricsService
     {
         var metrics = new Dictionary<string, object>();
 
-        // Счетчики
+        // Counters
         metrics["counters"] = _counters.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
         
         // Gauges
         metrics["gauges"] = _gauges.ToDictionary(kv => kv.Key, kv => (object)kv.Value);
         
-        // Агрегированные данные по длительности
+        // Aggregated duration data
         var durationStats = new Dictionary<string, object>();
         foreach (var kv in _durations)
         {

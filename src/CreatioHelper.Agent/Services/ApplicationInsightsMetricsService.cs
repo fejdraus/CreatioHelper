@@ -32,10 +32,10 @@ public class ApplicationInsightsMetricsService : IMetricsService
 
     public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation, Dictionary<string, string>? tags = null)
     {
-        // Всегда используем базовый сервис для локальных метрик
+        // Always use the base service for local metrics
         var result = await _baseMetricsService.MeasureAsync(operationName, operation, tags);
 
-        // Отправляем в Application Insights если настроен
+        // Send to Application Insights if configured
         if (_applicationInsightsEnabled)
         {
             try
@@ -52,7 +52,7 @@ public class ApplicationInsightsMetricsService : IMetricsService
                     }
                 }
 
-                // Результат уже получен из базового сервиса, просто завершаем телеметрию
+                // Result already obtained from base service, just complete telemetry
                 telemetryOperation.Telemetry.Success = true;
             }
             catch (Exception ex)

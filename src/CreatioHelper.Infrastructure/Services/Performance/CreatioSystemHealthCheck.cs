@@ -78,8 +78,8 @@ public class CreatioSystemHealthCheck : IHealthCheck
         var sw = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            // Попробуем получить статус любого стандартного пула для проверки подключения к IIS
-            // Используем общеизвестные имена пулов, которые обычно существуют в IIS
+            // Try to get the status of any standard pool to verify IIS connectivity
+            // Use well-known pool names that usually exist in IIS
             var testPoolNames = new[] { "DefaultAppPool", ".NET v4.5", ".NET v4.5 Classic" };
             
             foreach (var poolName in testPoolNames)
@@ -95,12 +95,12 @@ public class CreatioSystemHealthCheck : IHealthCheck
                 }
                 catch
                 {
-                    // Пробуем следующий пул
+                    // Try the next pool
                     continue;
                 }
             }
             
-            // Если ни один пул не найден, но исключений нет - IIS доступен
+            // If no pool is found but there are no exceptions, IIS is accessible
             sw.Stop();
             return (true, "IIS service accessible, no test pools found", sw.Elapsed);
         }

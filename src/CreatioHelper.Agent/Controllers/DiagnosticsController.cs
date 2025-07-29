@@ -50,7 +50,7 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
-    /// Принудительная проверка всех систем с детальным отчетом
+    /// Force a check of all systems with a detailed report
     /// </summary>
     [HttpPost("force-check")]
     public async Task<ActionResult<object>> ForceSystemCheck()
@@ -61,8 +61,8 @@ public class DiagnosticsController : ControllerBase
         {
             _logger.LogInformation("🔍 Force system check initiated by API request");
             
-            // Симулируем принудительную проверку всех критических компонентов
-            await Task.Delay(100); // Имитация проверки
+            // Simulate a forced check of all critical components
+            await Task.Delay(100); // Mocked check
             
             var results = new Dictionary<string, object>
             {
@@ -86,7 +86,7 @@ public class DiagnosticsController : ControllerBase
     }
 
     /// <summary>
-    /// Получить историю последних проблем для troubleshooting
+    /// Get the history of recent issues for troubleshooting
     /// </summary>
     [HttpGet("issues")]
     public ActionResult<object> GetRecentIssues()

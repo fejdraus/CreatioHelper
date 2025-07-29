@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services;
 
 /// <summary>
-/// Реализация сервиса Health Checks для CreatioHelper
+/// Health Checks service implementation for CreatioHelper
 /// </summary>
 public class HealthCheckService : IHealthCheckService
 {

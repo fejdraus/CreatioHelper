@@ -34,7 +34,7 @@ public class MonitoringService : BackgroundService
                 _monitoredServers.Add(new ServerRequest { SiteName = siteName, PoolName = poolName });
                 _logger.LogInformation("Added server {SiteName} to monitoring", siteName);
                 
-                // Метрика добавления сервера в мониторинг
+                // Metric for adding a server to monitoring
                 using var scope = _serviceProvider.CreateScope();
                 var metrics = scope.ServiceProvider.GetService<IMetricsService>();
                 metrics?.IncrementCounter("monitoring_server_added");
@@ -52,7 +52,7 @@ public class MonitoringService : BackgroundService
             {
                 _logger.LogInformation("Removed server {SiteName} from monitoring", siteName);
                 
-                // Метрика удаления сервера из мониторинга
+                // Metric for removing a server from monitoring
                 using var scope = _serviceProvider.CreateScope();
                 var metrics = scope.ServiceProvider.GetService<IMetricsService>();
                 metrics?.IncrementCounter("monitoring_server_removed");
@@ -78,7 +78,7 @@ public class MonitoringService : BackgroundService
                     {
                         await MonitorServers();
                         await BroadcastWebServerOverview();
-                        return 1; // Возвращаем успешное выполнение
+                        return 1; // Indicate successful completion
                     });
                 }
                 else
@@ -93,7 +93,7 @@ public class MonitoringService : BackgroundService
             {
                 _logger.LogError(ex, "Error in monitoring service");
                 
-                // Метрика ошибок мониторинга
+                // Metric for monitoring errors
                 using var scope = _serviceProvider.CreateScope();
                 var metrics = scope.ServiceProvider.GetService<IMetricsService>();
                 metrics?.IncrementCounter("monitoring_error");
@@ -143,7 +143,7 @@ public class MonitoringService : BackgroundService
                         }
                     };
                     
-                    // Устанавливаем метрики состояния
+                    // Set state metrics
                     metrics.SetGauge("webserver_total_sites", sites.Count);
                     metrics.SetGauge("webserver_running_sites", sites.Count(s => s.IsRunning));
                     metrics.SetGauge("webserver_total_app_pools", appPools.Count);
@@ -153,7 +153,7 @@ public class MonitoringService : BackgroundService
                     
                     metrics.IncrementCounter("webserver_overview_broadcast_success");
                     
-                    return 1; // Возвращаем успешное выполнение
+                    return 1; // Indicate successful completion
                 });
             }
             else
@@ -239,7 +239,7 @@ public class MonitoringService : BackgroundService
                 
                 await _hubContext.Clients.Group("monitoring").SendAsync("ServerStatusUpdate", statuses);
                 
-                // Метрики успешного мониторинга
+                // Metrics for successful monitoring
                 metrics?.IncrementCounter("monitor_servers_success");
                 metrics?.SetGauge("monitored_servers_count", serversToMonitor.Length);
             }

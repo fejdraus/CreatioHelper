@@ -21,7 +21,7 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
-    /// Получить общую сводку производительности
+    /// Get overall performance summary
     /// </summary>
     [HttpGet("performance")]
     public async Task<ActionResult<PerformanceSummary>> GetPerformanceMetrics()
@@ -62,7 +62,7 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
-    /// Получить детальные метрики по категориям
+    /// Get detailed metrics by categories
     /// </summary>
     [HttpGet("detailed")]
     public async Task<ActionResult<Dictionary<string, object>>> GetDetailedMetrics()
@@ -80,7 +80,7 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
-    /// Prometheus совместимый endpoint
+    /// Prometheus compatible endpoint
     /// </summary>
     [HttpGet("prometheus")]
     [Produces("text/plain")]
@@ -100,7 +100,7 @@ public class MetricsController : ControllerBase
     }
 
     /// <summary>
-    /// Сброс метрик (только для тестирования)
+    /// Reset metrics (for testing only)
     /// </summary>
     [HttpPost("reset")]
     public ActionResult ResetMetrics()
@@ -112,7 +112,7 @@ public class MetricsController : ControllerBase
 
         try
         {
-            // Реализация сброса метрик
+            // Metrics reset implementation
             _logger.LogWarning("Metrics reset requested from {RemoteIp}", HttpContext.Connection.RemoteIpAddress);
             return Ok(new { message = "Metrics reset successfully" });
         }
@@ -205,7 +205,7 @@ public class MetricsController : ControllerBase
     {
         try
         {
-            // Упрощенная реализация - в реальности нужен более сложный расчет
+            // Simplified implementation - a more complex calculation is needed in reality
             return Task.FromResult(0.0);
         }
         catch
