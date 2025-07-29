@@ -4,7 +4,7 @@ using System.Diagnostics;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Расширенный сервис логирования с категоризацией событий для поддержки
+/// Extended logging service with event categorization support
 /// </summary>
 public class EnhancedLoggingService
 {

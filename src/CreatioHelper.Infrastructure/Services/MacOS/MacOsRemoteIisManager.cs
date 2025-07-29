@@ -193,13 +193,13 @@ public class MacOsRemoteIisManager : IRemoteIisManager
             if (process.ExitCode == 0)
             {
                 var output = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-                // Простая проверка - если сервис найден, считаем его запущенным
+                // Simple check - if the service is found, consider it running
                 var status = string.IsNullOrWhiteSpace(output) ? "Stopped" : "Running";
                 return Result<string>.Success(status);
             }
             else
             {
-                // Сервис не найден или остановлен
+                // Service not found or stopped
                 return Result<string>.Success("Stopped");
             }
         }

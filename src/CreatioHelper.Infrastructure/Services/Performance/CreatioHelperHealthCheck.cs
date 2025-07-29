@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services.Performance;
 
 /// <summary>
-/// Главный Health Check для CreatioHelper, объединяющий все критические компоненты
+/// Main Health Check for CreatioHelper aggregating all critical components
 /// </summary>
 public class CreatioHelperHealthCheck : IHealthCheck
 {
@@ -63,7 +63,7 @@ public class CreatioHelperHealthCheck : IHealthCheck
                 $"All {healthyCount} systems operational", data);
         }
         
-        // Определяем критичность проблем
+        // Determine the severity of problems
         var criticalIssues = allResults.Where(r => !r.Value.IsHealthy && IsCriticalComponent(r.Key)).ToList();
         
         if (criticalIssues.Any())
@@ -85,7 +85,7 @@ public class CreatioHelperHealthCheck : IHealthCheck
 
     private void RegisterComponentChecks()
     {
-        // Регистрируем все компонентные health checks
+        // Register all component health checks
         _healthCheckService.RegisterHealthCheck("file_system", new FileSystemHealthCheck());
         _healthCheckService.RegisterHealthCheck("memory", new MemoryHealthCheck());
         _healthCheckService.RegisterHealthCheck("iis_connectivity", new IisConnectivityHealthCheck(_iisManager));
@@ -96,14 +96,14 @@ public class CreatioHelperHealthCheck : IHealthCheck
 
     private static bool IsCriticalComponent(string componentName)
     {
-        // Определяем, какие компоненты критичны для работы CreatioHelper
+        // Determine which components are critical for CreatioHelper
         var criticalComponents = new[] { "file_system", "memory", "iis_connectivity" };
         return criticalComponents.Contains(componentName);
     }
 }
 
 /// <summary>
-/// Health Check для проверки файловой системы
+/// Health Check for verifying the file system
 /// </summary>
 internal class FileSystemHealthCheck : IHealthCheck
 {
@@ -114,13 +114,13 @@ internal class FileSystemHealthCheck : IHealthCheck
             var tempPath = Path.GetTempPath();
             var testFile = Path.Combine(tempPath, $"creatiohelper_healthcheck_{Guid.NewGuid()}.tmp");
             
-            // Проверяем возможность записи
+            // Check write access
             await File.WriteAllTextAsync(testFile, "health check test", cancellationToken);
             
-            // Проверяем возможность чтения
+            // Check read access
             await File.ReadAllTextAsync(testFile, cancellationToken);
             
-            // Удаляем тестовый файл
+            // Remove the test file
             File.Delete(testFile);
             
             var data = new Dictionary<string, object>
@@ -146,7 +146,7 @@ internal class FileSystemHealthCheck : IHealthCheck
 }
 
 /// <summary>
-/// Health Check для проверки использования памяти
+/// Health Check for monitoring memory usage
 /// </summary>
 internal class MemoryHealthCheck : IHealthCheck
 {
@@ -264,7 +264,7 @@ internal class IisConnectivityHealthCheck : IHealthCheck
 }
 
 /// <summary>
-/// Health Check для проверки Redis подключения
+/// Health Check for verifying Redis connectivity
 /// </summary>
 internal class RedisHealthCheck : IHealthCheck
 {
@@ -279,7 +279,7 @@ internal class RedisHealthCheck : IHealthCheck
     {
         try
         {
-            // Проверяем доступность Redis (используем тестовый путь)
+            // Check Redis availability (using a test path)
             var testPath = @"C:\inetpub\wwwroot\test";
             var redisManager = _redisManagerFactory.Create(testPath);
             var status = redisManager.CheckStatus();

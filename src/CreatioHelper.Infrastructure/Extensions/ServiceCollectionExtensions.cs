@@ -18,14 +18,14 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
-        // Базовые сервисы
+        // Core services
         services.AddSingleton<IMetricsService, MetricsService>();
         
-        // Health Check сервисы
+        // Health check services
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
         services.AddSingleton<CreatioHelperHealthCheck>();
         
-        // OutputWriter для логирования
+        // OutputWriter for logging
         services.AddSingleton<IOutputWriter>(_ =>
         {
             return new BufferingOutputWriter(
@@ -34,24 +34,24 @@ public static class ServiceCollectionExtensions
             );
         });
         
-        // Сервис копирования файлов
+        // File copy service
         services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
         
-        // Redis Manager Factory для работы с Redis
+        // Redis Manager Factory for Redis operations
         services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
         
-        // Убираем регистрацию SystemMetricsCollector отсюда - он регистрируется в Agent проекте
+        // Remove SystemMetricsCollector registration here - it is registered in the Agent project
         
-        // Настройки - простая реализация без кэширования для актуальных данных
+        // Settings service - simple implementation without caching for up-to-date data
         services.AddSingleton<ISettingsService, SettingsService>();
 
-        // Статус серверов - получение актуальных данных без кэширования
+        // Server status - fetch actual data without caching
         services.AddSingleton<IServerStatusService, ServerStatusService>();
 
-        // Менеджер системных сервисов
+        // System service manager
         services.AddSingleton<ISystemServiceManager, SystemServiceManager>();
 
-        // Платформо-зависимые сервисы IIS
+        // Platform-specific IIS services
         if (OperatingSystem.IsWindows())
         {
             services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
@@ -68,7 +68,7 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
 
-        // Менеджеры конфигурации
+        // Configuration managers
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
         
         return services;

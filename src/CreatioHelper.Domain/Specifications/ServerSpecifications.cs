@@ -1,2 +1,2 @@
-// Файл удален - содержал только неиспользуемые спецификации
+// File removed - contained only unused specifications
 
