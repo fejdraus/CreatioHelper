@@ -134,7 +134,7 @@
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"
                         IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}"
-                        Width="120"
+                        Width="130"
                         Height="32"
                         HorizontalAlignment="Right" />
             </Grid>
