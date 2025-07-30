@@ -10,7 +10,7 @@ public class DtoServerInfo : INotifyPropertyChanged
     private string? _networkPath;
     private string? _poolName;
     private string? _siteName;
-    private string? _serviceName;
+    
 
     public string? Name
     {
@@ -34,12 +34,6 @@ public class DtoServerInfo : INotifyPropertyChanged
     {
         get => _siteName;
         set => SetField(ref _siteName, value);
-    }
-
-    public string? ServiceName
-    {
-        get => _serviceName;
-        set => SetField(ref _serviceName, value);
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
