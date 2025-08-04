@@ -1,7 +1,3 @@
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using CreatioHelper.Domain.ValueObjects;
-
 namespace CreatioHelper.Domain.Entities;
 
 public class ServerInfo : DtoServerInfo

@@ -3,8 +3,6 @@ using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Domain.Enums;
 using CreatioHelper.Contracts.Requests;
-using CreatioHelper.Application.Interfaces;
-using System;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -74,11 +72,11 @@ public class MonitoringService : BackgroundService
                 
                 if (metrics != null)
                 {
-                    await metrics.MeasureAsync<int>("monitoring_cycle", async () =>
+                    await metrics.MeasureAsync("monitoring_cycle", async () =>
                     {
                         await MonitorServers();
                         await BroadcastWebServerOverview();
-                        return 1; // Indicate successful completion
+                        return 1;
                     });
                 }
                 else
@@ -116,7 +114,7 @@ public class MonitoringService : BackgroundService
         {
             if (metrics != null)
             {
-                await metrics.MeasureAsync<int>("webserver_overview_broadcast", async () =>
+                await metrics.MeasureAsync("webserver_overview_broadcast", async () =>
                 {
                     var webServerService = await webServerFactory.CreateWebServerServiceAsync();
                 

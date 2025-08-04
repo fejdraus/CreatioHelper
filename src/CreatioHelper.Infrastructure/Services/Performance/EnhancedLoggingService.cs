@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using System.Diagnostics;
 
 namespace CreatioHelper.Infrastructure.Services.Performance;
 

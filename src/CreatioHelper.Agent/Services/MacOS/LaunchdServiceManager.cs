@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using System.Text.RegularExpressions;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.MacOS;
@@ -259,7 +257,7 @@ public class LaunchdServiceManager : IWebServerService
                 return null;
             }
 
-            return outputText?.Trim();
+            return outputText.Trim();
         }
         catch (Exception ex)
         {

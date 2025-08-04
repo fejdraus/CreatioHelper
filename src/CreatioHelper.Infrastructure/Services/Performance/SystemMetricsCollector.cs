@@ -144,7 +144,7 @@ public class SystemMetricsCollector : BackgroundService
         }
         else if (OperatingSystem.IsMacOS())
         {
-            CollectMacOSMetrics();
+            CollectMacOsMetrics();
         }
         
         _logger.LogDebug("Cross-platform system metrics collected successfully");
@@ -231,7 +231,7 @@ public class SystemMetricsCollector : BackgroundService
     /// Collects macOS-specific metrics.
     /// </summary>
     [System.Runtime.Versioning.SupportedOSPlatform("macos")]
-    private void CollectMacOSMetrics()
+    private void CollectMacOsMetrics()
     {
         try
         {

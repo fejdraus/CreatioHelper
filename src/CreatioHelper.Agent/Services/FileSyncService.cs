@@ -1,8 +1,5 @@
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Text.RegularExpressions;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Responses;
 using CreatioHelper.Contracts.Requests;
 
@@ -20,7 +17,6 @@ public class FileSyncService : IFileSyncService
     public async Task<SyncResult> SyncAsync(SyncOptions options, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
-        long totalBytes = 0;
 
         try
         {
@@ -38,7 +34,7 @@ public class FileSyncService : IFileSyncService
                 Directory.CreateDirectory(options.DestinationPath);
             }
 
-            totalBytes = await CopyDirectoryAsync(
+            var totalBytes = await CopyDirectoryAsync(
                 options.SourcePath, 
                 options.DestinationPath, 
                 options, 

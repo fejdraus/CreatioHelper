@@ -1,4 +1,3 @@
-#nullable enable
 using System;
 using System.Globalization;
 using Avalonia.Data.Converters;
@@ -28,7 +27,7 @@ public class StatusToColorConverter : IValueConverter
         };
     }
 
-    public object? ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
+    public object ConvertBack(object? value, Type targetType, object? parameter, CultureInfo culture)
     {
         throw new NotImplementedException();
     }

@@ -20,7 +20,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
 
     public async Task<IWebServerService> CreateWebServerServiceAsync()
     {
-        if (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows())
+        if (_platformService.IsFeatureSupported(FeatureNames.IisManagement) && OperatingSystem.IsWindows())
         {
             var preferredType = await _configurationService.GetWebServerTypeAsync();
 
@@ -52,7 +52,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
     
     public async Task<string> GetSupportedWebServerTypeAsync()
     {
-        if (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows())
+        if (_platformService.IsFeatureSupported(FeatureNames.IisManagement) && OperatingSystem.IsWindows())
         {
             var preferredType = await _configurationService.GetWebServerTypeAsync();
             return preferredType != null && preferredType.Equals("WindowsService", StringComparison.OrdinalIgnoreCase) ? "WindowsService/Kestrel" : "IIS";
@@ -69,7 +69,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
 
     public bool IsWebServerSupported()
     {
-        return (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows()) ||
+        return (_platformService.IsFeatureSupported(FeatureNames.IisManagement) && OperatingSystem.IsWindows()) ||
                (_platformService.IsFeatureSupported(FeatureNames.WindowsServiceManagement) && OperatingSystem.IsWindows()) ||
                (_platformService.IsFeatureSupported(FeatureNames.SystemdManagement) && OperatingSystem.IsLinux()) ||
                (_platformService.IsFeatureSupported(FeatureNames.LaunchdManagement) && OperatingSystem.IsMacOS());
@@ -79,7 +79,7 @@ public class WebServerServiceFactory : IWebServerServiceFactory
     {
         var types = new List<string>();
         
-        if (_platformService.IsFeatureSupported(FeatureNames.IISManagement) && OperatingSystem.IsWindows())
+        if (_platformService.IsFeatureSupported(FeatureNames.IisManagement) && OperatingSystem.IsWindows())
         {
             types.Add("IIS");
             types.Add("WindowsService/Kestrel");

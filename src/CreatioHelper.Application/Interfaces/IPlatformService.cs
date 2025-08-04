@@ -11,7 +11,7 @@ public interface IPlatformService
 
 public static class FeatureNames
 {
-    public const string IISManagement = "IISManagement";               // Windows - IIS
+    public const string IisManagement = "IISManagement";               // Windows - IIS
     public const string WindowsServiceManagement = "WindowsServiceManagement"; // Windows - Windows Services (Kestrel)
     public const string SystemdManagement = "SystemdManagement";       // Linux - systemd services
     public const string LaunchdManagement = "LaunchdManagement";       // macOS - launchd services  

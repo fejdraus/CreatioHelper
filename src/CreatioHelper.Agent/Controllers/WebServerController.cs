@@ -52,7 +52,7 @@ public class WebServerController : ControllerBase
                 new { Name = "StartAppPool", Available = IsWebServerSupported },
                 new { Name = "StopAppPool", Available = IsWebServerSupported },
                 new { Name = "GetStatus", Available = IsWebServerSupported },
-                new { Name = "IIS", Available = _platformService.IsFeatureSupported(FeatureNames.IISManagement) },
+                new { Name = "IIS", Available = _platformService.IsFeatureSupported(FeatureNames.IisManagement) },
                 new { Name = "WindowsService", Available = _platformService.IsFeatureSupported(FeatureNames.WindowsServiceManagement) },
                 new { Name = "Systemd", Available = _platformService.IsFeatureSupported(FeatureNames.SystemdManagement) },
                 new { Name = "Launchd", Available = _platformService.IsFeatureSupported(FeatureNames.LaunchdManagement) },

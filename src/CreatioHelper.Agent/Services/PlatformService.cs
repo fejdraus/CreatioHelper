@@ -1,19 +1,16 @@
 using System.Runtime.InteropServices;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Agent.Services;
 
 public class PlatformService : IPlatformService
 {
-    private readonly ILogger<PlatformService> _logger;
     private readonly PlatformType _platform;
 
     public PlatformService(ILogger<PlatformService> logger)
     {
-        _logger = logger;
         _platform = DetectPlatform();
-        _logger.LogInformation("Detected platform: {Platform}", _platform);
+        logger.LogInformation("Detected platform: {Platform}", _platform);
     }
 
     public PlatformType GetPlatform() => _platform;
@@ -22,7 +19,7 @@ public class PlatformService : IPlatformService
     {
         return featureName switch
         {
-            FeatureNames.IISManagement => _platform == PlatformType.Windows,
+            FeatureNames.IisManagement => _platform == PlatformType.Windows,
             FeatureNames.WindowsServiceManagement => _platform == PlatformType.Windows,
             FeatureNames.SystemdManagement => _platform == PlatformType.Linux,
             FeatureNames.LaunchdManagement => _platform == PlatformType.MacOs,
@@ -66,8 +63,8 @@ public class PlatformService : IPlatformService
     {
         var features = new List<string> { FeatureNames.FileSync, FeatureNames.ProcessManagement };
 
-        if (IsFeatureSupported(FeatureNames.IISManagement))
-            features.Add(FeatureNames.IISManagement);
+        if (IsFeatureSupported(FeatureNames.IisManagement))
+            features.Add(FeatureNames.IisManagement);
     
         if (IsFeatureSupported(FeatureNames.WindowsServiceManagement))
             features.Add(FeatureNames.WindowsServiceManagement);

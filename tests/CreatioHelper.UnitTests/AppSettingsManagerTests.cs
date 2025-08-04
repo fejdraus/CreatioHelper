@@ -1,4 +1,3 @@
-using System.IO;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Configuration;
 

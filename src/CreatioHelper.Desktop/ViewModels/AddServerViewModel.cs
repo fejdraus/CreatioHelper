@@ -1,7 +1,6 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.ViewModels;
 

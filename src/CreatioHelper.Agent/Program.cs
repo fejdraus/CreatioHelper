@@ -109,7 +109,6 @@ builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices();
 
 // Register performance services
-builder.Services.AddScoped<BatchOperationService>();
 builder.Services.AddScoped<ApplicationInsightsMetricsService>();
 
 // Register additional support services

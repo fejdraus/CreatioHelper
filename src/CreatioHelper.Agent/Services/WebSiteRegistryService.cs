@@ -1,7 +1,5 @@
 using System.Diagnostics;
-using System.Text.Json;
 using CreatioHelper.Domain.Entities;
-using Microsoft.AspNetCore.Hosting;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -133,11 +131,11 @@ public class WebSiteRegistryService
             Type = "IIS",
             ServiceName = iisSite.Name,
             AutoDiscovered = true,
-            Status = iisSite.State ?? "Unknown",
+            Status = iisSite.State,
             LastUpdated = DateTime.UtcNow,
             Properties = new Dictionary<string, string>
             {
-                ["IisState"] = iisSite.State ?? "Unknown"
+                ["IisState"] = iisSite.State
             }
         };
     }
@@ -279,7 +277,7 @@ public class WebSiteRegistryService
                 _logger.LogWarning("PowerShell warning: {Error}", error);
             }
 
-            return output?.Trim();
+            return output.Trim();
         }
         catch (Exception ex)
         {
@@ -319,7 +317,7 @@ public class WebSiteRegistryService
                 _logger.LogWarning("Bash warning: {Error}", error);
             }
 
-            return output?.Trim();
+            return output.Trim();
         }
         catch (Exception ex)
         {

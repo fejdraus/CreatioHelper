@@ -1,5 +1,3 @@
-using CreatioHelper.Domain.Common;
-
 namespace CreatioHelper.Domain.Common;
 
 public abstract class AggregateRoot : Entity

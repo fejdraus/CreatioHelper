@@ -1,6 +1,6 @@
 namespace CreatioHelper.Application.Interfaces;
 
-using CreatioHelper.Domain.Entities;
+using Domain.Entities;
 
 public interface IAppSettingsManager
 {

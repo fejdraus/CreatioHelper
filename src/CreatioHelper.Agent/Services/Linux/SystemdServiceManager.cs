@@ -1,7 +1,5 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
-using System.Text.RegularExpressions;
-using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Linux;
@@ -144,7 +142,7 @@ public class SystemdServiceManager : IWebServerService
                 
                 foreach (var line in lines)
                 {
-                    var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                    var parts = line.Split([' ', '\t'], StringSplitOptions.RemoveEmptyEntries);
                     if (parts.Length >= 4)
                     {
                         var serviceName = parts[0];
@@ -252,7 +250,7 @@ public class SystemdServiceManager : IWebServerService
                 return null;
             }
 
-            return outputText?.Trim();
+            return outputText.Trim();
         }
         catch (Exception ex)
         {
