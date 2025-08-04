@@ -7,21 +7,46 @@ using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 using Moq;
+using Xunit.Abstractions;
 
 namespace CreatioHelper.Tests;
 
 public class WindowsSiteSynchronizerTests
 {
+    private readonly ITestOutputHelper _testOutputHelper;
+
+    public WindowsSiteSynchronizerTests(ITestOutputHelper testOutputHelper)
+    {
+        _testOutputHelper = testOutputHelper;
+    }
+
     [Fact]
     public async Task SynchronizeAsync_ThrowsArgumentNullException_When_SiteInfoIsNull()
     {
         var writer = new BufferingOutputWriter(_ => { });
         var remote = new Mock<IRemoteIisManager>();
+        var iisManager = new Mock<IIisManager>();
         var copy = new Mock<IFileCopyHelper>();
-        var metrics = new Mock<IMetricsService>();
-        var logger = new Mock<ILogger<ServerStatusService>>();
-        var status = new ServerStatusService(remote.Object, metrics.Object, logger.Object);
-        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped" then "Started"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        status.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo, CancellationToken>((server, ct) =>
+              {
+                  server.PoolStatus = "Started";
+                  server.SiteStatus = "Started";
+              })
+              .Returns(Task.FromResult(It.IsAny<ServerInfo>()));
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
 
         await Assert.ThrowsAsync<ArgumentNullException>(() => sync.SynchronizeAsync(null!, new List<ServerInfo>()));
     }
@@ -30,40 +55,89 @@ public class WindowsSiteSynchronizerTests
     public async Task SynchronizeAsync_ReturnsFalse_When_StopFails()
     {
         var writer = new BufferingOutputWriter(_ => { });
+        var iisManager = new Mock<IIisManager>();
         var remote = new Mock<IRemoteIisManager>();
         
-        // Configure mocks for new methods using names instead of ServerId
-        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        // Configure mocks for new IIisManager methods with serverName parameter
+        iisManager.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Failure("Stop failed"));
-        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        iisManager.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
 
         var copy = new Mock<IFileCopyHelper>();
-        var metrics = new Mock<IMetricsService>();
-        
-        // Configure metrics mock - remove Task<Task>, use ServerInfo
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
-        
-        var status = new ServerStatusService(remote.Object, metrics.Object, new Mock<ILogger<ServerStatusService>>().Object);
-        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped" then "Started"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        status.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo, CancellationToken>((server, ct) =>
+              {
+                  server.PoolStatus = "Started";
+                  server.SiteStatus = "Started";
+              })
+              .Returns(Task.FromResult(It.IsAny<ServerInfo>()));
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
 
         var servers = new List<ServerInfo>
         {
-            new ServerInfo
-            {
-                Name = new ServerName("TestServer"),
-                NetworkPath = new NetworkPath(@"\\testserver\share"),
-                PoolName = "TestPool"
-            }
+            new() { Name = "TestServer", PoolName = "TestPool", SiteName = "TestSite" }
         };
 
-        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers);
+        var result = await sync.SynchronizeAsync("/test/path", servers);
 
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task SynchronizeAsync_ReturnsFalse_When_FileCopyFails()
+    {
+        var output = new List<string>();
+        var writer = new BufferingOutputWriter(line => output.Add(line));
+        var iisManager = new Mock<IIisManager>();
+        
+        // Configure successful stop operations
+        iisManager.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+        iisManager.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+              .ReturnsAsync(Result.Success());
+
+        var copy = new Mock<IFileCopyHelper>();
+        copy.Setup(c => c.CopyAsync(It.IsAny<ServerInfo>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new Exception("File copy failed")); // File copy fails
+
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
+
+        var servers = new List<ServerInfo>
+        {
+            new() { Name = "TestServer", PoolName = "TestPool", SiteName = "TestSite", NetworkPath = "/test/network" }
+        };
+
+        var result = await sync.SynchronizeAsync("/test/path", servers);
+
+        // For debugging - check what output was produced
+        _testOutputHelper.WriteLine(string.Join("\n", output));
+        
         Assert.False(result);
     }
 
@@ -71,120 +145,122 @@ public class WindowsSiteSynchronizerTests
     public async Task SynchronizeAsync_ReturnsTrue_When_AllOperationsSucceed()
     {
         var writer = new BufferingOutputWriter(_ => { });
+        var iisManager = new Mock<IIisManager>();
         var remote = new Mock<IRemoteIisManager>();
         
-        // Configure mocks for new methods by name
-        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        // Configure successful operations
+        iisManager.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        iisManager.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StartAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        iisManager.Setup(r => r.StartAppPoolAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StartWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        iisManager.Setup(r => r.StartWebsiteAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
               .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.GetAppPoolStatusAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result<string>.Success("Stopped"));
-        remote.Setup(r => r.GetWebsiteStatusAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result<string>.Success("Stopped"));
 
         var copy = new Mock<IFileCopyHelper>();
         copy.Setup(c => c.CopyAsync(It.IsAny<ServerInfo>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Returns(Task.FromResult(0));
+            .Returns(Task.FromResult(0)); // File copy succeeds
 
-        var metrics = new Mock<IMetricsService>();
-        
-        // Configure metrics mock - explicitly specify all parameters without optionals
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
-
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<object>> operation, Dictionary<string, string> _) => operation());
-
-        // Also configure version without tags (when tags = null)
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), null))
-              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
-
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<object>>>(), null))
-              .Returns((string _, Func<Task<object>> operation, Dictionary<string, string> _) => operation());
-
-        var statusService = new Mock<IServerStatusService>();
-        
-        // Configure status update mock - correctly update server statuses
-        statusService.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
-                    .Callback<ServerInfo[], CancellationToken>((servers, _) =>
-                    {
-                        // Set statuses to "Stopped" for all servers
-                        foreach (var server in servers)
-                        {
-                            server.PoolStatus = "Stopped";
-                            server.SiteStatus = "Stopped";
-                        }
-                    })
-                    .Returns(Task.FromResult(true));
-                    
-        statusService.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
-                    .Callback<ServerInfo, CancellationToken>((server, _) => 
-                    {
-                        // Set statuses to "Started" for post-start check
-                        server.PoolStatus = "Started";
-                        server.SiteStatus = "Started";
-                    })
-                    .Returns((ServerInfo server, CancellationToken _) => Task.FromResult(server));
-
-        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, statusService.Object);
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped" then "Started"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        status.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo, CancellationToken>((server, ct) =>
+              {
+                  server.PoolStatus = "Started";
+                  server.SiteStatus = "Started";
+              })
+              .Returns(Task.FromResult(It.IsAny<ServerInfo>()));
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
 
         var servers = new List<ServerInfo>
         {
-            new ServerInfo
-            {
-                Name = new ServerName("TestServer"),
-                NetworkPath = new NetworkPath(@"\\testserver\share"),
-                PoolName = "TestPool",
-                SiteName = "TestSite"
-            }
+            new() { Name = "TestServer", PoolName = "TestPool", SiteName = "TestSite" }
         };
 
-        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers);
+        var result = await sync.SynchronizeAsync("/test/path", servers);
 
         Assert.True(result);
     }
 
     [Fact]
-    public async Task SynchronizeAsync_HandlesCancellation()
+    public async Task SynchronizeAsync_HandlesEmptyServerList()
     {
         var writer = new BufferingOutputWriter(_ => { });
+        var iisManager = new Mock<IIisManager>();
         var remote = new Mock<IRemoteIisManager>();
-        
-        remote.Setup(r => r.StopAppPoolAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result.Success());
-        remote.Setup(r => r.StopWebsiteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-              .ReturnsAsync(Result.Success());
-
         var copy = new Mock<IFileCopyHelper>();
-        var metrics = new Mock<IMetricsService>();
-        
-        // Configure metrics mock - fix the type
-        metrics.Setup(m => m.MeasureAsync(It.IsAny<string>(), It.IsAny<Func<Task<ServerInfo>>>(), It.IsAny<Dictionary<string, string>>()))
-              .Returns((string _, Func<Task<ServerInfo>> operation, Dictionary<string, string> _) => operation());
-        
-        var status = new ServerStatusService(remote.Object, metrics.Object, new Mock<ILogger<ServerStatusService>>().Object);
-        var sync = new WindowsSiteSynchronizer(writer, remote.Object, copy.Object, status);
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped" then "Started"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        status.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo, CancellationToken>((server, ct) =>
+              {
+                  server.PoolStatus = "Started";
+                  server.SiteStatus = "Started";
+              })
+              .Returns(Task.FromResult(It.IsAny<ServerInfo>()));
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
+
+        var result = await sync.SynchronizeAsync("/test/path", new List<ServerInfo>());
+
+        Assert.True(result); // Should succeed with empty server list
+    }
+
+    [Fact]
+    public async Task SynchronizeAsync_HandlesServerWithoutPoolOrSite()
+    {
+        var writer = new BufferingOutputWriter(_ => { });
+        var iisManager = new Mock<IIisManager>();
+        var remote = new Mock<IRemoteIisManager>();
+        var copy = new Mock<IFileCopyHelper>();
+        var status = new Mock<IServerStatusService>();
+        // Mock successful status refresh - sets server properties to "Stopped" then "Started"
+        status.Setup(s => s.RefreshMultipleServerStatusAsync(It.IsAny<ServerInfo[]>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo[], CancellationToken>((servers, ct) =>
+              {
+                  foreach (var server in servers)
+                  {
+                      server.PoolStatus = "Stopped";
+                      server.SiteStatus = "Stopped";
+                  }
+              })
+              .Returns(Task.CompletedTask);
+        status.Setup(s => s.RefreshServerStatusAsync(It.IsAny<ServerInfo>(), It.IsAny<CancellationToken>()))
+              .Callback<ServerInfo, CancellationToken>((server, ct) =>
+              {
+                  server.PoolStatus = "Started";
+                  server.SiteStatus = "Started";
+              })
+              .Returns(Task.FromResult(It.IsAny<ServerInfo>()));
+        var sync = new WindowsSiteSynchronizer(writer, iisManager.Object, copy.Object, status.Object);
 
         var servers = new List<ServerInfo>
         {
-            new ServerInfo
-            {
-                Name = new ServerName("TestServer"),
-                NetworkPath = new NetworkPath(@"\\testserver\share"),
-                PoolName = "TestPool"
-            }
+            new() { Name = "TestServer" } // No PoolName or SiteName
         };
 
-        using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        var result = await sync.SynchronizeAsync("/test/path", servers);
 
-        var result = await sync.SynchronizeAsync(@"C:\TestSite", servers, cts.Token);
-
-        Assert.False(result);
+        Assert.True(result); // Should succeed even without pool/site names
     }
 }

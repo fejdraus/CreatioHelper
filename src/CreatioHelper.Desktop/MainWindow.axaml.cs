@@ -73,7 +73,8 @@ namespace CreatioHelper
             
             var mediator = provider.GetRequiredService<IMediator>();
             var systemServiceManager = provider.GetRequiredService<ISystemServiceManager>();
-            var remoteManager = provider.GetRequiredService<IRemoteIisManager>();
+            var iisManager = provider.GetRequiredService<IIisManager>();
+            var remoteManager = provider.GetRequiredService<IRemoteIisManager>(); // Keep for ViewModel compatibility
             var metricsService = provider.GetRequiredService<IMetricsService>();
             var statusService = provider.GetRequiredService<IServerStatusService>();
             
@@ -81,7 +82,7 @@ namespace CreatioHelper
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(_writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
-            var operationsService = new OperationsService(_writer, remoteManager, siteSync, workspacePreparer, redisFactory, metricsService);
+            var operationsService = new OperationsService(_writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager, redisFactory);
             DataContext = _viewModel;

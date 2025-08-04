@@ -42,7 +42,7 @@ public class RobocopyFileCopyHelper : IFileCopyHelper
             };
 
             process.Start();
-            await process.WaitForExitAsync(cancellationToken);
+            await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
 
             var exitCode = process.ExitCode;
 

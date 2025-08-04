@@ -54,7 +54,8 @@ public static class ServiceCollectionExtensions
         // Platform-specific IIS services
         if (OperatingSystem.IsWindows())
         {
-            services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
+            services.AddSingleton<IIisManager, WindowsIisManager>();
+            services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>(); // Keep for backward compatibility
             services.AddSingleton<ISiteSynchronizer, WindowsSiteSynchronizer>();
         }
         else if (OperatingSystem.IsMacOS())

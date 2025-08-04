@@ -32,14 +32,14 @@ public class ServerStatusService : IServerStatusService
             {
                 if (!string.IsNullOrEmpty(server.PoolName))
                 {
-                    var poolStatus = await GetPoolStatusAsync(server.PoolName, cancellationToken);
+                    var poolStatus = await GetPoolStatusAsync(server.PoolName, cancellationToken).ConfigureAwait(false);
                     server.PoolStatus = poolStatus ?? "Unknown";
                     _logger.LogDebug("Retrieved pool status for {PoolName}: {Status}", server.PoolName, poolStatus);
                 }
 
                 if (!string.IsNullOrEmpty(server.SiteName))
                 {
-                    var siteStatus = await GetWebsiteStatusAsync(server.SiteName, cancellationToken);
+                    var siteStatus = await GetWebsiteStatusAsync(server.SiteName, cancellationToken).ConfigureAwait(false);
                     server.SiteStatus = siteStatus ?? "Unknown";
                     _logger.LogDebug("Retrieved site status for {SiteName}: {Status}", server.SiteName, siteStatus);
                 }
@@ -82,10 +82,10 @@ public class ServerStatusService : IServerStatusService
             
             var tasks = servers.Select(async server =>
             {
-                await semaphore.WaitAsync(cancellationToken);
+                await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    await RefreshServerStatusAsync(server, cancellationToken);
+                    await RefreshServerStatusAsync(server, cancellationToken).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {
@@ -97,7 +97,7 @@ public class ServerStatusService : IServerStatusService
                 }
             });
 
-            await Task.WhenAll(tasks);
+            await Task.WhenAll(tasks).ConfigureAwait(false);
             
             var successCount = servers.Count(s => s.PoolStatus != "Error" && s.SiteStatus != "Error");
             _logger.LogInformation("Status refresh completed: {SuccessCount}/{TotalCount} servers successful", 
@@ -114,7 +114,7 @@ public class ServerStatusService : IServerStatusService
     {
         try
         {
-            var result = await _remoteIisManager.GetAppPoolStatusAsync(poolName, cancellationToken);
+            var result = await _remoteIisManager.GetAppPoolStatusAsync(poolName, cancellationToken).ConfigureAwait(false);
             return result.IsSuccess ? result.Value : "Error";
         }
         catch (Exception ex)
@@ -128,7 +128,7 @@ public class ServerStatusService : IServerStatusService
     {
         try
         {
-            var result = await _remoteIisManager.GetWebsiteStatusAsync(siteName, cancellationToken);
+            var result = await _remoteIisManager.GetWebsiteStatusAsync(siteName, cancellationToken).ConfigureAwait(false);
             return result.IsSuccess ? result.Value : "Error";
         }
         catch (Exception ex)

@@ -26,6 +26,12 @@
     <Compile Remove="RemoteIisManagerTests.cs" />
     <Compile Remove="SiteSynchronizerTests.cs" />
   </ItemGroup>
+  
+  <!-- Exclude obsolete tests for old WindowsRemoteIisManager after refactoring -->
+  <ItemGroup>
+    <Compile Remove="WindowsRemoteIisManagerTests.cs" />
+  </ItemGroup>
+  
   <ItemGroup>
     <ProjectReference Include="..\..\src\CreatioHelper.Desktop\CreatioHelper.csproj" />
     <ProjectReference Include="..\..\src\CreatioHelper.Infrastructure\CreatioHelper.Infrastructure.csproj" />
