@@ -136,7 +136,7 @@ public class SystemdServiceManager : IWebServerService
         try
         {
             // Retrieve all services matching a pattern (e.g., all .NET apps)
-            var result = await ExecuteSystemctlWithOutputAsync("list-units --type=service --state=active,inactive --no-pager --plain | grep -E '\\.(service)$'");
+            var result = await ExecuteSystemctlWithOutputAsync("list-units --type=service --state=active,inactive --no-pager --plain");
             
             if (!string.IsNullOrWhiteSpace(result))
             {
@@ -152,8 +152,9 @@ public class SystemdServiceManager : IWebServerService
                         var activeState = parts[2];
                         var subState = parts[3];
                         
-                        // Filter only relevant services (e.g., containing 'kestrel' or 'dotnet')
-                        if (serviceName.Contains("kestrel") || serviceName.Contains("dotnet") || serviceName.Contains("webapp"))
+                        // Filter only .service files and relevant services (e.g., containing 'kestrel' or 'dotnet')
+                        if (serviceName.EndsWith(".service") && 
+                            (serviceName.Contains("kestrel") || serviceName.Contains("dotnet") || serviceName.Contains("webapp")))
                         {
                             services.Add(new WebServerStatus
                             {
