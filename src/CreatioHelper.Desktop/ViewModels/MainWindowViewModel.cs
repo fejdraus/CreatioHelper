@@ -259,7 +259,7 @@ public partial class MainWindowViewModel : ObservableObject
         await _statusService.RefreshMultipleServerStatusAsync(ServerList.ToArray());
     }
     
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task StopPool(ServerInfo server)
     {
         if (string.IsNullOrWhiteSpace(server.PoolName))
@@ -297,7 +297,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task StartPool(ServerInfo server)
     {
         if (string.IsNullOrWhiteSpace(server.PoolName))
@@ -336,7 +336,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task StopSite(ServerInfo server)
     {
         if (string.IsNullOrWhiteSpace(server.SiteName))
@@ -375,7 +375,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    [RelayCommand]
+    [RelayCommand(AllowConcurrentExecutions = true)]
     private async Task StartSite(ServerInfo server)
     {
         if (string.IsNullOrWhiteSpace(server.SiteName))
