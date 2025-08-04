@@ -27,11 +27,11 @@ public class HealthCheckService : IHealthCheckService
         var tasks = _healthChecks.Select(async kvp =>
         {
             var (name, _) = (kvp.Key, kvp.Value);
-            var result = await CheckAsync(name, cancellationToken);
+            var result = await CheckAsync(name, cancellationToken).ConfigureAwait(false);
             return new { Name = name, Result = result };
         });
 
-        var completedTasks = await Task.WhenAll(tasks);
+        var completedTasks = await Task.WhenAll(tasks).ConfigureAwait(false);
         
         foreach (var task in completedTasks)
         {
@@ -61,7 +61,7 @@ public class HealthCheckService : IHealthCheckService
             _logger.LogDebug("🔍 Running health check: {CheckName}", checkName);
             
             var context = new HealthCheckContext { Name = checkName };
-            var result = await healthCheck.CheckHealthAsync(context, cancellationToken);
+            var result = await healthCheck.CheckHealthAsync(context, cancellationToken).ConfigureAwait(false);
             
             stopwatch.Stop();
             

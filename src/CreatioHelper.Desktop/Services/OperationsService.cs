@@ -19,7 +19,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 {
     private readonly IOutputWriter _output;
     private CancellationTokenSource? _cancellationTokenSource;
-    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IIisManager _iisManager;
     private readonly ISiteSynchronizer _siteSynchronizer;
     private readonly IWorkspacePreparer _workspacePreparer;
     private readonly IRedisManagerFactory _redisManagerFactory;
@@ -36,14 +36,14 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
     public OperationsService(
         IOutputWriter output,
-        IRemoteIisManager remoteIisManager,
+        IIisManager iisManager,
         ISiteSynchronizer siteSynchronizer,
         IWorkspacePreparer workspacePreparer,
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService)
     {
         _output = output;
-        _remoteIisManager = remoteIisManager;
+        _iisManager = iisManager;
         _siteSynchronizer = siteSynchronizer;
         _workspacePreparer = workspacePreparer;
         _redisManagerFactory = redisManagerFactory;
@@ -121,7 +121,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         SiteName = siteName ?? string.Empty,
                         ServiceName = viewModel.ServiceName ?? string.Empty
                     };
-                    var manager = _remoteIisManager;
+                    var manager = _iisManager;
 
                     // Measure IIS operation time
                     _metricsService.Measure("iis_operations", () =>
@@ -259,7 +259,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         }, cancellationToken);
     }
 
-    private void PerformIisOperations(IRemoteIisManager manager, ServerInfo localServerInfo, string nestedPath, MainWindowViewModel viewModel, CancellationToken cancellationToken)
+    private void PerformIisOperations(IIisManager manager, ServerInfo localServerInfo, string nestedPath, MainWindowViewModel viewModel, CancellationToken cancellationToken)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -267,7 +267,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             {
                 if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
                 {
-                    var stopPoolResult = manager.StopAppPoolAsync(localServerInfo.PoolName, cancellationToken).Result;
+                    var stopPoolResult = manager.StopAppPoolAsync(Environment.MachineName, localServerInfo.PoolName, cancellationToken).Result;
                     if (stopPoolResult.IsSuccess)
                     {
                         _output.WriteLine("[INFO] Main Pool stopped.");
@@ -280,7 +280,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                 if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
                 {
-                    var stopSiteResult = manager.StopWebsiteAsync(localServerInfo.SiteName, cancellationToken).Result;
+                    var stopSiteResult = manager.StopWebsiteAsync(Environment.MachineName, localServerInfo.SiteName, cancellationToken).Result;
                     if (stopSiteResult.IsSuccess)
                     {
                         _output.WriteLine("[INFO] Main Website stopped.");
@@ -295,7 +295,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
         {
             localServerInfo.ServiceName = viewModel.ServiceName;
-            var serviceStopResult = manager.StopServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+            var serviceStopResult = manager.StopServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).Result;
             if (serviceStopResult.IsSuccess)
             {
                 _output.WriteLine("[INFO] Main Service stopped.");
@@ -307,7 +307,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         }
     }
 
-    private void PerformStartupOperations(IRemoteIisManager manager, ServerInfo localServerInfo, string nestedPath, CancellationToken cancellationToken)
+    private void PerformStartupOperations(IIisManager manager, ServerInfo localServerInfo, string nestedPath, CancellationToken cancellationToken)
     {
         if (OperatingSystem.IsWindows())
         {
@@ -315,7 +315,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             {
                 if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
                 {
-                    var startPoolResult = manager.StartAppPoolAsync(localServerInfo.PoolName, cancellationToken).Result;
+                    var startPoolResult = manager.StartAppPoolAsync(Environment.MachineName, localServerInfo.PoolName, cancellationToken).Result;
                     if (startPoolResult.IsSuccess)
                     {
                         _output.WriteLine("[INFO] Main Pool is running.");
@@ -327,7 +327,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                 }
                 if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
                 {
-                    var startSiteResult = manager.StartWebsiteAsync(localServerInfo.SiteName, cancellationToken).Result;
+                    var startSiteResult = manager.StartWebsiteAsync(Environment.MachineName, localServerInfo.SiteName, cancellationToken).Result;
                     if (startSiteResult.IsSuccess)
                     {
                         _output.WriteLine("[INFO] Main Website is running.");
@@ -341,7 +341,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
             if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
             {
-                var serviceStartResult = manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+                var serviceStartResult = manager.StartServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).Result;
                 if (serviceStartResult.IsSuccess)
                 {
                     _output.WriteLine("[INFO] Main Service is running.");
@@ -356,7 +356,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         {
             if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
             {
-                var serviceStartResult = manager.StartServiceAsync(localServerInfo.ServiceName, cancellationToken).Result;
+                var serviceStartResult = manager.StartServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).Result;
                 if (serviceStartResult.IsSuccess)
                 {
                     _output.WriteLine("[INFO] Main Service is running.");

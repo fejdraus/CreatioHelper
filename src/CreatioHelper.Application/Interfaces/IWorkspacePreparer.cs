@@ -2,6 +2,7 @@ namespace CreatioHelper.Application.Interfaces;
 
 public interface IWorkspacePreparer
 {
+    Task PrepareAsync(string sitePath, CancellationToken cancellationToken = default);
     void Prepare(string sitePath, out bool quartzIsActiveOriginal);
     void UpdateOutConfig(string configPath, bool quartzIsActive);
     int InstallFromRepository(string sitePath, string packagesPath);

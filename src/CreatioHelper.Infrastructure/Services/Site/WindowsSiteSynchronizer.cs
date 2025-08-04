@@ -8,19 +8,19 @@ namespace CreatioHelper.Infrastructure.Services.Site;
 public class WindowsSiteSynchronizer : ISiteSynchronizer
 {
     private readonly IOutputWriter _output;
-    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IIisManager _iisManager;
     private readonly IFileCopyHelper _fileCopyHelper;
     private readonly IServerStatusService _statusService;
     private const int MaxConcurrentCopies = 7;
     private static readonly SemaphoreSlim CopySemaphore = new(MaxConcurrentCopies);
 
     public WindowsSiteSynchronizer(IOutputWriter output,
-        IRemoteIisManager remoteIisManager,
+        IIisManager iisManager,
         IFileCopyHelper fileCopyHelper,
         IServerStatusService statusService)
     {
         _output = output ?? throw new ArgumentNullException(nameof(output));
-        _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
+        _iisManager = iisManager ?? throw new ArgumentNullException(nameof(iisManager));
         _fileCopyHelper = fileCopyHelper ?? throw new ArgumentNullException(nameof(fileCopyHelper));
         _statusService = statusService ?? throw new ArgumentNullException(nameof(statusService));
     }
@@ -31,11 +31,11 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         if (targetServers == null) throw new ArgumentNullException(nameof(targetServers));
 
         sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        if (!await StopAllServicesAsync(targetServers, cancellationToken))
+        if (!await StopAllServicesAsync(targetServers, cancellationToken).ConfigureAwait(false))
         {
             return false;
         }
-        if (!await VerifyServicesStoppedAsync(targetServers, cancellationToken))
+        if (!await VerifyServicesStoppedAsync(targetServers, cancellationToken).ConfigureAwait(false))
         {
             return false;
         }
@@ -49,7 +49,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         var copyTasks = targetServers.Select(server => CopyServerFilesAsync(server, confPath, configPath, cancellationToken)).ToList();
         try
         {
-            await Task.WhenAll(copyTasks);
+            await Task.WhenAll(copyTasks).ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
             {
                 return false;
@@ -80,11 +80,11 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             }
             if (!string.IsNullOrWhiteSpace(server.PoolName))
             {
-                stopTasks.Add(_remoteIisManager.StopAppPoolAsync(server.PoolName, cancellationToken));
+                stopTasks.Add(_iisManager.StopAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken));
             }
             if (!string.IsNullOrWhiteSpace(server.SiteName))
             {
-                stopTasks.Add(_remoteIisManager.StopWebsiteAsync(server.SiteName, cancellationToken));
+                stopTasks.Add(_iisManager.StopWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken));
             }
         }
         if (stopTasks.Count == 0)
@@ -92,7 +92,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
             _output.WriteLine("[WARN] No pools or websites to stop (names not specified).");
             return true;
         }
-        Result[] stopResults = await Task.WhenAll(stopTasks);
+        Result[] stopResults = await Task.WhenAll(stopTasks).ConfigureAwait(false);
         if (!stopResults.All(result => result.IsSuccess))
         {
             _output.WriteLine("[ERROR] Failed to stop some pools or websites.");
@@ -108,8 +108,8 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
     private async Task<bool> VerifyServicesStoppedAsync(List<ServerInfo> serversToUpdate, CancellationToken cancellationToken)
     {
         _output.WriteLine("[INFO] Verifying that all services are stopped...");
-        await Task.Delay(3000, cancellationToken);
-        await _statusService.RefreshMultipleServerStatusAsync(serversToUpdate.ToArray(), cancellationToken);
+        await Task.Delay(3000, cancellationToken).ConfigureAwait(false);
+        await _statusService.RefreshMultipleServerStatusAsync(serversToUpdate.ToArray(), cancellationToken).ConfigureAwait(false);
         var failedStops = new List<string>();
         foreach (var server in serversToUpdate)
         {
@@ -145,7 +145,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
     {
         try
         {
-            await CopySemaphore.WaitAsync(cancellationToken);
+            await CopySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 await Task.Run(async () =>
@@ -165,12 +165,12 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     {
                         return;
                     }
-                    await _fileCopyHelper.CopyAsync(server, confPath, destConfPath, cancellationToken);
+                    await _fileCopyHelper.CopyAsync(server, confPath, destConfPath, cancellationToken).ConfigureAwait(false);
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
                     }
-                    await _fileCopyHelper.CopyAsync(server, configPath, destConfigPath, cancellationToken);
+                    await _fileCopyHelper.CopyAsync(server, configPath, destConfigPath, cancellationToken).ConfigureAwait(false);
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;
@@ -182,7 +182,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     
                     if (!string.IsNullOrWhiteSpace(server.PoolName))
                     {
-                        var startPoolResult = await _remoteIisManager.StartAppPoolAsync(server.PoolName, cancellationToken);
+                        var startPoolResult = await _iisManager.StartAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken).ConfigureAwait(false);
                         appPoolStarted = startPoolResult.IsSuccess;
                         if (!appPoolStarted)
                         {
@@ -191,7 +191,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     }
                     if (!string.IsNullOrWhiteSpace(server.SiteName))
                     {
-                        var startSiteResult = await _remoteIisManager.StartWebsiteAsync(server.SiteName, cancellationToken);
+                        var startSiteResult = await _iisManager.StartWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken).ConfigureAwait(false);
                         websiteStarted = startSiteResult.IsSuccess;
                         if (!websiteStarted)
                         {
@@ -200,7 +200,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                     }
                     if (appPoolStarted && websiteStarted)
                     {
-                        await VerifyServerStartedAsync(server, cancellationToken);
+                        await VerifyServerStartedAsync(server, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -228,8 +228,8 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
     private async Task VerifyServerStartedAsync(ServerInfo server, CancellationToken cancellationToken)
     {
         _output.WriteLine($"[INFO] Verifying services started on {server.Name}...");
-        await Task.Delay(3000, cancellationToken);
-        await _statusService.RefreshServerStatusAsync(server);
+        await Task.Delay(3000, cancellationToken).ConfigureAwait(false);
+        await _statusService.RefreshServerStatusAsync(server).ConfigureAwait(false);
         var issues = new List<string>();
         if (!string.IsNullOrWhiteSpace(server.PoolName) && 
             !string.Equals(server.PoolStatus, "Started", StringComparison.OrdinalIgnoreCase))

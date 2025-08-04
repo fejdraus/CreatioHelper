@@ -23,7 +23,7 @@ namespace CreatioHelper.Infrastructure.Services
 
             try
             {
-                var currentState = await GetServiceStateAsync(serviceName);
+                var currentState = await GetServiceStateAsync(serviceName).ConfigureAwait(false);
                 if (IsServiceRunning(currentState))
                 {
                     _output.WriteLine($"[INFO] Service {serviceName} is already running.");
@@ -31,12 +31,12 @@ namespace CreatioHelper.Infrastructure.Services
                 }
 
                 var command = GetStartServiceCommand(serviceName);
-                if (!await ExecuteCommandAsync(command))
+                if (!await ExecuteCommandAsync(command).ConfigureAwait(false))
                 {
                     return false;
                 }
 
-                return await WaitForServiceStateAsync(serviceName, true);
+                return await WaitForServiceStateAsync(serviceName, true).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -55,7 +55,7 @@ namespace CreatioHelper.Infrastructure.Services
 
             try
             {
-                var currentState = await GetServiceStateAsync(serviceName);
+                var currentState = await GetServiceStateAsync(serviceName).ConfigureAwait(false);
                 if (IsServiceStopped(currentState))
                 {
                     _output.WriteLine($"[INFO] Service {serviceName} is already stopped.");
@@ -63,12 +63,12 @@ namespace CreatioHelper.Infrastructure.Services
                 }
 
                 var command = GetStopServiceCommand(serviceName);
-                if (!await ExecuteCommandAsync(command))
+                if (!await ExecuteCommandAsync(command).ConfigureAwait(false))
                 {
                     return false;
                 }
 
-                return await WaitForServiceStateAsync(serviceName, false);
+                return await WaitForServiceStateAsync(serviceName, false).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -85,7 +85,7 @@ namespace CreatioHelper.Infrastructure.Services
             try
             {
                 var command = GetServiceStatusCommand(serviceName);
-                var result = await ExecuteCommandWithOutputAsync(command);
+                var result = await ExecuteCommandWithOutputAsync(command).ConfigureAwait(false);
                 
                 if (OperatingSystem.IsWindows())
                 {
@@ -182,8 +182,8 @@ namespace CreatioHelper.Infrastructure.Services
                     return false;
                 }
 
-                var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
+                var errorText = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                await process.WaitForExitAsync().ConfigureAwait(false);
 
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
@@ -213,9 +213,9 @@ namespace CreatioHelper.Infrastructure.Services
                     return null;
                 }
 
-                var outputText = await process.StandardOutput.ReadToEndAsync();
-                var errorText = await process.StandardError.ReadToEndAsync();
-                await process.WaitForExitAsync();
+                var outputText = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                var errorText = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                await process.WaitForExitAsync().ConfigureAwait(false);
 
                 if (!string.IsNullOrWhiteSpace(errorText))
                 {
@@ -269,7 +269,7 @@ namespace CreatioHelper.Infrastructure.Services
 
             while (attempts < maxAttempts)
             {
-                var currentState = await GetServiceStateAsync(serviceName);
+                var currentState = await GetServiceStateAsync(serviceName).ConfigureAwait(false);
                 
                 bool stateMatches = waitForRunning ? IsServiceRunning(currentState) : IsServiceStopped(currentState);
                 if (stateMatches)
@@ -278,7 +278,7 @@ namespace CreatioHelper.Infrastructure.Services
                 }
 
                 _output.WriteLine($"[WAIT] Service {serviceName} current state: {currentState ?? "unknown"}, waiting...");
-                await Task.Delay(5000);
+                await Task.Delay(5000).ConfigureAwait(false);
                 attempts++;
             }
 

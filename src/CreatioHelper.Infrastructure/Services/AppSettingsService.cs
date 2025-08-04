@@ -15,6 +15,24 @@ namespace CreatioHelper.Infrastructure.Services
             Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
 
+        public static async Task<AppSettings> LoadAsync(CancellationToken cancellationToken = default)
+        {
+            if (!File.Exists(SettingsFile))
+                return new AppSettings();
+
+            try
+            {
+                string json = await File.ReadAllTextAsync(SettingsFile, cancellationToken).ConfigureAwait(false);
+                var dtoAppSettings = JsonSerializer.Deserialize<DtoAppSettings>(json) ?? new DtoAppSettings();
+                return dtoAppSettings.Adapt<AppSettings>();
+            }
+            catch (Exception)
+            {
+                // Exception logging can be added here
+                return new AppSettings();
+            }
+        }
+
         public static AppSettings Load()
         {
             if (!File.Exists(SettingsFile))
@@ -23,13 +41,27 @@ namespace CreatioHelper.Infrastructure.Services
             try
             {
                 string json = File.ReadAllText(SettingsFile);
-                var dtoAppSettings =  JsonSerializer.Deserialize<DtoAppSettings>(json) ?? new DtoAppSettings();
+                var dtoAppSettings = JsonSerializer.Deserialize<DtoAppSettings>(json) ?? new DtoAppSettings();
                 return dtoAppSettings.Adapt<AppSettings>();
             }
             catch (Exception)
             {
                 // Exception logging can be added here
                 return new AppSettings();
+            }
+        }
+
+        public static async Task SaveAsync(AppSettings settings, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var newSettings = settings.Adapt<DtoAppSettings>();
+                string json = JsonSerializer.Serialize(newSettings, JsonOptions);
+                await File.WriteAllTextAsync(SettingsFile, json, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception)
+            {
+                // Exception logging can be added here
             }
         }
 
