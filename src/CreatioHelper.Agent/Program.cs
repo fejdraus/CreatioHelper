@@ -174,7 +174,7 @@ else
         {
             if (context.Request.Path.StartsWithSegments("/swagger"))
             {
-                string authHeader = context.Request.Headers["Authorization"];
+                string? authHeader = context.Request.Headers["Authorization"];
                 if (authHeader != null && authHeader.StartsWith("Basic "))
                 {
                     var encodedUsernamePassword = authHeader["Basic ".Length..].Trim();
