@@ -24,7 +24,7 @@ namespace CreatioHelper.ViewModels;
 
 public partial class MainWindowViewModel : ObservableObject
 {
-    private readonly bool _isInitializing;
+    private bool _isInitializing;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
     private readonly IServerStatusService _statusService;
     private readonly IRemoteIisManager _remoteIisManager;
@@ -68,19 +68,8 @@ public partial class MainWindowViewModel : ObservableObject
         _systemServiceManager = systemServiceManager;
         _redisManagerFactory = redisManagerFactory;
         
-        var settings = _mediator.Send(new LoadSettingsQuery()).GetAwaiter().GetResult();
-        
-        if (OperatingSystem.IsWindows())
-        {
-            LoadIisSites(settings);
-        }
-        else
-        {
-            ApplyServerSettings(settings);
-            IsFolderMode = true;
-            OnPropertyChanged(nameof(IsFolderMode));
-            OnPropertyChanged(nameof(IsIisMode));
-        }
+        // Initialize asynchronously after construction
+        _ = InitializeAsync();
 
         foreach (var server in ServerList)
         {
@@ -118,6 +107,34 @@ public partial class MainWindowViewModel : ObservableObject
         };
 
         _isInitializing = false;
+    }
+
+    private async Task InitializeAsync()
+    {
+        try
+        {
+            var settings = await _mediator.Send(new LoadSettingsQuery()).ConfigureAwait(false);
+            
+            if (OperatingSystem.IsWindows())
+            {
+                LoadIisSites(settings);
+            }
+            else
+            {
+                ApplyServerSettings(settings);
+                IsFolderMode = true;
+                OnPropertyChanged(nameof(IsFolderMode));
+                OnPropertyChanged(nameof(IsIisMode));
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to initialize settings: {ex.Message}");
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
     }
     
     public Version SitePathWithVersion

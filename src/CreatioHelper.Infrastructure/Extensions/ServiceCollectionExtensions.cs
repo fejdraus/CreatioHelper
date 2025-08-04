@@ -60,11 +60,13 @@ public static class ServiceCollectionExtensions
         }
         else if (OperatingSystem.IsMacOS())
         {
+            services.AddSingleton<IIisManager, WindowsIisManager>(); // Use WindowsIisManager for cross-platform compatibility
             services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, MacOsSiteSynchronizer>();
         }
         else if (OperatingSystem.IsLinux())
         {
+            services.AddSingleton<IIisManager, WindowsIisManager>(); // Use WindowsIisManager for cross-platform compatibility
             services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
