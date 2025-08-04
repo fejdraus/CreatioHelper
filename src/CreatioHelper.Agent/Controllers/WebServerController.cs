@@ -1,6 +1,8 @@
 using CreatioHelper.Agent.Services.Windows;
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
+using Microsoft.AspNetCore.Authorization;
 using WebServerResultDto = CreatioHelper.Contracts.Responses.WebServerResult;
 using DataDto = CreatioHelper.Contracts.Responses.Data;
 
@@ -34,6 +36,7 @@ public class WebServerController : ControllerBase
     private bool IsWebServerSupported => _webServerFactory.IsWebServerSupported();
 
     [HttpGet("info")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetWebServerInfo()
     {
         return Ok(new
@@ -59,6 +62,7 @@ public class WebServerController : ControllerBase
     }
     
     [HttpGet("webserver-type")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetWebServerType()
     {
         if (!IsWebServerSupported)
@@ -85,6 +89,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("webserver-type")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> SetWebServerType([FromBody] SetWebServerTypeRequest request)
     {
         if (!IsWebServerSupported)
@@ -107,6 +112,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("sites/{siteName}/stop")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> StopSite(string siteName)
     {
         if (!IsWebServerSupported)
@@ -148,6 +154,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("apppools/{poolName}/start")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> StartAppPool(string poolName)
     {
         if (!IsWebServerSupported)
@@ -189,6 +196,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("apppools/{poolName}/stop")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> StopAppPool(string poolName)
     {
         if (!IsWebServerSupported)
@@ -230,6 +238,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpGet("sites/{siteName}/status")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSiteStatus(string siteName, [FromQuery] string? poolName = null)
     {
         if (!IsWebServerSupported)
@@ -281,6 +290,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpGet("sites")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllSites()
     {
         if (!IsWebServerSupported)
@@ -313,6 +323,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpGet("apppools")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllAppPools()
     {
         if (!IsWebServerSupported)
@@ -345,6 +356,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpPost("status/multiple")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetMultipleServerStatus([FromBody] ServerRequest[] requests)
     {
         if (!IsWebServerSupported || _iisStatusService == null || !OperatingSystem.IsWindows())
@@ -378,6 +390,7 @@ public class WebServerController : ControllerBase
 
     // Additional methods with detailed information
     [HttpGet("sites/detailed")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllSitesDetailed()
     {
         if (!IsWebServerSupported)
@@ -410,6 +423,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpGet("apppools/detailed")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllAppPoolsDetailed()
     {
         if (!IsWebServerSupported)
@@ -442,6 +456,7 @@ public class WebServerController : ControllerBase
     }
 
     [HttpGet("overview")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetIisOverview()
     {
         if (!IsWebServerSupported)
@@ -493,6 +508,7 @@ public class WebServerController : ControllerBase
     }
     
     [HttpPost("sites/{siteName}/start")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> StartSite(string siteName)
     {
         if (!IsWebServerSupported)

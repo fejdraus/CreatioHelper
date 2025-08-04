@@ -1,3 +1,6 @@
+using CreatioHelper.Agent.Authorization;
+using Microsoft.AspNetCore.Authorization;
+
 namespace CreatioHelper.Agent.Controllers;
 
 [ApiController]
@@ -14,6 +17,7 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("info")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSystemInfo()
     {
         try
@@ -29,6 +33,7 @@ public class SystemController : ControllerBase
     }
 
     [HttpGet("health")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public IActionResult Health()
     {
         return Ok(new { Status = "Healthy", Timestamp = DateTime.UtcNow });
