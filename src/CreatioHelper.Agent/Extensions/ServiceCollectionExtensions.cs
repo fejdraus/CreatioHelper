@@ -44,7 +44,8 @@ public static class ServiceCollectionExtensions
         {
             services.AddHostedService<SystemMetricsCollector>();
         }
-        services.AddHostedService<MonitoringService>();
+        services.AddSingleton<MonitoringService>();
+        services.AddHostedService<MonitoringService>(provider => provider.GetRequiredService<MonitoringService>());
 
         // Health Check
         services.AddScoped<CreatioHelperHealthCheck>();
