@@ -1,0 +1,46 @@
+{
+  "Sites": [
+    {
+      "Name": "My Creatio Instance",
+      "Type": "IIS",
+      "ServiceName": "creatio-prod",
+      "AutoDiscovered": false,
+      "Properties": {
+        "Environment": "Production",
+        "Version": "8.1.2",
+        "DatabaseServer": "sql-server-01",
+        "Description": "Main production Creatio instance"
+      },
+      "LastUpdated": "2025-08-04T19:30:00Z",
+      "Status": "Running"
+    },
+    {
+      "Name": "Test Environment",
+      "Type": "Systemd",
+      "ServiceName": "creatio-test.service",
+      "AutoDiscovered": false,
+      "Properties": {
+        "Environment": "Testing",
+        "Version": "8.2.0-beta",
+        "Port": "5000",
+        "Description": "Testing environment for new features"
+      },
+      "LastUpdated": "2025-08-04T19:25:00Z",
+      "Status": "Stopped"
+    },
+    {
+      "Name": "Default Web Site",
+      "Type": "IIS",
+      "ServiceName": "Default Web Site",
+      "AutoDiscovered": true,
+      "Properties": {
+        "Port": "80",
+        "PhysicalPath": "C:\\inetpub\\wwwroot"
+      },
+      "LastUpdated": "2025-08-04T19:00:00Z",
+      "Status": "Running"
+    }
+  ],
+  "LastUpdated": "2025-08-04T19:30:00Z",
+  "Version": "1.0"
+}

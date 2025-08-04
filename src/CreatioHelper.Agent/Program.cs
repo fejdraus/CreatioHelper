@@ -1,6 +1,11 @@
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,9 +14,96 @@ builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo 
+    {
+        Title = "CreatioHelper Agent API",
+        Version = "v1",
+        Description = @"CreatioHelper Agent monitoring and management API
+
+**How to authenticate:**
+1. Use POST /api/auth/token with username=admin, password=admin123
+2. Copy the returned token
+3. Click 'Authorize' button below and enter: Bearer {your-token}
+4. Now you can call protected endpoints"
+    });
+    
+    // JWT Authorization
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = @"JWT Authorization header using the Bearer scheme.
+                      Enter 'Bearer' [space] and then your token in the text input below.
+                      Example: 'Bearer 12345abcdef'",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+    
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
 
 builder.Services.AddHealthChecks();
+
+// Configuration binding
+builder.Services.Configure<AuthenticationSettings>(builder.Configuration.GetSection("Authentication"));
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+builder.Services.Configure<SwaggerAuthSettings>(builder.Configuration.GetSection("SwaggerAuth"));
+
+// JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings
+{
+    Secret = "YourSuperSecretKeyThatIsAtLeast32CharactersLong!",
+    Issuer = "CreatioHelper.Agent",
+    Audience = "CreatioHelper.Client",
+    ExpirationHours = 24
+};
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings.Issuer,
+            ValidAudience = jwtSettings.Audience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
+        };
+        
+        // For SignalR
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+                if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/monitoringHub"))
+                {
+                    context.Token = accessToken;
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
+
+builder.Services.AddAuthorization();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices();
@@ -51,10 +143,59 @@ applicationLifetime.ApplicationStopping.Register(() =>
     logger.LogInformation("🛑 Application shutdown initiated - stopping operations gracefully");
 });
 
+// Swagger configuration with security
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CreatioHelper Agent API v1");
+        c.DocumentTitle = "CreatioHelper Agent API";
+        c.DefaultModelsExpandDepth(-1);
+    });
+}
+else
+{
+    // In production, require authentication for Swagger
+    var swaggerAuthSettings = builder.Configuration.GetSection("SwaggerAuth").Get<SwaggerAuthSettings>();
+    
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CreatioHelper Agent API v1");
+        c.DocumentTitle = "CreatioHelper Agent API";
+        c.DefaultModelsExpandDepth(-1);
+    });
+    
+    // Simple basic auth middleware for Swagger in production
+    if (swaggerAuthSettings?.Enabled == true)
+    {
+        app.Use(async (context, next) =>
+        {
+            if (context.Request.Path.StartsWithSegments("/swagger"))
+            {
+                string authHeader = context.Request.Headers["Authorization"];
+                if (authHeader != null && authHeader.StartsWith("Basic "))
+                {
+                    var encodedUsernamePassword = authHeader["Basic ".Length..].Trim();
+                    var decodedUsernamePassword = Encoding.UTF8.GetString(Convert.FromBase64String(encodedUsernamePassword));
+                    var username = decodedUsernamePassword.Split(':', 2)[0];
+                    var password = decodedUsernamePassword.Split(':', 2)[1];
+                    
+                    if (username == swaggerAuthSettings.Username && password == swaggerAuthSettings.Password)
+                    {
+                        await next();
+                        return;
+                    }
+                }
+                
+                context.Response.Headers["WWW-Authenticate"] = "Basic";
+                context.Response.StatusCode = 401;
+                return;
+            }
+            await next();
+        });
+    }
 }
 
 // Expose health checks endpoint
@@ -62,17 +203,20 @@ app.MapHealthChecks("/health");
 
 app.UseCors("AllowAll");
 app.UseRouting();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapControllers();
 
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
 
-// Prometheus metrics endpoint
+// Prometheus metrics endpoint (requires authentication)
 app.MapGet("/metrics", async (IMetricsService metricsService) =>
 {
     var metrics = await metricsService.GetMetricsAsync();
     var prometheusFormat = ConvertToPrometheusFormat(metrics);
     return Results.Text(prometheusFormat, "text/plain");
-});
+}).RequireAuthorization();
+
 
 app.MapGet("/test-signalr", () => Results.Content("""
                                                   <!DOCTYPE html>

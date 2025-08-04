@@ -1,8 +1,11 @@
 using Microsoft.AspNetCore.SignalR;
+using Microsoft.AspNetCore.Authorization;
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Authorization;
 
 namespace CreatioHelper.Agent.Hubs;
 
+[Authorize(Roles = Roles.ReadRoles)]
 public class MonitoringHub : Hub
 {
     private readonly ILogger<MonitoringHub> _logger;

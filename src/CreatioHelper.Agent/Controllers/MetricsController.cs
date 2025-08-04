@@ -1,3 +1,5 @@
+using CreatioHelper.Agent.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -24,6 +26,7 @@ public class MetricsController : ControllerBase
     /// Get overall performance summary
     /// </summary>
     [HttpGet("performance")]
+    [Authorize(Roles = Roles.Monitor)]
     public async Task<ActionResult<PerformanceSummary>> GetPerformanceMetrics()
     {
         try
@@ -65,6 +68,7 @@ public class MetricsController : ControllerBase
     /// Get detailed metrics by categories
     /// </summary>
     [HttpGet("detailed")]
+    [Authorize(Roles = Roles.Monitor)]
     public async Task<ActionResult<Dictionary<string, object>>> GetDetailedMetrics()
     {
         try
@@ -84,6 +88,7 @@ public class MetricsController : ControllerBase
     /// </summary>
     [HttpGet("prometheus")]
     [Produces("text/plain")]
+    [Authorize(Roles = Roles.Monitor)]
     public async Task<ActionResult<string>> GetPrometheusMetrics()
     {
         try
@@ -103,6 +108,7 @@ public class MetricsController : ControllerBase
     /// Reset metrics (for testing only)
     /// </summary>
     [HttpPost("reset")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult ResetMetrics()
     {
         if (!HttpContext.Request.Headers.ContainsKey("X-Reset-Token"))

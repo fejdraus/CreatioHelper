@@ -1,4 +1,6 @@
 using CreatioHelper.Infrastructure.Services.Performance;
+using CreatioHelper.Agent.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using System.Diagnostics;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -19,6 +21,7 @@ public class DiagnosticsController : ControllerBase
     }
     
     [HttpGet("summary")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public ActionResult<object> GetDiagnosticsSummary()
     {
         try
@@ -53,6 +56,7 @@ public class DiagnosticsController : ControllerBase
     /// Force a check of all systems with a detailed report
     /// </summary>
     [HttpPost("force-check")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> ForceSystemCheck()
     {
         using var diagnosticContext = _diagnosticsService.StartOperation("force_system_check");
@@ -89,6 +93,7 @@ public class DiagnosticsController : ControllerBase
     /// Get the history of recent issues for troubleshooting
     /// </summary>
     [HttpGet("issues")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public ActionResult<object> GetRecentIssues()
     {
         try

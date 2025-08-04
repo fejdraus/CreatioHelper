@@ -1,5 +1,7 @@
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Contracts.Requests;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -20,6 +22,7 @@ public class WebSiteController : ControllerBase
     /// Get all sites (auto-discovered plus manually registered)
     /// </summary>
     [HttpGet("")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllSites()
     {
         try
@@ -49,6 +52,7 @@ public class WebSiteController : ControllerBase
     /// Manually register a new site
     /// </summary>
     [HttpPost("register")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RegisterSite([FromBody] RegisterSiteRequest request)
     {
         if (!ModelState.IsValid)
@@ -88,6 +92,7 @@ public class WebSiteController : ControllerBase
     /// Update site information
     /// </summary>
     [HttpPut("{siteName}")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> UpdateSite(string siteName, [FromBody] UpdateSiteRequest request)
     {
         if (!ModelState.IsValid)
@@ -130,6 +135,7 @@ public class WebSiteController : ControllerBase
     /// Remove a site from the registry (only manually registered)
     /// </summary>
     [HttpDelete("{siteName}")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> UnregisterSite(string siteName)
     {
         try
@@ -160,6 +166,7 @@ public class WebSiteController : ControllerBase
     /// Get information about a specific site
     /// </summary>
     [HttpGet("{siteName}")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSiteInfo(string siteName)
     {
         try
@@ -183,6 +190,7 @@ public class WebSiteController : ControllerBase
     /// Check if a site exists
     /// </summary>
     [HttpHead("{siteName}")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> CheckSiteExists(string siteName)
     {
         try
@@ -201,6 +209,7 @@ public class WebSiteController : ControllerBase
     /// Get sites by type
     /// </summary>
     [HttpGet("by-type/{type}")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSitesByType(string type)
     {
         try
@@ -226,6 +235,7 @@ public class WebSiteController : ControllerBase
     /// Get site statistics
     /// </summary>
     [HttpGet("stats")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSiteStats()
     {
         try
