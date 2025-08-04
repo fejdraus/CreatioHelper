@@ -1,11 +1,8 @@
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Common;
-using CreatioHelper.Domain.ValueObjects;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Logging;
-using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Interfaces;
-using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit.Abstractions;
 

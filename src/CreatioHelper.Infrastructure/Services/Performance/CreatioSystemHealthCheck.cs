@@ -1,5 +1,4 @@
 using CreatioHelper.Application.Interfaces;
-using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Performance;

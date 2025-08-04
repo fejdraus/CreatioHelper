@@ -3,7 +3,7 @@ namespace CreatioHelper.Application.Interfaces;
 /// <summary>
 /// Manages a pool of remote connections for server operations.
 /// </summary>
-public interface IConnectionPoolManager : System.IDisposable
+public interface IConnectionPoolManager : IDisposable
 {
     /// <summary>
     /// Executes an operation using a connection from the pool.
@@ -12,7 +12,7 @@ public interface IConnectionPoolManager : System.IDisposable
     /// <param name="serverName">Target server name.</param>
     /// <param name="operation">Operation to execute.</param>
     /// <returns>Result of the operation.</returns>
-    System.Threading.Tasks.Task<T> ExecuteAsync<T>(string serverName, System.Func<IRemoteConnection, System.Threading.Tasks.Task<T>> operation);
+    Task<T> ExecuteAsync<T>(string serverName, System.Func<IRemoteConnection, System.Threading.Tasks.Task<T>> operation);
 }
 
 /// <summary>
@@ -35,11 +35,11 @@ public interface IRemoteConnection : System.IDisposable
     /// </summary>
     /// <param name="command">Command text.</param>
     /// <returns>Command output.</returns>
-    System.Threading.Tasks.Task<string> ExecuteCommandAsync(string command);
+    Task<string> ExecuteCommandAsync(string command);
     
     /// <summary>
     /// Creates a new PowerShell instance for command execution.
     /// </summary>
     /// <returns>PowerShell instance.</returns>
-    System.Threading.Tasks.Task<object> CreatePowerShellAsync();
+    Task<object> CreatePowerShellAsync();
 }

@@ -10,9 +10,8 @@ namespace CreatioHelper.Services;
 
 public static class FileLogService
 {
-    private static readonly ConcurrentQueue<LogEntry> _queue = new();
-    private static readonly Timer _timer;
-    private static readonly SemaphoreSlim _semaphore = new(1, 1);
+    private static readonly ConcurrentQueue<LogEntry> Queue = new();
+    private static readonly SemaphoreSlim Semaphore = new(1, 1);
     
     public static bool Enabled { get; set; }
     public static string LogFilePath { get; set; } = "log.txt";
@@ -20,7 +19,7 @@ public static class FileLogService
     static FileLogService()
     {
         // Flush queue every 1 second
-        _timer = new Timer(async _ => await FlushQueueAsync(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        new Timer(async _ => await FlushQueueAsync(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     public static void AppendLine(string line)
@@ -28,7 +27,7 @@ public static class FileLogService
         if (!Enabled)
             return;
 
-        _queue.Enqueue(new LogEntry { Text = line + Environment.NewLine, IsClear = false });
+        Queue.Enqueue(new LogEntry { Text = line + Environment.NewLine, IsClear = false });
     }
 
     public static void Clear()
@@ -36,7 +35,7 @@ public static class FileLogService
         if (!Enabled)
             return;
 
-        _queue.Enqueue(new LogEntry { Text = string.Empty, IsClear = true });
+        Queue.Enqueue(new LogEntry { Text = string.Empty, IsClear = true });
     }
 
     public static async Task FlushAsync()
@@ -46,14 +45,14 @@ public static class FileLogService
 
     private static async Task FlushQueueAsync()
     {
-        if (_queue.IsEmpty || !Enabled)
+        if (Queue.IsEmpty || !Enabled)
             return;
 
-        await _semaphore.WaitAsync().ConfigureAwait(false);
+        await Semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
             var entries = new List<LogEntry>();
-            while (_queue.TryDequeue(out var entry))
+            while (Queue.TryDequeue(out var entry))
             {
                 entries.Add(entry);
             }
@@ -87,7 +86,7 @@ public static class FileLogService
         }
         finally
         {
-            _semaphore.Release();
+            Semaphore.Release();
         }
     }
 

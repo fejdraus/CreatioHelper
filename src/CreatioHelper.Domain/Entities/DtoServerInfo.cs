@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using CreatioHelper.Domain.ValueObjects;
 
 namespace CreatioHelper.Domain.Entities;
 

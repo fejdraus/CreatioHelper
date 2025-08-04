@@ -41,7 +41,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(poolName))
             return Result.Failure("Pool name is required.");
 
-        return await _metrics.MeasureAsync<Result>("iis_apppool_start", async () =>
+        return await _metrics.MeasureAsync("iis_apppool_start", async () =>
         {
             try
             {
@@ -84,7 +84,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(poolName))
             return Result.Failure("Pool name is required.");
 
-        return await _metrics.MeasureAsync<Result>("iis_apppool_stop", async () =>
+        return await _metrics.MeasureAsync("iis_apppool_stop", async () =>
         {
             try
             {
@@ -145,7 +145,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(siteName))
             return Result.Failure("Site name is required.");
 
-        return await _metrics.MeasureAsync<Result>("iis_website_start", async () =>
+        return await _metrics.MeasureAsync("iis_website_start", async () =>
         {
             try
             {
@@ -188,7 +188,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(siteName))
             return Result.Failure("Site name is required.");
 
-        return await _metrics.MeasureAsync<Result>("iis_website_stop", async () =>
+        return await _metrics.MeasureAsync("iis_website_stop", async () =>
         {
             try
             {
@@ -246,7 +246,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(serviceName))
             return Result.Failure("Service name is required");
 
-        return await _metrics.MeasureAsync<Result>("service_start", async () =>
+        return await _metrics.MeasureAsync("service_start", async () =>
         {
             try
             {
@@ -278,7 +278,7 @@ public class WindowsIisManager : IIisManager
         if (string.IsNullOrWhiteSpace(serviceName))
             return Result.Failure("Service name is required");
 
-        return await _metrics.MeasureAsync<Result>("service_stop", async () =>
+        return await _metrics.MeasureAsync("service_stop", async () =>
         {
             try
             {

@@ -6,8 +6,6 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Infrastructure.Logging;
-using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Shared.Utils;
 using CreatioHelper.Converters;
 using CreatioHelper.Services;
@@ -18,13 +16,11 @@ using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
-using AvaloniaEdit;
 
 namespace CreatioHelper
 {
     public partial class MainWindow : Window
     {
-        private readonly IOutputWriter _writer;
         private readonly MainWindowViewModel _viewModel;
         private const string LogFilePath = "log.txt";
 
@@ -36,7 +32,7 @@ namespace CreatioHelper
             );
 
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
-            _writer = provider.GetRequiredService<IOutputWriter>();
+            var writer = provider.GetRequiredService<IOutputWriter>();
             var logDisplayHelper = new UpdateLogDisplay();
             OutputWriterHandlers.WriteAction = line =>
             {
@@ -80,11 +76,11 @@ namespace CreatioHelper
             
             var dialogService = new DialogService(StorageProvider);
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
-            var workspacePreparer = new WorkspacePreparer(_writer);
+            var workspacePreparer = new WorkspacePreparer(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
-            var operationsService = new OperationsService(_writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService);
+            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
             DataContext = _viewModel;
             FileLogService.LogFilePath = LogFilePath;
             FileLogService.Enabled = _viewModel.IsLogToFileEnabled;
