@@ -1,3 +1,4 @@
+using System;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -6,16 +7,16 @@ namespace CreatioHelper.Infrastructure.Services;
 
 public class ServerStatusService : IServerStatusService
 {
-    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IIisManager _iisManager;
     private readonly IMetricsService _metrics;
     private readonly ILogger<ServerStatusService> _logger;
 
     public ServerStatusService(
-        IRemoteIisManager remoteIisManager,
+        IIisManager iisManager,
         IMetricsService metrics,
         ILogger<ServerStatusService> logger)
     {
-        _remoteIisManager = remoteIisManager ?? throw new ArgumentNullException(nameof(remoteIisManager));
+        _iisManager = iisManager ?? throw new ArgumentNullException(nameof(iisManager));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -32,14 +33,14 @@ public class ServerStatusService : IServerStatusService
             {
                 if (!string.IsNullOrEmpty(server.PoolName))
                 {
-                    var poolStatus = await GetPoolStatusAsync(server.PoolName, cancellationToken).ConfigureAwait(false);
+                    var poolStatus = await GetPoolStatusAsync(server.Name ?? Environment.MachineName, server.PoolName, cancellationToken).ConfigureAwait(false);
                     server.PoolStatus = poolStatus ?? "Unknown";
                     _logger.LogDebug("Retrieved pool status for {PoolName}: {Status}", server.PoolName, poolStatus);
                 }
 
                 if (!string.IsNullOrEmpty(server.SiteName))
                 {
-                    var siteStatus = await GetWebsiteStatusAsync(server.SiteName, cancellationToken).ConfigureAwait(false);
+                    var siteStatus = await GetWebsiteStatusAsync(server.Name ?? Environment.MachineName, server.SiteName, cancellationToken).ConfigureAwait(false);
                     server.SiteStatus = siteStatus ?? "Unknown";
                     _logger.LogDebug("Retrieved site status for {SiteName}: {Status}", server.SiteName, siteStatus);
                 }
@@ -110,11 +111,11 @@ public class ServerStatusService : IServerStatusService
         });
     }
 
-    private async Task<string?> GetPoolStatusAsync(string poolName, CancellationToken cancellationToken)
+    private async Task<string?> GetPoolStatusAsync(string serverName, string poolName, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _remoteIisManager.GetAppPoolStatusAsync(poolName, cancellationToken).ConfigureAwait(false);
+            var result = await _iisManager.GetAppPoolStatusAsync(serverName, poolName, cancellationToken).ConfigureAwait(false);
             return result.IsSuccess ? result.Value : "Error";
         }
         catch (Exception ex)
@@ -124,11 +125,11 @@ public class ServerStatusService : IServerStatusService
         }
     }
 
-    private async Task<string?> GetWebsiteStatusAsync(string siteName, CancellationToken cancellationToken)
+    private async Task<string?> GetWebsiteStatusAsync(string serverName, string siteName, CancellationToken cancellationToken)
     {
         try
         {
-            var result = await _remoteIisManager.GetWebsiteStatusAsync(siteName, cancellationToken).ConfigureAwait(false);
+            var result = await _iisManager.GetWebsiteStatusAsync(serverName, siteName, cancellationToken).ConfigureAwait(false);
             return result.IsSuccess ? result.Value : "Error";
         }
         catch (Exception ex)

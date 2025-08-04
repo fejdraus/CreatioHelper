@@ -74,7 +74,7 @@ namespace CreatioHelper
             var mediator = provider.GetRequiredService<IMediator>();
             var systemServiceManager = provider.GetRequiredService<ISystemServiceManager>();
             var iisManager = provider.GetRequiredService<IIisManager>();
-            var remoteManager = provider.GetRequiredService<IRemoteIisManager>(); // Keep for ViewModel compatibility
+            // remoteManager no longer needed - using iisManager directly
             var metricsService = provider.GetRequiredService<IMetricsService>();
             var statusService = provider.GetRequiredService<IServerStatusService>();
             
@@ -84,7 +84,7 @@ namespace CreatioHelper
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var operationsService = new OperationsService(_writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, remoteManager, iisService, systemServiceManager, redisFactory);
+            _viewModel = new MainWindowViewModel(_writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
             DataContext = _viewModel;
             FileLogService.LogFilePath = LogFilePath;
             FileLogService.Enabled = _viewModel.IsLogToFileEnabled;

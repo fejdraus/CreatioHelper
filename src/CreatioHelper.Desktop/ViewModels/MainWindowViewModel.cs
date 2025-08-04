@@ -27,7 +27,7 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isInitializing;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
     private readonly IServerStatusService _statusService;
-    private readonly IRemoteIisManager _remoteIisManager;
+    private readonly IIisManager _iisManager;
     private readonly IisService _iisService;
     private readonly IMediator _mediator;
     private readonly IOperationsService _operationsService;
@@ -43,7 +43,7 @@ public partial class MainWindowViewModel : ObservableObject
         IOperationsService operationsService,
         IDialogService dialogService,
         IServerStatusService statusService,
-        IRemoteIisManager remoteIisManager,
+        IIisManager iisManager,
         IisService iisService,
         ISystemServiceManager systemServiceManager,
         IRedisManagerFactory redisManagerFactory)
@@ -63,7 +63,7 @@ public partial class MainWindowViewModel : ObservableObject
         _dialogService = dialogService;
         _statusService = statusService;
         _isInitializing = true;
-        _remoteIisManager = remoteIisManager;
+        _iisManager = iisManager;
         _iisService = iisService;
         _systemServiceManager = systemServiceManager;
         _redisManagerFactory = redisManagerFactory;
@@ -273,7 +273,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
-            var result = await _remoteIisManager.StopAppPoolAsync(server.PoolName, CancellationToken.None);
+            var result = await _iisManager.StopAppPoolAsync(server.Name ?? Environment.MachineName, server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
                 if (OperatingSystem.IsWindows())
@@ -312,7 +312,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _output.WriteLine($"[INFO] Starting application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
             
-            var result = await _remoteIisManager.StartAppPoolAsync(server.PoolName, CancellationToken.None);
+            var result = await _iisManager.StartAppPoolAsync(server.Name ?? Environment.MachineName, server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
             {
                 if (OperatingSystem.IsWindows())
@@ -351,7 +351,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _output.WriteLine($"[INFO] Stopping website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
             
-            var result = await _remoteIisManager.StopWebsiteAsync(server.SiteName, CancellationToken.None);
+            var result = await _iisManager.StopWebsiteAsync(server.Name ?? Environment.MachineName, server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
                 if (OperatingSystem.IsWindows())
@@ -390,7 +390,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
             
-            var result = await _remoteIisManager.StartWebsiteAsync(server.SiteName, CancellationToken.None);
+            var result = await _iisManager.StartWebsiteAsync(server.Name ?? Environment.MachineName, server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
                 if (OperatingSystem.IsWindows())
@@ -549,7 +549,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StartServiceAsync(server.ServiceName, CancellationToken.None);
+        var result = await _iisManager.StartServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
@@ -569,7 +569,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        var result = await _remoteIisManager.StopServiceAsync(server.ServiceName, CancellationToken.None);
+        var result = await _iisManager.StopServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
             await _statusService.RefreshServerStatusAsync(server);
