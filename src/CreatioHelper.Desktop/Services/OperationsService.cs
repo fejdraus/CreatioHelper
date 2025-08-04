@@ -137,12 +137,25 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _output.WriteLine("Deleting packages BEFORE installation...");
                         
                         // Measure package deletion time BEFORE
+                        bool success = false;
                         _metricsService.Measure("packages_delete_before", () =>
                         {
-                            ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
+                        
+                        if (!success)
+                        {
+                            _output.WriteLine("[ERROR] Package deletion BEFORE installation failed. Stopping execution.");
+                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "packages_delete_before_failed" });
+                            return;
+                        }
+                        
                         _metricsService.IncrementCounter("packages_deleted_before");
                     }
 
@@ -151,12 +164,25 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _output.WriteLine("Start installation packages...");
                         
                         // Measure package installation time
+                        bool success = false;
                         _metricsService.Measure("package_install", () =>
                         {
-                            ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
+                        
+                        if (!success)
+                        {
+                            _output.WriteLine("[ERROR] Package installation failed. Stopping execution.");
+                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "package_install_failed" });
+                            return;
+                        }
+                        
                         _metricsService.IncrementCounter("packages_installed_count");
                     }
 
@@ -165,12 +191,25 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _output.WriteLine("Deleting packages AFTER installation...");
                         
                         // Measure package deletion time AFTER
+                        bool success = false;
                         _metricsService.Measure("packages_delete_after", () =>
                         {
-                            ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
+                        
+                        if (!success)
+                        {
+                            _output.WriteLine("[ERROR] Package deletion AFTER installation failed. Stopping execution.");
+                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "packages_delete_after_failed" });
+                            return;
+                        }
+                        
                         _metricsService.IncrementCounter("packages_deleted_after");
                     }
 
@@ -180,10 +219,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         if (!cancellationToken.IsCancellationRequested)
                         {
                             // Measure server synchronization time
-                            var syncStatus = await _metricsService.MeasureAsync("server_sync", async () =>
-                            {
-                                return await _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken).ConfigureAwait(false);
-                            }).ConfigureAwait(false);
+                            var syncStatus = await _metricsService.MeasureAsync("server_sync", async () => await _siteSynchronizer.SynchronizeAsync(sitePath, serverList.ToList(), cancellationToken).ConfigureAwait(false)).ConfigureAwait(false);
 
                             if (syncStatus)
                             {
@@ -207,12 +243,24 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         !viewModel.IsServerPanelVisible)
                     {
                         // Measure schema generation operations time
+                        bool success = false;
                         _metricsService.Measure("schema_operations", () =>
                         {
-                            ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            if (!success) return;
+                            
+                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
+                        
+                        if (!success)
+                        {
+                            _output.WriteLine("[ERROR] Schema operations failed. Stopping execution.");
+                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "schema_operations_failed" });
+                            return;
+                        }
                     }
 
                     var redisManager = _redisManagerFactory.Create(sitePath);
