@@ -1,0 +1,249 @@
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Text;
+using System.Text.Json;
+using Microsoft.Extensions.Logging;
+
+namespace CreatioHelper.Infrastructure.Services.Sync;
+
+/// <summary>
+/// Handles individual device connection (based on Syncthing connection handling)
+/// Inspired by Syncthing's protocol.go connection management
+/// </summary>
+public class DeviceConnection : IDisposable
+{
+    private readonly string _deviceId;
+    private readonly TcpClient _tcpClient;
+    private readonly SslStream _sslStream;
+    private readonly ILogger _logger;
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
+    private volatile bool _isConnected = true;
+
+    public string DeviceId => _deviceId;
+    public bool IsConnected => _isConnected && _tcpClient.Connected;
+
+    public DeviceConnection(string deviceId, TcpClient tcpClient, SslStream sslStream, ILogger logger)
+    {
+        _deviceId = deviceId;
+        _tcpClient = tcpClient;
+        _sslStream = sslStream;
+        _logger = logger;
+    }
+
+    public Task StartAsync()
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await ReceiveLoopAsync(_cancellationTokenSource.Token);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in receive loop for device {DeviceId}", _deviceId);
+                await DisconnectAsync();
+            }
+        });
+        
+        return Task.CompletedTask;
+    }
+
+    public async Task SendMessageAsync<T>(MessageType messageType, T message)
+    {
+        if (!IsConnected) return;
+
+        await _sendSemaphore.WaitAsync();
+        try
+        {
+            var json = JsonSerializer.Serialize(message);
+            var data = Encoding.UTF8.GetBytes(json);
+            
+            // Write message header (4 bytes length + 1 byte type)
+            var header = new byte[5];
+            BitConverter.GetBytes(data.Length).CopyTo(header, 0);
+            header[4] = (byte)messageType;
+            
+            await _sslStream.WriteAsync(header);
+            await _sslStream.WriteAsync(data);
+            await _sslStream.FlushAsync();
+            
+            _logger.LogDebug("Sent {MessageType} message to device {DeviceId}", messageType, _deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error sending message to device {DeviceId}", _deviceId);
+            await DisconnectAsync();
+        }
+        finally
+        {
+            _sendSemaphore.Release();
+        }
+    }
+
+    private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
+    {
+        var buffer = new byte[4096];
+        
+        while (!cancellationToken.IsCancellationRequested && IsConnected)
+        {
+            try
+            {
+                // Read message header
+                var header = new byte[5];
+                var headerRead = 0;
+                while (headerRead < 5)
+                {
+                    var read = await _sslStream.ReadAsync(header.AsMemory(headerRead, 5 - headerRead), cancellationToken);
+                    if (read == 0)
+                    {
+                        _logger.LogDebug("Device {DeviceId} disconnected", _deviceId);
+                        return;
+                    }
+                    headerRead += read;
+                }
+                
+                var messageLength = BitConverter.ToInt32(header, 0);
+                var messageType = (MessageType)header[4];
+                
+                if (messageLength > 16 * 1024 * 1024) // 16MB limit
+                {
+                    _logger.LogWarning("Message too large from device {DeviceId}: {Length} bytes", _deviceId, messageLength);
+                    return;
+                }
+                
+                // Read message data
+                var messageData = new byte[messageLength];
+                var dataRead = 0;
+                while (dataRead < messageLength)
+                {
+                    var read = await _sslStream.ReadAsync(messageData.AsMemory(dataRead, messageLength - dataRead), cancellationToken);
+                    if (read == 0)
+                    {
+                        _logger.LogDebug("Device {DeviceId} disconnected while reading message", _deviceId);
+                        return;
+                    }
+                    dataRead += read;
+                }
+                
+                await ProcessMessageAsync(messageType, messageData);
+                
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error receiving message from device {DeviceId}", _deviceId);
+                break;
+            }
+        }
+    }
+
+    private async Task ProcessMessageAsync(MessageType messageType, byte[] data)
+    {
+        try
+        {
+            var json = Encoding.UTF8.GetString(data);
+            
+            switch (messageType)
+            {
+                case MessageType.Hello:
+                    var hello = JsonSerializer.Deserialize<HelloMessage>(json);
+                    _logger.LogInformation("Received Hello from device {DeviceId}: {DeviceName}", _deviceId, hello?.DeviceName);
+                    break;
+                    
+                case MessageType.ClusterConfig:
+                    var config = JsonSerializer.Deserialize<ClusterConfigMessage>(json);
+                    _logger.LogDebug("Received ClusterConfig from device {DeviceId} with {FolderCount} folders", _deviceId, config?.Folders.Count ?? 0);
+                    break;
+                    
+                case MessageType.Index:
+                    var index = JsonSerializer.Deserialize<IndexMessage>(json);
+                    _logger.LogDebug("Received Index from device {DeviceId} for folder {FolderId} with {FileCount} files", _deviceId, index?.Folder, index?.Files.Count ?? 0);
+                    break;
+                    
+                case MessageType.Request:
+                    var request = JsonSerializer.Deserialize<BlockRequestMessage>(json);
+                    _logger.LogDebug("Received block request from device {DeviceId} for {FileName}", _deviceId, request?.Name);
+                    await HandleBlockRequestAsync(request);
+                    break;
+                    
+                case MessageType.Response:
+                    var response = JsonSerializer.Deserialize<BlockResponseMessage>(json);
+                    _logger.LogDebug("Received block response from device {DeviceId}", _deviceId);
+                    break;
+                    
+                case MessageType.DownloadProgress:
+                    var progress = JsonSerializer.Deserialize<DownloadProgressMessage>(json);
+                    _logger.LogDebug("Received download progress from device {DeviceId} for folder {FolderId}", _deviceId, progress?.Folder);
+                    break;
+                    
+                case MessageType.Ping:
+                    // Respond with pong
+                    await SendMessageAsync(MessageType.Ping, new { });
+                    break;
+                    
+                default:
+                    _logger.LogWarning("Unknown message type {MessageType} from device {DeviceId}", messageType, _deviceId);
+                    break;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing message type {MessageType} from device {DeviceId}", messageType, _deviceId);
+        }
+    }
+
+    private async Task HandleBlockRequestAsync(BlockRequestMessage? request)
+    {
+        if (request == null) return;
+        
+        try
+        {
+            // In a real implementation, this would read the requested block from disk
+            // For now, return empty data
+            var response = new BlockResponseMessage
+            {
+                Data = Array.Empty<byte>()
+            };
+            
+            await SendMessageAsync(MessageType.Response, response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling block request from device {DeviceId}", _deviceId);
+        }
+    }
+
+    public async Task DisconnectAsync()
+    {
+        if (!_isConnected) return;
+        
+        _isConnected = false;
+        _cancellationTokenSource.Cancel();
+        
+        try
+        {
+            // Send close message
+            await SendMessageAsync(MessageType.Close, new { });
+        }
+        catch
+        {
+            // Ignore errors when closing
+        }
+        
+        _sslStream.Dispose();
+        _tcpClient.Dispose();
+        
+        _logger.LogInformation("Disconnected from device {DeviceId}", _deviceId);
+    }
+
+    public void Dispose()
+    {
+        _ = DisconnectAsync();
+        _cancellationTokenSource.Dispose();
+        _sendSemaphore.Dispose();
+    }
+}

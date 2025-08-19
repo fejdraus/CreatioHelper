@@ -29,7 +29,13 @@ public class WebServerServiceFactory : IWebServerServiceFactory
                 return _serviceProvider.GetRequiredService<WindowsServiceManager>();
             }
 
-            return _serviceProvider.GetRequiredService<IisManagerService>();
+            // Check if IIS service is registered (might be disabled for sync testing)
+            var iisService = _serviceProvider.GetService<IisManagerService>();
+            if (iisService != null)
+                return iisService;
+            
+            // Fallback to Windows Service if IIS is disabled
+            return _serviceProvider.GetRequiredService<WindowsServiceManager>();
         }
         
         if (_platformService.IsFeatureSupported(FeatureNames.WindowsServiceManagement) && OperatingSystem.IsWindows())

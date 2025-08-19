@@ -16,8 +16,16 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<WebSiteRegistryService>();
         if (OperatingSystem.IsWindows())
         {
-            services.AddTransient<IisManagerService>();
-            services.AddScoped<IisStatusService>();
+            // Always register Windows Service Manager as fallback
+            services.AddTransient<WindowsServiceManager>();
+            
+            // Only register IIS services if not in sync testing mode
+            var disableIis = Environment.GetEnvironmentVariable("DISABLE_IIS_SERVICE");
+            if (string.IsNullOrEmpty(disableIis) || !bool.Parse(disableIis))
+            {
+                services.AddTransient<IisManagerService>();
+                services.AddScoped<IisStatusService>();
+            }
         }
         if (OperatingSystem.IsLinux())
         {
