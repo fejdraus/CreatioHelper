@@ -1,7 +1,9 @@
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Configuration;
+using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
+using CreatioHelper.Infrastructure.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -132,6 +134,18 @@ builder.Services.Configure<AgentConfig>(builder.Configuration.GetSection("AgentC
 builder.Services.AddPlatformServices();
 builder.Services.AddPerformanceServices();
 
+// Add sync services with configuration
+var syncConfig = builder.Configuration.GetSection("Sync").Get<SyncConfiguration>();
+if (syncConfig != null)
+{
+    Console.WriteLine($"Loaded sync config: DeviceId={syncConfig.DeviceId}, Port={syncConfig.Port}");
+}
+else
+{
+    Console.WriteLine("No sync config found in appsettings");
+}
+builder.Services.AddSyncServices(syncConfig);
+
 var app = builder.Build();
 
 // Graceful shutdown configuration
@@ -207,6 +221,7 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
+app.MapHub<SyncHub>("/syncHub");
 
 // Prometheus metrics endpoint (requires authentication)
 app.MapGet("/metrics", async (IMetricsService metricsService) =>

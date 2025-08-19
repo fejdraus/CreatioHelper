@@ -1,0 +1,412 @@
+using System.Collections.Concurrent;
+using System.Net;
+using System.Net.Security;
+using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Text.Json;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Entities;
+using Microsoft.Extensions.Logging;
+
+namespace CreatioHelper.Infrastructure.Services.Sync;
+
+/// <summary>
+/// Block Exchange Protocol implementation based on Syncthing BEP
+/// Inspired by Syncthing's protocol.go and lib/protocol package
+/// </summary>
+public class SyncProtocol : ISyncProtocol, IDisposable
+{
+    private readonly ILogger<SyncProtocol> _logger;
+    private readonly ConcurrentDictionary<string, DeviceConnection> _connections = new();
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private TcpListener? _listener;
+    private readonly int _port;
+    private readonly X509Certificate2 _certificate;
+    private const int MaxMessageSize = 1024 * 1024 * 16; // 16MB
+    private const string BepProtocolName = "bep/1.0";
+
+    public event EventHandler<DeviceConnectedEventArgs>? DeviceConnected;
+    public event EventHandler<DeviceDisconnectedEventArgs>? DeviceDisconnected;
+
+    public SyncProtocol(ILogger<SyncProtocol> logger, int port, X509Certificate2 certificate)
+    {
+        _logger = logger;
+        _port = port;
+        _certificate = certificate;
+    }
+
+    public Task StartListeningAsync()
+    {
+        _listener = new TcpListener(IPAddress.Any, _port);
+        _listener.Start();
+        
+        _logger.LogInformation("Sync protocol listening on port {Port}", _port);
+        
+        _ = Task.Run(async () =>
+        {
+            while (!_cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                try
+                {
+                    var tcpClient = await _listener.AcceptTcpClientAsync();
+                    _ = Task.Run(() => HandleIncomingConnectionAsync(tcpClient, _cancellationTokenSource.Token));
+                }
+                catch (ObjectDisposedException)
+                {
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error accepting connection");
+                }
+            }
+        });
+        
+        return Task.CompletedTask;
+    }
+
+    public async Task<bool> ConnectAsync(SyncDevice device, CancellationToken cancellationToken = default)
+    {
+        if (_connections.ContainsKey(device.DeviceId))
+        {
+            return true; // Already connected
+        }
+
+        foreach (var address in device.Addresses)
+        {
+            try
+            {
+                var connection = await EstablishConnectionAsync(address, device, cancellationToken);
+                if (connection != null)
+                {
+                    _connections[device.DeviceId] = connection;
+                    device.UpdateConnection(true, address);
+                    DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(device));
+                    return true;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to connect to device {DeviceId} at {Address}", device.DeviceId, address);
+            }
+        }
+
+        return false;
+    }
+
+    public async Task DisconnectAsync(string deviceId)
+    {
+        if (_connections.TryRemove(deviceId, out var connection))
+        {
+            await connection.DisconnectAsync();
+            DeviceDisconnected?.Invoke(this, new DeviceDisconnectedEventArgs(deviceId));
+        }
+    }
+
+    public async Task SendHelloAsync(string deviceId, string deviceName, string clientName, string clientVersion)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return;
+
+        var hello = new HelloMessage
+        {
+            DeviceName = deviceName,
+            ClientName = clientName,
+            ClientVersion = clientVersion
+        };
+
+        await connection.SendMessageAsync(MessageType.Hello, hello);
+    }
+
+    public async Task SendClusterConfigAsync(string deviceId, List<SyncFolder> folders)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return;
+
+        var config = new ClusterConfigMessage
+        {
+            Folders = folders.Select(f => new FolderConfig
+            {
+                Id = f.FolderId,
+                Label = f.Label,
+                ReadOnly = f.Type == FolderType.ReceiveOnly,
+                IgnorePermissions = false,
+                IgnoreDelete = false,
+                DisableTempIndexes = false,
+                Paused = f.IsPaused
+            }).ToList()
+        };
+
+        await connection.SendMessageAsync(MessageType.ClusterConfig, config);
+    }
+
+    public async Task SendIndexAsync(string deviceId, string folderId, List<SyncFileInfo> files)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return;
+
+        var index = new IndexMessage
+        {
+            Folder = folderId,
+            Files = files.Select(f => new FileInfoMessage
+            {
+                Name = f.Name,
+                Size = f.Size,
+                ModifiedTime = f.ModifiedTime,
+                Deleted = f.IsDeleted,
+                Invalid = f.IsInvalid,
+                Blocks = f.Blocks.Select(b => new BlockInfoMessage
+                {
+                    Offset = b.Offset,
+                    Size = b.Size,
+                    Hash = b.Hash
+                }).ToList()
+            }).ToList()
+        };
+
+        await connection.SendMessageAsync(MessageType.Index, index);
+    }
+
+    public async Task<List<SyncFileInfo>> RequestIndexAsync(string deviceId, string folderId)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return new List<SyncFileInfo>();
+
+        var request = new IndexRequestMessage { Folder = folderId };
+        await connection.SendMessageAsync(MessageType.IndexRequest, request);
+        
+        // In a real implementation, this would wait for the response
+        // For now, return empty list
+        return new List<SyncFileInfo>();
+    }
+
+    public async Task<byte[]> RequestBlockAsync(string deviceId, string folderId, string fileName, long offset, int size, string hash)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return Array.Empty<byte>();
+
+        var request = new BlockRequestMessage
+        {
+            Folder = folderId,
+            Name = fileName,
+            Offset = offset,
+            Size = size,
+            Hash = hash
+        };
+
+        await connection.SendMessageAsync(MessageType.Request, request);
+        
+        // In a real implementation, this would wait for the response
+        return Array.Empty<byte>();
+    }
+
+    public async Task SendBlockAsync(string deviceId, string folderId, string fileName, long offset, byte[] data)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return;
+
+        var response = new BlockResponseMessage
+        {
+            Data = data
+        };
+
+        await connection.SendMessageAsync(MessageType.Response, response);
+    }
+
+    public async Task SendDownloadProgressAsync(string deviceId, string folderId, List<FileDownloadProgress> progress)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return;
+
+        var message = new DownloadProgressMessage
+        {
+            Folder = folderId,
+            Updates = progress.Select(p => new ProgressUpdate
+            {
+                Name = p.FileName,
+                Version = 0, // Simplified
+                UpdateType = 0,
+                BlockIndexes = new List<int>()
+            }).ToList()
+        };
+
+        await connection.SendMessageAsync(MessageType.DownloadProgress, message);
+    }
+
+    public Task<bool> IsConnectedAsync(string deviceId)
+    {
+        return Task.FromResult(_connections.TryGetValue(deviceId, out var connection) && connection.IsConnected);
+    }
+
+    private async Task<DeviceConnection?> EstablishConnectionAsync(string address, SyncDevice device, CancellationToken cancellationToken)
+    {
+        var uri = new Uri(address);
+        var tcpClient = new TcpClient();
+        
+        await tcpClient.ConnectAsync(uri.Host, uri.Port);
+        
+        var sslStream = new SslStream(tcpClient.GetStream(), false, ValidateServerCertificate);
+        await sslStream.AuthenticateAsClientAsync(uri.Host, new X509CertificateCollection { _certificate }, false);
+        
+        var connection = new DeviceConnection(device.DeviceId, tcpClient, sslStream, _logger);
+        await connection.StartAsync();
+        
+        return connection;
+    }
+
+    private async Task HandleIncomingConnectionAsync(TcpClient tcpClient, CancellationToken cancellationToken)
+    {
+        SslStream? sslStream = null;
+        try
+        {
+            sslStream = new SslStream(tcpClient.GetStream(), false);
+            await sslStream.AuthenticateAsServerAsync(_certificate, false, false);
+            
+            // Extract device ID from certificate
+            var deviceId = ExtractDeviceIdFromCertificate(sslStream.RemoteCertificate);
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                _logger.LogWarning("Could not extract device ID from remote certificate");
+                return;
+            }
+            
+            var connection = new DeviceConnection(deviceId, tcpClient, sslStream, _logger);
+            _connections[deviceId] = connection;
+            
+            await connection.StartAsync();
+            
+            _logger.LogInformation("Device {DeviceId} connected", deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling incoming connection");
+            sslStream?.Dispose();
+            tcpClient.Dispose();
+        }
+    }
+
+    private bool ValidateServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+    {
+        // In Syncthing, device certificates are self-signed and validated by fingerprint
+        // This is a simplified validation
+        return true;
+    }
+
+    private string ExtractDeviceIdFromCertificate(X509Certificate? certificate)
+    {
+        if (certificate == null) return string.Empty;
+        
+        // Syncthing uses the certificate's SHA-256 hash as device ID
+        // This is a simplified implementation
+        return Convert.ToHexString(certificate.GetCertHash()).ToLower();
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _listener?.Stop();
+        
+        foreach (var connection in _connections.Values)
+        {
+            connection.Dispose();
+        }
+        
+        _cancellationTokenSource.Dispose();
+    }
+}
+
+// Message types based on Syncthing BEP protocol
+public enum MessageType
+{
+    ClusterConfig = 0,
+    Index = 1,
+    IndexUpdate = 2,
+    Request = 3,
+    Response = 4,
+    DownloadProgress = 5,
+    Ping = 6,
+    Close = 7,
+    Hello = 8,
+    IndexRequest = 9
+}
+
+// Message structures
+public class HelloMessage
+{
+    public string DeviceName { get; set; } = string.Empty;
+    public string ClientName { get; set; } = string.Empty;
+    public string ClientVersion { get; set; } = string.Empty;
+}
+
+public class ClusterConfigMessage
+{
+    public List<FolderConfig> Folders { get; set; } = new();
+}
+
+public class FolderConfig
+{
+    public string Id { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public bool ReadOnly { get; set; }
+    public bool IgnorePermissions { get; set; }
+    public bool IgnoreDelete { get; set; }
+    public bool DisableTempIndexes { get; set; }
+    public bool Paused { get; set; }
+}
+
+public class IndexMessage
+{
+    public string Folder { get; set; } = string.Empty;
+    public List<FileInfoMessage> Files { get; set; } = new();
+}
+
+public class FileInfoMessage
+{
+    public string Name { get; set; } = string.Empty;
+    public long Size { get; set; }
+    public DateTime ModifiedTime { get; set; }
+    public bool Deleted { get; set; }
+    public bool Invalid { get; set; }
+    public List<BlockInfoMessage> Blocks { get; set; } = new();
+}
+
+public class BlockInfoMessage
+{
+    public long Offset { get; set; }
+    public int Size { get; set; }
+    public string Hash { get; set; } = string.Empty;
+}
+
+public class IndexRequestMessage
+{
+    public string Folder { get; set; } = string.Empty;
+}
+
+public class BlockRequestMessage
+{
+    public string Folder { get; set; } = string.Empty;
+    public string Name { get; set; } = string.Empty;
+    public long Offset { get; set; }
+    public int Size { get; set; }
+    public string Hash { get; set; } = string.Empty;
+}
+
+public class BlockResponseMessage
+{
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+}
+
+public class DownloadProgressMessage
+{
+    public string Folder { get; set; } = string.Empty;
+    public List<ProgressUpdate> Updates { get; set; } = new();
+}
+
+public class ProgressUpdate
+{
+    public string Name { get; set; } = string.Empty;
+    public long Version { get; set; }
+    public int UpdateType { get; set; }
+    public List<int> BlockIndexes { get; set; } = new();
+}
