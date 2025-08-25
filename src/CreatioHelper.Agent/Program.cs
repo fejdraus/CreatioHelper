@@ -7,7 +7,9 @@ using CreatioHelper.Infrastructure.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+#if DEBUG
 using Microsoft.OpenApi.Models;
+#endif
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +17,8 @@ builder.Services.AddApplicationInsightsTelemetry();
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+
+#if DEBUG
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -58,6 +62,7 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+#endif
 
 builder.Services.AddHealthChecks();
 
@@ -156,6 +161,7 @@ applicationLifetime.ApplicationStopping.Register(() =>
     logger.LogInformation("🛑 Application shutdown initiated - stopping operations gracefully");
 });
 
+#if DEBUG
 // Swagger configuration with security
 if (app.Environment.IsDevelopment())
 {
@@ -210,6 +216,7 @@ else
         });
     }
 }
+#endif
 
 // Expose health checks endpoint
 app.MapHealthChecks("/health");
