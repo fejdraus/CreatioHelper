@@ -200,7 +200,9 @@ public class FileWatcher : IDisposable
             if (!fileInfo.Exists) return null;
 
             var relativePath = Path.GetRelativePath(basePath, filePath);
-            var syncFileInfo = new SyncFileInfo(folderId, fileInfo.Name, relativePath, fileInfo.Length, fileInfo.LastWriteTimeUtc);
+            // Convert Windows path separators to forward slashes for cross-platform compatibility
+            relativePath = relativePath.Replace('\\', '/');
+            var syncFileInfo = new SyncFileInfo(folderId, relativePath, relativePath, fileInfo.Length, fileInfo.LastWriteTimeUtc);
 
             // Calculate file hash
             var hash = await CalculateFileHashAsync(filePath);
@@ -309,7 +311,7 @@ public class FileWatcher : IDisposable
         try
         {
             // Debounce rapid file system events
-            _ = Task.Delay(100).ContinueWith(async _ =>
+            _ = Task.Delay(100).ContinueWith(_ =>
             {
                 try
                 {
