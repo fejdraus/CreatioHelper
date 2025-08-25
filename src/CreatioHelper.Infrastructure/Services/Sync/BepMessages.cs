@@ -301,6 +301,8 @@ public class BepResponse
     public int Id { get; set; }
     public byte[] Data { get; set; } = Array.Empty<byte>();
     public BepErrorCode Code { get; set; }
+    public CompressionType CompressionType { get; set; } = CompressionType.None;
+    public EncryptionType EncryptionType { get; set; } = EncryptionType.None;
 }
 
 /// <summary>
