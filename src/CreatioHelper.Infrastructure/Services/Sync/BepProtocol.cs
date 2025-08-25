@@ -109,6 +109,60 @@ public class BepProtocol : ISyncProtocol, IDisposable
         return false;
     }
 
+    /// <summary>
+    /// Register an existing connection (e.g., from relay) with the protocol
+    /// </summary>
+    public async Task RegisterConnectionAsync(BepConnection connection)
+    {
+        try
+        {
+            _logger.LogDebug("Registering existing connection for device {DeviceId}", connection.DeviceId);
+
+            // Subscribe to connection events
+            connection.MessageReceived += OnConnectionMessageReceived;
+            connection.DeviceIdUpdated += OnConnectionDeviceIdUpdated;
+            
+            // The connection will handle its own lifecycle, 
+            // and we'll be notified via existing events when it disconnects
+
+            // Start the connection
+            await connection.StartAsync();
+
+            // Add to connections dictionary
+            _connections[connection.DeviceId] = connection;
+
+            // Send Hello message to establish protocol
+            await connection.SendHelloAsync(DeviceId, DeviceName, ClientName, ClientVersion);
+
+            // Fire DeviceConnected event for relay connections
+            var device = new SyncDevice(connection.DeviceId, "Relay Device");
+            DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(device));
+
+            _logger.LogInformation("Successfully registered connection for device {DeviceId}", connection.DeviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error registering connection for device {DeviceId}", connection.DeviceId);
+            connection?.Dispose();
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Interface implementation for RegisterConnectionAsync
+    /// </summary>
+    async Task ISyncProtocol.RegisterConnectionAsync(object connection)
+    {
+        if (connection is BepConnection bepConnection)
+        {
+            await RegisterConnectionAsync(bepConnection);
+        }
+        else
+        {
+            throw new ArgumentException("Connection must be a BepConnection", nameof(connection));
+        }
+    }
+
     public async Task DisconnectAsync(string deviceId)
     {
         if (_connections.TryGetValue(deviceId, out var connection))

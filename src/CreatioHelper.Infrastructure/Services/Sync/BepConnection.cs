@@ -23,7 +23,6 @@ public class BepConnection : IDisposable
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private readonly ConcurrentDictionary<int, TaskCompletionSource<BepResponse>> _pendingRequests = new();
     private volatile bool _isConnected = true;
-    private volatile bool _helloReceived = false;
     private volatile bool _magicSent = false;
     private readonly bool _isOutgoing; // true if we initiated the connection (client), false if incoming (server)
 
@@ -362,7 +361,6 @@ public class BepConnection : IDisposable
             {
                 case BepMessageType.Hello:
                     var hello = JsonSerializer.Deserialize<BepHello>(json);
-                    _helloReceived = true;
                     
                     // Update device ID from Hello message (when TLS is disabled for testing)
                     if (!string.IsNullOrEmpty(hello?.DeviceId) && _deviceId == "unknown-device")

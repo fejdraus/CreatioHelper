@@ -133,11 +133,6 @@ public class SyncFolderDevice
     }
 }
 
-public class VersioningConfiguration
-{
-    public VersioningType Type { get; set; } = VersioningType.Simple;
-    public Dictionary<string, string> Parameters { get; set; } = new();
-}
 
 public enum FolderType
 {

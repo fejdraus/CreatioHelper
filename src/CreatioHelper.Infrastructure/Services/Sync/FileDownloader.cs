@@ -1,6 +1,7 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
@@ -12,6 +13,7 @@ public class FileDownloader
 {
     private readonly ILogger<FileDownloader> _logger;
     private readonly ISyncProtocol _protocol;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _downloadSemaphores = new();
 
     public FileDownloader(ILogger<FileDownloader> logger, ISyncProtocol protocol)
     {
@@ -32,6 +34,12 @@ public class FileDownloader
         var result = new DownloadResult { FileName = remoteFile.Name };
         var startTime = DateTime.UtcNow;
 
+        // Use semaphore to prevent concurrent downloads of the same file
+        var semaphoreKey = localFilePath.ToLowerInvariant();
+        var semaphore = _downloadSemaphores.GetOrAdd(semaphoreKey, _ => new SemaphoreSlim(1, 1));
+
+        await semaphore.WaitAsync(cancellationToken);
+        
         try
         {
             _logger.LogInformation("Starting download of {FileName} ({FileSize} bytes, {BlockCount} blocks) from device {DeviceId}",
@@ -48,6 +56,13 @@ public class FileDownloader
             var tempFilePath = localFilePath + ".tmp";
             var downloadedBlocks = 0;
             var totalBytes = 0L;
+
+            // Clean up any existing temp file
+            if (File.Exists(tempFilePath))
+            {
+                _logger.LogWarning("Cleaning up existing temp file {TempFilePath}", tempFilePath);
+                File.Delete(tempFilePath);
+            }
 
             using (var fileStream = File.Create(tempFilePath))
             {
@@ -182,6 +197,10 @@ public class FileDownloader
                     _logger.LogWarning(cleanupEx, "Failed to clean up temp file {TempFilePath}", tempFilePath);
                 }
             }
+        }
+        finally
+        {
+            semaphore.Release();
         }
 
         return result;
