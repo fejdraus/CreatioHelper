@@ -10,7 +10,7 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
 /// <summary>
-/// BEP Connection handling exact Syncthing wire format
+/// BEP Connection handling exact Syncthing wire format with compression and encryption support
 /// Wire format: [2 bytes: header length][Header: protobuf][4 bytes: message length][Message: protobuf]
 /// </summary>
 public class BepConnection : IDisposable
@@ -19,6 +19,9 @@ public class BepConnection : IDisposable
     private readonly TcpClient _tcpClient;
     private readonly Stream _stream;
     private readonly ILogger _logger;
+    private readonly CompressionEngine _compressionEngine;
+    private readonly EncryptionEngine _encryptionEngine;
+    private readonly KeyManager _keyManager;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly SemaphoreSlim _sendSemaphore = new(1, 1);
     private readonly ConcurrentDictionary<int, TaskCompletionSource<BepResponse>> _pendingRequests = new();
@@ -38,12 +41,15 @@ public class BepConnection : IDisposable
     public event EventHandler<(BepMessageType Type, object Message)>? MessageReceived;
     public event EventHandler<(string OldDeviceId, string NewDeviceId)>? DeviceIdUpdated;
 
-    public BepConnection(string deviceId, TcpClient tcpClient, Stream stream, ILogger logger, bool isOutgoing = false)
+    public BepConnection(string deviceId, TcpClient tcpClient, Stream stream, ILogger logger, CompressionEngine compressionEngine, EncryptionEngine encryptionEngine, KeyManager keyManager, bool isOutgoing = false)
     {
         _deviceId = deviceId;
         _tcpClient = tcpClient;
         _stream = stream;
         _logger = logger;
+        _compressionEngine = compressionEngine;
+        _encryptionEngine = encryptionEngine;
+        _keyManager = keyManager;
         _isOutgoing = isOutgoing;
     }
 
@@ -237,17 +243,79 @@ public class BepConnection : IDisposable
     }
 
     /// <summary>
-    /// Send a block response to a request
+    /// Send a block response to a request with compression and encryption support
     /// </summary>
     public async Task SendBlockResponseAsync(BepResponse response)
     {
-        _logger.LogInformation("📤 BepConnection: Sending block response {ResponseId} to device {DeviceId} - data size: {DataSize}",
-            response.Id, _deviceId, response.Data?.Length ?? 0);
+        var originalSize = response.Data?.Length ?? 0;
+        
+        _logger.LogInformation("📤 BepConnection: Sending block response {ResponseId} to device {DeviceId} - original data size: {DataSize}",
+            response.Id, _deviceId, originalSize);
+        
+        // Apply processing pipeline: Compression → Encryption
+        if (response.Data != null && response.Data.Length > 0)
+        {
+            // Step 1: Compression
+            var (compressedData, actualCompressionType) = _compressionEngine.CompressBlock(response.Data, CompressionType.LZ4);
+            
+            if (actualCompressionType != CompressionType.None)
+            {
+                response.Data = compressedData;
+                response.CompressionType = actualCompressionType;
+                
+                var compressionRatio = (float)compressedData.Length / originalSize;
+                _logger.LogInformation("🗜️ BepConnection: Block compressed: {OriginalSize} → {CompressedSize} ({Ratio:P1}) using {CompressionType}",
+                    originalSize, compressedData.Length, compressionRatio, actualCompressionType);
+            }
+            else
+            {
+                response.CompressionType = CompressionType.None;
+                _logger.LogDebug("📦 BepConnection: Block not compressed - using original data");
+            }
+            
+            // Step 2: Encryption
+            try
+            {
+                // Check if encryption should be applied BEFORE attempting encryption
+                if (_encryptionEngine.ShouldEncrypt(response.Data))
+                {
+                    // TODO: Get actual folder ID and password from context
+                    // For now, use hardcoded values for testing
+                    var encryptionKey = await _keyManager.GetOrCreateFolderKeyAsync("default", "test-folder-password-123");
+                    var (encryptedData, isEncrypted) = _encryptionEngine.EncryptBlock(response.Data, encryptionKey);
+                    
+                    if (isEncrypted)
+                    {
+                        var preEncryptionSize = response.Data.Length;
+                        response.Data = encryptedData;
+                        response.EncryptionType = EncryptionType.AES256GCM;
+                        
+                        _logger.LogInformation("🔐 BepConnection: Block encrypted: {PreEncryptionSize} → {EncryptedSize} using AES-256-GCM",
+                            preEncryptionSize, encryptedData.Length);
+                    }
+                    else
+                    {
+                        response.EncryptionType = EncryptionType.None;
+                        _logger.LogDebug("🔓 BepConnection: Block encryption failed - using unencrypted data");
+                    }
+                }
+                else
+                {
+                    response.EncryptionType = EncryptionType.None;
+                    _logger.LogDebug("🔓 BepConnection: Block not encrypted - encryption disabled");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "⚠️ BepConnection: Encryption failed for device {DeviceId}, sending unencrypted", _deviceId);
+                response.EncryptionType = EncryptionType.None;
+            }
+        }
         
         await SendMessageAsync(BepMessageType.Response, response);
         
-        _logger.LogInformation("✅ BepConnection: Block response {ResponseId} sent to device {DeviceId}",
-            response.Id, _deviceId);
+        _logger.LogInformation("✅ BepConnection: Block response {ResponseId} sent to device {DeviceId} (compressed: {Compressed}, encrypted: {Encrypted})",
+            response.Id, _deviceId, response.CompressionType != CompressionType.None, response.EncryptionType != EncryptionType.None);
     }
 
     private async Task ReceiveLoopAsync(CancellationToken cancellationToken)
@@ -416,8 +484,61 @@ public class BepConnection : IDisposable
 
                 case BepMessageType.Response:
                     var response = JsonSerializer.Deserialize<BepResponse>(json);
-                    _logger.LogInformation("📨 BepConnection: Received block response {ResponseId} from device {DeviceId} - data size: {DataSize}",
-                        response?.Id, _deviceId, response?.Data?.Length ?? 0);
+                    var receivedSize = response?.Data?.Length ?? 0;
+                    
+                    _logger.LogInformation("📨 BepConnection: Received block response {ResponseId} from device {DeviceId} - data size: {DataSize}, compression: {CompressionType}, encryption: {EncryptionType}",
+                        response?.Id, _deviceId, receivedSize, response?.CompressionType ?? CompressionType.None, response?.EncryptionType ?? EncryptionType.None);
+                    
+                    // Process pipeline: Decryption → Decompression
+                    if (response != null && response.Data != null && response.Data.Length > 0)
+                    {
+                        // Step 1: Decryption
+                        if (response.EncryptionType != EncryptionType.None)
+                        {
+                            try
+                            {
+                                // TODO: Get actual folder ID and password from context
+                    // For now, use hardcoded values for testing
+                    var encryptionKey = await _keyManager.GetOrCreateFolderKeyAsync("default", "test-folder-password-123");
+                                var decryptedData = _encryptionEngine.DecryptBlock(response.Data, encryptionKey);
+                                
+                                _logger.LogInformation("🔓 BepConnection: Block decrypted: {EncryptedSize} → {DecryptedSize} using AES-256-GCM",
+                                    response.Data.Length, decryptedData.Length);
+                                
+                                response.Data = decryptedData;
+                                response.EncryptionType = EncryptionType.None;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "❌ BepConnection: Failed to decrypt block response {ResponseId} from device {DeviceId}",
+                                    response.Id, _deviceId);
+                                // Continue with encrypted data - let the caller handle the error
+                            }
+                        }
+                        
+                        // Step 2: Decompression
+                        if (response.CompressionType != CompressionType.None)
+                        {
+                            try
+                            {
+                                var preDecompressionSize = response.Data.Length;
+                                var decompressedData = _compressionEngine.DecompressBlock(response.Data, response.CompressionType);
+                                response.Data = decompressedData;
+                                
+                                _logger.LogInformation("🗜️ BepConnection: Block decompressed: {CompressedSize} → {DecompressedSize} using {CompressionType}",
+                                    preDecompressionSize, decompressedData.Length, response.CompressionType);
+                                
+                                // Reset compression type to indicate data is now uncompressed
+                                response.CompressionType = CompressionType.None;
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogError(ex, "❌ BepConnection: Failed to decompress block response {ResponseId} from device {DeviceId}",
+                                    response.Id, _deviceId);
+                                // Continue with compressed data - let the caller handle the error
+                            }
+                        }
+                    }
                     
                     if (response != null && _pendingRequests.TryRemove(response.Id, out var tcs))
                     {
