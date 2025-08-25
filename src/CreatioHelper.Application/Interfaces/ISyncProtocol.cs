@@ -22,6 +22,7 @@ public interface ISyncProtocol : IDisposable
     Task SendCloseAsync(string deviceId, string reason);
     Task<bool> IsConnectedAsync(string deviceId);
     Task SendBlockResponseAsync(string deviceId, object response); // Using object to avoid circular dependency
+    Task RegisterConnectionAsync(object connection); // Using object to avoid circular dependency
     
     // Events for protocol messages
     event EventHandler<DeviceConnectedEventArgs> DeviceConnected;

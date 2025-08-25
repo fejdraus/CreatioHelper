@@ -1,0 +1,199 @@
+syntax = "proto3";
+
+package bep;
+option csharp_namespace = "CreatioHelper.Infrastructure.Protos";
+
+// BEP Message Types following Syncthing protocol
+message Hello {
+    string device_name = 1;
+    string client_name = 2;
+    string client_version = 3;
+    int32 num_connections = 4;
+    int64 timestamp = 5;
+}
+
+message Header {
+    MessageType type = 1;
+    MessageCompression compression = 2;
+}
+
+enum MessageType {
+    MESSAGE_TYPE_CLUSTER_CONFIG = 0;
+    MESSAGE_TYPE_INDEX = 1;
+    MESSAGE_TYPE_INDEX_UPDATE = 2;
+    MESSAGE_TYPE_REQUEST = 3;
+    MESSAGE_TYPE_RESPONSE = 4;
+    MESSAGE_TYPE_DOWNLOAD_PROGRESS = 5;
+    MESSAGE_TYPE_PING = 6;
+    MESSAGE_TYPE_CLOSE = 7;
+}
+
+enum MessageCompression {
+    MESSAGE_COMPRESSION_NONE = 0;
+    MESSAGE_COMPRESSION_LZ4 = 1;
+}
+
+message ClusterConfig {
+    repeated Folder folders = 1;
+    bool secondary = 2;
+}
+
+message Folder {
+    string id = 1;
+    string label = 2;
+    FolderType type = 3;
+    FolderStopReason stop_reason = 7;
+    reserved 4 to 6;
+    
+    repeated Device devices = 16;
+}
+
+message Device {
+    bytes id = 1;
+    string name = 2;
+    repeated string addresses = 3;
+    Compression compression = 4;
+    string cert_name = 5;
+    int64 max_sequence = 6;
+    bool introducer = 7;
+    uint64 index_id = 8;
+    bool skip_introduction_removals = 9;
+    bytes encryption_password_token = 10;
+}
+
+enum Compression {
+    COMPRESSION_METADATA = 0;
+    COMPRESSION_NEVER = 1;
+    COMPRESSION_ALWAYS = 2;
+}
+
+enum FolderType {
+    FOLDER_TYPE_SEND_RECEIVE = 0;
+    FOLDER_TYPE_SEND_ONLY = 1;
+    FOLDER_TYPE_RECEIVE_ONLY = 2;
+    FOLDER_TYPE_RECEIVE_ENCRYPTED = 3;
+}
+
+enum FolderStopReason {
+    FOLDER_STOP_REASON_RUNNING = 0; // i.e., not stopped
+    FOLDER_STOP_REASON_PAUSED = 1;
+}
+
+message Index {
+    string folder = 1;
+    repeated FileInfo files = 2;
+    int64 last_sequence = 3; // the highest sequence in this batch
+}
+
+message IndexUpdate {
+    string folder = 1;
+    repeated FileInfo files = 2;
+    int64 last_sequence = 3; // the highest sequence in this batch
+    int64 prev_sequence = 4; // the highest sequence in the previous batch
+}
+
+message FileInfo {
+    string name = 1;
+    FileInfoType type = 2;
+    int64 size = 3;
+    uint32 permissions = 4;
+    int64 modified_s = 5;
+    int32 modified_ns = 6;
+    uint64 modified_by = 7;
+    bool deleted = 8;
+    bool invalid = 9;
+    bool no_permissions = 10;
+    Vector version = 11;
+    int64 sequence = 12;
+    int32 block_size = 13;
+    repeated BlockInfo blocks = 16;
+    string symlink_target = 17;
+    bytes blocks_hash = 18;
+    bytes encrypted = 19;
+    LocalFlags local_flags = 1000;
+    bytes version_hash = 1001;
+    bool inodechange_detected = 1002;
+    EncryptionTrailerType encryption_trailer_type = 1003;
+}
+
+enum FileInfoType {
+    FILE_INFO_TYPE_FILE = 0;
+    FILE_INFO_TYPE_DIRECTORY = 1;
+    FILE_INFO_TYPE_SYMLINK = 2;
+}
+
+enum EncryptionTrailerType {
+    ENCRYPTION_TRAILER_TYPE_NONE = 0;
+    ENCRYPTION_TRAILER_TYPE_AES_128_GCM = 1;
+    ENCRYPTION_TRAILER_TYPE_AES_256_GCM = 2;
+}
+
+message BlockInfo {
+    int64 offset = 1;
+    int32 size = 2;
+    bytes hash = 3;
+    uint32 weak_hash = 4;
+}
+
+message Vector {
+    repeated Counter counters = 1;
+}
+
+message Counter {
+    uint64 id = 1;
+    uint64 value = 2;
+}
+
+enum LocalFlags {
+    LOCAL_FLAGS_NONE = 0;
+}
+
+message Request {
+    int32 id = 1;
+    string folder = 2;
+    string name = 3;
+    int64 offset = 4;
+    int32 size = 5;
+    bytes hash = 6;
+    bool from_temporary = 7;
+    uint32 weak_hash = 8;
+    int32 block_no = 9;
+}
+
+message Response {
+    int32 id = 1;
+    bytes data = 2;
+    ErrorCode code = 3;
+}
+
+enum ErrorCode {
+    ERROR_CODE_NO_ERROR = 0;
+    ERROR_CODE_GENERIC = 1;
+    ERROR_CODE_NO_SUCH_FILE = 2;
+    ERROR_CODE_INVALID_FILE = 3;
+}
+
+message DownloadProgress {
+    string folder = 1;
+    repeated FileDownloadProgress updates = 2;
+}
+
+message FileDownloadProgress {
+    UpdateType update_type = 1;
+    string name = 2;
+    Vector version = 3;
+    repeated int32 block_indexes = 4;
+    int32 block_size = 5;
+}
+
+enum UpdateType {
+    UPDATE_TYPE_APPEND = 0;
+    UPDATE_TYPE_FORGET = 1;
+}
+
+message Ping {
+}
+
+message Close {
+    string reason = 1;
+}

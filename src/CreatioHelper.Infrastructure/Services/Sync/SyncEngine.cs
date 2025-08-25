@@ -3,6 +3,7 @@ using System.Security.Cryptography.X509Certificates;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
+using CreatioHelper.Infrastructure.Services.Sync.Relay;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
@@ -21,10 +22,12 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly FileDownloader _fileDownloader;
     private readonly BlockRequestHandler _blockRequestHandler;
     private readonly DeltaSyncEngine _deltaSyncEngine;
+    private readonly RelayConnectionManager? _relayManager;
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
     private readonly ConcurrentDictionary<string, SyncStatus> _folderStatuses = new();
     private readonly ConcurrentDictionary<string, DeltaSyncPlan> _activeSyncPlans = new();
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _folderSyncSemaphores = new();
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly Timer _statusTimer;
     private readonly SyncStatistics _statistics = new();
@@ -45,7 +48,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         FileDownloader fileDownloader,
         BlockRequestHandler blockRequestHandler,
         DeltaSyncEngine deltaSyncEngine,
-        SyncConfiguration configuration)
+        SyncConfiguration configuration,
+        X509Certificate2? clientCertificate = null)
     {
         _logger = logger;
         _protocol = protocol;
@@ -57,6 +61,15 @@ public class SyncEngine : ISyncEngine, IDisposable
         _blockRequestHandler = blockRequestHandler;
         _deltaSyncEngine = deltaSyncEngine;
         _configuration = configuration;
+        
+        // Initialize relay manager if certificate is provided and relays are enabled
+        if (clientCertificate != null && _configuration.RelaysEnabled)
+        {
+            var relayLogger = logger as ILogger<RelayConnectionManager> ?? 
+                             Microsoft.Extensions.Logging.Abstractions.NullLogger<RelayConnectionManager>.Instance;
+            _relayManager = new RelayConnectionManager(relayLogger, clientCertificate);
+            _relayManager.RelayConnectionReceived += OnRelayConnectionReceived;
+        }
         
         _statistics.StartTime = DateTime.UtcNow;
         
@@ -84,6 +97,12 @@ public class SyncEngine : ISyncEngine, IDisposable
             await _protocol.StartListeningAsync();
             await _discovery.StartAsync(cancellationToken);
             
+            // Start relay connections if enabled
+            if (_relayManager != null)
+            {
+                await _relayManager.ConnectToRelaysAsync(_configuration.RelayServers);
+            }
+            
             _isStarted = true;
             _logger.LogInformation("Sync engine started successfully");
         }
@@ -104,6 +123,12 @@ public class SyncEngine : ISyncEngine, IDisposable
         
         await _discovery.StopAsync();
         
+        // Stop relay connections
+        if (_relayManager != null)
+        {
+            await _relayManager.DisconnectAllAsync();
+        }
+        
         // Disconnect all devices
         var disconnectTasks = _devices.Keys.Select(deviceId => _protocol.DisconnectAsync(deviceId));
         await Task.WhenAll(disconnectTasks);
@@ -112,7 +137,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Sync engine stopped");
     }
 
-    public Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string certificateFingerprint, List<string>? addresses = null)
+    public Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null)
     {
         var device = new SyncDevice(deviceId, name, certificateFingerprint);
         
@@ -617,6 +642,10 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Processing {FileCount} files from remote index for folder {FolderId}", 
             remoteFiles.Count, folderId);
 
+        // Use semaphore to prevent concurrent processing of the same folder
+        var semaphore = _folderSyncSemaphores.GetOrAdd(folderId, _ => new SemaphoreSlim(1, 1));
+        await semaphore.WaitAsync(_cancellationTokenSource.Token);
+
         try
         {
             if (_folderStatuses.TryGetValue(folderId, out var status))
@@ -669,6 +698,10 @@ public class SyncEngine : ISyncEngine, IDisposable
             }
 
             SyncError?.Invoke(this, new SyncErrorEventArgs(folderId, $"Index processing error: {ex.Message}", deviceId, ex));
+        }
+        finally
+        {
+            semaphore.Release();
         }
     }
 
@@ -858,7 +891,17 @@ public class SyncEngine : ISyncEngine, IDisposable
             // Try to connect if not already connected
             if (!device.IsConnected && !device.IsPaused)
             {
-                _ = Task.Run(async () => await _protocol.ConnectAsync(device, _cancellationTokenSource.Token));
+                _ = Task.Run(async () => 
+                {
+                    var connected = await _protocol.ConnectAsync(device, _cancellationTokenSource.Token);
+                    
+                    // If direct connection failed, try relay
+                    if (!connected && _relayManager != null)
+                    {
+                        _logger.LogDebug("Direct connection failed for {DeviceId}, trying relay", device.DeviceId);
+                        await TryConnectThroughRelayAsync(device.DeviceId, TimeSpan.FromSeconds(30));
+                    }
+                });
             }
         }
     }
@@ -934,7 +977,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     /// Creates delta sync plans for files that need to be downloaded
     /// Uses advanced block comparison to minimize transfer
     /// </summary>
-    private async Task CreateDeltaSyncPlansAsync(string deviceId, string folderId, List<SyncFileInfo> localFiles, List<FileAction> filesToDownload)
+    private Task CreateDeltaSyncPlansAsync(string deviceId, string folderId, List<SyncFileInfo> localFiles, List<FileAction> filesToDownload)
     {
         var planKey = $"{deviceId}:{folderId}";
         
@@ -992,6 +1035,115 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             _logger.LogError(ex, "Error creating delta sync plans for folder {FolderId}", folderId);
         }
+        
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles incoming relay connection invitations
+    /// </summary>
+    private async void OnRelayConnectionReceived(object? sender, RelayConnectionEventArgs e)
+    {
+        try
+        {
+            var deviceId = Convert.ToHexString(e.Invitation.From);
+            _logger.LogInformation("Received relay connection invitation from device {DeviceId} via {RelayUri}", 
+                deviceId, e.RelayUri);
+
+            // Check if we know this device
+            if (!_devices.ContainsKey(deviceId))
+            {
+                _logger.LogWarning("Received relay invitation from unknown device {DeviceId}", deviceId);
+                return;
+            }
+
+            // Join the session to establish connection
+            if (e.RelayClient != null)
+            {
+                var stream = await e.RelayClient.JoinSessionAsync(e.Invitation);
+                if (stream != null)
+                {
+                    _logger.LogInformation("Successfully established relay connection to device {DeviceId}", deviceId);
+                    
+                    // Create BEP connection using the relay stream
+                    await HandleRelayConnectionAsync(deviceId, stream, false);
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to join relay session for device {DeviceId}", deviceId);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling relay connection invitation");
+        }
+    }
+
+    /// <summary>
+    /// Get relay connection status
+    /// </summary>
+    public List<RelayInfo> GetRelayStatus()
+    {
+        return _relayManager?.GetRelayInfo() ?? new List<RelayInfo>();
+    }
+
+    /// <summary>
+    /// Attempt to connect to a device through relay if direct connection fails
+    /// </summary>
+    public async Task<bool> TryConnectThroughRelayAsync(string deviceId, TimeSpan timeout)
+    {
+        if (_relayManager == null)
+        {
+            _logger.LogDebug("Relay manager not available for device {DeviceId}", deviceId);
+            return false;
+        }
+
+        try
+        {
+            var stream = await _relayManager.ConnectThroughRelayAsync(deviceId, timeout);
+            if (stream != null)
+            {
+                _logger.LogInformation("Established relay connection to device {DeviceId}", deviceId);
+                
+                // Create BEP connection using the relay stream
+                await HandleRelayConnectionAsync(deviceId, stream, true);
+                return true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error connecting to device {DeviceId} through relay", deviceId);
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Handle a new relay connection by wrapping it with BEP protocol
+    /// </summary>
+    private async Task HandleRelayConnectionAsync(string deviceId, Stream relayStream, bool isOutgoing)
+    {
+        try
+        {
+            _logger.LogDebug("Setting up BEP protocol over relay stream for device {DeviceId}", deviceId);
+
+            // Create a dummy TcpClient wrapper for relay streams
+            var relayWrapper = new RelayStreamWrapper(relayStream);
+            
+            // Create BEP connection using the relay stream
+            var connection = new BepConnection(deviceId, relayWrapper, relayStream, _logger, isOutgoing);
+            
+            // Register the connection with the protocol handler
+            await _protocol.RegisterConnectionAsync(connection);
+            
+            _logger.LogInformation("Successfully established BEP protocol over relay for device {DeviceId}", deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting up BEP protocol over relay for device {DeviceId}", deviceId);
+            relayStream?.Dispose();
+        }
     }
 
     public void Dispose()
@@ -1001,6 +1153,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         _fileWatcher?.Dispose();
         _protocol?.Dispose();
         _discovery?.Dispose();
+        _relayManager?.Dispose();
         _cancellationTokenSource.Dispose();
     }
 }

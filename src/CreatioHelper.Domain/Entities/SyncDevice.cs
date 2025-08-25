@@ -20,11 +20,11 @@ public class SyncDevice : AggregateRoot
 
     private SyncDevice() { } // For EF Core
 
-    public SyncDevice(string deviceId, string name, string certificateFingerprint)
+    public SyncDevice(string deviceId, string name, string? certificateFingerprint = null)
     {
         DeviceId = deviceId;
         Name = name;
-        CertificateFingerprint = certificateFingerprint;
+        CertificateFingerprint = certificateFingerprint ?? string.Empty;
         LastSeen = DateTime.UtcNow;
     }
 
