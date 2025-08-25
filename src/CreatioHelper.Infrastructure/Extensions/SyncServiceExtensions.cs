@@ -26,7 +26,6 @@ public class SyncConfigurationFromFile
         public string Label { get; set; } = string.Empty;
         public string Path { get; set; } = string.Empty;
         public string Type { get; set; } = "SendReceive";
-        public string EncryptionPassword { get; set; } = string.Empty;
         public List<SyncDeviceConfig> Devices { get; set; } = new();
 
         public FolderType GetFolderType()
@@ -73,28 +72,14 @@ public static class SyncServiceExtensions
         services.AddSingleton(certificate);
 
         // Register core sync services - using new BEP protocol implementation
-        // Register compression and encryption engines
-        services.AddSingleton<CompressionEngine>();
-        services.AddSingleton<EncryptionEngine>();
-        services.AddSingleton<KeyManager>(provider => 
-            new KeyManager(
-                provider.GetRequiredService<ILogger<KeyManager>>(), 
-                syncConfig.DeviceId));
-        
         services.AddSingleton<ISyncProtocol>(provider =>
             new BepProtocol(
                 provider.GetRequiredService<ILogger<BepProtocol>>(),
-                provider.GetRequiredService<CompressionEngine>(),
-                provider.GetRequiredService<EncryptionEngine>(),
-                provider.GetRequiredService<KeyManager>(),
                 port,
                 certificate,
                 syncConfig.DeviceId));
 
-        // Register Phase 3 services: Global Discovery + Relay
-        services.AddHttpClient<GlobalDiscoveryService>();
-        services.AddSingleton<IDeviceDiscovery, GlobalDiscoveryService>();
-        services.AddSingleton<RelayService>();
+        services.AddSingleton<IDeviceDiscovery, DeviceDiscovery>();
         services.AddSingleton<AdaptiveBlockSizer>();
         services.AddSingleton<DeltaSyncEngine>();
         services.AddSingleton<FileWatcher>();
