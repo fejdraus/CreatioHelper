@@ -18,9 +18,6 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 public class BepProtocol : ISyncProtocol, IDisposable
 {
     private readonly ILogger<BepProtocol> _logger;
-    private readonly CompressionEngine _compressionEngine;
-    private readonly EncryptionEngine _encryptionEngine;
-    private readonly KeyManager _keyManager;
     private TcpListener? _listener;
     private readonly int _port;
     private readonly X509Certificate2 _certificate;
@@ -43,12 +40,9 @@ public class BepProtocol : ISyncProtocol, IDisposable
     public event EventHandler<DownloadProgressEventArgs>? DownloadProgressReceived;
     public event EventHandler<BlockRequestReceivedEventArgs>? BlockRequestReceived;
 
-    public BepProtocol(ILogger<BepProtocol> logger, CompressionEngine compressionEngine, EncryptionEngine encryptionEngine, KeyManager keyManager, int port, X509Certificate2 certificate, string deviceId)
+    public BepProtocol(ILogger<BepProtocol> logger, int port, X509Certificate2 certificate, string deviceId)
     {
         _logger = logger;
-        _compressionEngine = compressionEngine;
-        _encryptionEngine = encryptionEngine;
-        _keyManager = keyManager;
         _port = port;
         _certificate = certificate;
         DeviceId = deviceId;
@@ -414,7 +408,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
         // var sslStream = new SslStream(tcpClient.GetStream(), false, ValidateServerCertificate);
         // await sslStream.AuthenticateAsClientAsync(uri.Host, new X509CertificateCollection { _certificate }, false);
         
-        var connection = new BepConnection(device.DeviceId, tcpClient, tcpClient.GetStream(), _logger, _compressionEngine, _encryptionEngine, _keyManager, isOutgoing: true);
+        var connection = new BepConnection(device.DeviceId, tcpClient, tcpClient.GetStream(), _logger, isOutgoing: true);
         
         // Subscribe to connection events
         connection.MessageReceived += OnConnectionMessageReceived;
@@ -442,7 +436,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
             var connectedDevices = _connections.Keys;
             _logger.LogInformation("Incoming connection from unknown device, will use stream directly");
             
-            var connection = new BepConnection(deviceId, tcpClient, tcpClient.GetStream(), _logger, _compressionEngine, _encryptionEngine, _keyManager, isOutgoing: false);
+            var connection = new BepConnection(deviceId, tcpClient, tcpClient.GetStream(), _logger, isOutgoing: false);
             
             // Subscribe to connection events
             connection.MessageReceived += OnConnectionMessageReceived;
