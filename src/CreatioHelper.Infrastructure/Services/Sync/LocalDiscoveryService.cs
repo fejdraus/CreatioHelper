@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using CreatioHelper.Domain.Entities;
@@ -29,10 +27,15 @@ public class LocalDiscoveryService : IDeviceDiscovery
     private UdpClient? _broadcastClient;
     private CancellationTokenSource _cancellationTokenSource = new();
     private bool _isRunning;
+    private readonly long _instanceId; // Random instance ID generated on startup
 
-    // Syncthing local discovery magic bytes
-    private static readonly byte[] MagicBytes = { 0x2E, 0xA7, 0xD9, 0x0B, 0x54, 0x25, 0x2A, 0x4F };
+    // Syncthing local discovery magic numbers (4 bytes, big endian) 
+    private const uint Magic = 0x2EA7D90B; // same as BEP protocol
+    private const uint v13Magic = 0x7D79BC40; // previous version for compatibility
+    private static readonly byte[] MagicBytes = BitConverter.GetBytes(Magic).Reverse().ToArray(); // Big endian
     private const int DefaultDiscoveryPort = 21027;
+    private const int BroadcastInterval = 30; // seconds
+    private const int CacheLifeTime = 90; // 3 * BroadcastInterval, seconds
     
     public event EventHandler<DeviceDiscoveredEventArgs>? DeviceDiscovered;
 
@@ -42,6 +45,9 @@ public class LocalDiscoveryService : IDeviceDiscovery
     {
         _logger = logger;
         _configuration = configuration;
+        
+        // Generate random instance ID (Syncthing compatibility)
+        _instanceId = Random.Shared.NextInt64();
         
         // Try environment variable first, then configuration, then throw
         _currentDeviceId = Environment.GetEnvironmentVariable("Sync__DeviceId") 
@@ -87,9 +93,9 @@ public class LocalDiscoveryService : IDeviceDiscovery
             // Start listening for announcements
             _ = Task.Run(async () => await ListenForAnnouncementsAsync(_cancellationTokenSource.Token));
             
-            // Start periodic announcements every 30 seconds
+            // Start periodic announcements every BroadcastInterval seconds (Syncthing compatibility)
             _announceTimer?.Dispose();
-            _announceTimer = new Timer(AnnounceDevice, null, TimeSpan.Zero, TimeSpan.FromSeconds(30));
+            _announceTimer = new Timer(AnnounceDevice, null, TimeSpan.Zero, TimeSpan.FromSeconds(BroadcastInterval));
             
             _logger.LogInformation("Local discovery service started successfully");
             return Task.CompletedTask;
@@ -145,8 +151,8 @@ public class LocalDiscoveryService : IDeviceDiscovery
             
             if (_discoveredDevices.TryGetValue(deviceId, out var device))
             {
-                // Check if device is still fresh (last seen within 2 minutes)
-                if (DateTime.UtcNow - device.LastSeen < TimeSpan.FromMinutes(2))
+                // Check if device is still fresh (last seen within CacheLifeTime)
+                if (DateTime.UtcNow - device.LastSeen < TimeSpan.FromSeconds(CacheLifeTime))
                 {
                     devices.Add(device);
                 }
@@ -226,20 +232,34 @@ public class LocalDiscoveryService : IDeviceDiscovery
         {
             var data = result.Buffer;
             
-            // Check magic bytes
-            if (data.Length < MagicBytes.Length || !data.Take(MagicBytes.Length).SequenceEqual(MagicBytes))
+            // Check magic bytes (4 bytes, big endian)
+            if (data.Length < 4)
             {
-                return; // Not a Syncthing announcement
+                return; // Too short
             }
             
-            // Extract JSON payload
-            var jsonData = data.Skip(MagicBytes.Length).ToArray();
-            var json = Encoding.UTF8.GetString(jsonData);
+            var receivedMagic = (uint)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]);
             
-            var announcement = JsonSerializer.Deserialize<LocalDeviceAnnouncement>(json, new JsonSerializerOptions
+            // Check magic numbers
+            switch (receivedMagic)
             {
-                PropertyNameCaseInsensitive = true
-            });
+                case Magic:
+                    // Current version - all good
+                    break;
+                
+                case v13Magic:
+                    // Old version - log warning and skip (Syncthing compatibility)
+                    _logger.LogWarning("Incompatible (v0.13) local discovery packet - upgrade that device to connect. Source: {RemoteEndPoint}", result.RemoteEndPoint);
+                    return;
+                
+                default:
+                    _logger.LogDebug("Incorrect magic {Magic:X8} from {RemoteEndPoint}", receivedMagic, result.RemoteEndPoint);
+                    return; // Not a Syncthing announcement
+            }
+            
+            // Extract Protobuf payload (skip first 4 bytes - magic number)
+            var protobufData = data.Skip(4).ToArray();
+            var announcement = DiscoveryProtocol.ParseAnnouncePacket(protobufData);
             
             if (announcement == null || string.IsNullOrEmpty(announcement.DeviceId))
             {
@@ -262,16 +282,19 @@ public class LocalDiscoveryService : IDeviceDiscovery
                 var device = new DiscoveredDevice
                 {
                     DeviceId = announcement.DeviceId,
-                    Addresses = announcement.Addresses ?? new List<string>(),
+                    Addresses = new List<string>(announcement.Addresses),
                     LastSeen = DateTime.UtcNow,
                     Source = DiscoverySource.Local
                 };
                 
-                // Add sender's address if not in announcement
-                var senderAddress = $"tcp://{result.RemoteEndPoint.Address}:{announcement.Port}";
-                if (!device.Addresses.Contains(senderAddress))
+                // If addresses are empty or contain unspecified addresses, add sender's address with default port
+                if (device.Addresses.Count == 0 || device.Addresses.Any(addr => addr.Contains("0.0.0.0") || addr.Contains("::")))
                 {
-                    device.Addresses.Add(senderAddress);
+                    var senderAddress = $"tcp://{result.RemoteEndPoint.Address}:{_currentPort}";
+                    if (!device.Addresses.Contains(senderAddress))
+                    {
+                        device.Addresses.Add(senderAddress);
+                    }
                 }
                 
                 _discoveredDevices[announcement.DeviceId] = device;
@@ -300,35 +323,44 @@ public class LocalDiscoveryService : IDeviceDiscovery
     {
         try
         {
-            var announcement = new LocalDeviceAnnouncement
-            {
-                DeviceId = _currentDeviceId,
-                Port = _currentPort,
-                Addresses = addresses,
-                Timestamp = DateTimeOffset.UtcNow
-            };
+            // Create Syncthing-compatible protobuf announcement packet
+            var protobufData = DiscoveryProtocol.CreateAnnouncePacket(_currentDeviceId, addresses, _instanceId);
             
-            var json = JsonSerializer.Serialize(announcement);
-            var jsonBytes = Encoding.UTF8.GetBytes(json);
+            // Combine magic bytes with protobuf data
+            var packet = new byte[4 + protobufData.Length];
             
-            // Combine magic bytes with JSON
-            var packet = new byte[MagicBytes.Length + jsonBytes.Length];
-            Array.Copy(MagicBytes, 0, packet, 0, MagicBytes.Length);
-            Array.Copy(jsonBytes, 0, packet, MagicBytes.Length, jsonBytes.Length);
+            // Write magic number in big endian format
+            packet[0] = (byte)((Magic >> 24) & 0xFF);
+            packet[1] = (byte)((Magic >> 16) & 0xFF);
+            packet[2] = (byte)((Magic >> 8) & 0xFF);
+            packet[3] = (byte)(Magic & 0xFF);
             
-            // Broadcast to subnet
+            Array.Copy(protobufData, 0, packet, 4, protobufData.Length);
+            
+            // IPv4 Broadcast to subnet
             var broadcastEndpoint = new IPEndPoint(IPAddress.Broadcast, _discoveryPort);
             await _broadcastClient!.SendAsync(packet, broadcastEndpoint);
             
-            // Also send to multicast (Syncthing compatibility)
-            var multicastEndpoint = new IPEndPoint(IPAddress.Parse("224.0.0.251"), _discoveryPort);
+            // IPv4 Multicast (Syncthing compatibility)
+            var ipv4MulticastEndpoint = new IPEndPoint(IPAddress.Parse("224.0.0.251"), _discoveryPort);
             try
             {
-                await _broadcastClient.SendAsync(packet, multicastEndpoint);
+                await _broadcastClient.SendAsync(packet, ipv4MulticastEndpoint);
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Failed to send multicast announcement (this is normal if multicast is disabled)");
+                _logger.LogDebug(ex, "Failed to send IPv4 multicast announcement (this is normal if multicast is disabled)");
+            }
+            
+            // IPv6 Multicast (Syncthing compatibility) - ff12::8384 = Syncthing discovery multicast
+            try 
+            {
+                var ipv6MulticastEndpoint = new IPEndPoint(IPAddress.Parse("ff12::8384"), _discoveryPort);
+                await _broadcastClient.SendAsync(packet, ipv6MulticastEndpoint);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to send IPv6 multicast announcement (this is normal if IPv6 is disabled)");
             }
             
             _logger.LogDebug("Broadcasted local discovery announcement for device {DeviceId}", _currentDeviceId);
@@ -377,7 +409,18 @@ public class LocalDiscoveryService : IDeviceDiscovery
                 {
                     addresses.Add($"tcp://{address}:{_currentPort}");
                 }
+                // Add IPv6 support (Syncthing compatibility)
+                else if (address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+                {
+                    addresses.Add($"tcp://[{address}]:{_currentPort}");
+                }
             }
+            
+            // Filter undialable addresses (Syncthing compatibility)
+            addresses = FilterUndialableAddresses(addresses);
+            
+            // Sanitize relay addresses (Syncthing compatibility) 
+            addresses = SanitizeRelayAddresses(addresses);
         }
         catch (Exception ex)
         {
@@ -385,6 +428,141 @@ public class LocalDiscoveryService : IDeviceDiscovery
         }
         
         return addresses;
+    }
+    
+    /// <summary>
+    /// Filter out undialable addresses (localhost, multicast, broadcast, port-zero)
+    /// Compatible with Syncthing's filterUndialableLocal function
+    /// </summary>
+    private List<string> FilterUndialableAddresses(List<string> addresses)
+    {
+        var filtered = new List<string>();
+        
+        foreach (var addr in addresses)
+        {
+            try
+            {
+                var uri = new Uri(addr);
+                var tcpAddr = new IPEndPoint(IPAddress.Parse(uri.Host.Trim('[', ']')), uri.Port);
+                
+                // Skip undialable addresses
+                if (tcpAddr.Port == 0) continue;
+                if (tcpAddr.Address.Equals(IPAddress.Any)) continue;
+                if (tcpAddr.Address.Equals(IPAddress.IPv6Any)) continue;
+                
+                // Include global unicast, link-local unicast, and unspecified addresses
+                if (IsDialableAddress(tcpAddr.Address))
+                {
+                    filtered.Add(addr);
+                }
+            }
+            catch
+            {
+                // Skip malformed addresses
+                continue;
+            }
+        }
+        
+        return filtered;
+    }
+    
+    /// <summary>
+    /// Check if address is dialable (compatible with Syncthing logic)
+    /// </summary>
+    private bool IsDialableAddress(IPAddress address)
+    {
+        // Allow global unicast, link-local unicast, and unspecified addresses
+        return IsIPv6GlobalUnicast(address) ||
+               address.IsIPv6LinkLocal ||
+               address.IsIPv4MappedToIPv6 ||
+               IsIPv4GlobalUnicast(address) ||
+               IsIPv4LinkLocal(address) ||
+               address.Equals(IPAddress.Any) ||
+               address.Equals(IPAddress.IPv6Any);
+    }
+    
+    /// <summary>
+    /// Check if IPv6 address is global unicast
+    /// </summary>
+    private bool IsIPv6GlobalUnicast(IPAddress address)
+    {
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6)
+            return false;
+            
+        var bytes = address.GetAddressBytes();
+        
+        // Global unicast addresses start with 2000::/3 (first 3 bits are 001)
+        return (bytes[0] & 0xE0) == 0x20;
+    }
+    
+    private bool IsIPv4GlobalUnicast(IPAddress address)
+    {
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            return false;
+            
+        var bytes = address.GetAddressBytes();
+        
+        // Exclude private ranges, loopback, multicast, broadcast
+        if (bytes[0] == 127) return false; // Loopback
+        if (bytes[0] == 10) return false; // Private 10.0.0.0/8
+        if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return false; // Private 172.16.0.0/12
+        if (bytes[0] == 192 && bytes[1] == 168) return false; // Private 192.168.0.0/16
+        if (bytes[0] >= 224) return false; // Multicast and reserved
+        
+        return true;
+    }
+    
+    private bool IsIPv4LinkLocal(IPAddress address)
+    {
+        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+            return false;
+            
+        var bytes = address.GetAddressBytes();
+        return bytes[0] == 169 && bytes[1] == 254; // Link-local 169.254.0.0/16
+    }
+    
+    /// <summary>
+    /// Sanitize relay addresses to remove sensitive tokens (Syncthing compatibility)
+    /// </summary>
+    private List<string> SanitizeRelayAddresses(List<string> addresses)
+    {
+        var sanitized = new List<string>();
+        
+        foreach (var addr in addresses)
+        {
+            try
+            {
+                var uri = new Uri(addr);
+                
+                if (uri.Scheme == "relay")
+                {
+                    // For relay addresses, only keep allowlisted query parameters
+                    var builder = new UriBuilder(uri);
+                    var query = System.Web.HttpUtility.ParseQueryString(uri.Query);
+                    
+                    // Only keep "id" parameter (Syncthing compatibility)
+                    var cleanQuery = System.Web.HttpUtility.ParseQueryString("");
+                    if (query["id"] != null)
+                    {
+                        cleanQuery["id"] = query["id"];
+                    }
+                    
+                    builder.Query = cleanQuery.ToString();
+                    sanitized.Add(builder.ToString());
+                }
+                else
+                {
+                    sanitized.Add(addr);
+                }
+            }
+            catch
+            {
+                // Skip malformed addresses
+                continue;
+            }
+        }
+        
+        return sanitized;
     }
 
     public void Dispose()
@@ -396,13 +574,3 @@ public class LocalDiscoveryService : IDeviceDiscovery
     }
 }
 
-/// <summary>
-/// Local device announcement structure
-/// </summary>
-public class LocalDeviceAnnouncement
-{
-    public string DeviceId { get; set; } = string.Empty;
-    public int Port { get; set; }
-    public List<string> Addresses { get; set; } = new();
-    public DateTimeOffset Timestamp { get; set; }
-}

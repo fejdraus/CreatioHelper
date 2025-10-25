@@ -102,6 +102,10 @@ public class FileAction
     public object? DeltaSyncPlan { get; set; } // Reference to DeltaSyncPlan for optimized transfers
     public long? OptimizedSize { get; set; } // Actual bytes to transfer after delta optimization
     public SyncFileInfo? RemoteFile => FileInfo; // Alias for clarity
+    
+    // Block-level deduplication properties
+    public object? OptimizedPlan { get; set; } // Reference to OptimizedTransferPlan for block deduplication
+    public object? SyncthingBlockDiff { get; set; } // Reference to SyncthingFileDiff for block-level differences
 
     public FileAction(string fileName, FileActionType actionType, FileActionReason reason, long fileSize, SyncFileInfo? fileInfo)
     {
@@ -166,5 +170,10 @@ public enum ConflictType
     BothModified,
     LocalDeletedRemoteModified,
     LocalModifiedRemoteDeleted,
-    TypeMismatch // file vs directory
+    TypeMismatch, // file vs directory
+    DeletedLocallyModifiedRemotely,
+    ModifiedLocallyDeletedRemotely,
+    PermissionConflict,
+    UnexpectedLocalChange,
+    ConcurrentModification
 }

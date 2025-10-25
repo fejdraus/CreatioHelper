@@ -18,19 +18,24 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 public class BepProtocol : ISyncProtocol, IDisposable
 {
     private readonly ILogger<BepProtocol> _logger;
+    private readonly ISyncDatabase _database;
+    private readonly BlockDuplicationDetector _blockDetector;
     private TcpListener? _listener;
     private readonly int _port;
     private readonly X509Certificate2 _certificate;
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private readonly ConcurrentDictionary<string, BepConnection> _connections = new();
     
-    // BEP Protocol Constants
-    private const uint BepMagic = 0x2EA7D90B;
+    // BEP Protocol Constants (Syncthing compatible)
+    private const uint BepMagic = 0x2EA7D90B;             // HelloMessageMagic
+    private const uint Version13HelloMagic = 0x9F79BC40;  // Legacy version support
     private const string DeviceName = "CreatioHelper";
     private const string ClientName = "CreatioHelper";
     private const string ClientVersion = "1.0.0";
-    private const int CompressionThreshold = 128;
-    private const int MaxMessageSize = 1024 * 1024 * 16; // 16MB
+    private const int CompressionThreshold = 128;         // compressionThreshold
+    private const int MaxMessageSize = 500 * 1000 * 1000; // MaxMessageLen (500MB)
+    private const int MinBlockSize = 128 * 1024;          // MinBlockSize (128 KB)
+    private const int MaxBlockSize = 16 * 1024 * 1024;    // MaxBlockSize (16 MB)
 
     public event EventHandler<DeviceConnectedEventArgs>? DeviceConnected;
     public event EventHandler<DeviceDisconnectedEventArgs>? DeviceDisconnected;
@@ -40,9 +45,11 @@ public class BepProtocol : ISyncProtocol, IDisposable
     public event EventHandler<DownloadProgressEventArgs>? DownloadProgressReceived;
     public event EventHandler<BlockRequestReceivedEventArgs>? BlockRequestReceived;
 
-    public BepProtocol(ILogger<BepProtocol> logger, int port, X509Certificate2 certificate, string deviceId)
+    public BepProtocol(ILogger<BepProtocol> logger, ISyncDatabase database, BlockDuplicationDetector blockDetector, int port, X509Certificate2 certificate, string deviceId)
     {
         _logger = logger;
+        _database = database;
+        _blockDetector = blockDetector;
         _port = port;
         _certificate = certificate;
         DeviceId = deviceId;
@@ -198,20 +205,20 @@ public class BepProtocol : ISyncProtocol, IDisposable
         {
             Folders = folders.Select(f => new BepFolder
             {
-                Id = f.FolderId,
+                Id = f.Id,
                 Label = f.Label,
-                ReadOnly = f.Type == FolderType.ReceiveOnly,
+                ReadOnly = f.Type == "receiveonly",
                 IgnorePermissions = false,
                 IgnoreDelete = false,
                 DisableTempIndexes = false,
                 Paused = f.IsPaused,
-                Devices = f.Devices.Select(d => new BepDevice
+                Devices = f.Devices.Select(deviceId => new BepDevice
                 {
-                    Id = StringToDeviceId(d.DeviceId),
-                    Name = d.DeviceId, // Use DeviceId as name for now
+                    Id = StringToDeviceId(deviceId),
+                    Name = deviceId, // Use DeviceId as name for now
                     Addresses = new List<string>(), // Empty addresses for now
                     Compression = BepCompression.Always,
-                    CertName = d.DeviceId
+                    CertName = deviceId
                 }).ToList()
             }).ToList()
         };
@@ -247,11 +254,11 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 {
                     Offset = b.Offset,
                     Size = b.Size,
-                    Hash = Convert.FromHexString(b.Hash),
+                    Hash = ConvertHashStringToBytes(b.Hash), // Support both hex string and byte[] hashes
                     WeakHash = (uint)b.WeakHash
                 }).ToList(),
                 Symlink = f.SymlinkTarget ?? "",
-                BlocksHash = Convert.FromHexString(f.Hash),
+                BlocksHash = ConvertHashStringToBytes(f.Hash), // Support both hex string and byte[] hashes
                 Encrypted = false,
                 Type = f.Type == FileType.Directory ? BepFileInfoType.Directory : BepFileInfoType.File,
                 Permissions = (uint)(f.Type == FileType.Directory ? 0x1ED : 0x1A4), // 755 and 644 in hex
@@ -284,11 +291,11 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 {
                     Offset = b.Offset,
                     Size = b.Size,
-                    Hash = Convert.FromHexString(b.Hash),
+                    Hash = ConvertHashStringToBytes(b.Hash), // Support both hex string and byte[] hashes
                     WeakHash = (uint)b.WeakHash
                 }).ToList(),
                 Symlink = f.SymlinkTarget ?? "",
-                BlocksHash = Convert.FromHexString(f.Hash),
+                BlocksHash = ConvertHashStringToBytes(f.Hash), // Support both hex string and byte[] hashes
                 Encrypted = false,
                 Type = f.Type == FileType.Directory ? BepFileInfoType.Directory : BepFileInfoType.File,
                 Permissions = (uint)(f.Type == FileType.Directory ? 0x1ED : 0x1A4), // 755 and 644 in hex
@@ -319,7 +326,33 @@ public class BepProtocol : ISyncProtocol, IDisposable
             Name = fileName,
             Offset = offset,
             Size = size,
-            Hash = Convert.FromHexString(hash),
+            Hash = ConvertHashStringToBytes(hash), // Support both hex string and byte[] hashes
+            FromTemporary = false,
+            WeakHash = 0,
+            BlockNo = 0
+        };
+
+        var response = await connection.RequestBlockAsync(request);
+        return response.Data;
+    }
+
+    /// <summary>
+    /// Request a block by its SHA-256 hash (Syncthing-compatible)
+    /// </summary>
+    public async Task<byte[]> RequestBlockByHashAsync(string deviceId, byte[] blockHash)
+    {
+        if (!_connections.TryGetValue(deviceId, out var connection))
+            return Array.Empty<byte>();
+
+        // For block-level requests, we use a special request format
+        var request = new BepRequest
+        {
+            Id = GenerateRequestId(),
+            Folder = "", // Empty for direct block requests
+            Name = "", // Empty for direct block requests
+            Offset = 0,
+            Size = 0, // Will be determined by the receiving side based on hash
+            Hash = blockHash,
             FromTemporary = false,
             WeakHash = 0,
             BlockNo = 0
@@ -334,6 +367,16 @@ public class BepProtocol : ISyncProtocol, IDisposable
         if (!_connections.TryGetValue(deviceId, out var connection))
             return;
 
+        // Integrate with Database Layer - store block metadata
+        try 
+        {
+            await StoreBlockMetadataAsync(data, folderId, fileName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to store block metadata for {FolderId}/{FileName}", folderId, fileName);
+        }
+
         var response = new BepResponse
         {
             Id = 0, // Will be set by connection when responding to request
@@ -342,6 +385,92 @@ public class BepProtocol : ISyncProtocol, IDisposable
         };
 
         await connection.SendMessageAsync(BepMessageType.Response, response);
+    }
+
+    /// <summary>
+    /// Store block metadata in Database Layer for deduplication
+    /// </summary>
+    private async Task StoreBlockMetadataAsync(byte[] data, string folderId, string fileName)
+    {
+        if (data.Length == 0) return;
+
+        // Use Block Deduplication system to analyze and store
+        var analysisResult = await _blockDetector.AnalyzeFileAsync(
+            Path.Combine(folderId, fileName), folderId);
+        
+        if (analysisResult.Error == null)
+        {
+            _logger.LogDebug("Block analysis completed for {FolderId}/{FileName}: {NewBlocks} new blocks, {ExistingBlocks} existing", 
+                folderId, fileName, analysisResult.NewBlocks.Count, analysisResult.ExistingBlocks.Count);
+        }
+    }
+
+    /// <summary>
+    /// Check if block exists in Database Layer for deduplication optimization
+    /// </summary>
+    private async Task<bool> CheckBlockExistsAsync(byte[] blockHash)
+    {
+        try
+        {
+            var blockMetadata = await _database.BlockInfo.GetAsync(blockHash);
+            if (blockMetadata != null)
+            {
+                // Update last accessed timestamp
+                await _database.BlockInfo.UpdateLastAccessedAsync(blockHash);
+                return true;
+            }
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check block existence for hash {Hash}", Convert.ToHexString(blockHash));
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Get file metadata from Database Layer for BEP Index messages
+    /// </summary>
+    private async Task<IEnumerable<SyncFileInfo>> GetFileMetadataAsync(string folderId)
+    {
+        try
+        {
+            // Use Database Layer to get file metadata
+            var files = await _database.FileMetadata.GetAllAsync(folderId);
+            
+            var result = new List<SyncFileInfo>();
+            foreach (var f in files)
+            {
+                var fileInfo = new SyncFileInfo(f.FolderId, f.FileName, f.FileName, f.Size, f.ModifiedTime);
+                
+                if (f.Hash != null && f.Hash.Length > 0)
+                {
+                    fileInfo.UpdateHash(System.Text.Encoding.UTF8.GetString(f.Hash));
+                }
+                
+                if (f.Permissions.HasValue)
+                {
+                    // Используем рефлексию для установки Permissions, так как нет публичного setter
+                    var permissionsProp = typeof(SyncFileInfo).GetProperty("Permissions", 
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+                    permissionsProp?.SetValue(fileInfo, f.Permissions.Value);
+                }
+                
+                if (f.IsDeleted)
+                {
+                    fileInfo.MarkAsDeleted();
+                }
+                
+                result.Add(fileInfo);
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get file metadata for folder {FolderId}", folderId);
+            return Array.Empty<SyncFileInfo>();
+        }
     }
 
     public async Task SendBlockResponseAsync(string deviceId, object response)
@@ -517,6 +646,32 @@ public class BepProtocol : ISyncProtocol, IDisposable
         return Random.Shared.Next(1, int.MaxValue);
     }
 
+    /// <summary>
+    /// Convert hash string to bytes, supporting both hex strings and already-converted byte arrays
+    /// </summary>
+    private byte[] ConvertHashStringToBytes(string hash)
+    {
+        if (string.IsNullOrEmpty(hash))
+            return Array.Empty<byte>();
+
+        try
+        {
+            // Try to parse as hex string first
+            if (hash.Length == 64) // SHA-256 hex string length
+            {
+                return Convert.FromHexString(hash);
+            }
+            
+            // Fallback: treat as regular string and hash it
+            return System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(hash));
+        }
+        catch
+        {
+            // If all else fails, return empty array
+            return Array.Empty<byte>();
+        }
+    }
+
     private void OnConnectionMessageReceived(object? sender, (BepMessageType Type, object Message) e)
     {
         if (sender is not BepConnection connection) return;
@@ -575,8 +730,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
             // Notify about device connection with the correct ID
             DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(new SyncDevice(
                 newDeviceId, 
-                "Unknown", // Will be updated when we get more device info  
-                "dummy-cert" // Temporary certificate fingerprint for testing
+                "Unknown" // Will be updated when we get more device info
             )));
         }
         else
@@ -593,7 +747,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 DateTime.UnixEpoch.AddSeconds(f.ModifiedS).AddTicks(f.ModifiedNs / 100));
             
             // Convert blocks
-            var blocks = f.Blocks.Select(b => new BlockInfo(b.Offset, b.Size, Convert.ToHexString(b.Hash).ToLower(), (int)b.WeakHash)).ToList();
+            var blocks = f.Blocks.Select(b => new BlockInfo(b.Offset, b.Size, Convert.ToHexString(b.Hash).ToLower(), b.WeakHash)).ToList();
             syncFile.SetBlocks(blocks);
             syncFile.UpdateHash(Convert.ToHexString(f.BlocksHash).ToLower());
             

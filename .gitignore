@@ -16,3 +16,8 @@ CreatioHelper.sln.DotSettings.user
 CLAUDE.md
 /.claude
 /obj
+/DatabaseTest
+/BlockTest
+nul
+/src/CreatioHelper.Agent/Data
+src/CreatioHelper.Agent/key.pem
