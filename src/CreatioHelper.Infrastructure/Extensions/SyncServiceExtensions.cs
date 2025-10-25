@@ -1,6 +1,14 @@
 using System.Security.Cryptography.X509Certificates;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync;
+using CreatioHelper.Infrastructure.Services.Sync.Database;
+using CreatioHelper.Infrastructure.Services.Sync.Handlers;
+using CreatioHelper.Infrastructure.Services.Sync.Encryption;
+using CreatioHelper.Infrastructure.Services.Network;
+using CreatioHelper.Infrastructure.Services.Network.UPnP;
+using CreatioHelper.Infrastructure.Services.Security;
+using CreatioHelper.Infrastructure.Services.Events;
+using CreatioHelper.Infrastructure.Services.Statistics;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -28,13 +36,14 @@ public class SyncConfigurationFromFile
         public string Type { get; set; } = "SendReceive";
         public List<SyncDeviceConfig> Devices { get; set; } = new();
 
-        public FolderType GetFolderType()
+        public string GetFolderType()
         {
-            return Type switch
+            return Type.ToLower() switch
             {
-                "SendOnly" => FolderType.SendOnly,
-                "ReceiveOnly" => FolderType.ReceiveOnly,
-                _ => FolderType.SendReceive
+                "sendonly" => "sendonly",
+                "receiveonly" => "receiveonly", 
+                "receiveencrypted" => "receiveencrypted",
+                _ => "sendreceive"
             };
         }
     }
@@ -70,23 +79,171 @@ public static class SyncServiceExtensions
 
         services.AddSingleton(syncConfig);
         services.AddSingleton(certificate);
+        
+        // Register Database Layer - SQLite implementation
+        services.AddSingleton<ISyncDatabase>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SqliteSyncDatabase>>();
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+                "CreatioHelper", "Sync", $"sync_{syncConfig.DeviceId}.db");
+            Directory.CreateDirectory(Path.GetDirectoryName(databasePath)!);
+            return new SqliteSyncDatabase(logger, loggerFactory, databasePath);
+        });
+
+        // Register Block Info Repository
+        services.AddSingleton<IBlockInfoRepository>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SqliteBlockInfoRepository>>();
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+                "CreatioHelper", "Sync", $"sync_{syncConfig.DeviceId}.db");
+            var connectionString = $"Data Source={databasePath}";
+            return new SqliteBlockInfoRepository(logger, connectionString);
+        });
 
         // Register core sync services - using new BEP protocol implementation
         services.AddSingleton<ISyncProtocol>(provider =>
             new BepProtocol(
                 provider.GetRequiredService<ILogger<BepProtocol>>(),
+                provider.GetRequiredService<ISyncDatabase>(),
+                provider.GetRequiredService<BlockDuplicationDetector>(),
                 port,
                 certificate,
                 syncConfig.DeviceId));
 
-        services.AddSingleton<IDeviceDiscovery, DeviceDiscovery>();
+        services.AddSingleton<IDeviceDiscovery>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<DeviceDiscovery>>();
+            var discoveryPort = syncConfig.DiscoveryPort;
+            return new DeviceDiscovery(logger, discoveryPort);
+        });
+        
+        // Syncthing 100% compatible Global Discovery
+        services.AddSingleton<SyncthingGlobalDiscovery>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncthingGlobalDiscovery>>();
+            return new SyncthingGlobalDiscovery(logger, certificate, syncConfig.DeviceId);
+        });
+        
+        // Syncthing 100% compatible File Versioning
+        services.AddSingleton<Func<string, SyncthingFileVersioner>>(provider => folderPath =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncthingFileVersioner>>();
+            return new SyncthingFileVersioner(logger, folderPath, keepVersions: 5, cleanoutDays: 0);
+        });
         services.AddSingleton<AdaptiveBlockSizer>();
         services.AddSingleton<DeltaSyncEngine>();
         services.AddSingleton<FileWatcher>();
         services.AddSingleton<ConflictResolver>();
         services.AddSingleton<FileComparator>();
         services.AddSingleton<FileDownloader>();
-        services.AddSingleton<BlockRequestHandler>();
+        
+        // Syncthing-compatible block services
+        services.AddSingleton<SyncthingBlockCalculator>();
+        services.AddSingleton<SyncthingBlockStorage>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncthingBlockStorage>>();
+            var blockRepository = provider.GetRequiredService<IBlockInfoRepository>();
+            var blockStoragePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), 
+                "CreatioHelper", "blocks");
+            return new SyncthingBlockStorage(logger, blockRepository, blockStoragePath);
+        });
+        
+        services.AddSingleton<BlockRequestHandler>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BlockRequestHandler>>();
+            var protocol = provider.GetRequiredService<ISyncProtocol>();
+            var blockStorage = provider.GetRequiredService<SyncthingBlockStorage>();
+            var blockRepository = provider.GetRequiredService<IBlockInfoRepository>();
+            return new BlockRequestHandler(logger, protocol, blockStorage, blockRepository);
+        });
+        
+        // Folder Type Handlers (PHASE 11) - Register all folder handlers
+        services.AddSingleton<ConflictResolutionEngine>();
+        services.AddSingleton<SendReceiveFolderHandler>();
+        services.AddSingleton<SendOnlyFolderHandler>();
+        services.AddSingleton<ReceiveOnlyFolderHandler>();
+        services.AddSingleton<ReceiveEncryptedFolderHandler>();
+        services.AddSingleton<MasterFolderHandler>();
+        services.AddSingleton<SlaveFolderHandler>();
+        services.AddSingleton<SyncFolderHandlerFactory>();
+        
+        // Block-level deduplication services - updated to use Syncthing approach
+        services.AddSingleton<BlockDuplicationDetector>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BlockDuplicationDetector>>();
+            var blockRepository = provider.GetRequiredService<IBlockInfoRepository>();
+            var blockCalculator = provider.GetRequiredService<SyncthingBlockCalculator>();
+            return new BlockDuplicationDetector(logger, blockRepository, blockCalculator);
+        });
+        services.AddSingleton<ParallelBlockTransfer>();
+        services.AddSingleton<TransferOptimizer>();
+
+        // Bandwidth Management Services - Syncthing Compatible
+        services.AddSingleton<IBandwidthManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncthingBandwidthManager>>();
+            var manager = new SyncthingBandwidthManager(logger, syncConfig.DeviceId);
+            
+            // Configure with Syncthing-compatible bandwidth settings
+            if (syncConfig.BandwidthSettings != null)
+            {
+                manager.UpdateConfiguration(syncConfig.BandwidthSettings);
+            }
+            
+            return manager;
+        });
+
+        services.AddSingleton<IPriorityManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<PriorityManager>>();
+            return new PriorityManager(logger, syncConfig.TrafficShaping);
+        });
+
+        services.AddSingleton<BandwidthAwareBepConnectionFactory>();
+
+        // Event and Statistics Services (ФАЗА 13)
+        services.AddSingleton<IEventLogger, EventLogger>();
+        services.AddSingleton<IStatisticsCollector, StatisticsCollector>();
+        services.AddHostedService<EventLogger>(provider => (EventLogger)provider.GetRequiredService<IEventLogger>());
+        services.AddHostedService<StatisticsCollector>(provider => (StatisticsCollector)provider.GetRequiredService<IStatisticsCollector>());
+
+        // Encryption Services (100% Syncthing compatibility)
+        services.AddSingleton<EncryptionKeyGenerator>();
+        services.AddSingleton<SyncthingEncryption>();
+        services.AddSingleton<IEncryptionService, SimplifiedEncryptionService>();
+
+        // Security Services (ФАЗА 14)
+        services.AddSingleton<SecurityConfiguration>(provider =>
+        {
+            var config = provider.GetService<IConfiguration>();
+            var securityConfig = config?.GetSection("Security").Get<SecurityConfiguration>() ?? new SecurityConfiguration();
+            return securityConfig;
+        });
+        services.AddSingleton<ICertificateManager, CertificateManager>();
+        services.AddSingleton<SyncthingTlsManager>();
+        services.AddSingleton<ISecurityAuditor, SecurityAuditor>();
+        services.AddHostedService<SecurityAuditor>(provider => (SecurityAuditor)provider.GetRequiredService<ISecurityAuditor>());
+
+        // UPnP/NAT Traversal Services (ФАЗА 9)
+        services.AddSingleton<IUPnPService, SyncthingUPnPService>();
+
+        // Performance Optimization Services (ФАЗА 15) - Syncthing-compatible connection pooling
+        // No need to register SyncthingSemaphore separately as it's created internally
+        
+        services.AddSingleton<SyncthingConnectionPool>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncthingConnectionPool>>();
+            return new SyncthingConnectionPool(logger);
+        });
+        
+        services.AddSingleton<IBepConnection>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<BepConnectionAdapter>>();
+            var connectionPool = provider.GetRequiredService<SyncthingConnectionPool>();
+            var bandwidthManager = provider.GetRequiredService<IBandwidthManager>();
+            return new BepConnectionAdapter(logger, connectionPool, bandwidthManager);
+        });
 
         services.AddSingleton<ISyncEngine>(provider =>
             new SyncEngine(
@@ -99,7 +256,17 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<FileDownloader>(),
                 provider.GetRequiredService<BlockRequestHandler>(),
                 provider.GetRequiredService<DeltaSyncEngine>(),
-                syncConfig));
+                provider.GetRequiredService<BlockDuplicationDetector>(),
+                provider.GetRequiredService<TransferOptimizer>(),
+                syncConfig,
+                provider.GetRequiredService<ISyncDatabase>(),
+                provider.GetRequiredService<IEventLogger>(),
+                provider.GetRequiredService<IStatisticsCollector>(),
+                provider.GetRequiredService<ICertificateManager>(),
+                provider.GetRequiredService<SyncFolderHandlerFactory>(),
+                provider.GetRequiredService<SyncthingGlobalDiscovery>(),
+                provider.GetService<ICombinedNatService>(),
+                certificate));
 
         // Register event broadcaster
         services.AddSingleton<SyncEventBroadcaster>();

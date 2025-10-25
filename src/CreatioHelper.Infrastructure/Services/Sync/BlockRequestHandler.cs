@@ -6,18 +6,26 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 
 /// <summary>
 /// Handles incoming block requests and sends file data
-/// Based on Syncthing's block serving logic
+/// Based on Syncthing's block serving logic with support for block-level deduplication
 /// </summary>
 public class BlockRequestHandler
 {
     private readonly ILogger<BlockRequestHandler> _logger;
     private readonly ISyncProtocol _protocol;
     private readonly Dictionary<string, SyncFolder> _folders = new();
+    private readonly SyncthingBlockStorage _blockStorage;
+    private readonly IBlockInfoRepository _blockRepository;
 
-    public BlockRequestHandler(ILogger<BlockRequestHandler> logger, ISyncProtocol protocol)
+    public BlockRequestHandler(
+        ILogger<BlockRequestHandler> logger, 
+        ISyncProtocol protocol,
+        SyncthingBlockStorage blockStorage,
+        IBlockInfoRepository blockRepository)
     {
         _logger = logger;
         _protocol = protocol;
+        _blockStorage = blockStorage;
+        _blockRepository = blockRepository;
     }
 
     /// <summary>
@@ -25,8 +33,8 @@ public class BlockRequestHandler
     /// </summary>
     public void RegisterFolder(SyncFolder folder)
     {
-        _folders[folder.FolderId] = folder;
-        _logger.LogDebug("Registered folder {FolderId} for block serving: {Path}", folder.FolderId, folder.Path);
+        _folders[folder.Id] = folder;
+        _logger.LogDebug("Registered folder {FolderId} for block serving: {Path}", folder.Id, folder.Path);
     }
 
     /// <summary>
@@ -41,12 +49,13 @@ public class BlockRequestHandler
     }
 
     /// <summary>
-    /// Handles incoming block request
+    /// Handles incoming block request with support for both file-based and hash-based requests
     /// </summary>
     public async Task HandleBlockRequestAsync(string deviceId, BepRequest request)
     {
-        _logger.LogInformation("🔥 BlockRequestHandler: Received block request {RequestId} from device {DeviceId}: {FileName} offset={Offset} size={Size}",
-            request.Id, deviceId, request.Name, request.Offset, request.Size);
+        _logger.LogInformation("🔥 BlockRequestHandler: Received block request {RequestId} from device {DeviceId}: {FileName} offset={Offset} size={Size} hash={Hash}",
+            request.Id, deviceId, request.Name, request.Offset, request.Size, 
+            request.Hash?.Length > 0 ? Convert.ToHexString(request.Hash)[..8] + "..." : "none");
 
         var response = new BepResponse
         {
@@ -57,10 +66,31 @@ public class BlockRequestHandler
 
         try
         {
-            _logger.LogTrace("Handling block request {RequestId} from device {DeviceId}: {FileName} offset={Offset} size={Size}",
-                request.Id, deviceId, request.Name, request.Offset, request.Size);
+            // Check if this is a direct block request by hash (Syncthing-style deduplication)
+            if (string.IsNullOrEmpty(request.Folder) && string.IsNullOrEmpty(request.Name) && 
+                request.Hash != null && request.Hash.Length > 0)
+            {
+                _logger.LogDebug("Processing direct block hash request {RequestId} for hash {Hash}", 
+                    request.Id, Convert.ToHexString(request.Hash)[..8] + "...");
+                
+                response.Data = await HandleDirectBlockRequestAsync(request.Hash);
+                if (response.Data.Length == 0)
+                {
+                    response.Code = BepErrorCode.NoSuchFile;
+                    _logger.LogWarning("Direct block request {RequestId}: Block not found for hash {Hash}",
+                        request.Id, Convert.ToHexString(request.Hash)[..8] + "...");
+                }
+                else
+                {
+                    _logger.LogInformation("✅ BlockRequestHandler: Served direct block {RequestId}: {BytesSent} bytes for hash {Hash}",
+                        request.Id, response.Data.Length, Convert.ToHexString(request.Hash)[..8] + "...");
+                }
+                
+                await _protocol.SendBlockResponseAsync(deviceId, response);
+                return;
+            }
 
-            // Validate request
+            // Standard file-based block request validation
             var validationError = ValidateRequest(request);
             if (validationError != null)
             {
@@ -80,7 +110,7 @@ public class BlockRequestHandler
             }
 
             // Check if device is authorized for this folder
-            if (!folder.Devices.Any(d => d.DeviceId == deviceId))
+            if (!folder.Devices.Contains(deviceId))
             {
                 response.Code = BepErrorCode.Generic;
                 _logger.LogWarning("Unauthorized block request {RequestId} from device {DeviceId} for folder {FolderId}", 
@@ -104,7 +134,21 @@ public class BlockRequestHandler
                 return;
             }
 
-            // Check if file exists
+            // Try to serve from block storage first if hash is provided
+            if (request.Hash != null && request.Hash.Length > 0)
+            {
+                var cachedBlock = await _blockStorage.GetBlockAsync(request.Hash);
+                if (cachedBlock != null)
+                {
+                    response.Data = cachedBlock;
+                    _logger.LogInformation("✅ BlockRequestHandler: Served cached block {RequestId}: {BytesSent} bytes from block storage",
+                        request.Id, cachedBlock.Length);
+                    await _protocol.SendBlockResponseAsync(deviceId, response);
+                    return;
+                }
+            }
+
+            // Fallback to file-based serving
             if (!File.Exists(filePath))
             {
                 response.Code = BepErrorCode.NoSuchFile;
@@ -113,7 +157,7 @@ public class BlockRequestHandler
                 return;
             }
 
-            // Read requested block
+            // Read requested block from file
             var blockData = await ReadFileBlockAsync(filePath, request.Offset, request.Size);
             
             // Verify hash if provided (strict validation like original Syncthing)
@@ -135,12 +179,25 @@ public class BlockRequestHandler
                 else
                 {
                     _logger.LogDebug("✅ BlockRequestHandler: Block hash matches for request {RequestId}", request.Id);
+                    
+                    // Store verified block in block storage for future deduplication
+                    _ = Task.Run(async () => {
+                        try
+                        {
+                            await _blockStorage.StoreBlockAsync(blockData, request.Hash);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Failed to store block in block storage for hash {Hash}", 
+                                Convert.ToHexString(request.Hash)[..8] + "...");
+                        }
+                    });
                 }
             }
 
             response.Data = blockData;
             
-            _logger.LogInformation("✅ BlockRequestHandler: Serving block {RequestId}: {BytesSent} bytes for {FileName} offset={Offset}",
+            _logger.LogInformation("✅ BlockRequestHandler: Serving file block {RequestId}: {BytesSent} bytes for {FileName} offset={Offset}",
                 request.Id, blockData.Length, request.Name, request.Offset);
         }
         catch (Exception ex)
@@ -158,10 +215,89 @@ public class BlockRequestHandler
     }
 
     /// <summary>
+    /// Handles direct block request by hash (Syncthing-compatible deduplication)
+    /// </summary>
+    private async Task<byte[]> HandleDirectBlockRequestAsync(byte[] blockHash)
+    {
+        try
+        {
+            // First try block storage
+            var blockData = await _blockStorage.GetBlockAsync(blockHash);
+            if (blockData != null)
+            {
+                _logger.LogDebug("Served direct block from block storage for hash {Hash}", 
+                    Convert.ToHexString(blockHash)[..8] + "...");
+                return blockData;
+            }
+
+            // If not in block storage, try to find in repository and locate source file
+            var blockMetadata = await _blockRepository.GetAsync(blockHash);
+            if (blockMetadata != null)
+            {
+                // Try to find the source file and extract the block
+                if (_folders.TryGetValue(blockMetadata.FolderId, out var folder))
+                {
+                    var filePath = Path.Combine(folder.Path, blockMetadata.FileName);
+                    if (File.Exists(filePath))
+                    {
+                        // Calculate block offset based on block index and typical block size
+                        var calculator = new SyncthingBlockCalculator(_logger as ILogger<SyncthingBlockCalculator> ?? throw new InvalidOperationException("Invalid logger type"));
+                        var blockSize = calculator.CalculateBlockSize(new FileInfo(filePath).Length);
+                        var blockOffset = blockMetadata.BlockIndex * (long)blockSize;
+                        
+                        var extractedBlock = await ReadFileBlockAsync(filePath, blockOffset, blockMetadata.Size);
+                        
+                        // Verify the extracted block matches the requested hash
+                        var extractedHash = System.Security.Cryptography.SHA256.HashData(extractedBlock);
+                        if (extractedHash.SequenceEqual(blockHash))
+                        {
+                            // Store in block storage for future requests
+                            _ = Task.Run(async () => {
+                                try
+                                {
+                                    await _blockStorage.StoreBlockAsync(extractedBlock, blockHash);
+                                }
+                                catch (Exception ex)
+                                {
+                                    _logger.LogWarning(ex, "Failed to store extracted block in block storage");
+                                }
+                            });
+                            
+                            _logger.LogDebug("Served direct block extracted from file {FileName} for hash {Hash}", 
+                                blockMetadata.FileName, Convert.ToHexString(blockHash)[..8] + "...");
+                            return extractedBlock;
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Block hash mismatch when extracting from file {FileName}", blockMetadata.FileName);
+                        }
+                    }
+                }
+            }
+
+            _logger.LogDebug("Direct block not found for hash {Hash}", Convert.ToHexString(blockHash)[..8] + "...");
+            return Array.Empty<byte>();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error handling direct block request for hash {Hash}", 
+                Convert.ToHexString(blockHash)[..8] + "...");
+            return Array.Empty<byte>();
+        }
+    }
+
+    /// <summary>
     /// Validates block request parameters
     /// </summary>
     private (BepErrorCode ErrorCode, string Message)? ValidateRequest(BepRequest request)
     {
+        // Allow direct block requests without folder/name
+        if (string.IsNullOrEmpty(request.Folder) && string.IsNullOrEmpty(request.Name) && 
+            request.Hash != null && request.Hash.Length > 0)
+        {
+            return null; // Direct block request is valid
+        }
+
         if (string.IsNullOrEmpty(request.Folder))
             return (BepErrorCode.Generic, "Missing folder ID");
 

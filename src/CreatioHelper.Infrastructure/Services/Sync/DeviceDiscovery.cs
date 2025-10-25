@@ -21,7 +21,7 @@ public class DeviceDiscovery : IDeviceDiscovery, IDisposable
     private readonly CancellationTokenSource _cancellationTokenSource = new();
     private UdpClient? _localDiscoveryClient;
     private readonly HttpClient _httpClient = new();
-    private readonly int _localDiscoveryPort = 21027; // Syncthing's default
+    private readonly int _localDiscoveryPort;
     private List<string> _globalDiscoveryServers = new()
     {
         "https://discovery.syncthing.net/v2/",
@@ -31,9 +31,10 @@ public class DeviceDiscovery : IDeviceDiscovery, IDisposable
 
     public event EventHandler<DeviceDiscoveredEventArgs>? DeviceDiscovered;
 
-    public DeviceDiscovery(ILogger<DeviceDiscovery> logger)
+    public DeviceDiscovery(ILogger<DeviceDiscovery> logger, int discoveryPort = 21027)
     {
         _logger = logger;
+        _localDiscoveryPort = discoveryPort;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)

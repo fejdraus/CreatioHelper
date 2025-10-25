@@ -6,17 +6,24 @@ using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
 using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Services.Redis;
+using CreatioHelper.Infrastructure.Services.Network;
+using CreatioHelper.Infrastructure.Services.Network.UPnP;
 using CreatioHelper.Infrastructure.Logging;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
+using CreatioHelper.Infrastructure.DependencyInjection;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
 public static class ServiceCollectionExtensions
 {
-    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration? configuration = null)
     {
         // Core services
         services.AddSingleton<IMetricsService, MetricsService>();
@@ -73,6 +80,25 @@ public static class ServiceCollectionExtensions
 
         // Configuration managers
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
+        
+        // Database services (if configuration is provided)
+        if (configuration != null)
+        {
+            services.AddSyncDatabase(configuration);
+        }
+        
+        // NAT traversal services
+        services.AddSingleton<INatService, NatService>();
+        services.AddSingleton<IPmpService, PmpService>();
+        services.AddSingleton<IUPnPService, SyncthingUPnPService>();
+        services.AddSingleton<ICombinedNatService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<CombinedNatService>>();
+            var config = provider.GetRequiredService<IOptions<SyncConfiguration>>();
+            var upnpService = provider.GetRequiredService<IUPnPService>();
+            var pmpService = provider.GetService<IPmpService>();
+            return new CombinedNatService(logger, config, upnpService, pmpService);
+        });
         
         return services;
     }
