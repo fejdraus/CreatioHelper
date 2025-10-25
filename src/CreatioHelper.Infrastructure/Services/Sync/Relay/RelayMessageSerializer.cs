@@ -5,15 +5,11 @@ using System.Text.Json;
 namespace CreatioHelper.Infrastructure.Services.Sync.Relay;
 
 /// <summary>
-/// Relay message serializer/deserializer compatible with Syncthing's XDR-like protocol
+/// Relay message serializer/deserializer 100% compatible with Syncthing's XDR protocol
+/// Implements exact XDR (External Data Representation) format used by syncthing-relay
 /// </summary>
 public static class RelayMessageSerializer
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
-    };
 
     /// <summary>
     /// Write a relay message to a stream
@@ -128,7 +124,7 @@ public static class RelayMessageSerializer
         if (string.IsNullOrEmpty(request.Token))
             return Array.Empty<byte>();
         
-        return Encoding.UTF8.GetBytes(request.Token);
+        return SerializeXDRString(request.Token);
     }
 
     private static JoinRelayRequest DeserializeJoinRelayRequest(byte[] payload)
@@ -136,7 +132,7 @@ public static class RelayMessageSerializer
         if (payload.Length == 0)
             return new JoinRelayRequest("");
         
-        var token = Encoding.UTF8.GetString(payload);
+        var token = DeserializeXDRString(payload, 0, out _);
         return new JoinRelayRequest(token);
     }
 
@@ -145,10 +141,7 @@ public static class RelayMessageSerializer
         if (request.Key.Length > 32)
             throw new ArgumentException("Key cannot be longer than 32 bytes");
         
-        var buffer = new byte[4 + request.Key.Length];
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), request.Key.Length);
-        request.Key.CopyTo(buffer.AsSpan(4));
-        return buffer;
+        return SerializeXDRBytes(request.Key);
     }
 
     private static JoinSessionRequest DeserializeJoinSessionRequest(byte[] payload)
@@ -156,38 +149,34 @@ public static class RelayMessageSerializer
         if (payload.Length < 4)
             return new JoinSessionRequest();
         
-        var keyLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(0, 4));
-        if (keyLength < 0 || keyLength > 32 || payload.Length < 4 + keyLength)
-            throw new InvalidDataException($"Invalid key length: {keyLength}");
-        
-        var key = payload.AsSpan(4, keyLength).ToArray();
+        var key = DeserializeXDRBytes(payload, 0, 32, out _);
         return new JoinSessionRequest(key);
     }
 
     private static byte[] SerializeResponse(Response response)
     {
-        var messageBytes = Encoding.UTF8.GetBytes(response.Message);
-        var buffer = new byte[8 + messageBytes.Length];
+        using var stream = new MemoryStream();
         
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), response.Code);
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(4, 4), messageBytes.Length);
-        messageBytes.CopyTo(buffer.AsSpan(8));
+        // Code (int32)
+        var codeBytes = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(codeBytes, (uint)response.Code);
+        stream.Write(codeBytes);
         
-        return buffer;
+        // Message (XDR string)
+        var messageBytes = SerializeXDRString(response.Message);
+        stream.Write(messageBytes);
+        
+        return stream.ToArray();
     }
 
     private static Response DeserializeResponse(byte[] payload)
     {
-        if (payload.Length < 8)
+        if (payload.Length < 4)
             throw new InvalidDataException("Invalid response payload");
         
-        var code = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(0, 4));
-        var messageLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(4, 4));
+        var code = (int)BinaryPrimitives.ReadUInt32BigEndian(payload.AsSpan(0, 4));
+        var message = DeserializeXDRString(payload, 4, out _);
         
-        if (messageLength < 0 || payload.Length < 8 + messageLength)
-            throw new InvalidDataException($"Invalid message length: {messageLength}");
-        
-        var message = Encoding.UTF8.GetString(payload.AsSpan(8, messageLength));
         return new Response(code, message);
     }
 
@@ -196,10 +185,7 @@ public static class RelayMessageSerializer
         if (request.Id.Length > 32)
             throw new ArgumentException("ID cannot be longer than 32 bytes");
         
-        var buffer = new byte[4 + request.Id.Length];
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(0, 4), request.Id.Length);
-        request.Id.CopyTo(buffer.AsSpan(4));
-        return buffer;
+        return SerializeXDRBytes(request.Id);
     }
 
     private static ConnectRequest DeserializeConnectRequest(byte[] payload)
@@ -207,11 +193,7 @@ public static class RelayMessageSerializer
         if (payload.Length < 4)
             return new ConnectRequest();
         
-        var idLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(0, 4));
-        if (idLength < 0 || idLength > 32 || payload.Length < 4 + idLength)
-            throw new InvalidDataException($"Invalid ID length: {idLength}");
-        
-        var id = payload.AsSpan(4, idLength).ToArray();
+        var id = DeserializeXDRBytes(payload, 0, 32, out _);
         return new ConnectRequest(id);
     }
 
@@ -220,80 +202,64 @@ public static class RelayMessageSerializer
         if (invitation.From.Length > 32 || invitation.Key.Length > 32 || invitation.Address.Length > 32)
             throw new ArgumentException("Field lengths cannot exceed 32 bytes");
         
-        var buffer = new byte[16 + invitation.From.Length + invitation.Key.Length + invitation.Address.Length];
-        var offset = 0;
+        using var stream = new MemoryStream();
         
-        // From length and data
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(offset, 4), invitation.From.Length);
-        offset += 4;
-        invitation.From.CopyTo(buffer.AsSpan(offset));
-        offset += invitation.From.Length;
+        // From (XDR bytes with max 32)
+        var fromBytes = SerializeXDRBytes(invitation.From);
+        stream.Write(fromBytes);
         
-        // Key length and data
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(offset, 4), invitation.Key.Length);
-        offset += 4;
-        invitation.Key.CopyTo(buffer.AsSpan(offset));
-        offset += invitation.Key.Length;
+        // Key (XDR bytes with max 32)  
+        var keyBytes = SerializeXDRBytes(invitation.Key);
+        stream.Write(keyBytes);
         
-        // Address length and data
-        BinaryPrimitives.WriteInt32BigEndian(buffer.AsSpan(offset, 4), invitation.Address.Length);
-        offset += 4;
-        invitation.Address.CopyTo(buffer.AsSpan(offset));
-        offset += invitation.Address.Length;
+        // Address (XDR bytes with max 32)
+        var addressBytes = SerializeXDRBytes(invitation.Address);
+        stream.Write(addressBytes);
         
-        // Port and ServerSocket
-        BinaryPrimitives.WriteUInt16BigEndian(buffer.AsSpan(offset, 2), invitation.Port);
-        offset += 2;
-        buffer[offset] = invitation.ServerSocket ? (byte)1 : (byte)0;
-        offset += 1;
+        // Port (uint16 in XDR format - becomes uint32 with zero padding)
+        var portBytes = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(portBytes, invitation.Port);
+        stream.Write(portBytes);
         
-        // Padding byte
-        buffer[offset] = 0;
+        // ServerSocket (bool in XDR format - becomes uint32)
+        var serverSocketBytes = new byte[4];
+        BinaryPrimitives.WriteUInt32BigEndian(serverSocketBytes, invitation.ServerSocket ? 1u : 0u);
+        stream.Write(serverSocketBytes);
         
-        return buffer;
+        return stream.ToArray();
     }
 
     private static SessionInvitation DeserializeSessionInvitation(byte[] payload)
     {
-        if (payload.Length < 15) // Minimum size for empty arrays
+        if (payload.Length < 20) // Minimum: 3 empty arrays (12 bytes) + port (4) + serverSocket (4)
             throw new InvalidDataException("Invalid session invitation payload");
         
         var offset = 0;
         
-        // Read From
-        var fromLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(offset, 4));
-        offset += 4;
-        if (fromLength < 0 || fromLength > 32 || payload.Length < offset + fromLength)
-            throw new InvalidDataException($"Invalid From length: {fromLength}");
-        var from = payload.AsSpan(offset, fromLength).ToArray();
-        offset += fromLength;
+        // Read From (XDR bytes)
+        var from = DeserializeXDRBytes(payload, offset, 32, out var fromBytesConsumed);
+        offset += fromBytesConsumed;
         
-        // Read Key
+        // Read Key (XDR bytes)
+        var key = DeserializeXDRBytes(payload, offset, 32, out var keyBytesConsumed);
+        offset += keyBytesConsumed;
+        
+        // Read Address (XDR bytes)
+        var address = DeserializeXDRBytes(payload, offset, 32, out var addressBytesConsumed);
+        offset += addressBytesConsumed;
+        
+        // Read Port (uint32, but only lower 16 bits used)
         if (payload.Length < offset + 4)
             throw new InvalidDataException("Incomplete session invitation payload");
-        var keyLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(offset, 4));
+        var portValue = BinaryPrimitives.ReadUInt32BigEndian(payload.AsSpan(offset, 4));
+        var port = (ushort)portValue;
         offset += 4;
-        if (keyLength < 0 || keyLength > 32 || payload.Length < offset + keyLength)
-            throw new InvalidDataException($"Invalid Key length: {keyLength}");
-        var key = payload.AsSpan(offset, keyLength).ToArray();
-        offset += keyLength;
         
-        // Read Address
+        // Read ServerSocket (uint32 bool)
         if (payload.Length < offset + 4)
             throw new InvalidDataException("Incomplete session invitation payload");
-        var addressLength = BinaryPrimitives.ReadInt32BigEndian(payload.AsSpan(offset, 4));
-        offset += 4;
-        if (addressLength < 0 || addressLength > 32 || payload.Length < offset + addressLength)
-            throw new InvalidDataException($"Invalid Address length: {addressLength}");
-        var address = payload.AsSpan(offset, addressLength).ToArray();
-        offset += addressLength;
-        
-        // Read Port and ServerSocket
-        if (payload.Length < offset + 3)
-            throw new InvalidDataException("Incomplete session invitation payload");
-        var port = BinaryPrimitives.ReadUInt16BigEndian(payload.AsSpan(offset, 2));
-        offset += 2;
-        var serverSocket = payload[offset] != 0;
+        var serverSocketValue = BinaryPrimitives.ReadUInt32BigEndian(payload.AsSpan(offset, 4));
+        var serverSocket = serverSocketValue != 0;
         
         return new SessionInvitation(from, key, address, port, serverSocket);
     }
@@ -308,5 +274,83 @@ public static class RelayMessageSerializer
                 throw new EndOfStreamException("Unexpected end of stream");
             totalRead += read;
         }
+    }
+
+    /// <summary>
+    /// Serialize string in XDR format (length + padded data)
+    /// </summary>
+    private static byte[] SerializeXDRString(string value)
+    {
+        var stringBytes = Encoding.UTF8.GetBytes(value);
+        var padding = CalculateXDRPadding(stringBytes.Length);
+        var buffer = new byte[4 + stringBytes.Length + padding];
+        
+        BinaryPrimitives.WriteUInt32BigEndian(buffer.AsSpan(0, 4), (uint)stringBytes.Length);
+        stringBytes.CopyTo(buffer.AsSpan(4));
+        // Padding bytes are already zero-initialized
+        
+        return buffer;
+    }
+
+    /// <summary>
+    /// Deserialize XDR string from buffer
+    /// </summary>
+    private static string DeserializeXDRString(byte[] buffer, int offset, out int bytesConsumed)
+    {
+        if (buffer.Length < offset + 4)
+            throw new InvalidDataException("Buffer too short for XDR string length");
+        
+        var length = (int)BinaryPrimitives.ReadUInt32BigEndian(buffer.AsSpan(offset, 4));
+        var padding = CalculateXDRPadding(length);
+        bytesConsumed = 4 + length + padding;
+        
+        if (buffer.Length < offset + bytesConsumed)
+            throw new InvalidDataException($"Buffer too short for XDR string data: expected {bytesConsumed} bytes");
+        
+        return Encoding.UTF8.GetString(buffer.AsSpan(offset + 4, length));
+    }
+
+    /// <summary>
+    /// Serialize bytes in XDR format (length + padded data)
+    /// </summary>
+    private static byte[] SerializeXDRBytes(byte[] value)
+    {
+        var padding = CalculateXDRPadding(value.Length);
+        var buffer = new byte[4 + value.Length + padding];
+        
+        BinaryPrimitives.WriteUInt32BigEndian(buffer.AsSpan(0, 4), (uint)value.Length);
+        value.CopyTo(buffer.AsSpan(4));
+        // Padding bytes are already zero-initialized
+        
+        return buffer;
+    }
+
+    /// <summary>
+    /// Deserialize XDR bytes from buffer with maximum length validation
+    /// </summary>
+    private static byte[] DeserializeXDRBytes(byte[] buffer, int offset, int maxLength, out int bytesConsumed)
+    {
+        if (buffer.Length < offset + 4)
+            throw new InvalidDataException("Buffer too short for XDR bytes length");
+        
+        var length = (int)BinaryPrimitives.ReadUInt32BigEndian(buffer.AsSpan(offset, 4));
+        if (length < 0 || length > maxLength)
+            throw new InvalidDataException($"Invalid XDR bytes length: {length}, max: {maxLength}");
+        
+        var padding = CalculateXDRPadding(length);
+        bytesConsumed = 4 + length + padding;
+        
+        if (buffer.Length < offset + bytesConsumed)
+            throw new InvalidDataException($"Buffer too short for XDR bytes data: expected {bytesConsumed} bytes");
+        
+        return buffer.AsSpan(offset + 4, length).ToArray();
+    }
+
+    /// <summary>
+    /// Calculate XDR padding for 4-byte alignment
+    /// </summary>
+    private static int CalculateXDRPadding(int length)
+    {
+        return (4 - (length % 4)) % 4;
     }
 }

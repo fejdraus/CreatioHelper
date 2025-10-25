@@ -263,6 +263,17 @@ public class ConflictResolution
     public string Reason { get; set; } = string.Empty;
     public string? ConflictCopyName { get; set; }
     public string? LocalCopyName { get; set; }
+    
+    // Новые свойства для продвинутых режимов
+    /// <summary>
+    /// Победившая версия файла (если применимо)
+    /// </summary>
+    public FileMetadata? Winner { get; set; }
+    
+    /// <summary>
+    /// Имя конфликтного файла (если создается копия)
+    /// </summary>
+    public string? ConflictFileName { get; set; }
 }
 
 public enum ConflictAction
@@ -271,7 +282,14 @@ public enum ConflictAction
     KeepLocal,
     AcceptRemote,
     CreateConflictCopy,
-    CreateBothCopies
+    CreateBothCopies,
+    
+    // Новые действия для продвинутых режимов синхронизации
+    UseLocal,
+    UseRemote,
+    Override,
+    Revert,
+    Skip
 }
 
 public enum ConflictResolutionStrategy

@@ -87,9 +87,9 @@ public class SyncController : ControllerBase
             var deviceDtos = devices.Select(d => new SyncDeviceDto
             {
                 DeviceId = d.DeviceId,
-                Name = d.Name,
+                Name = d.DeviceName,
                 IsConnected = d.IsConnected,
-                LastSeen = d.LastSeen,
+                LastSeen = d.LastSeen ?? DateTime.MinValue,
                 Status = d.Status.ToString(),
                 IsPaused = d.IsPaused,
                 Addresses = d.Addresses
@@ -121,9 +121,9 @@ public class SyncController : ControllerBase
             var deviceDto = new SyncDeviceDto
             {
                 DeviceId = device.DeviceId,
-                Name = device.Name,
+                Name = device.DeviceName,
                 IsConnected = device.IsConnected,
-                LastSeen = device.LastSeen,
+                LastSeen = device.LastSeen ?? DateTime.MinValue,
                 Status = device.Status.ToString(),
                 IsPaused = device.IsPaused,
                 Addresses = device.Addresses
@@ -155,9 +155,9 @@ public class SyncController : ControllerBase
             var deviceDto = new SyncDeviceDto
             {
                 DeviceId = device.DeviceId,
-                Name = device.Name,
+                Name = device.DeviceName,
                 IsConnected = device.IsConnected,
-                LastSeen = device.LastSeen,
+                LastSeen = device.LastSeen ?? DateTime.MinValue,
                 Status = device.Status.ToString(),
                 IsPaused = device.IsPaused,
                 Addresses = device.Addresses
@@ -229,10 +229,10 @@ public class SyncController : ControllerBase
 
             foreach (var folder in folders)
             {
-                var status = await _syncEngine.GetSyncStatusAsync(folder.FolderId);
+                var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
                 folderDtos.Add(new SyncFolderDto
                 {
-                    FolderId = folder.FolderId,
+                    FolderId = folder.Id,
                     Label = folder.Label,
                     Path = folder.Path,
                     Type = folder.Type.ToString(),
@@ -244,7 +244,7 @@ public class SyncController : ControllerBase
                     LocalFiles = status.LocalFiles,
                     LastScan = status.LastScan,
                     LastSync = status.LastSync,
-                    DeviceIds = folder.Devices.Select(d => d.DeviceId).ToList()
+                    DeviceIds = folder.Devices.ToList()
                 });
             }
 
@@ -265,17 +265,16 @@ public class SyncController : ControllerBase
     {
         try
         {
-            var folderType = Enum.Parse<FolderType>(request.Type, true);
             var folder = await _syncEngine.AddFolderAsync(
                 request.FolderId, 
                 request.Label, 
                 request.Path, 
-                folderType);
+                request.Type);
 
-            var status = await _syncEngine.GetSyncStatusAsync(folder.FolderId);
+            var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
             var folderDto = new SyncFolderDto
             {
-                FolderId = folder.FolderId,
+                FolderId = folder.Id,
                 Label = folder.Label,
                 Path = folder.Path,
                 Type = folder.Type.ToString(),
@@ -287,10 +286,10 @@ public class SyncController : ControllerBase
                 LocalFiles = status.LocalFiles,
                 LastScan = status.LastScan,
                 LastSync = status.LastSync,
-                DeviceIds = folder.Devices.Select(d => d.DeviceId).ToList()
+                DeviceIds = folder.Devices.ToList()
             };
 
-            return CreatedAtAction(nameof(GetFolder), new { folderId = folder.FolderId }, folderDto);
+            return CreatedAtAction(nameof(GetFolder), new { folderId = folder.Id }, folderDto);
         }
         catch (Exception ex)
         {
@@ -313,10 +312,10 @@ public class SyncController : ControllerBase
             if (folder == null)
                 return NotFound();
 
-            var status = await _syncEngine.GetSyncStatusAsync(folder.FolderId);
+            var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
             var folderDto = new SyncFolderDto
             {
-                FolderId = folder.FolderId,
+                FolderId = folder.Id,
                 Label = folder.Label,
                 Path = folder.Path,
                 Type = folder.Type.ToString(),
@@ -328,7 +327,7 @@ public class SyncController : ControllerBase
                 LocalFiles = status.LocalFiles,
                 LastScan = status.LastScan,
                 LastSync = status.LastSync,
-                DeviceIds = folder.Devices.Select(d => d.DeviceId).ToList()
+                DeviceIds = folder.Devices.ToList()
             };
 
             return Ok(folderDto);

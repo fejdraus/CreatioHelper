@@ -5,6 +5,7 @@ using Xunit;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Sync;
+using CreatioHelper.Infrastructure.Services.Sync.Handlers;
 
 namespace CreatioHelper.Tests;
 
@@ -17,47 +18,108 @@ public class SyncEngineTests : IDisposable
     private readonly Mock<ILogger<SyncEngine>> _mockLogger;
     private readonly Mock<ISyncProtocol> _mockProtocol;
     private readonly Mock<IDeviceDiscovery> _mockDiscovery;
-    private readonly Mock<ILogger<FileWatcher>> _mockFileWatcherLogger;
-    private readonly Mock<ILogger<ConflictResolver>> _mockConflictResolverLogger;
-    private readonly Mock<ILogger<FileComparator>> _mockFileComparatorLogger;
-    private readonly Mock<ILogger<FileDownloader>> _mockFileDownloaderLogger;
-    private readonly Mock<ILogger<BlockRequestHandler>> _mockBlockRequestHandlerLogger;
+    private readonly Mock<ISyncDatabase> _mockDatabase;
+    private readonly Mock<IEventLogger> _mockEventLogger;
+    private readonly Mock<IStatisticsCollector> _mockStatisticsCollector;
+    private readonly Mock<ICertificateManager> _mockCertificateManager;
     private readonly SyncEngine _syncEngine;
     private readonly string _testDirectory;
+    private readonly string _tempBlockStorageDir;
 
     public SyncEngineTests()
     {
         _mockLogger = new Mock<ILogger<SyncEngine>>();
         _mockProtocol = new Mock<ISyncProtocol>();
         _mockDiscovery = new Mock<IDeviceDiscovery>();
-        _mockFileWatcherLogger = new Mock<ILogger<FileWatcher>>();
-        _mockConflictResolverLogger = new Mock<ILogger<ConflictResolver>>();
-        _mockFileComparatorLogger = new Mock<ILogger<FileComparator>>();
-        _mockFileDownloaderLogger = new Mock<ILogger<FileDownloader>>();
-        _mockBlockRequestHandlerLogger = new Mock<ILogger<BlockRequestHandler>>();
+        _mockDatabase = new Mock<ISyncDatabase>();
+        _mockEventLogger = new Mock<IEventLogger>();
+        _mockStatisticsCollector = new Mock<IStatisticsCollector>();
+        _mockCertificateManager = new Mock<ICertificateManager>();
 
-        var mockBlockSizerLogger = new Mock<ILogger<AdaptiveBlockSizer>>();
-        var mockDeltaSyncEngineLogger = new Mock<ILogger<DeltaSyncEngine>>();
-        var blockSizer = new AdaptiveBlockSizer(mockBlockSizerLogger.Object);
-        var deltaSyncEngine = new DeltaSyncEngine(mockDeltaSyncEngineLogger.Object, blockSizer);
-        var fileWatcher = new FileWatcher(_mockFileWatcherLogger.Object, blockSizer);
-        var conflictResolver = new ConflictResolver(_mockConflictResolverLogger.Object);
-        var fileComparator = new FileComparator(_mockFileComparatorLogger.Object);
-        var fileDownloader = new FileDownloader(_mockFileDownloaderLogger.Object, _mockProtocol.Object);
-        var blockRequestHandler = new BlockRequestHandler(_mockBlockRequestHandlerLogger.Object, _mockProtocol.Object);
+        // Create real instances for classes that have simple constructors
+        var blockSizerLogger = Mock.Of<ILogger<AdaptiveBlockSizer>>();
+        var blockSizer = new AdaptiveBlockSizer(blockSizerLogger);
+        
+        var fileWatcherLogger = Mock.Of<ILogger<FileWatcher>>();
+        var fileWatcher = new FileWatcher(fileWatcherLogger, blockSizer);
+        
+        var conflictResolverLogger = Mock.Of<ILogger<ConflictResolver>>();
+        var conflictResolver = new ConflictResolver(conflictResolverLogger);
+        
+        var fileComparatorLogger = Mock.Of<ILogger<FileComparator>>();
+        var fileComparator = new FileComparator(fileComparatorLogger);
+        
+        var fileDownloaderLogger = Mock.Of<ILogger<FileDownloader>>();
+        var fileDownloader = new FileDownloader(fileDownloaderLogger, _mockProtocol.Object);
+        
+        var deltaSyncEngineLogger = Mock.Of<ILogger<DeltaSyncEngine>>();
+        var deltaSyncEngine = new DeltaSyncEngine(deltaSyncEngineLogger, blockSizer);
+        
+        // Create mocks for more complex dependencies
+        var mockBlockRepository = Mock.Of<IBlockInfoRepository>();
+        var mockBlockStorageLogger = Mock.Of<ILogger<SyncthingBlockStorage>>();
+        
+        // For SyncthingBlockStorage, create a real instance with temp directory
+        _tempBlockStorageDir = Path.Combine(Path.GetTempPath(), "TestBlockStorage", Guid.NewGuid().ToString());
+        Directory.CreateDirectory(_tempBlockStorageDir);
+        var blockStorage = new SyncthingBlockStorage(mockBlockStorageLogger, mockBlockRepository, _tempBlockStorageDir);
+        
+        var blockRequestHandlerLogger = Mock.Of<ILogger<BlockRequestHandler>>();
+        var blockRequestHandler = new BlockRequestHandler(blockRequestHandlerLogger, _mockProtocol.Object, blockStorage, mockBlockRepository);
+        
+        // Create SyncthingBlockCalculator for BlockDuplicationDetector
+        var blockCalculatorLogger = Mock.Of<ILogger<SyncthingBlockCalculator>>();
+        var blockCalculator = new SyncthingBlockCalculator(blockCalculatorLogger);
+        
+        var blockDuplicationDetectorLogger = Mock.Of<ILogger<BlockDuplicationDetector>>();
+        var blockDuplicationDetector = new BlockDuplicationDetector(blockDuplicationDetectorLogger, mockBlockRepository, blockCalculator);
+        
+        var parallelBlockTransferLogger = Mock.Of<ILogger<ParallelBlockTransfer>>();
+        var parallelBlockTransfer = new ParallelBlockTransfer(parallelBlockTransferLogger, 32);
+        
+        var transferOptimizerLogger = Mock.Of<ILogger<TransferOptimizer>>();
+        var transferOptimizer = new TransferOptimizer(transferOptimizerLogger, blockDuplicationDetector, parallelBlockTransfer, _mockDatabase.Object);
+        
+        var syncFolderHandlerFactoryLogger = Mock.Of<ILogger<SyncFolderHandlerFactory>>();
+        var mockServiceProvider = Mock.Of<IServiceProvider>();
+        var syncFolderHandlerFactory = new SyncFolderHandlerFactory(mockServiceProvider, syncFolderHandlerFactoryLogger);
+        
         var syncConfig = new SyncConfiguration("test-device", "Test Device");
 
-        _syncEngine = new SyncEngine(
-            _mockLogger.Object,
-            _mockProtocol.Object,
-            _mockDiscovery.Object,
-            fileWatcher,
-            conflictResolver,
-            fileComparator,
-            fileDownloader,
-            blockRequestHandler,
-            deltaSyncEngine,
-            syncConfig);
+        // Create SyncEngine with real dependencies
+        try 
+        {
+            // Create mock for SyncthingGlobalDiscovery
+            var mockGlobalDiscovery = new Mock<SyncthingGlobalDiscovery>(Mock.Of<ILogger<SyncthingGlobalDiscovery>>(), Mock.Of<System.Security.Cryptography.X509Certificates.X509Certificate2>(), "test-device-id");
+            
+            _syncEngine = new SyncEngine(
+                _mockLogger.Object,
+                _mockProtocol.Object,
+                _mockDiscovery.Object,
+                fileWatcher,
+                conflictResolver,
+                fileComparator,
+                fileDownloader,
+                blockRequestHandler,
+                deltaSyncEngine,
+                blockDuplicationDetector,
+                transferOptimizer,
+                syncConfig,
+                _mockDatabase.Object,
+                _mockEventLogger.Object,
+                _mockStatisticsCollector.Object,
+                _mockCertificateManager.Object,
+                syncFolderHandlerFactory,
+                mockGlobalDiscovery.Object,
+                null, // ICombinedNatService - optional
+                null  // X509Certificate2 - optional
+            );
+        }
+        catch (Exception ex)
+        {
+            // If SyncEngine constructor fails, create a minimal mock
+            throw new InvalidOperationException($"Failed to create SyncEngine for testing: {ex.Message}", ex);
+        }
 
         _testDirectory = Path.Combine(Path.GetTempPath(), "SyncEngineTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
@@ -69,17 +131,15 @@ public class SyncEngineTests : IDisposable
         // Arrange
         var deviceId = "test-device-123";
         var name = "Test Device";
-        var fingerprint = "test-fingerprint";
         var addresses = new List<string> { "tcp://192.168.1.100:22000" };
 
         // Act
-        var device = await _syncEngine.AddDeviceAsync(deviceId, name, fingerprint, addresses);
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
 
         // Assert
         Assert.NotNull(device);
         Assert.Equal(deviceId, device.DeviceId);
-        Assert.Equal(name, device.Name);
-        Assert.Equal(fingerprint, device.CertificateFingerprint);
+        Assert.Equal(name, device.DeviceName);
         Assert.Contains("tcp://192.168.1.100:22000", device.Addresses);
     }
 
@@ -90,14 +150,14 @@ public class SyncEngineTests : IDisposable
         var folderId = "test-folder-456";
         var label = "Test Folder";
         var path = Path.Combine(_testDirectory, "TestFolder");
-        var type = FolderType.SendReceive;
+        var type = "sendreceive";
 
         // Act
         var folder = await _syncEngine.AddFolderAsync(folderId, label, path, type);
 
         // Assert
         Assert.NotNull(folder);
-        Assert.Equal(folderId, folder.FolderId);
+        Assert.Equal(folderId, folder.Id);
         Assert.Equal(label, folder.Label);
         Assert.Equal(path, folder.Path);
         Assert.Equal(type, folder.Type);
@@ -119,9 +179,9 @@ public class SyncEngineTests : IDisposable
 
         // Assert
         var folders = await _syncEngine.GetFoldersAsync();
-        var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
+        var folder = folders.FirstOrDefault(f => f.Id == folderId);
         Assert.NotNull(folder);
-        Assert.Contains(folder.Devices, d => d.DeviceId == deviceId);
+        Assert.Contains(folder.Devices, d => d == deviceId);
     }
 
     [Fact]
@@ -164,7 +224,7 @@ public class SyncEngineTests : IDisposable
 
         // Assert
         var folders = await _syncEngine.GetFoldersAsync();
-        var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
+        var folder = folders.FirstOrDefault(f => f.Id == folderId);
         Assert.NotNull(folder);
         Assert.True(folder.IsPaused);
 
@@ -185,7 +245,7 @@ public class SyncEngineTests : IDisposable
 
         // Assert
         var folders = await _syncEngine.GetFoldersAsync();
-        var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
+        var folder = folders.FirstOrDefault(f => f.Id == folderId);
         Assert.NotNull(folder);
         Assert.False(folder.IsPaused);
 
@@ -202,6 +262,18 @@ public class SyncEngineTests : IDisposable
             try
             {
                 Directory.Delete(_testDirectory, recursive: true);
+            }
+            catch
+            {
+                // Ignore cleanup errors in tests
+            }
+        }
+        
+        if (Directory.Exists(_tempBlockStorageDir))
+        {
+            try
+            {
+                Directory.Delete(_tempBlockStorageDir, recursive: true);
             }
             catch
             {

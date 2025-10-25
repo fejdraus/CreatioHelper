@@ -2,8 +2,11 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography.X509Certificates;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Entities.Events;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Infrastructure.Services.Sync.Relay;
+using CreatioHelper.Infrastructure.Services.Network;
+using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
@@ -16,13 +19,22 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly ILogger<SyncEngine> _logger;
     private readonly ISyncProtocol _protocol;
     private readonly IDeviceDiscovery _discovery;
+    private readonly SyncthingGlobalDiscovery _globalDiscovery;
+    private readonly ISyncDatabase _database;
+    private readonly IEventLogger _eventLogger;
+    private readonly IStatisticsCollector _statisticsCollector;
     private readonly FileWatcher _fileWatcher;
     private readonly ConflictResolver _conflictResolver;
     private readonly FileComparator _fileComparator;
     private readonly FileDownloader _fileDownloader;
     private readonly BlockRequestHandler _blockRequestHandler;
     private readonly DeltaSyncEngine _deltaSyncEngine;
+    private readonly BlockDuplicationDetector _blockDuplicationDetector;
+    private readonly TransferOptimizer _transferOptimizer;
     private readonly RelayConnectionManager? _relayManager;
+    private readonly ICombinedNatService? _natService;
+    private readonly ICertificateManager _certificateManager;
+    private readonly SyncFolderHandlerFactory _syncFolderHandlerFactory;
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
     private readonly ConcurrentDictionary<string, SyncStatus> _folderStatuses = new();
@@ -38,6 +50,9 @@ public class SyncEngine : ISyncEngine, IDisposable
     public event EventHandler<ConflictDetectedEventArgs>? ConflictDetected;
     public event EventHandler<SyncErrorEventArgs>? SyncError;
 
+    // ISyncEngine properties
+    public string DeviceId => _configuration.DeviceId;
+
     public SyncEngine(
         ILogger<SyncEngine> logger,
         ISyncProtocol protocol,
@@ -48,19 +63,37 @@ public class SyncEngine : ISyncEngine, IDisposable
         FileDownloader fileDownloader,
         BlockRequestHandler blockRequestHandler,
         DeltaSyncEngine deltaSyncEngine,
+        BlockDuplicationDetector blockDuplicationDetector,
+        TransferOptimizer transferOptimizer,
         SyncConfiguration configuration,
+        ISyncDatabase database,
+        IEventLogger eventLogger,
+        IStatisticsCollector statisticsCollector,
+        ICertificateManager certificateManager,
+        SyncFolderHandlerFactory syncFolderHandlerFactory,
+        SyncthingGlobalDiscovery globalDiscovery,
+        ICombinedNatService? natService = null,
         X509Certificate2? clientCertificate = null)
     {
         _logger = logger;
         _protocol = protocol;
         _discovery = discovery;
+        _globalDiscovery = globalDiscovery;
+        _database = database;
+        _eventLogger = eventLogger;
+        _statisticsCollector = statisticsCollector;
         _fileWatcher = fileWatcher;
         _conflictResolver = conflictResolver;
         _fileComparator = fileComparator;
         _fileDownloader = fileDownloader;
         _blockRequestHandler = blockRequestHandler;
         _deltaSyncEngine = deltaSyncEngine;
+        _blockDuplicationDetector = blockDuplicationDetector;
+        _transferOptimizer = transferOptimizer;
         _configuration = configuration;
+        _certificateManager = certificateManager;
+        _syncFolderHandlerFactory = syncFolderHandlerFactory;
+        _natService = natService;
         
         // Initialize relay manager if certificate is provided and relays are enabled
         if (clientCertificate != null && _configuration.RelaysEnabled)
@@ -92,10 +125,55 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         _logger.LogInformation("Starting sync engine");
 
+        // Initialize or load device certificate (similar to Syncthing's LoadOrGenerateCertificate)
+        await InitializeDeviceCertificateAsync(cancellationToken);
+        
+        // Log system startup event
+        _eventLogger.LogSystemEvent(EventType.Starting, "Starting sync engine", new { StartupTime = DateTime.UtcNow });
+
         try
         {
+            // Initialize database
+            await _database.InitializeAsync();
+            _logger.LogInformation("Database initialized");
+            
+            // Load existing configuration from database
+            await LoadConfigurationFromDatabaseAsync();
+            
             await _protocol.StartListeningAsync();
             await _discovery.StartAsync(cancellationToken);
+            
+            // Start Syncthing-compatible Global Discovery announcement loop
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await _globalDiscovery.StartAnnouncementLoopAsync(() =>
+                    {
+                        // Return current listen addresses
+                        return _configuration.ListenAddresses;
+                    }, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error in Global Discovery announcement loop");
+                }
+            }, cancellationToken);
+            
+            // Start NAT traversal service if enabled
+            if (_natService != null && _configuration.NatTraversal?.Enabled == true)
+            {
+                var natStarted = await _natService.StartAsync(cancellationToken);
+                if (natStarted)
+                {
+                    // Create port mapping for sync protocol
+                    var mapping = await _natService.CreateMappingAsync("tcp", _configuration.Port, 0, "CreatioHelper Sync");
+                    if (mapping != null)
+                    {
+                        _logger.LogInformation("Created NAT port mapping: {Mapping}", mapping);
+                    }
+                }
+            }
             
             // Start relay connections if enabled
             if (_relayManager != null)
@@ -105,10 +183,18 @@ public class SyncEngine : ISyncEngine, IDisposable
             
             _isStarted = true;
             _logger.LogInformation("Sync engine started successfully");
+            
+            // Log startup complete event
+            _eventLogger.LogSystemEvent(EventType.StartupComplete, "Sync engine started successfully", new { 
+                StartupTime = DateTime.UtcNow, 
+                DeviceCount = _devices.Count, 
+                FolderCount = _folders.Count 
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start sync engine");
+            _eventLogger.LogError(ex, "Sync engine startup failed");
             throw;
         }
     }
@@ -118,10 +204,19 @@ public class SyncEngine : ISyncEngine, IDisposable
         if (!_isStarted) return;
 
         _logger.LogInformation("Stopping sync engine");
+        
+        // Log shutdown event
+        _eventLogger.LogSystemEvent(EventType.Shutdown, "Stopping sync engine", new { ShutdownTime = DateTime.UtcNow });
 
         _cancellationTokenSource.Cancel();
         
         await _discovery.StopAsync();
+        
+        // Stop NAT service
+        if (_natService != null)
+        {
+            await _natService.StopAsync();
+        }
         
         // Stop relay connections
         if (_relayManager != null)
@@ -137,9 +232,10 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Sync engine stopped");
     }
 
-    public Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null)
+    public async Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null)
     {
-        var device = new SyncDevice(deviceId, name, certificateFingerprint);
+        var device = new SyncDevice(deviceId, name);
+        device.CertificateFingerprint = certificateFingerprint ?? string.Empty;
         
         if (addresses != null)
         {
@@ -151,7 +247,16 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         _devices[deviceId] = device;
         
-        _logger.LogInformation("Added device {DeviceId} ({Name})", deviceId, name);
+        // Save device to database
+        try
+        {
+            await _database.DeviceInfo.UpsertAsync(device);
+            _logger.LogInformation("Added and saved device {DeviceId} ({Name}) to database", deviceId, name);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save device {DeviceId} to database", deviceId);
+        }
 
         // Try to connect if we have addresses
         if (device.Addresses.Any())
@@ -163,10 +268,10 @@ public class SyncEngine : ISyncEngine, IDisposable
             });
         }
 
-        return Task.FromResult(device);
+        return device;
     }
 
-    public Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, FolderType type = FolderType.SendReceive)
+    public async Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive")
     {
         if (!Directory.Exists(path))
         {
@@ -183,6 +288,17 @@ public class SyncEngine : ISyncEngine, IDisposable
             State = SyncState.Idle
         };
 
+        // Save folder to database
+        try
+        {
+            await _database.FolderConfig.UpsertAsync(folder);
+            _logger.LogInformation("Added and saved folder {FolderId} ({Label}) to database", folderId, label);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save folder {FolderId} to database", folderId);
+        }
+
         // Register folder for block serving
         _blockRequestHandler.RegisterFolder(folder);
 
@@ -198,7 +314,7 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path}", folderId, label, path);
 
-        return Task.FromResult(folder);
+        return folder;
     }
 
     public async Task ShareFolderWithDeviceAsync(string folderId, string deviceId)
@@ -333,10 +449,37 @@ public class SyncEngine : ISyncEngine, IDisposable
             var files = await _fileWatcher.ScanFolderAsync(folder);
             folder.UpdateLastScan();
 
+            // Store file metadata in database
+            try
+            {
+                foreach (var file in files)
+                {
+                    var fileMetadata = new FileMetadata
+                    {
+                        FolderId = folderId,
+                        FileName = file.RelativePath,
+                        FileType = file.IsDirectory ? FileType.Directory : FileType.File,
+                        Size = file.Size,
+                        ModifiedTime = file.ModifiedTime,
+                        DeviceId = _configuration.DeviceId,
+                        Sequence = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        VersionVector = file.Hash ?? string.Empty,
+                        LocalFlags = file.IsSymlink ? (FileLocalFlags)4 : FileLocalFlags.None
+                    };
+                    
+                    await _database.FileMetadata.UpsertAsync(fileMetadata);
+                }
+                
+                _logger.LogDebug("Stored {FileCount} file metadata entries for folder {FolderId}", files.Count, folderId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error storing file metadata to database for folder {FolderId}", folderId);
+            }
+
             // Send index to connected devices
             var connectedDevices = folder.Devices
-                .Where(d => _protocol.IsConnectedAsync(d.DeviceId).Result)
-                .Select(d => d.DeviceId);
+                .Where(d => _protocol.IsConnectedAsync(d).Result);
 
             foreach (var deviceId in connectedDevices)
             {
@@ -382,6 +525,12 @@ public class SyncEngine : ISyncEngine, IDisposable
         return Task.FromResult(_folders.Values.ToList());
     }
 
+    public Task<SyncFolder?> GetFolderAsync(string folderId)
+    {
+        _folders.TryGetValue(folderId, out var folder);
+        return Task.FromResult(folder);
+    }
+
     public Task<SyncStatistics> GetStatisticsAsync()
     {
         _statistics.Uptime = DateTime.UtcNow - _statistics.StartTime;
@@ -407,6 +556,14 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             _logger.LogInformation("Sending Index for folder {FolderId} to device {DeviceId}", folderId, deviceId);
 
+            // Receive-Only folders should not send their local files to other devices
+            if (folder.SyncType == SyncFolderType.ReceiveOnly)
+            {
+                _logger.LogInformation("Folder {FolderId} is Receive-Only - sending empty index to device {DeviceId}", folderId, deviceId);
+                await _protocol.SendIndexAsync(deviceId, folderId, new List<SyncFileInfo>());
+                return;
+            }
+
             // Get all files in the folder and scan them
             var files = await _fileWatcher.ScanFolderAsync(folder);
 
@@ -430,18 +587,25 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             _logger.LogInformation("Broadcasting updated Index for folder {FolderId} to all connected devices", folderId);
 
+            // Receive-Only folders should not broadcast their local files
+            if (folder.SyncType == SyncFolderType.ReceiveOnly)
+            {
+                _logger.LogInformation("Folder {FolderId} is Receive-Only - not broadcasting local files", folderId);
+                return;
+            }
+
             // Get current files after sync plan execution
             var files = await _fileWatcher.ScanFolderAsync(folder);
             
             // Send updated index to all connected devices that have access to this folder
             var broadcastTasks = new List<Task>();
             
-            foreach (var device in folder.Devices)
+            foreach (var deviceId in folder.Devices)
             {
-                if (await _protocol.IsConnectedAsync(device.DeviceId))
+                if (await _protocol.IsConnectedAsync(deviceId))
                 {
-                    _logger.LogDebug("Sending updated Index for folder {FolderId} to device {DeviceId}", folderId, device.DeviceId);
-                    broadcastTasks.Add(_protocol.SendIndexAsync(device.DeviceId, folderId, files));
+                    _logger.LogDebug("Sending updated Index for folder {FolderId} to device {DeviceId}", folderId, deviceId);
+                    broadcastTasks.Add(_protocol.SendIndexAsync(deviceId, folderId, files));
                 }
             }
             
@@ -580,6 +744,23 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         _logger.LogInformation("Device {DeviceId} connected", e.Device.DeviceId);
         
+        // Log device connection event
+        _eventLogger.LogDeviceEvent(EventType.DeviceConnected, e.Device.DeviceId, 
+            $"Device connected: {e.Device.DeviceId}", new { 
+                DeviceId = e.Device.DeviceId, 
+                ConnectedAt = DateTime.UtcNow,
+                ConnectionType = e.Device.ConnectionType ?? "TCP",
+                Address = e.Device.LastAddress 
+            });
+        
+        // Record device connection in statistics
+        _ = Task.Run(async () => {
+            await _statisticsCollector.RecordDeviceConnectedAsync(
+                e.Device.DeviceId, 
+                e.Device.ConnectionType ?? "TCP", 
+                e.Device.LastAddress ?? "unknown");
+        });
+        
         // Send cluster config and initial index to newly connected device
         _ = Task.Run(async () =>
         {
@@ -588,9 +769,9 @@ public class SyncEngine : ISyncEngine, IDisposable
             // Send Index for each shared folder
             foreach (var folder in _folders.Values)
             {
-                if (folder.Devices.Any(d => d.DeviceId == e.Device.DeviceId))
+                if (folder.Devices.Contains(e.Device.DeviceId))
                 {
-                    await SendFolderIndexAsync(e.Device.DeviceId, folder.FolderId);
+                    await SendFolderIndexAsync(e.Device.DeviceId, folder.Id);
                 }
             }
         });
@@ -600,9 +781,34 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         _logger.LogInformation("Device {DeviceId} disconnected", e.DeviceId);
         
+        // Log device disconnection event
+        _eventLogger.LogDeviceEvent(EventType.DeviceDisconnected, e.DeviceId, 
+            $"Device disconnected: {e.DeviceId}", new { 
+                DeviceId = e.DeviceId, 
+                DisconnectedAt = DateTime.UtcNow 
+            });
+        
         if (_devices.TryGetValue(e.DeviceId, out var device))
         {
             device.UpdateConnection(false);
+            
+            // Update last seen in database
+            _ = Task.Run(async () => {
+                try
+                {
+                    await _database.DeviceInfo.UpdateLastSeenAsync(e.DeviceId, DateTime.UtcNow);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to update last seen for device {DeviceId}", e.DeviceId);
+                }
+            });
+            
+            // Record device disconnection in statistics
+            var connectionDuration = device.LastConnected.HasValue ? DateTime.UtcNow - device.LastConnected.Value : TimeSpan.Zero;
+            _ = Task.Run(async () => {
+                await _statisticsCollector.RecordDeviceDisconnectedAsync(e.DeviceId, connectionDuration);
+            });
         }
     }
 
@@ -610,6 +816,15 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         _logger.LogInformation("Received Index from device {DeviceId} for folder {FolderId} with {FileCount} files", 
             e.DeviceId, e.FolderId, e.Files.Count);
+
+        // Log index received event
+        _eventLogger.LogFolderEvent(EventType.RemoteIndexUpdated, e.FolderId, 
+            $"Received index from {e.DeviceId}: {e.Files.Count} files", new { 
+                DeviceId = e.DeviceId,
+                FolderId = e.FolderId,
+                FileCount = e.Files.Count,
+                ReceivedAt = DateTime.UtcNow 
+            });
 
         try
         {
@@ -627,6 +842,13 @@ public class SyncEngine : ISyncEngine, IDisposable
         if (!_folders.TryGetValue(folderId, out var folder))
         {
             _logger.LogWarning("Received index for unknown folder {FolderId} from device {DeviceId}", folderId, deviceId);
+            return;
+        }
+
+        // Send-Only folders should not process incoming indexes (should not download files)
+        if (folder.SyncType == SyncFolderType.SendOnly)
+        {
+            _logger.LogInformation("Folder {FolderId} is Send-Only - ignoring incoming index from device {DeviceId}", folderId, deviceId);
             return;
         }
 
@@ -666,8 +888,8 @@ public class SyncEngine : ISyncEngine, IDisposable
                 syncPlan.TotalFilesToUpload, syncPlan.TotalBytesToUpload, 
                 syncPlan.FilesToDelete.Count, syncPlan.Conflicts.Count);
 
-            // Create delta sync plans for files that need downloading
-            await CreateDeltaSyncPlansAsync(deviceId, folderId, localFiles, syncPlan.FilesToDownload);
+            // Create optimized transfer plans using block-level deduplication
+            await CreateOptimizedTransferPlansAsync(deviceId, folderId, localFiles, syncPlan.FilesToDownload);
 
             // Execute sync plan
             if (syncPlan.HasWork)
@@ -707,56 +929,84 @@ public class SyncEngine : ISyncEngine, IDisposable
 
     private async Task ExecuteSyncPlanAsync(SyncFolder folder, SyncPlan syncPlan)
     {
-        _logger.LogInformation("Executing sync plan for folder {FolderId}", folder.FolderId);
+        _logger.LogInformation("Executing sync plan for folder {FolderId} (Type: {FolderType})", folder.Id, folder.SyncType);
+
+        // Get the appropriate folder handler based on folder type
+        var folderHandler = _syncFolderHandlerFactory.CreateHandler(folder);
+        _logger.LogDebug("Using handler {HandlerType} for folder {FolderId}", folderHandler.GetType().Name, folder.Id);
 
         var syncSummary = new SyncSummary();
 
         try
         {
-            // Process downloads first (get new/updated files)
-            foreach (var downloadAction in syncPlan.FilesToDownload)
+            // Check if this folder type can receive changes (downloads)
+            if (folderHandler.CanReceiveChanges && syncPlan.FilesToDownload.Any())
             {
-                try
+                _logger.LogInformation("Processing {Count} downloads for {FolderType} folder {FolderId}", 
+                    syncPlan.FilesToDownload.Count, folder.SyncType, folder.Id);
+                    
+                // Process downloads first (get new/updated files)
+                foreach (var downloadAction in syncPlan.FilesToDownload)
                 {
-                    _logger.LogInformation("Downloading file: {FileName} ({Reason})", 
-                        downloadAction.FileName, downloadAction.Reason);
+                    try
+                    {
+                        _logger.LogInformation("Downloading file: {FileName} ({Reason})", 
+                            downloadAction.FileName, downloadAction.Reason);
 
-                    // Find the remote file info for this download
-                    // We need to get it from the sync plan or store it properly
-                    // For now, implement a placeholder that will be completed when we have the complete file info
-                    await DownloadFileFromPlanAsync(folder, syncPlan.DeviceId, downloadAction);
+                        // Find the remote file info for this download
+                        // We need to get it from the sync plan or store it properly
+                        // For now, implement a placeholder that will be completed when we have the complete file info
+                        await DownloadFileFromPlanAsync(folder, syncPlan.DeviceId, downloadAction);
 
-                    syncSummary.FilesTransferred++;
-                    syncSummary.BytesTransferred += downloadAction.FileSize;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error downloading file {FileName}", downloadAction.FileName);
-                    syncSummary.Errors.Add(ex.Message);
+                        syncSummary.FilesTransferred++;
+                        syncSummary.BytesTransferred += downloadAction.FileSize;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error downloading file {FileName}", downloadAction.FileName);
+                        syncSummary.Errors.Add(ex.Message);
+                    }
                 }
             }
-
-            // Process uploads (send new/updated files)
-            foreach (var uploadAction in syncPlan.FilesToUpload)
+            else if (!folderHandler.CanReceiveChanges && syncPlan.FilesToDownload.Any())
             {
-                try
-                {
-                    _logger.LogInformation("Uploading file: {FileName} ({Reason})", 
-                        uploadAction.FileName, uploadAction.Reason);
+                _logger.LogInformation("Skipping {Count} downloads for {FolderType} folder {FolderId} - folder type cannot receive changes", 
+                    syncPlan.FilesToDownload.Count, folder.SyncType, folder.Id);
+            }
 
-                    // TODO: Implement actual file upload
-                    // For now, just log the action
-                    _logger.LogInformation("Would upload {FileName} ({FileSize} bytes)", 
-                        uploadAction.FileName, uploadAction.FileSize);
-
-                    syncSummary.FilesTransferred++;
-                    syncSummary.BytesTransferred += uploadAction.FileSize;
-                }
-                catch (Exception ex)
+            // Check if this folder type can send changes (uploads) - логика не очень правильная, но сейчас uploads не реализованы
+            if (folderHandler.CanSendChanges && syncPlan.FilesToUpload.Any())
+            {
+                _logger.LogInformation("Processing {Count} uploads for {FolderType} folder {FolderId}", 
+                    syncPlan.FilesToUpload.Count, folder.SyncType, folder.Id);
+                    
+                // Process uploads (send new/updated files)
+                foreach (var uploadAction in syncPlan.FilesToUpload)
                 {
-                    _logger.LogError(ex, "Error uploading file {FileName}", uploadAction.FileName);
-                    syncSummary.Errors.Add(ex.Message);
+                    try
+                    {
+                        _logger.LogInformation("Uploading file: {FileName} ({Reason})", 
+                            uploadAction.FileName, uploadAction.Reason);
+
+                        // TODO: Implement actual file upload
+                        // For now, just log the action
+                        _logger.LogInformation("Would upload {FileName} ({FileSize} bytes)", 
+                            uploadAction.FileName, uploadAction.FileSize);
+
+                        syncSummary.FilesTransferred++;
+                        syncSummary.BytesTransferred += uploadAction.FileSize;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error uploading file {FileName}", uploadAction.FileName);
+                        syncSummary.Errors.Add(ex.Message);
+                    }
                 }
+            }
+            else if (!folderHandler.CanSendChanges && syncPlan.FilesToUpload.Any())
+            {
+                _logger.LogInformation("Skipping {Count} uploads for {FolderType} folder {FolderId} - folder type cannot send changes", 
+                    syncPlan.FilesToUpload.Count, folder.SyncType, folder.Id);
             }
 
             // Process deletions
@@ -795,7 +1045,7 @@ public class SyncEngine : ISyncEngine, IDisposable
                     // For now, just log and count as conflict
                     syncSummary.Conflicts++;
 
-                    ConflictDetected?.Invoke(this, new ConflictDetectedEventArgs(folder.FolderId, conflict.FileName, new List<ConflictVersion>
+                    ConflictDetected?.Invoke(this, new ConflictDetectedEventArgs(folder.Id, conflict.FileName, new List<ConflictVersion>
                     {
                         new() { DeviceId = "local", ModifiedTime = conflict.LocalFile.ModifiedTime, Size = conflict.LocalFile.Size, Hash = conflict.LocalFile.Hash },
                         new() { DeviceId = syncPlan.DeviceId, ModifiedTime = conflict.RemoteFile.ModifiedTime, Size = conflict.RemoteFile.Size, Hash = conflict.RemoteFile.Hash }
@@ -812,14 +1062,14 @@ public class SyncEngine : ISyncEngine, IDisposable
             _statistics.TotalFilesReceived += syncSummary.FilesTransferred;
             _statistics.TotalBytesIn += syncSummary.BytesTransferred;
 
-            FolderSynced?.Invoke(this, new FolderSyncedEventArgs(folder.FolderId, syncSummary));
+            FolderSynced?.Invoke(this, new FolderSyncedEventArgs(folder.Id, syncSummary));
 
             _logger.LogInformation("Sync plan executed for folder {FolderId}: {FilesTransferred} files, {BytesTransferred} bytes, {Conflicts} conflicts, {Errors} errors",
-                folder.FolderId, syncSummary.FilesTransferred, syncSummary.BytesTransferred, syncSummary.Conflicts, syncSummary.Errors);
+                folder.Id, syncSummary.FilesTransferred, syncSummary.BytesTransferred, syncSummary.Conflicts, syncSummary.Errors);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error executing sync plan for folder {FolderId}", folder.FolderId);
+            _logger.LogError(ex, "Error executing sync plan for folder {FolderId}", folder.Id);
             throw;
         }
     }
@@ -838,7 +1088,7 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         var result = await _fileDownloader.DownloadFileAsync(
             deviceId, 
-            folder.FolderId, 
+            folder.Id, 
             downloadAction.FileInfo, 
             localFilePath, 
             _cancellationTokenSource.Token);
@@ -924,7 +1174,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             
             foreach (var block in remoteFile.Blocks)
             {
-                var blockData = await _protocol.RequestBlockAsync(deviceId, folder.FolderId, remoteFile.Name, block.Offset, block.Size, block.Hash);
+                var blockData = await _protocol.RequestBlockAsync(deviceId, folder.Id, remoteFile.Name, block.Offset, block.Size, block.Hash);
                 await fileStream.WriteAsync(blockData);
             }
 
@@ -945,6 +1195,25 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogDebug("File changed in folder {FolderId}: {FilePath} ({ChangeType})", 
             e.FolderId, e.FilePath, e.ChangeType);
 
+        // Log file change event
+        _eventLogger.LogFileEvent(EventType.LocalChangeDetected, e.FolderId, e.FilePath, 
+            $"File {e.ChangeType}: {e.FilePath}", new { 
+                FolderId = e.FolderId,
+                FilePath = e.FilePath,
+                ChangeType = e.ChangeType.ToString(),
+                DetectedAt = DateTime.UtcNow 
+            });
+
+        // Record file processing in statistics
+        _ = Task.Run(async () => {
+            await _statisticsCollector.RecordFileProcessedAsync(
+                e.FolderId, 
+                e.FilePath, 
+                e.ChangeType == FileChangeType.Deleted, 
+                e.FileSize,
+                e.ChangeType.ToString());
+        });
+
         // Trigger a partial scan for this folder
         _ = Task.Run(async () =>
         {
@@ -958,10 +1227,26 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogDebug("Completed scan of folder {FolderId}: {FileCount} files in {Duration}ms",
             e.FolderId, e.Files.Count, e.Duration.TotalMilliseconds);
 
+        // Log folder scan completed event
+        _eventLogger.LogFolderEvent(EventType.FolderScanComplete, e.FolderId, 
+            $"Folder scan completed: {e.Files.Count} files in {e.Duration.TotalMilliseconds:F1}ms", new { 
+                FolderId = e.FolderId,
+                FileCount = e.Files.Count,
+                TotalSize = e.Files.Sum(f => f.Size),
+                Duration = e.Duration.TotalMilliseconds,
+                CompletedAt = DateTime.UtcNow 
+            });
+
+        // Record folder scan statistics
+        var totalSize = e.Files.Sum(f => f.Size);
+        _ = Task.Run(async () => {
+            await _statisticsCollector.RecordFolderScanCompletedAsync(e.FolderId, e.Files.Count, totalSize);
+        });
+
         if (_folderStatuses.TryGetValue(e.FolderId, out var status))
         {
             status.LocalFiles = e.Files.Count;
-            status.LocalBytes = e.Files.Sum(f => f.Size);
+            status.LocalBytes = totalSize;
             status.LastScan = DateTime.UtcNow;
         }
     }
@@ -971,72 +1256,139 @@ public class SyncEngine : ISyncEngine, IDisposable
         // Update runtime statistics
         _statistics.Uptime = DateTime.UtcNow - _statistics.StartTime;
         _statistics.ConnectedDevices = _devices.Values.Count(d => d.IsConnected);
+        
+        // Update system statistics in StatisticsCollector
+        _ = Task.Run(async () => {
+            var connectedDevices = _devices.Values.Count(d => d.IsConnected);
+            var totalDevices = _devices.Count;
+            var activeFolders = _folders.Count;
+            var totalDataSize = _folderStatuses.Values.Sum(s => s.LocalBytes);
+            
+            var process = System.Diagnostics.Process.GetCurrentProcess();
+            var memoryUsage = process.WorkingSet64;
+            var cpuUsage = 0.0; // TODO: Implement CPU usage calculation
+            var threadCount = System.Threading.ThreadPool.ThreadCount;
+            var openFiles = 0; // TODO: Implement open files counting
+            
+            await _statisticsCollector.UpdateSystemStatisticsAsync(
+                connectedDevices, totalDevices, activeFolders, activeFolders, 
+                totalDataSize, memoryUsage, cpuUsage, threadCount, openFiles);
+                
+            // Update performance metrics
+            var fileScanRate = 0.0; // TODO: Calculate from recent scans
+            var indexingRate = 0.0; // TODO: Calculate from recent indexing
+            var networkLatency = 0.0; // TODO: Calculate from ping times
+            var diskThroughput = 0.0; // TODO: Calculate from recent I/O
+            var buffersUsed = 0; // TODO: Get from buffer pools
+            var maxBuffers = 1000; // TODO: Get from configuration
+            var activeConnections = connectedDevices;
+            var syncQueueLength = _activeSyncPlans.Count;
+            
+            await _statisticsCollector.RecordPerformanceMetricsAsync(
+                fileScanRate, indexingRate, networkLatency, diskThroughput,
+                buffersUsed, maxBuffers, activeConnections, syncQueueLength);
+        });
     }
 
     /// <summary>
-    /// Creates delta sync plans for files that need to be downloaded
-    /// Uses advanced block comparison to minimize transfer
+    /// Creates optimized transfer plans using Syncthing-style block-level deduplication
+    /// Uses position-based block comparison and SHA-256 hash matching for maximum efficiency
     /// </summary>
-    private Task CreateDeltaSyncPlansAsync(string deviceId, string folderId, List<SyncFileInfo> localFiles, List<FileAction> filesToDownload)
+    private async Task CreateOptimizedTransferPlansAsync(string deviceId, string folderId, List<SyncFileInfo> localFiles, List<FileAction> filesToDownload)
     {
-        var planKey = $"{deviceId}:{folderId}";
-        
-        _logger.LogInformation("Creating delta sync plans for {FileCount} files from device {DeviceId}", 
+        _logger.LogInformation("Creating Syncthing-style optimized transfer plans for {FileCount} files from device {DeviceId}", 
             filesToDownload.Count, deviceId);
 
         try
         {
+            var totalOriginalSize = 0L;
+            var totalOptimizedSize = 0L;
+            var totalBlocksDeduped = 0L;
+            
             foreach (var downloadAction in filesToDownload)
             {
+                totalOriginalSize += downloadAction.FileSize;
+                
                 // Find corresponding local file (if it exists)
                 var localFile = localFiles.FirstOrDefault(f => 
                     string.Equals(f.RelativePath, downloadAction.FileName, StringComparison.OrdinalIgnoreCase));
 
-                if (localFile != null && localFile.Blocks.Any() && downloadAction.RemoteFile != null && downloadAction.RemoteFile.Blocks.Any())
+                if (localFile != null && downloadAction.RemoteFile != null)
                 {
-                    // Create delta sync plan using block comparison
-                    var deltaPlan = _configuration.EnableAdvancedDeltaSync 
-                        ? _deltaSyncEngine.CreateAdvancedSyncPlan(localFile, downloadAction.RemoteFile)
-                        : _deltaSyncEngine.CreateSyncPlan(localFile, downloadAction.RemoteFile);
-
-                    // Store plan for use during download
-                    var planKey2 = $"{planKey}:{downloadAction.FileName}";
-                    _activeSyncPlans[planKey2] = deltaPlan;
-
-                    var transferPercentage = downloadAction.RemoteFile.Size > 0 
-                        ? (deltaPlan.TransferredBytes * 100.0 / downloadAction.RemoteFile.Size) : 0;
-
-                    _logger.LogInformation("Delta sync plan for {FileName}: {RequiredBlocks} blocks to transfer " +
-                                         "({TransferredBytes}/{TotalBytes} bytes, {TransferPercentage:F1}%)",
-                        downloadAction.FileName, deltaPlan.RequiredBlocks.Count, 
-                        deltaPlan.TransferredBytes, downloadAction.RemoteFile.Size, transferPercentage);
-
-                    // Update download action with delta information
-                    downloadAction.DeltaSyncPlan = deltaPlan;
-                    downloadAction.OptimizedSize = deltaPlan.TransferredBytes;
+                    try
+                    {
+                        var localFilePath = Path.Combine(_folders[folderId].Path, localFile.RelativePath);
+                        
+                        if (!File.Exists(localFilePath))
+                        {
+                            _logger.LogDebug("Local file {FileName} not found - downloading entire file", downloadAction.FileName);
+                            downloadAction.OptimizedSize = downloadAction.FileSize;
+                            totalOptimizedSize += downloadAction.FileSize;
+                            continue;
+                        }
+                        
+                        // Use Syncthing block comparison for optimization
+                        var fileDiff = await _blockDuplicationDetector.CompareFilesAsync(
+                            localFilePath, 
+                            $"remote:{downloadAction.FileName}", // Placeholder for remote file
+                            _cancellationTokenSource.Token);
+                        
+                        if (fileDiff.Error != null)
+                        {
+                            _logger.LogWarning("Error comparing files for {FileName}: {Error}", downloadAction.FileName, fileDiff.Error);
+                            downloadAction.OptimizedSize = downloadAction.FileSize;
+                            totalOptimizedSize += downloadAction.FileSize;
+                            continue;
+                        }
+                        
+                        // Calculate transfer savings based on reusable blocks
+                        var transferSize = fileDiff.TotalBytesToTransfer;
+                        var reusedSize = fileDiff.TotalBytesReused;
+                        
+                        downloadAction.OptimizedSize = transferSize;
+                        downloadAction.SyncthingBlockDiff = fileDiff;
+                        totalOptimizedSize += transferSize;
+                        totalBlocksDeduped += reusedSize;
+                        
+                        var savingsPercentage = downloadAction.FileSize > 0 ? 
+                            (downloadAction.FileSize - transferSize) * 100.0 / downloadAction.FileSize : 0;
+                        
+                        _logger.LogInformation("Syncthing block optimization for {FileName}: {ReusableBlocks}/{TotalBlocks} blocks reusable, " +
+                                             "transfer {TransferSize}/{TotalSize} bytes ({Savings:F1}% savings)",
+                            downloadAction.FileName, fileDiff.ReusableBlocks.Count, fileDiff.TargetBlocks.Count,
+                            transferSize, downloadAction.FileSize, savingsPercentage);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error creating Syncthing optimization plan for {FileName}, falling back to full download", 
+                            downloadAction.FileName);
+                        downloadAction.OptimizedSize = downloadAction.FileSize;
+                        totalOptimizedSize += downloadAction.FileSize;
+                    }
                 }
                 else
                 {
-                    _logger.LogDebug("No delta sync possible for {FileName} - downloading entire file", 
+                    _logger.LogDebug("No local file for comparison: {FileName} - downloading entire file", 
                         downloadAction.FileName);
+                    downloadAction.OptimizedSize = downloadAction.FileSize;
+                    totalOptimizedSize += downloadAction.FileSize;
                 }
             }
 
-            var totalOriginalBytes = filesToDownload.Sum(f => f.FileSize);
-            var totalOptimizedBytes = filesToDownload.Sum(f => f.OptimizedSize ?? f.FileSize);
-            var savedBytes = totalOriginalBytes - totalOptimizedBytes;
-            var savedPercentage = totalOriginalBytes > 0 ? (savedBytes * 100.0 / totalOriginalBytes) : 0;
+            var savedBytes = totalOriginalSize - totalOptimizedSize;
+            var savedPercentage = totalOriginalSize > 0 ? (savedBytes * 100.0 / totalOriginalSize) : 0;
 
-            _logger.LogInformation("Delta sync optimization: {SavedBytes} bytes saved ({SavedPercentage:F1}%) " +
-                                 "out of {TotalBytes} total bytes",
-                savedBytes, savedPercentage, totalOriginalBytes);
+            _statistics.TotalBytesDeduped += savedBytes;
+            _statistics.TotalBlocksDeduped += (int)Math.Min(totalBlocksDeduped, int.MaxValue);
+
+            _logger.LogInformation("Syncthing block-level optimization: {SavedBytes} bytes saved ({SavedPercentage:F1}%) " +
+                                 "out of {TotalBytes} total bytes, {TotalBlocksDeduped} bytes deduplicated",
+                savedBytes, savedPercentage, totalOriginalSize, totalBlocksDeduped);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error creating delta sync plans for folder {FolderId}", folderId);
+            _logger.LogError(ex, "Error creating Syncthing optimized transfer plans for folder {FolderId}", folderId);
         }
-        
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -1146,6 +1498,173 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
     }
 
+    private async Task LoadConfigurationFromDatabaseAsync()
+    {
+        try
+        {
+            // Load devices from database
+            var devices = await _database.DeviceInfo.GetAllAsync();
+            foreach (var device in devices)
+            {
+                _devices.TryAdd(device.DeviceId, device);
+            }
+            _logger.LogInformation($"Loaded {devices.Count()} devices from database");
+
+            // Load folders from database
+            var folders = await _database.FolderConfig.GetAllAsync();
+            foreach (var folder in folders)
+            {
+                _folders.TryAdd(folder.Id, folder);
+                _folderSyncSemaphores.TryAdd(folder.Id, new SemaphoreSlim(1, 1));
+                _folderStatuses.TryAdd(folder.Id, new SyncStatus { FolderId = folder.Id });
+            }
+            _logger.LogInformation($"Loaded {folders.Count()} folders from database");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading configuration from database");
+        }
+    }
+
+    /// <summary>
+    /// Initialize or generate device certificate and set DeviceID (similar to Syncthing's LoadOrGenerateCertificate)
+    /// </summary>
+    private async Task InitializeDeviceCertificateAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Try to load existing certificate first  
+            X509Certificate2? existingCert = null;
+            try 
+            {
+                // Try to load from default location (similar to Syncthing's cert.pem/key.pem)
+                existingCert = await _certificateManager.LoadCertificateAsync("cert.pem", "key.pem", null, cancellationToken);
+            }
+            catch
+            {
+                // Certificate doesn't exist or can't be loaded
+                existingCert = null;
+            }
+            
+            if (existingCert != null)
+            {
+                // Get certificate info using CertificateManager
+                var certInfo = _certificateManager.GetCertificateInfo(existingCert);
+                var deviceId = DeviceIdGenerator.GenerateFromCertificate(existingCert);
+                
+                _logger.LogInformation("Loaded existing device certificate with {Algorithm}", 
+                    certInfo.SignatureAlgorithm);
+                _logger.LogInformation("Device ID: {DeviceId} (Short: {ShortDeviceId})", 
+                    deviceId, DeviceIdGenerator.GetShortDeviceId(deviceId));
+                _logger.LogInformation("Certificate expires: {ExpiresAt} (in {Days} days)", 
+                    certInfo.ExpiresAt, certInfo.DaysUntilExpiry());
+                
+                // Check if certificate needs renewal (like Syncthing)
+                if (_certificateManager.RequiresRenewal(existingCert, 30))
+                {
+                    _logger.LogWarning("Device certificate expires in {Days} days - attempting auto-renewal", 
+                        certInfo.DaysUntilExpiry());
+                    
+                    // Try to auto-renew certificate (using CertificateManager)
+                    var renewedCert = await _certificateManager.RenewCertificateIfNeededAsync(
+                        existingCert,
+                        $"syncthing-{Environment.MachineName}",
+                        20 * 365, // 20 years like Syncthing
+                        30, // renewal threshold
+                        cancellationToken);
+                    
+                    if (renewedCert != null && renewedCert != existingCert)
+                    {
+                        // Save renewed certificate
+                        await _certificateManager.SaveCertificateAsync(renewedCert, "cert.pem", "key.pem", cancellationToken);
+                        
+                        // Update DeviceID with renewed certificate
+                        deviceId = DeviceIdGenerator.GenerateFromCertificate(renewedCert);
+                        _configuration.DeviceId = deviceId;
+                        
+                        _logger.LogInformation("Certificate successfully renewed. New Device ID: {DeviceId}", deviceId);
+                        _eventLogger.LogSystemEvent(EventType.CertificateRenewed, 
+                            "Device certificate automatically renewed", 
+                            new { DeviceId = deviceId, OldExpiryDate = certInfo.ExpiresAt });
+                    }
+                    else
+                    {
+                        _eventLogger.LogSystemEvent(EventType.CertificateExpired, 
+                            "Device certificate needs renewal", 
+                            new { DeviceId = deviceId, DaysUntilExpiry = certInfo.DaysUntilExpiry() });
+                    }
+                }
+                
+                // Update configuration with certificate-derived DeviceID
+                _configuration.DeviceId = deviceId;
+                
+                // Log device info event with detailed certificate info
+                _eventLogger.LogSystemEvent(EventType.DeviceConnected, 
+                    "Device certificate loaded with details", 
+                    new { 
+                        DeviceId = deviceId, 
+                        SignatureAlgorithm = certInfo.SignatureAlgorithm.ToString(),
+                        KeySize = certInfo.KeySize,
+                        ExpiresAt = certInfo.ExpiresAt,
+                        DaysUntilExpiry = certInfo.DaysUntilExpiry(),
+                        Subject = existingCert.Subject 
+                    });
+                
+                return;
+            }
+
+            // Generate new certificate if none exists (similar to Syncthing's GenerateCertificate)
+            _logger.LogInformation("Generating new device certificate and key");
+            
+            var newCert = await _certificateManager.CreateDeviceCertificateAsync(
+                $"syncthing-{Environment.MachineName}", 
+                20 * 365, // 20 years like Syncthing
+                CertificateSignatureAlgorithm.Ed25519, // Ed25519 like Syncthing
+                cancellationToken);
+            
+            if (newCert != null)
+            {
+                // Save the generated certificate to files (like Syncthing cert.pem/key.pem)
+                await _certificateManager.SaveCertificateAsync(newCert, "cert.pem", "key.pem", cancellationToken);
+                
+                var deviceId = DeviceIdGenerator.GenerateFromCertificate(newCert);
+                _logger.LogInformation("Generated new device certificate with {Algorithm}", 
+                    _certificateManager.GetCertificateInfo(newCert).SignatureAlgorithm);
+                _logger.LogInformation("Device ID: {DeviceId} (Short: {ShortDeviceId})", 
+                    deviceId, DeviceIdGenerator.GetShortDeviceId(deviceId));
+                _logger.LogInformation("Certificate saved to cert.pem and key.pem");
+                
+                // Update configuration with certificate-derived DeviceID
+                _configuration.DeviceId = deviceId;
+                
+                // Log device creation event with certificate details
+                var certInfo = _certificateManager.GetCertificateInfo(newCert);
+                _eventLogger.LogSystemEvent(EventType.DeviceConnected, 
+                    "New device certificate generated with signature algorithm", 
+                    new { 
+                        DeviceId = deviceId, 
+                        SignatureAlgorithm = certInfo.SignatureAlgorithm.ToString(),
+                        KeySize = certInfo.KeySize,
+                        ExpiresAt = certInfo.ExpiresAt,
+                        Subject = newCert.Subject 
+                    });
+            }
+            else
+            {
+                _logger.LogError("Failed to generate device certificate");
+                throw new InvalidOperationException("Cannot initialize sync engine without device certificate");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error initializing device certificate");
+            _eventLogger.LogSystemEvent(EventType.Failure, 
+                "Certificate initialization failed", 
+                new { Error = ex.Message });
+            throw;
+        }
+    }
+
     public void Dispose()
     {
         _cancellationTokenSource.Cancel();
@@ -1154,6 +1673,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         _protocol?.Dispose();
         _discovery?.Dispose();
         _relayManager?.Dispose();
+        _natService?.Dispose();
+        _database?.Dispose();
         _cancellationTokenSource.Dispose();
     }
 }

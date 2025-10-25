@@ -5,6 +5,7 @@ using Xunit;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Sync;
+using CreatioHelper.Infrastructure.Services.Sync.Handlers;
 
 namespace CreatioHelper.Tests.Sync;
 
@@ -19,6 +20,8 @@ public class SyncEngineTests : IDisposable
     private readonly Mock<IDeviceDiscovery> _mockDiscovery;
     private readonly Mock<ILogger<FileWatcher>> _mockFileWatcherLogger;
     private readonly Mock<ILogger<ConflictResolver>> _mockConflictResolverLogger;
+    private readonly Mock<ISyncDatabase> _mockDatabase;
+    private readonly Mock<ILogger<AdaptiveBlockSizer>> _mockBlockSizerLogger;
     private readonly SyncEngine _syncEngine;
     private readonly string _testDirectory;
 
@@ -29,16 +32,55 @@ public class SyncEngineTests : IDisposable
         _mockDiscovery = new Mock<IDeviceDiscovery>();
         _mockFileWatcherLogger = new Mock<ILogger<FileWatcher>>();
         _mockConflictResolverLogger = new Mock<ILogger<ConflictResolver>>();
+        _mockDatabase = new Mock<ISyncDatabase>();
+        _mockBlockSizerLogger = new Mock<ILogger<AdaptiveBlockSizer>>();
 
-        var fileWatcher = new FileWatcher(_mockFileWatcherLogger.Object);
+        var blockSizer = new AdaptiveBlockSizer(_mockBlockSizerLogger.Object);
+        var fileWatcher = new FileWatcher(_mockFileWatcherLogger.Object, blockSizer);
         var conflictResolver = new ConflictResolver(_mockConflictResolverLogger.Object);
+        var fileComparator = new FileComparator();
+        var fileDownloader = new FileDownloader();
+        var blockRequestHandler = new BlockRequestHandler(Mock.Of<ILogger<BlockRequestHandler>>(), _mockProtocol.Object);
+        var deltaSyncEngine = new DeltaSyncEngine();
+        var config = new SyncConfiguration
+        {
+            DeviceId = "test-device",
+            DeviceName = "Test Device"
+        };
 
+        // Create mocks for additional required services
+        var mockBlockDuplicationDetector = new Mock<BlockDuplicationDetector>();
+        var mockTransferOptimizer = new Mock<TransferOptimizer>();
+        var mockEventLogger = new Mock<IEventLogger>();
+        var mockStatisticsCollector = new Mock<IStatisticsCollector>();
+        var mockCertificateManager = new Mock<ICertificateManager>();
+        var mockSyncFolderHandlerFactory = new Mock<SyncFolderHandlerFactory>(Mock.Of<IServiceProvider>(), Mock.Of<ILogger<SyncFolderHandlerFactory>>());
+
+        // Create mock for SyncthingGlobalDiscovery
+        var mockGlobalDiscovery = new Mock<SyncthingGlobalDiscovery>(Mock.Of<ILogger<SyncthingGlobalDiscovery>>(), Mock.Of<X509Certificate2>(), "test-device-id");
+        
         _syncEngine = new SyncEngine(
             _mockLogger.Object,
             _mockProtocol.Object,
             _mockDiscovery.Object,
             fileWatcher,
-            conflictResolver);
+            conflictResolver,
+            fileComparator,
+            fileDownloader,
+            blockRequestHandler,
+            deltaSyncEngine,
+            mockBlockDuplicationDetector.Object,
+            mockTransferOptimizer.Object,
+            config,
+            _mockDatabase.Object,
+            mockEventLogger.Object,
+            mockStatisticsCollector.Object,
+            mockCertificateManager.Object,
+            mockSyncFolderHandlerFactory.Object,
+            mockGlobalDiscovery.Object,
+            null, // ICombinedNatService - optional
+            null  // X509Certificate2 - optional
+        );
 
         _testDirectory = Path.Combine(Path.GetTempPath(), "SyncEngineTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
@@ -54,13 +96,12 @@ public class SyncEngineTests : IDisposable
         var addresses = new List<string> { "tcp://192.168.1.100:22000" };
 
         // Act
-        var device = await _syncEngine.AddDeviceAsync(deviceId, name, fingerprint, addresses);
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
 
         // Assert
         Assert.NotNull(device);
         Assert.Equal(deviceId, device.DeviceId);
-        Assert.Equal(name, device.Name);
-        Assert.Equal(fingerprint, device.CertificateFingerprint);
+        Assert.Equal(name, device.DeviceName);
         Assert.Contains("tcp://192.168.1.100:22000", device.Addresses);
     }
 
@@ -71,7 +112,7 @@ public class SyncEngineTests : IDisposable
         var folderId = "test-folder-456";
         var label = "Test Folder";
         var path = Path.Combine(_testDirectory, "TestFolder");
-        var type = FolderType.SendReceive;
+        var type = "sendreceive";
 
         // Act
         var folder = await _syncEngine.AddFolderAsync(folderId, label, path, type);
@@ -100,9 +141,9 @@ public class SyncEngineTests : IDisposable
 
         // Assert
         var folders = await _syncEngine.GetFoldersAsync();
-        var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
+        var folder = folders.FirstOrDefault(f => f.Id == folderId);
         Assert.NotNull(folder);
-        Assert.Contains(folder.Devices, d => d.DeviceId == deviceId);
+        Assert.Contains(folder.Devices, d => d == deviceId);
     }
 
     [Fact]

@@ -70,10 +70,15 @@ public class BepHeader
 /// </summary>
 public class BepHello
 {
-    public string DeviceId { get; set; } = string.Empty; // Added for device identification when TLS is disabled
-    public string DeviceName { get; set; } = string.Empty;
-    public string ClientName { get; set; } = string.Empty;
-    public string ClientVersion { get; set; } = string.Empty;
+    // Standard Syncthing Hello fields
+    public string DeviceName { get; set; } = string.Empty;     // device_name (field 1)
+    public string ClientName { get; set; } = string.Empty;     // client_name (field 2)
+    public string ClientVersion { get; set; } = string.Empty;  // client_version (field 3)
+    public int NumConnections { get; set; } = 1;               // num_connections (field 4)
+    public long Timestamp { get; set; }                        // timestamp (field 5)
+    
+    // Extension for device identification when TLS is disabled (non-standard)
+    public string DeviceId { get; set; } = string.Empty;
 }
 
 /// <summary>

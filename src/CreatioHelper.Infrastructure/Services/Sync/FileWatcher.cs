@@ -2,7 +2,9 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Entities.Events;
 using Microsoft.Extensions.Logging;
+using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
@@ -14,6 +16,7 @@ public class FileWatcher : IDisposable
 {
     private readonly ILogger<FileWatcher> _logger;
     private readonly AdaptiveBlockSizer _blockSizer;
+    private readonly IEventLogger? _eventLogger;
     private readonly ConcurrentDictionary<string, FileSystemWatcher> _watchers = new();
     private readonly ConcurrentDictionary<string, Timer> _scanTimers = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastScans = new();
@@ -23,15 +26,16 @@ public class FileWatcher : IDisposable
     public event EventHandler<FileChangedEventArgs>? FileChanged;
     public event EventHandler<FolderScanCompletedEventArgs>? FolderScanCompleted;
 
-    public FileWatcher(ILogger<FileWatcher> logger, AdaptiveBlockSizer blockSizer)
+    public FileWatcher(ILogger<FileWatcher> logger, AdaptiveBlockSizer blockSizer, IEventLogger? eventLogger = null)
     {
         _logger = logger;
         _blockSizer = blockSizer;
+        _eventLogger = eventLogger;
     }
 
     public void WatchFolder(SyncFolder folder)
     {
-        if (_watchers.ContainsKey(folder.FolderId))
+        if (_watchers.ContainsKey(folder.Id))
         {
             return; // Already watching
         }
@@ -45,31 +49,37 @@ public class FileWatcher : IDisposable
                               NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.CreationTime
             };
 
-            watcher.Created += (sender, e) => OnFileSystemEvent(folder.FolderId, e.FullPath, FileChangeType.Created);
-            watcher.Changed += (sender, e) => OnFileSystemEvent(folder.FolderId, e.FullPath, FileChangeType.Modified);
-            watcher.Deleted += (sender, e) => OnFileSystemEvent(folder.FolderId, e.FullPath, FileChangeType.Deleted);
-            watcher.Renamed += (sender, e) => OnFileSystemEvent(folder.FolderId, e.FullPath, FileChangeType.Renamed, e.OldFullPath);
+            watcher.Created += (sender, e) => OnFileSystemEvent(folder.Id, e.FullPath, FileChangeType.Created);
+            watcher.Changed += (sender, e) => OnFileSystemEvent(folder.Id, e.FullPath, FileChangeType.Modified);
+            watcher.Deleted += (sender, e) => OnFileSystemEvent(folder.Id, e.FullPath, FileChangeType.Deleted);
+            watcher.Renamed += (sender, e) => OnFileSystemEvent(folder.Id, e.FullPath, FileChangeType.Renamed, e.OldFullPath);
 
-            watcher.EnableRaisingEvents = folder.WatchForChanges;
-            _watchers[folder.FolderId] = watcher;
+            watcher.EnableRaisingEvents = folder.FSWatcherEnabled;
+            _watchers[folder.Id] = watcher;
 
             // Set up periodic scan timer
-            if (folder.RescanIntervalSeconds > 0)
+            if (folder.RescanIntervalS > 0)
             {
                 var timer = new Timer(
                     _ => _ = ScanFolderAsync(folder),
                     null,
-                    TimeSpan.FromSeconds(folder.RescanIntervalSeconds),
-                    TimeSpan.FromSeconds(folder.RescanIntervalSeconds)
+                    TimeSpan.FromSeconds(folder.RescanIntervalS),
+                    TimeSpan.FromSeconds(folder.RescanIntervalS)
                 );
-                _scanTimers[folder.FolderId] = timer;
+                _scanTimers[folder.Id] = timer;
             }
 
-            _logger.LogInformation("Started watching folder {FolderId} at {Path}", folder.FolderId, folder.Path);
+            _logger.LogInformation("Started watching folder {FolderId} at {Path}", folder.Id, folder.Path);
+            
+            // Log folder watch start event
+            _eventLogger?.LogEvent(EventType.FolderWatchStateChanged, 
+                new { FolderId = folder.Id, Path = folder.Path, Watching = true }, 
+                $"Started watching folder {folder.Id}", 
+                null, folder.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start watching folder {FolderId}", folder.FolderId);
+            _logger.LogError(ex, "Failed to start watching folder {FolderId}", folder.Id);
         }
     }
 
@@ -86,6 +96,12 @@ public class FileWatcher : IDisposable
         }
 
         _logger.LogInformation("Stopped watching folder {FolderId}", folderId);
+        
+        // Log folder watch stop event
+        _eventLogger?.LogEvent(EventType.FolderWatchStateChanged, 
+            new { FolderId = folderId, Watching = false }, 
+            $"Stopped watching folder {folderId}", 
+            null, folderId);
     }
 
     public async Task<List<SyncFileInfo>> ScanFolderAsync(SyncFolder folder)
@@ -94,7 +110,7 @@ public class FileWatcher : IDisposable
         
         try
         {
-            _logger.LogDebug("Starting scan of folder {FolderId}", folder.FolderId);
+            _logger.LogDebug("Starting scan of folder {FolderId}", folder.Id);
             var startTime = DateTime.UtcNow;
 
             if (!Directory.Exists(folder.Path))
@@ -103,10 +119,10 @@ public class FileWatcher : IDisposable
                 return files;
             }
 
-            var currentFiles = await ScanDirectoryRecursiveAsync(folder.FolderId, folder.Path, folder.Path, folder.IgnorePatterns);
+            var currentFiles = await ScanDirectoryRecursiveAsync(folder.Id, folder.Path, folder.Path, new List<string>());
             
             // Get or create file tracking for this folder
-            var folderFileMap = _folderFiles.GetOrAdd(folder.FolderId, _ => new ConcurrentDictionary<string, SyncFileInfo>());
+            var folderFileMap = _folderFiles.GetOrAdd(folder.Id, _ => new ConcurrentDictionary<string, SyncFileInfo>());
             
             // Update current files in tracking map
             var currentFilePaths = new HashSet<string>();
@@ -131,17 +147,35 @@ public class FileWatcher : IDisposable
             // Return all files (including deleted ones for Index messages)
             files = folderFileMap.Values.ToList();
             
-            _lastScans[folder.FolderId] = DateTime.UtcNow;
+            _lastScans[folder.Id] = DateTime.UtcNow;
             var duration = DateTime.UtcNow - startTime;
 
             _logger.LogInformation("Completed scan of folder {FolderId}: {FileCount} total files ({ActiveCount} active, {DeletedCount} deleted) in {Duration}ms", 
-                folder.FolderId, files.Count, files.Count(f => !f.IsDeleted), files.Count(f => f.IsDeleted), duration.TotalMilliseconds);
+                folder.Id, files.Count, files.Count(f => !f.IsDeleted), files.Count(f => f.IsDeleted), duration.TotalMilliseconds);
 
-            FolderScanCompleted?.Invoke(this, new FolderScanCompletedEventArgs(folder.FolderId, files, duration));
+            // Log folder scan completed event
+            _eventLogger?.LogEvent(EventType.FolderScanProgress, 
+                new { 
+                    FolderId = folder.Id, 
+                    TotalFiles = files.Count, 
+                    ActiveFiles = files.Count(f => !f.IsDeleted), 
+                    DeletedFiles = files.Count(f => f.IsDeleted), 
+                    DurationMs = duration.TotalMilliseconds 
+                }, 
+                $"Folder scan completed for {folder.Id}: {files.Count} files in {duration.TotalMilliseconds:F0}ms", 
+                null, folder.Id);
+            
+            FolderScanCompleted?.Invoke(this, new FolderScanCompletedEventArgs(folder.Id, files, duration));
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error scanning folder {FolderId}", folder.FolderId);
+            _logger.LogError(ex, "Error scanning folder {FolderId}", folder.Id);
+            
+            // Log folder scan error event
+            _eventLogger?.LogEvent(EventType.FolderErrors, 
+                new { FolderId = folder.Id, Error = ex.Message }, 
+                $"Error scanning folder {folder.Id}: {ex.Message}", 
+                null, folder.Id);
         }
 
         return files;
@@ -255,7 +289,7 @@ public class FileWatcher : IDisposable
                     // Calculate both weak and strong hashes for the block
                     var (weakHash, strongHash) = WeakHashCalculator.CalculateBlockHashes(buffer, 0, bytesRead);
 
-                    blocks.Add(new BlockInfo(offset, bytesRead, strongHash, (int)weakHash));
+                    blocks.Add(new BlockInfo(offset, bytesRead, strongHash, weakHash));
                     offset += bytesRead;
                 }
             }
@@ -326,6 +360,12 @@ public class FileWatcher : IDisposable
                         if (deletedFile != null && !deletedFile.IsDeleted)
                         {
                             _logger.LogInformation("🗑️ File deleted: {FileName} in folder {FolderId}", deletedFile.RelativePath, folderId);
+                        
+                        // Log file deletion event
+                        _eventLogger?.LogEvent(EventType.LocalChangeDetected, 
+                            new { Action = "Deleted", Size = deletedFile.Size }, 
+                            $"File deleted: {deletedFile.RelativePath}", 
+                            null, folderId, deletedFile.RelativePath);
                             deletedFile.MarkAsDeleted();
                             deletedFile.Vector.Increment(Environment.MachineName); // Update vector clock for deletion
                         }
@@ -334,9 +374,37 @@ public class FileWatcher : IDisposable
                     {
                         // Handle creation/modification: file will be picked up in next scan
                         _logger.LogDebug("File {ChangeType}: {FilePath} in folder {FolderId}", changeType, filePath, folderId);
+                        
+                        // Log file change event
+                        var eventType = changeType switch
+                        {
+                            FileChangeType.Created => EventType.LocalChangeDetected,
+                            FileChangeType.Modified => EventType.LocalChangeDetected,
+                            FileChangeType.Renamed => EventType.LocalChangeDetected,
+                            _ => EventType.LocalChangeDetected
+                        };
+                        
+                        // Get file size if file exists for creation/modification events
+                        long fileSize = 0;
+                        if (changeType != FileChangeType.Deleted && File.Exists(filePath))
+                        {
+                            try
+                            {
+                                fileSize = new FileInfo(filePath).Length;
+                            }
+                            catch
+                            {
+                                fileSize = 0; // Ignore errors getting file size
+                            }
+                        }
+                        
+                        _eventLogger?.LogEvent(eventType, 
+                            new { Action = changeType.ToString(), Size = fileSize }, 
+                            $"File {changeType.ToString().ToLower()}: {Path.GetFileName(filePath)}", 
+                            null, folderId, filePath);
                     }
                     
-                    var eventArgs = new FileChangedEventArgs(folderId, filePath, changeType, oldPath);
+                    var eventArgs = new FileChangedEventArgs(folderId, filePath, changeType, oldPath, 0);
                     FileChanged?.Invoke(this, eventArgs);
                 }
                 catch (Exception ex)
@@ -348,6 +416,12 @@ public class FileWatcher : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing file system event for {FilePath}", filePath);
+            
+            // Log file system event error
+            _eventLogger?.LogEvent(EventType.Failure, 
+                new { FilePath = filePath, Error = ex.Message }, 
+                $"Error processing file system event: {ex.Message}", 
+                null, null, filePath);
         }
     }
 
@@ -375,13 +449,15 @@ public class FileChangedEventArgs : EventArgs
     public string FilePath { get; }
     public FileChangeType ChangeType { get; }
     public string? OldPath { get; }
+    public long FileSize { get; }
 
-    public FileChangedEventArgs(string folderId, string filePath, FileChangeType changeType, string? oldPath = null)
+    public FileChangedEventArgs(string folderId, string filePath, FileChangeType changeType, string? oldPath = null, long fileSize = 0)
     {
         FolderId = folderId;
         FilePath = filePath;
         ChangeType = changeType;
         OldPath = oldPath;
+        FileSize = fileSize;
     }
 }
 

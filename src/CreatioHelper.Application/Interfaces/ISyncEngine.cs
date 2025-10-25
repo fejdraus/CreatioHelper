@@ -10,7 +10,7 @@ public interface ISyncEngine
     Task StartAsync(CancellationToken cancellationToken = default);
     Task StopAsync();
     Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null);
-    Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, FolderType type = FolderType.SendReceive);
+    Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive");
     Task ShareFolderWithDeviceAsync(string folderId, string deviceId);
     Task UnshareFolderFromDeviceAsync(string folderId, string deviceId);
     Task PauseFolderAsync(string folderId);
@@ -21,8 +21,10 @@ public interface ISyncEngine
     Task<SyncStatus> GetSyncStatusAsync(string folderId);
     Task<List<SyncDevice>> GetDevicesAsync();
     Task<List<SyncFolder>> GetFoldersAsync();
+    Task<SyncFolder?> GetFolderAsync(string folderId);
     Task<SyncStatistics> GetStatisticsAsync();
     Task<SyncConfiguration> GetConfigurationAsync();
+    string DeviceId { get; } // Device ID property
     event EventHandler<FolderSyncedEventArgs> FolderSynced;
     event EventHandler<ConflictDetectedEventArgs> ConflictDetected;
     event EventHandler<SyncErrorEventArgs> SyncError;
@@ -42,6 +44,16 @@ public class SyncStatus
     public DateTime LastScan { get; set; }
     public DateTime LastSync { get; set; }
     public List<string> Errors { get; set; } = new();
+    
+    // Additional properties for Syncthing compatibility
+    public int TotalFiles { get; set; }
+    public int TotalDirectories { get; set; }
+    public long TotalBytes { get; set; }
+    public int LocalDirectories { get; set; }
+    public int OutOfSyncFiles { get; set; }
+    public long OutOfSyncBytes { get; set; }
+    public long Version { get; set; }
+    public long Sequence { get; set; }
 }
 
 public class SyncStatistics
@@ -56,6 +68,11 @@ public class SyncStatistics
     public int TotalDevices { get; set; }
     public int SyncedFolders { get; set; }
     public int TotalFolders { get; set; }
+    
+    // Block-level deduplication statistics
+    public long TotalBytesDeduped { get; set; }
+    public int TotalBlocksDeduped { get; set; }
+    public double DeduplicationRatio => TotalBytesIn > 0 ? (double)TotalBytesDeduped / TotalBytesIn : 0.0;
 }
 
 public class FolderSyncedEventArgs : EventArgs

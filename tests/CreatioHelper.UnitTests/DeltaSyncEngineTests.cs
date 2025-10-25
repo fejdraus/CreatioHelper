@@ -214,7 +214,7 @@ public class DeltaSyncEngineTests
             {
                 var currentBlockSize = (int)Math.Min(blockSize, size - offset);
                 var blockHash = $"block_{offset}_{contentHash}";
-                var weakHash = (int)(offset % 65536); // Simple weak hash
+                var weakHash = (uint)(offset % 65536); // Simple weak hash
                 
                 blocks.Add(new BlockInfo(offset, currentBlockSize, blockHash, weakHash));
             }

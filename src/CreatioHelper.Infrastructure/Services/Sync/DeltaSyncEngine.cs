@@ -67,7 +67,7 @@ public class DeltaSyncEngine
                     Offset = remoteBlock.Offset,
                     Size = remoteBlock.Size,
                     Hash = remoteBlock.Hash,
-                    WeakHash = remoteBlock.WeakHash
+                    WeakHash = (int)remoteBlock.WeakHash
                 });
                 
                 plan.TransferredBytes += remoteBlock.Size;
@@ -329,7 +329,7 @@ public class DeltaSyncEngine
                 if (string.Equals(candidate.Hash, strongHash, StringComparison.OrdinalIgnoreCase))
                 {
                     // Found a moved block!
-                    var movedBlock = new BlockInfo(windowOffset, windowSize, strongHash, (int)currentHash);
+                    var movedBlock = new BlockInfo(windowOffset, windowSize, strongHash, currentHash);
                     movedBlocks.Add(movedBlock);
                     
                     _logger.LogTrace("Found moved block at new offset {NewOffset} (original offset: {OriginalOffset}, hash: {Hash})",

@@ -1,0 +1,49 @@
+using CreatioHelper.Domain.Entities;
+
+namespace CreatioHelper.Application.Interfaces;
+
+/// <summary>
+/// Main interface for sync database operations - inspired by Syncthing's database layer
+/// </summary>
+public interface ISyncDatabase : IDisposable
+{
+    /// <summary>
+    /// Initialize database with schema migrations
+    /// </summary>
+    Task InitializeAsync();
+    
+    /// <summary>
+    /// File metadata repository
+    /// </summary>
+    IFileMetadataRepository FileMetadata { get; }
+    
+    /// <summary>
+    /// Block information repository
+    /// </summary>
+    IBlockInfoRepository BlockInfo { get; }
+    
+    /// <summary>
+    /// Device information repository
+    /// </summary>
+    IDeviceInfoRepository DeviceInfo { get; }
+    
+    /// <summary>
+    /// Folder configuration repository
+    /// </summary>
+    IFolderConfigRepository FolderConfig { get; }
+    
+    /// <summary>
+    /// Global state repository for sequence numbers and vector clocks
+    /// </summary>
+    IGlobalStateRepository GlobalState { get; }
+    
+    /// <summary>
+    /// Begin database transaction
+    /// </summary>
+    Task<ISyncTransaction> BeginTransactionAsync();
+    
+    /// <summary>
+    /// Compact database (similar to Syncthing's compaction)
+    /// </summary>
+    Task CompactAsync();
+}

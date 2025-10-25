@@ -113,7 +113,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 builder.Services.AddAuthorization();
 
 builder.Services.AddApplication();
-builder.Services.AddInfrastructureServices();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Register performance services
 builder.Services.AddScoped<ApplicationInsightsMetricsService>();
@@ -140,10 +140,17 @@ builder.Services.AddPlatformServices();
 builder.Services.AddPerformanceServices();
 
 // Add sync services with configuration
-var syncConfig = builder.Configuration.GetSection("Sync").Get<SyncConfiguration>();
-if (syncConfig != null)
+var syncConfigFromFile = builder.Configuration.GetSection("Sync").Get<SyncConfigurationFromFile>();
+SyncConfiguration? syncConfig = null;
+
+if (syncConfigFromFile != null)
 {
-    Console.WriteLine($"Loaded sync config: DeviceId={syncConfig.DeviceId}, Port={syncConfig.Port}");
+    Console.WriteLine($"Loaded sync config: DeviceId={syncConfigFromFile.DeviceId}, Port={syncConfigFromFile.Port}");
+    
+    // Convert from file config to domain config
+    syncConfig = new SyncConfiguration(syncConfigFromFile.DeviceId, syncConfigFromFile.DeviceName);
+    syncConfig.SetPort(syncConfigFromFile.Port);
+    syncConfig.SetDiscoveryPort(syncConfigFromFile.DiscoveryPort);
 }
 else
 {

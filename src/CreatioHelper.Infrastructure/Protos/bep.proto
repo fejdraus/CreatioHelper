@@ -93,33 +93,54 @@ message IndexUpdate {
 }
 
 message FileInfo {
+    // The field ordering here optimizes for struct size / alignment --
+    // large types come before smaller ones.
+    
     string name = 1;
-    FileInfoType type = 2;
     int64 size = 3;
-    uint32 permissions = 4;
     int64 modified_s = 5;
-    int32 modified_ns = 6;
-    uint64 modified_by = 7;
-    bool deleted = 8;
-    bool invalid = 9;
-    bool no_permissions = 10;
-    Vector version = 11;
-    int64 sequence = 12;
-    int32 block_size = 13;
+    uint64 modified_by = 12;
+    Vector version = 9;
+    int64 sequence = 10;
     repeated BlockInfo blocks = 16;
-    string symlink_target = 17;
+    bytes symlink_target = 17;
     bytes blocks_hash = 18;
     bytes encrypted = 19;
-    LocalFlags local_flags = 1000;
+    FileInfoType type = 2;
+    uint32 permissions = 4;
+    int32 modified_ns = 11;
+    int32 block_size = 13;
+    PlatformData platform = 14;
+    
+    // The local_flags fields stores flags that are relevant to the local
+    // host only. It is not part of the protocol, doesn't get sent or
+    // received (we make sure to zero it), nonetheless we need it on our
+    // struct and to be able to serialize it to/from the database.
+    uint32 local_flags = 1000;
+    
+    // The version_hash is an implementation detail and not part of the wire
+    // format.
     bytes version_hash = 1001;
-    bool inodechange_detected = 1002;
-    EncryptionTrailerType encryption_trailer_type = 1003;
+    
+    // The time when the inode was last changed (i.e., permissions, xattrs
+    // etc changed). This is host-local, not sent over the wire.
+    int64 inode_change_ns = 1002;
+    
+    // The size of the data appended to the encrypted file on disk. This is
+    // host-local, not sent over the wire.
+    int32 encryption_trailer_size = 1003;
+    
+    bool deleted = 6;
+    bool invalid = 7;
+    bool no_permissions = 8;
 }
 
 enum FileInfoType {
     FILE_INFO_TYPE_FILE = 0;
     FILE_INFO_TYPE_DIRECTORY = 1;
-    FILE_INFO_TYPE_SYMLINK = 2;
+    FILE_INFO_TYPE_SYMLINK_FILE = 2 [deprecated = true];
+    FILE_INFO_TYPE_SYMLINK_DIRECTORY = 3 [deprecated = true];
+    FILE_INFO_TYPE_SYMLINK = 4;
 }
 
 enum EncryptionTrailerType {
@@ -129,10 +150,10 @@ enum EncryptionTrailerType {
 }
 
 message BlockInfo {
+    bytes hash = 3;
     int64 offset = 1;
     int32 size = 2;
-    bytes hash = 3;
-    uint32 weak_hash = 4;
+    reserved 4;
 }
 
 message Vector {
@@ -156,8 +177,8 @@ message Request {
     int32 size = 5;
     bytes hash = 6;
     bool from_temporary = 7;
-    uint32 weak_hash = 8;
     int32 block_no = 9;
+    reserved 8; // Reserved field, DO NOT USE
 }
 
 message Response {
@@ -175,20 +196,20 @@ enum ErrorCode {
 
 message DownloadProgress {
     string folder = 1;
-    repeated FileDownloadProgress updates = 2;
+    repeated FileDownloadProgressUpdate updates = 2;
 }
 
-message FileDownloadProgress {
-    UpdateType update_type = 1;
+message FileDownloadProgressUpdate {
+    FileDownloadProgressUpdateType update_type = 1;
     string name = 2;
     Vector version = 3;
-    repeated int32 block_indexes = 4;
+    repeated int32 block_indexes = 4 [packed = false];
     int32 block_size = 5;
 }
 
-enum UpdateType {
-    UPDATE_TYPE_APPEND = 0;
-    UPDATE_TYPE_FORGET = 1;
+enum FileDownloadProgressUpdateType {
+    FILE_DOWNLOAD_PROGRESS_UPDATE_TYPE_APPEND = 0;
+    FILE_DOWNLOAD_PROGRESS_UPDATE_TYPE_FORGET = 1;
 }
 
 message Ping {
@@ -196,4 +217,39 @@ message Ping {
 
 message Close {
     string reason = 1;
+}
+
+// Platform-specific metadata structures
+message PlatformData {
+    UnixData unix = 1;
+    WindowsData windows = 2;
+    XattrData linux = 3;
+    XattrData darwin = 4;
+    XattrData freebsd = 5;
+    XattrData netbsd = 6;
+}
+
+message UnixData {
+    // Owner and group names are set when known (resolved on source device)
+    // UID and GID always set as they come directly from stat() call
+    string owner_name = 1;
+    string group_name = 2;
+    int32 uid = 3;
+    int32 gid = 4;
+}
+
+message WindowsData {
+    // Windows file objects have single owner (user or group)
+    // Keep name of account and flag indicating type
+    string owner_name = 1;
+    bool owner_is_group = 2;
+}
+
+message XattrData {
+    repeated Xattr xattrs = 1;
+}
+
+message Xattr {
+    string name = 1;
+    bytes value = 2;
 }
