@@ -256,30 +256,47 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         IsStopButtonEnabled = true;
                     }
 
+                    // If no package operations needed, perform schema regeneration and rebuild
                     if (string.IsNullOrWhiteSpace(packagesPath) &&
                         string.IsNullOrWhiteSpace(packagesBefore) &&
-                        string.IsNullOrWhiteSpace(packagesAfter) &&
-                        !viewModel.IsServerPanelVisible)
+                        string.IsNullOrWhiteSpace(packagesAfter))
                     {
+                        // If server panel is open with servers, stop all servers before rebuild
+                        // If panel is closed, only local server will be stopped via PerformIisOperationsAsync
+                        if (viewModel.IsServerPanelVisible && serverList.Length > 0)
+                        {
+                            _output.WriteLine("Stopping ALL servers (local + remote) before schema rebuild...");
+                            await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _output.WriteLine("Stopping local server before schema rebuild...");
+                            // Stop only local server when panel is closed
+                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, cancellationToken).ConfigureAwait(false);
+                        }
+
                         // Measure schema generation operations time
+                        _output.WriteLine("Performing schema regeneration and compilation...");
                         bool success = false;
                         _metricsService.Measure("schema_operations", () =>
                         {
                             success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
-                        
+
                         if (!success)
                         {
                             _output.WriteLine("[ERROR] Schema operations failed. Stopping execution.");
                             _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "schema_operations_failed" });
                             return;
                         }
+
+                        _output.WriteLine("[OK] Schema regeneration and compilation completed successfully.");
                     }
 
                     var redisManager = _redisManagerFactory.Create(sitePath);
@@ -291,10 +308,25 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     IsStopButtonEnabled = false;
 
+                    // Determine whether to start all servers (rebuild scenario with remote servers) or just local server
+                    bool rebuildPerformed = string.IsNullOrWhiteSpace(packagesPath) &&
+                                           string.IsNullOrWhiteSpace(packagesBefore) &&
+                                           string.IsNullOrWhiteSpace(packagesAfter);
+                    bool hasRemoteServers = viewModel.IsServerPanelVisible && serverList.Length > 0;
+
                     // Measure startup operation time
                     await _metricsService.MeasureAsync("startup_operations", async () =>
                     {
-                        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+                        if (rebuildPerformed && hasRemoteServers)
+                        {
+                            // Schema rebuild was performed with remote servers - start all servers
+                            await StartAllServersAfterRebuild(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            // Normal flow - just start local server
+                            await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+                        }
                         return Task.CompletedTask;
                     }).ConfigureAwait(false);
                 }
@@ -709,6 +741,57 @@ public partial class OperationsService : ObservableObject, IOperationsService
         await Task.Delay(3000, cancellationToken);
 
         _output.WriteLine("[OK] All servers (local + remote) stopped successfully.");
+    }
+
+    /// <summary>
+    /// Starts all servers (local + remote) after schema rebuild completes
+    /// </summary>
+    private async Task StartAllServersAfterRebuild(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, CancellationToken cancellationToken)
+    {
+        _output.WriteLine("Starting ALL servers (local + remote) after schema rebuild...");
+
+        // First start local server
+        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+
+        // Then start all remote servers
+        foreach (var server in remoteServers)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _output.WriteLine("[INFO] Starting servers was cancelled.");
+                return;
+            }
+
+            await Task.Delay(1000, cancellationToken); // Small delay between operations
+
+            if (!string.IsNullOrWhiteSpace(server.PoolName))
+            {
+                var startPoolResult = await _iisManager.StartAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken);
+                if (startPoolResult.IsSuccess)
+                {
+                    _output.WriteLine($"[INFO] Started app pool '{server.PoolName}' on {server.Name}");
+                }
+                else
+                {
+                    _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name}: {startPoolResult.ErrorMessage}");
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(server.SiteName))
+            {
+                var startSiteResult = await _iisManager.StartWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken);
+                if (startSiteResult.IsSuccess)
+                {
+                    _output.WriteLine($"[INFO] Started website '{server.SiteName}' on {server.Name}");
+                }
+                else
+                {
+                    _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name}: {startSiteResult.ErrorMessage}");
+                }
+            }
+        }
+
+        _output.WriteLine("[OK] All servers (local + remote) started successfully.");
     }
 
     /// <summary>
