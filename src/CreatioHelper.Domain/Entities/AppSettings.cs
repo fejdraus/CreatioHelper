@@ -22,4 +22,22 @@ public class AppSettings
     public bool IsIisMode { get; set; }
 
     public bool IsServerPanelVisible { get; set; }
+
+    public bool EnableFileCopySynchronization { get; set; } = true;
+
+    /// <summary>
+    /// Use external Syncthing application for synchronization instead of built-in sync
+    /// </summary>
+    public bool UseSyncthingForSync { get; set; } = false;
+
+    /// <summary>
+    /// Syncthing REST API URL (typically http://localhost:8384)
+    /// </summary>
+    public string? SyncthingApiUrl { get; set; } = "http://localhost:8384";
+
+    /// <summary>
+    /// Syncthing REST API key (X-API-Key header)
+    /// Found in Syncthing config.xml or GUI -> Actions -> Settings -> API Key
+    /// </summary>
+    public string? SyncthingApiKey { get; set; }
 }

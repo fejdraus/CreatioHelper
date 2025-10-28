@@ -39,7 +39,13 @@ public partial class App : Avalonia.Application
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Information);
         });
-        
+
+        // Add HttpClient for Syncthing API
+        services.AddHttpClient("Syncthing", client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(30);
+        });
+
         services.AddApplication();
         services.AddInfrastructureServices();
     }

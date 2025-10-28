@@ -11,13 +11,13 @@ namespace CreatioHelper;
 public partial class AddServerWindow : Window
 {
     private AddServerViewModel ViewModel => (AddServerViewModel)DataContext!;
-    
-    public AddServerWindow() : this(null) { }
 
-    public AddServerWindow(ServerInfo? existing = null)
+    public AddServerWindow() : this(null, false, false) { }
+
+    public AddServerWindow(ServerInfo? existing, bool useSyncthingForSync, bool enableFileCopySync)
     {
         InitializeComponent();
-        DataContext = new AddServerViewModel(existing);
+        DataContext = new AddServerViewModel(existing, useSyncthingForSync, enableFileCopySync);
     }
 
     private async void OkButton_Click(object? sender, RoutedEventArgs e)
