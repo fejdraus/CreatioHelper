@@ -19,7 +19,7 @@
 
     <Grid ColumnDefinitions="*,Auto">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
-            <Grid Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}" VerticalAlignment="Center">
+            <Grid Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto"/>
@@ -41,7 +41,7 @@
             </Grid>
             
             <!-- Row 1: Folder Mode -->
-            <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+            <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" 
@@ -55,7 +55,7 @@
             </StackPanel>
 
             <!-- Row 2: IIS Mode -->
-            <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+            <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site IIS:" />
                 <ComboBox x:Name="IisSitesComboBox"
                           HorizontalAlignment="Stretch"
@@ -67,7 +67,7 @@
             </StackPanel>
 
             <!-- Row 3: Packages Path -->
-            <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+            <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Packages Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
@@ -111,8 +111,8 @@
                         Grid.Column="0"
                         Content="{Binding StartButtonText}"
                         Command="{Binding StartCommand}"
-                        IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}"
-                        Width="140" 
+                        IsEnabled="{Binding AreControlsEnabled}"
+                        Width="140"
                         Height="32"/>
 
                 <!-- Stop and kill WSC button -->
@@ -128,12 +128,12 @@
                 <!-- Empty spacer (Grid.Column="2") for alignment -->
 
                 <!-- ServerPanel button (Grid.Column="3") -->
-                <Button x:Name="ServerPanelButton" 
+                <Button x:Name="ServerPanelButton"
                         Grid.Column="3"
                         Content="{Binding ServerPanelButtonText}"
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"
-                        IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}"
+                        IsEnabled="{Binding AreControlsEnabled}"
                         Width="130"
                         Height="32"
                         HorizontalAlignment="Right" />
@@ -187,7 +187,7 @@
                 IsVisible="{Binding IsServerPanelVisible}">
             <Grid x:Name="ServerPanelStack" RowDefinitions="Auto,*">
                 <!-- Top section: Add button, header, etc. -->
-                <StackPanel Grid.Row="0" Spacing="10" IsEnabled="{Binding IsBusy, Converter={StaticResource NotConverter}}">
+                <StackPanel Grid.Row="0" Spacing="10" IsEnabled="{Binding AreControlsEnabled}">
                     <Button x:Name="AddServerButton"
                             Content="Add"
                             HorizontalAlignment="Stretch"
