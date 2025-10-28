@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Avalonia.Controls;
@@ -206,7 +207,8 @@ namespace CreatioHelper
                     SiteName = server.SiteName,
                     PoolName = server.PoolName,
                     SyncthingDeviceId = server.SyncthingDeviceId,
-                    SyncthingFolderId = server.SyncthingFolderId
+                    SyncthingFolderId = server.SyncthingFolderId,
+                    SyncthingFolderIds = new List<string>(server.SyncthingFolderIds)
                 };
                 var editWindow = new AddServerWindow(clone, vm.UseSyncthingForSync, vm.EnableFileCopySynchronization);
                 var updated = await editWindow.ShowDialog<ServerInfo?>(this);
@@ -217,6 +219,7 @@ namespace CreatioHelper
                 server.PoolName = updated.PoolName;
                 server.SyncthingDeviceId = updated.SyncthingDeviceId;
                 server.SyncthingFolderId = updated.SyncthingFolderId;
+                server.SyncthingFolderIds = new List<string>(updated.SyncthingFolderIds);
             }
         }
 

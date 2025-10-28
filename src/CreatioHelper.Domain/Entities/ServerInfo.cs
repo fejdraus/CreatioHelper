@@ -9,12 +9,15 @@ public class ServerInfo : DtoServerInfo
     private string _syncthingStatus = "";
     private bool _isStatusLoading;
 
-    // Extended Syncthing sync information
+    // Extended Syncthing sync information (aggregated from all folders)
     private double _syncthingCompletionPercent = 0;
     private long _syncthingNeedBytes = 0;
     private int _syncthingNeedItems = 0;
     private string _syncthingCurrentState = "idle";
     private string? _syncthingLastSyncedFile;
+
+    // Dictionary to track individual folder sync states
+    private readonly Dictionary<string, FolderSyncState> _folderSyncStates = new();
 
     public string? ServiceName
     {
@@ -133,5 +136,99 @@ public class ServerInfo : DtoServerInfo
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
         if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
         return $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
+    }
+
+    /// <summary>
+    /// Update sync state for a specific folder
+    /// </summary>
+    public void UpdateFolderSyncState(string folderId, double completionPercent, long needBytes, int needItems, string currentState, string? lastSyncedFile = null)
+    {
+        if (!_folderSyncStates.ContainsKey(folderId))
+        {
+            _folderSyncStates[folderId] = new FolderSyncState { FolderId = folderId };
+        }
+
+        var folderState = _folderSyncStates[folderId];
+        folderState.CompletionPercent = completionPercent;
+        folderState.NeedBytes = needBytes;
+        folderState.NeedItems = needItems;
+        folderState.CurrentState = currentState;
+        if (lastSyncedFile != null)
+        {
+            folderState.LastSyncedFile = lastSyncedFile;
+        }
+
+        // Recalculate aggregated values
+        RecalculateAggregatedSyncState();
+    }
+
+    /// <summary>
+    /// Recalculate aggregated sync state from all folder states
+    /// Uses arithmetic average for completion percentage, sum for bytes/items
+    /// </summary>
+    private void RecalculateAggregatedSyncState()
+    {
+        if (_folderSyncStates.Count == 0)
+        {
+            SyncthingCompletionPercent = 0;
+            SyncthingNeedBytes = 0;
+            SyncthingNeedItems = 0;
+            SyncthingCurrentState = "idle";
+            return;
+        }
+
+        // Arithmetic average for completion percentage
+        SyncthingCompletionPercent = _folderSyncStates.Values.Average(f => f.CompletionPercent);
+
+        // Sum for bytes and items
+        SyncthingNeedBytes = _folderSyncStates.Values.Sum(f => f.NeedBytes);
+        SyncthingNeedItems = _folderSyncStates.Values.Sum(f => f.NeedItems);
+
+        // Current state: "syncing" if any folder is syncing, "scanning" if any scanning, otherwise "idle"
+        if (_folderSyncStates.Values.Any(f => f.CurrentState == "syncing"))
+        {
+            SyncthingCurrentState = "syncing";
+        }
+        else if (_folderSyncStates.Values.Any(f => f.CurrentState == "scanning"))
+        {
+            SyncthingCurrentState = "scanning";
+        }
+        else if (_folderSyncStates.Values.Any(f => f.CurrentState == "error"))
+        {
+            SyncthingCurrentState = "error";
+        }
+        else
+        {
+            SyncthingCurrentState = "idle";
+        }
+
+        // Update last synced file (use the most recent one from any folder)
+        var lastFile = _folderSyncStates.Values
+            .Where(f => f.LastSyncedFile != null)
+            .Select(f => f.LastSyncedFile)
+            .LastOrDefault();
+        if (lastFile != null)
+        {
+            SyncthingLastSyncedFile = lastFile;
+        }
+    }
+
+    /// <summary>
+    /// Returns true if ALL folders are fully synced (100% and idle)
+    /// </summary>
+    public bool AreAllFoldersSynced()
+    {
+        if (_folderSyncStates.Count == 0)
+            return false;
+
+        return _folderSyncStates.Values.All(f => f.IsFullySynced);
+    }
+
+    /// <summary>
+    /// Get individual folder sync states (for debugging or detailed display)
+    /// </summary>
+    public IReadOnlyDictionary<string, FolderSyncState> GetFolderSyncStates()
+    {
+        return _folderSyncStates;
     }
 }

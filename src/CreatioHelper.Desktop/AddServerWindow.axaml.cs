@@ -36,6 +36,19 @@ public partial class AddServerWindow : Window
         Close(null);
     }
 
+    private void AddFolderButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.AddFolderId();
+    }
+
+    private void RemoveFolderButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.CommandParameter is string folderId)
+        {
+            ViewModel.RemoveFolderId(folderId);
+        }
+    }
+
     private async Task ShowValidationError(string? message)
     {
         if (string.IsNullOrWhiteSpace(message))

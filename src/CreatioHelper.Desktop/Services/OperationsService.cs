@@ -218,6 +218,52 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _metricsService.IncrementCounter("packages_deleted_after");
                     }
 
+                    // If no package operations needed, perform schema regeneration and rebuild BEFORE synchronization
+                    if (string.IsNullOrWhiteSpace(packagesPath) &&
+                        string.IsNullOrWhiteSpace(packagesBefore) &&
+                        string.IsNullOrWhiteSpace(packagesAfter))
+                    {
+                        // If server panel is open with servers, stop all servers before rebuild
+                        // If panel is closed, only local server will be stopped via PerformIisOperationsAsync
+                        if (viewModel.IsServerPanelVisible && serverList.Length > 0)
+                        {
+                            _output.WriteLine("Stopping ALL servers (local + remote) before schema rebuild...");
+                            await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                        }
+                        else
+                        {
+                            _output.WriteLine("Stopping local server before schema rebuild...");
+                            // Stop only local server when panel is closed
+                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, cancellationToken).ConfigureAwait(false);
+                        }
+
+                        // Enable stop button during schema operations (user can cancel)
+                        IsStopButtonEnabled = true;
+
+                        // Measure schema generation operations time
+                        _output.WriteLine("Performing schema regeneration and compilation...");
+                        bool success = false;
+                        _metricsService.Measure("schema_operations", () =>
+                        {
+                            success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
+                            if (!success) return;
+
+                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            if (!success) return;
+
+                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        });
+
+                        if (!success)
+                        {
+                            _output.WriteLine("[ERROR] Schema operations failed. Stopping execution.");
+                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "schema_operations_failed" });
+                            return;
+                        }
+
+                        _output.WriteLine("[OK] Schema regeneration and compilation completed successfully.");
+                    }
+
                     if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
                     {
                         IsStopButtonEnabled = false;
@@ -254,49 +300,6 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             }
                         }
                         IsStopButtonEnabled = true;
-                    }
-
-                    // If no package operations needed, perform schema regeneration and rebuild
-                    if (string.IsNullOrWhiteSpace(packagesPath) &&
-                        string.IsNullOrWhiteSpace(packagesBefore) &&
-                        string.IsNullOrWhiteSpace(packagesAfter))
-                    {
-                        // If server panel is open with servers, stop all servers before rebuild
-                        // If panel is closed, only local server will be stopped via PerformIisOperationsAsync
-                        if (viewModel.IsServerPanelVisible && serverList.Length > 0)
-                        {
-                            _output.WriteLine("Stopping ALL servers (local + remote) before schema rebuild...");
-                            await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
-                        }
-                        else
-                        {
-                            _output.WriteLine("Stopping local server before schema rebuild...");
-                            // Stop only local server when panel is closed
-                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, cancellationToken).ConfigureAwait(false);
-                        }
-
-                        // Measure schema generation operations time
-                        _output.WriteLine("Performing schema regeneration and compilation...");
-                        bool success = false;
-                        _metricsService.Measure("schema_operations", () =>
-                        {
-                            success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
-                            if (!success) return;
-
-                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            if (!success) return;
-
-                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
-                        });
-
-                        if (!success)
-                        {
-                            _output.WriteLine("[ERROR] Schema operations failed. Stopping execution.");
-                            _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "schema_operations_failed" });
-                            return;
-                        }
-
-                        _output.WriteLine("[OK] Schema regeneration and compilation completed successfully.");
                     }
 
                     var redisManager = _redisManagerFactory.Create(sitePath);
@@ -820,7 +823,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
         // Validate that all servers have Syncthing configuration
         var serversWithoutConfig = remoteServers
-            .Where(s => string.IsNullOrEmpty(s.SyncthingDeviceId) || string.IsNullOrEmpty(s.SyncthingFolderId))
+            .Where(s => string.IsNullOrEmpty(s.SyncthingDeviceId) || s.SyncthingFolderIds.Count == 0)
             .ToList();
 
         if (serversWithoutConfig.Any())
@@ -828,12 +831,13 @@ public partial class OperationsService : ObservableObject, IOperationsService
             _output.WriteLine($"[WARNING] {serversWithoutConfig.Count} servers missing Syncthing configuration:");
             foreach (var server in serversWithoutConfig)
             {
-                _output.WriteLine($"    - {server.Name}: DeviceId={server.SyncthingDeviceId}, FolderId={server.SyncthingFolderId}");
+                var folderIdsStr = string.Join(", ", server.SyncthingFolderIds);
+                _output.WriteLine($"    - {server.Name}: DeviceId={server.SyncthingDeviceId}, FolderIds=[{folderIdsStr}]");
             }
         }
 
         var serversToMonitor = remoteServers
-            .Where(s => !string.IsNullOrEmpty(s.SyncthingDeviceId) && !string.IsNullOrEmpty(s.SyncthingFolderId))
+            .Where(s => !string.IsNullOrEmpty(s.SyncthingDeviceId) && s.SyncthingFolderIds.Count > 0)
             .ToList();
 
         if (serversToMonitor.Count == 0)
