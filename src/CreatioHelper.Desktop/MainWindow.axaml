@@ -328,14 +328,44 @@
                                         <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
                                     </StackPanel>
                                     
-                                    <StackPanel Orientation="Horizontal" MaxWidth="310"
-                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).UseSyncthingForSync}">
-                                        <TextBlock Text="Syncthing: " FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SyncthingStatus}"
-                                                   FontSize="11"
-                                                   FontWeight="Bold"
-                                                   Foreground="{Binding SyncthingStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"
-                                                   VerticalAlignment="Center"/>
+                                    <!-- Syncthing Status Section with Enhanced Details -->
+                                    <StackPanel MaxWidth="310"
+                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).UseSyncthingForSync}"
+                                                Spacing="3">
+                                        <!-- Status Line -->
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Syncthing: " FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding SyncthingStatus}"
+                                                       FontSize="11"
+                                                       FontWeight="Bold"
+                                                       Foreground="{Binding SyncthingStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"
+                                                       VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Progress Bar (visible only when syncing) -->
+                                        <ProgressBar Value="{Binding SyncthingCompletionPercent}"
+                                                     Maximum="100"
+                                                     Height="4"
+                                                     IsVisible="{Binding IsSyncthingSyncing}"
+                                                     Foreground="#4A90E2"
+                                                     Background="#E0E0E0"/>
+
+                                        <!-- Remaining Data Info (visible when syncing) -->
+                                        <TextBlock Text="{Binding SyncthingRemainingFormatted}"
+                                                   FontSize="10"
+                                                   Foreground="Gray"
+                                                   IsVisible="{Binding IsSyncthingSyncing}"/>
+
+                                        <!-- Last Synced File (visible when has value) -->
+                                        <StackPanel Orientation="Horizontal"
+                                                    IsVisible="{Binding SyncthingLastSyncedFile, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                                            <TextBlock Text="Last: " FontSize="10" Foreground="Gray"/>
+                                            <TextBlock Text="{Binding SyncthingLastSyncedFile}"
+                                                       FontSize="10"
+                                                       Foreground="Gray"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       MaxWidth="250"/>
+                                        </StackPanel>
                                     </StackPanel>
 
                                     <!-- Buttons to control pool and site -->
