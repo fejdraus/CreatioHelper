@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Models;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
@@ -21,6 +22,7 @@ namespace CreatioHelper.ViewModels;
 public partial class MainWindowViewModel : ObservableObject
 {
     private bool _isInitializing;
+    private bool _settingsLoaded = false;
     private readonly Dictionary<ServerInfo, PropertyChangedEventHandler> _serverHandlers = new();
     private readonly IServerStatusService _statusService;
     private readonly IIisManager _iisManager;
@@ -169,8 +171,11 @@ public partial class MainWindowViewModel : ObservableObject
         finally
         {
             _isInitializing = false;
+
             // Notify UI about Syncthing bulk operations availability after initialization
             OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+
+            // Note: InitializeSyncthingEventsListener() is called in ApplyServerSettings after settings are loaded
         }
     }
     
@@ -552,6 +557,12 @@ public partial class MainWindowViewModel : ObservableObject
         SaveServerSettings();
         OnPropertyChanged(nameof(SyncModeButtonText));
         OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+
+        // Reinitialize events listener when Syncthing is enabled/disabled (only after initial settings load)
+        if (_settingsLoaded)
+        {
+            InitializeSyncthingEventsListener();
+        }
     }
 
     partial void OnSyncthingApiUrlChanged(string? value)
@@ -559,12 +570,24 @@ public partial class MainWindowViewModel : ObservableObject
         SaveServerSettings();
         OnPropertyChanged(nameof(HasSyncthingApiUrl));
         OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+
+        // Reinitialize events listener when API URL changes (only after initial settings load)
+        if (_settingsLoaded)
+        {
+            InitializeSyncthingEventsListener();
+        }
     }
 
     partial void OnSyncthingApiKeyChanged(string? value)
     {
         SaveServerSettings();
         OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+
+        // Reinitialize events listener when API Key changes (only after initial settings load)
+        if (_settingsLoaded)
+        {
+            InitializeSyncthingEventsListener();
+        }
     }
 
     private void LoadIisSites(AppSettings? settings)
@@ -612,6 +635,14 @@ public partial class MainWindowViewModel : ObservableObject
         if (!_isInitializing)
         {
             OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+        }
+
+        // On Windows, settings are applied asynchronously via LoadIisSites callback
+        // Mark settings as loaded and initialize listener only once after first load
+        if (!_settingsLoaded)
+        {
+            _settingsLoaded = true;
+            InitializeSyncthingEventsListener();
         }
     }
 
@@ -972,6 +1003,220 @@ public partial class MainWindowViewModel : ObservableObject
         // Refresh status for all servers
         await Task.Delay(1000); // Give IIS a moment to update
         await _statusService.RefreshMultipleServerStatusAsync(serversWithIis.ToArray(), CancellationToken.None);
+    }
+
+    #endregion
+
+    #region Syncthing Events Listener
+
+    private SyncthingEventsListener? _syncthingEventsListener;
+
+    /// <summary>
+    /// Initialize and start Syncthing Events Listener for real-time synchronization monitoring
+    /// </summary>
+    private void InitializeSyncthingEventsListener()
+    {
+        // Stop existing listener if any
+        if (_syncthingEventsListener != null)
+        {
+            _ = _syncthingEventsListener.StopAsync();
+            _syncthingEventsListener.Dispose();
+            _syncthingEventsListener = null;
+        }
+
+        // Only start if Syncthing is enabled and configured
+        if (!UseSyncthingForSync ||
+            string.IsNullOrEmpty(SyncthingApiUrl) ||
+            string.IsNullOrEmpty(SyncthingApiKey))
+        {
+            _output.WriteLine("[INFO] Syncthing Events Listener not started (not configured)");
+            return;
+        }
+
+        try
+        {
+            var httpClientFactory = App.Services?.GetService(typeof(System.Net.Http.IHttpClientFactory))
+                as System.Net.Http.IHttpClientFactory;
+
+            if (httpClientFactory == null)
+            {
+                _output.WriteLine("[ERROR] HttpClientFactory not available");
+                return;
+            }
+
+            _syncthingEventsListener = new SyncthingEventsListener(
+                httpClientFactory,
+                _output,
+                SyncthingApiUrl,
+                SyncthingApiKey
+            );
+
+            // Subscribe to StateChanged events
+            _syncthingEventsListener.OnStateChanged += async (data) =>
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    UpdateServerStateFromEvent(data);
+                });
+            };
+
+            // Subscribe to FolderCompletion events
+            _syncthingEventsListener.OnFolderCompletion += async (data) =>
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    UpdateServerCompletionFromEvent(data);
+                });
+            };
+
+            // Subscribe to ItemFinished events
+            _syncthingEventsListener.OnItemFinished += async (data) =>
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    UpdateServerLastSyncedFile(data);
+                });
+            };
+
+            // Subscribe to DeviceConnected/Disconnected events
+            _syncthingEventsListener.OnDeviceConnected += async (data) =>
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    UpdateServerDeviceStatus(data.Id, connected: true);
+                });
+            };
+
+            _syncthingEventsListener.OnDeviceDisconnected += async (data) =>
+            {
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    UpdateServerDeviceStatus(data.Id, connected: false);
+                });
+            };
+
+            // Start listening
+            _syncthingEventsListener.Start();
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    await Task.Delay(500); // Small delay to let listener initialize
+
+                    var syncthingServers = ServerList
+                        .Where(s => !string.IsNullOrEmpty(s.SyncthingDeviceId) &&
+                                   !string.IsNullOrEmpty(s.SyncthingFolderId))
+                        .ToArray();
+
+                    if (syncthingServers.Any())
+                    {
+                        await _statusService.RefreshMultipleServerStatusAsync(syncthingServers, CancellationToken.None);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[ERROR] Failed to perform initial status refresh: {ex.Message}");
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to initialize Syncthing Events Listener: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Update server state from StateChanged event
+    /// </summary>
+    private void UpdateServerStateFromEvent(StateChangedEventData data)
+    {
+        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderId == data.Folder);
+        if (server == null)
+            return;
+
+        server.SyncthingCurrentState = data.To;
+
+        // Update status text based on new state
+        server.SyncthingStatus = data.To switch
+        {
+            "idle" => server.SyncthingCompletionPercent >= 100 ? "✅ Up to Date" : "⏸️ Idle",
+            "scanning" => "🔍 Scanning",
+            "syncing" => $"🔄 Syncing ({server.SyncthingCompletionPercent:F1}%)",
+            "error" => "❌ Error",
+            _ => data.To
+        };
+    }
+
+    /// <summary>
+    /// Update server completion from FolderCompletion event
+    /// </summary>
+    private void UpdateServerCompletionFromEvent(FolderCompletionEventData data)
+    {
+        var server = ServerList.FirstOrDefault(s =>
+            s.SyncthingFolderId == data.Folder &&
+            s.SyncthingDeviceId == data.Device);
+
+        if (server == null)
+            return;
+
+        server.SyncthingCompletionPercent = data.Completion;
+        server.SyncthingNeedBytes = data.NeedBytes;
+        server.SyncthingNeedItems = data.NeedItems;
+
+        // Update status text
+        if (data.NeedBytes > 0 || data.NeedItems > 0)
+        {
+            server.SyncthingStatus = $"🔄 Syncing ({data.Completion:F1}%)";
+        }
+        else
+        {
+            server.SyncthingStatus = "✅ Up to Date";
+        }
+
+        // Notify UI about changes to formatted property
+        server.OnPropertyChanged(nameof(ServerInfo.SyncthingRemainingFormatted));
+    }
+
+    /// <summary>
+    /// Update last synced file from ItemFinished event
+    /// </summary>
+    private void UpdateServerLastSyncedFile(ItemFinishedEventData data)
+    {
+        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderId == data.Folder);
+        if (server == null)
+            return;
+
+        // Only show successful syncs (no error)
+        if (string.IsNullOrEmpty(data.Error))
+        {
+            // Extract filename from path
+            var fileName = System.IO.Path.GetFileName(data.Item);
+            server.SyncthingLastSyncedFile = fileName;
+        }
+    }
+
+    /// <summary>
+    /// Update server device connection status
+    /// </summary>
+    private void UpdateServerDeviceStatus(string deviceId, bool connected)
+    {
+        var server = ServerList.FirstOrDefault(s => s.SyncthingDeviceId == deviceId);
+        if (server == null)
+            return;
+
+        if (!connected)
+        {
+            server.SyncthingStatus = "❌ Offline";
+            server.SyncthingCurrentState = "offline";
+        }
+        else
+        {
+            // Device reconnected, refresh status
+            _ = Task.Run(async () =>
+            {
+                await _statusService.RefreshServerStatusAsync(server, CancellationToken.None);
+            });
+        }
     }
 
     #endregion
