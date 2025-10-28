@@ -13,6 +13,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
+using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
@@ -78,9 +79,22 @@ namespace CreatioHelper
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
-            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService);
+
+            // SyncthingMonitorService will be created dynamically when needed
+            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, null);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
+
+            // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
+            _viewModel.PropertyChanged += async (_, args) =>
+            {
+                if (args.PropertyName == nameof(MainWindowViewModel.UseSyncthingForSync) ||
+                    args.PropertyName == nameof(MainWindowViewModel.SyncthingApiUrl) ||
+                    args.PropertyName == nameof(MainWindowViewModel.SyncthingApiKey))
+                {
+                    await UpdateSyncthingMonitor(operationsService, statusService, provider, writer);
+                }
+            };
             DataContext = _viewModel;
             FileLogService.LogFilePath = LogFilePath;
             FileLogService.Enabled = _viewModel.IsLogToFileEnabled;
@@ -109,10 +123,13 @@ namespace CreatioHelper
 
         private async void AddServer_Click(object? sender, RoutedEventArgs e)
         {
-            var window = new AddServerWindow();
+            if (DataContext is not MainWindowViewModel vm)
+                return;
+
+            var window = new AddServerWindow(null, vm.UseSyncthingForSync, vm.EnableFileCopySynchronization);
             var newServer = await window.ShowDialog<ServerInfo?>(this);
 
-            if (newServer != null && DataContext is MainWindowViewModel vm)
+            if (newServer != null)
             {
                 if (vm.ServerList.All(s => s.Name != newServer.Name))
                 {
@@ -125,10 +142,61 @@ namespace CreatioHelper
             }
         }
 
+        private async void SyncthingSettings_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm)
+                return;
+
+            var settingsWindow = new SyncthingSettingsWindow(
+                vm.EnableFileCopySynchronization,
+                vm.UseSyncthingForSync,
+                vm.SyncthingApiUrl,
+                vm.SyncthingApiKey);
+
+            var result = await settingsWindow.ShowDialog<SyncthingSettingsResult?>(this);
+
+            if (result != null)
+            {
+                vm.EnableFileCopySynchronization = result.EnableFileCopySynchronization;
+                vm.UseSyncthingForSync = result.UseSyncthingForSync;
+                vm.SyncthingApiUrl = result.SyncthingApiUrl;
+                vm.SyncthingApiKey = result.SyncthingApiKey;
+            }
+        }
+
+        private void OpenSyncthingWeb_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm)
+                return;
+
+            if (string.IsNullOrEmpty(vm.SyncthingApiUrl))
+            {
+                return;
+            }
+
+            try
+            {
+                // Open URL in default browser
+                var psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = vm.SyncthingApiUrl,
+                    UseShellExecute = true
+                };
+                System.Diagnostics.Process.Start(psi);
+            }
+            catch (Exception ex)
+            {
+                // If opening fails, show error in log
+                var writer = App.Services?.GetService<IOutputWriter>();
+                writer?.WriteLine($"[ERROR] Failed to open Syncthing Web UI: {ex.Message}");
+            }
+        }
+
         private async void ServerName_DoubleClick(object? sender, PointerPressedEventArgs e)
         {
-            if (DataContext is MainWindowViewModel vm && !vm.IsServerControlsEnabled)
-                return;  
+            if (DataContext is not MainWindowViewModel vm || !vm.IsServerControlsEnabled)
+                return;
+
             if (e.ClickCount == 2 && sender is TextBlock { DataContext: ServerInfo server })
             {
                 var clone = new ServerInfo
@@ -136,15 +204,19 @@ namespace CreatioHelper
                     Name = server.Name,
                     NetworkPath = server.NetworkPath,
                     SiteName = server.SiteName,
-                    PoolName = server.PoolName
+                    PoolName = server.PoolName,
+                    SyncthingDeviceId = server.SyncthingDeviceId,
+                    SyncthingFolderId = server.SyncthingFolderId
                 };
-                var editWindow = new AddServerWindow(clone);
+                var editWindow = new AddServerWindow(clone, vm.UseSyncthingForSync, vm.EnableFileCopySynchronization);
                 var updated = await editWindow.ShowDialog<ServerInfo?>(this);
                 if (updated == null) return;
                 server.Name = updated.Name;
                 server.NetworkPath = updated.NetworkPath;
                 server.SiteName = updated.SiteName;
                 server.PoolName = updated.PoolName;
+                server.SyncthingDeviceId = updated.SyncthingDeviceId;
+                server.SyncthingFolderId = updated.SyncthingFolderId;
             }
         }
 
@@ -170,6 +242,58 @@ namespace CreatioHelper
             {
                 _viewModel.SitePathWithVersion = new Version();
             }
+        }
+
+        private System.Threading.Tasks.Task UpdateSyncthingMonitor(
+            OperationsService operationsService,
+            IServerStatusService statusService,
+            IServiceProvider provider,
+            IOutputWriter writer)
+        {
+            if (_viewModel.UseSyncthingForSync &&
+                !string.IsNullOrEmpty(_viewModel.SyncthingApiUrl) &&
+                !string.IsNullOrEmpty(_viewModel.SyncthingApiKey))
+            {
+                try
+                {
+                    var httpClientFactory = provider.GetRequiredService<System.Net.Http.IHttpClientFactory>();
+                    var monitor = new SyncthingMonitorService(
+                        httpClientFactory,
+                        writer,
+                        _viewModel.SyncthingApiUrl,
+                        _viewModel.SyncthingApiKey);
+
+                    // Use reflection to update the private field in OperationsService
+                    var field = typeof(OperationsService).GetField("_syncthingMonitor",
+                        System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                    field?.SetValue(operationsService, monitor);
+
+                    // Update ServerStatusService to use the monitor
+                    if (statusService is ServerStatusService concreteStatusService)
+                    {
+                        concreteStatusService.SetSyncthingMonitor(monitor);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    writer.WriteLine($"[ERROR] Failed to configure Syncthing monitor: {ex.Message}");
+                }
+            }
+            else
+            {
+                // Clear Syncthing monitor when disabled
+                var field = typeof(OperationsService).GetField("_syncthingMonitor",
+                    System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                field?.SetValue(operationsService, null);
+
+                // Clear monitor from StatusService
+                if (statusService is ServerStatusService concreteStatusService)
+                {
+                    concreteStatusService.SetSyncthingMonitor(null);
+                }
+            }
+
+            return System.Threading.Tasks.Task.CompletedTask;
         }
     }
 }

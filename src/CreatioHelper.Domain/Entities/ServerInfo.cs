@@ -6,6 +6,7 @@ public class ServerInfo : DtoServerInfo
     private string _poolStatus = "";
     private string _siteStatus = "";
     private string _serviceStatus = "";
+    private string _syncthingStatus = "";
     private bool _isStatusLoading;
 
     public string? ServiceName
@@ -13,7 +14,7 @@ public class ServerInfo : DtoServerInfo
         get => _serviceName;
         set => SetField(ref _serviceName, value);
     }
-    
+
     public string PoolStatus
     {
         get => _isStatusLoading ? "Loading..." : _poolStatus;
@@ -32,6 +33,12 @@ public class ServerInfo : DtoServerInfo
         set => SetField(ref _serviceStatus, value);
     }
 
+    public string SyncthingStatus
+    {
+        get => _isStatusLoading ? "Loading..." : _syncthingStatus;
+        set => SetField(ref _syncthingStatus, value);
+    }
+
     public bool IsStatusLoading
     {
         get => _isStatusLoading;
@@ -42,6 +49,7 @@ public class ServerInfo : DtoServerInfo
                 OnPropertyChanged(nameof(PoolStatus));
                 OnPropertyChanged(nameof(SiteStatus));
                 OnPropertyChanged(nameof(ServiceStatus));
+                OnPropertyChanged(nameof(SyncthingStatus));
             }
         }
     }

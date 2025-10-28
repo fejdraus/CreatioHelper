@@ -3,7 +3,8 @@
         xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
         x:Class="CreatioHelper.AddServerWindow"
         x:DataType="vm:AddServerViewModel"
-        Width="800" Height="350"
+        Width="800"
+        SizeToContent="Height"
         Title="Add or Edit Server"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
@@ -11,20 +12,60 @@
     <StackPanel Margin="15" Spacing="10">
 
         <TextBlock Text="Server name:" />
-        <TextBox Text="{Binding ServerName, Mode=TwoWay}" 
+        <TextBox Text="{Binding ServerName, Mode=TwoWay}"
                  Watermark="Enter server name (e.g., PROD-SERVER-01)" />
 
-        <TextBlock Text="Network path to site:" />
-        <TextBox Text="{Binding NetworkPath, Mode=TwoWay}" 
-                 Watermark="Enter UNC path to site folder (e.g., \\server\share\site)" />
-
         <TextBlock Text="Site name:" />
-        <TextBox Text="{Binding SiteName, Mode=TwoWay}" 
+        <TextBox Text="{Binding SiteName, Mode=TwoWay}"
                  Watermark="Enter IIS site name (e.g., Default Web Site)" />
 
         <TextBlock Text="Pool name:" />
-        <TextBox Text="{Binding PoolName, Mode=TwoWay}" 
+        <TextBox Text="{Binding PoolName, Mode=TwoWay}"
                  Watermark="Enter IIS application pool name (e.g., DefaultAppPool)" />
+
+        <!-- File Copy Sync Fields -->
+        <Border IsVisible="{Binding IsFileCopyFieldsVisible}"
+                BorderBrush="#4CAF50"
+                BorderThickness="2"
+                CornerRadius="5"
+                Padding="10"
+                Margin="0,8,0,0">
+            <StackPanel Spacing="8">
+                <TextBlock Text="📁 File Copy Synchronization"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="#4CAF50"/>
+
+                <TextBlock Text="Network path to site:" />
+                <TextBox Text="{Binding NetworkPath, Mode=TwoWay}"
+                         Watermark="Enter UNC path to site folder (e.g., \\server\share\site)" />
+            </StackPanel>
+        </Border>
+
+        <!-- Syncthing Configuration Section -->
+        <Border IsVisible="{Binding IsSyncthingFieldsVisible}"
+                BorderBrush="#4A90E2"
+                BorderThickness="2"
+                CornerRadius="5"
+                Padding="10"
+                Margin="0,8,0,0">
+            <StackPanel Spacing="8">
+                <TextBlock Text="📡 Syncthing Synchronization"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="#4A90E2"/>
+
+                <TextBlock Text="Syncthing Device ID:" />
+                <TextBox Text="{Binding SyncthingDeviceId, Mode=TwoWay}"
+                         Watermark="e.g., XXXXXXX-YYYYYYY-ZZZZZZZ-AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE"
+                         FontSize="11"/>
+
+                <TextBlock Text="Syncthing Folder ID:" />
+                <TextBox Text="{Binding SyncthingFolderId, Mode=TwoWay}"
+                         Watermark="e.g., default (or custom folder ID from Syncthing)"
+                         FontSize="11"/>
+            </StackPanel>
+        </Border>
 
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="10" Margin="0,10,0,0">
             <Button Width="80" Content="OK" IsDefault="True" Click="OkButton_Click" />

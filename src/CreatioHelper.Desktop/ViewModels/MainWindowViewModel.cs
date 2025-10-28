@@ -63,13 +63,34 @@ public partial class MainWindowViewModel : ObservableObject
         _iisService = iisService;
         _systemServiceManager = systemServiceManager;
         _redisManagerFactory = redisManagerFactory;
-        
+
+        // Initialize Syncthing commands
+        ResumeAllSyncthingFoldersCommand = new AsyncRelayCommand(ResumeAllSyncthingFolders);
+        PauseAllSyncthingFoldersCommand = new AsyncRelayCommand(PauseAllSyncthingFolders);
+
+        // Initialize IIS bulk commands
+        StartAllIisCommand = new AsyncRelayCommand(StartAllIis);
+        StopAllIisCommand = new AsyncRelayCommand(StopAllIis);
+
         // Initialize asynchronously after construction
         _ = InitializeAsync();
 
         foreach (var server in ServerList)
         {
-            var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
+            var handler = new PropertyChangedEventHandler((_, args) =>
+            {
+                SaveServerSettings();
+                // Notify when SyncthingFolderId changes
+                if (args.PropertyName == nameof(ServerInfo.SyncthingFolderId))
+                {
+                    OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+                }
+                // Notify when IIS properties change
+                if (args.PropertyName == nameof(ServerInfo.PoolName) || args.PropertyName == nameof(ServerInfo.SiteName))
+                {
+                    OnPropertyChanged(nameof(CanUseIisBulkOperations));
+                }
+            });
             _serverHandlers[server] = handler;
             server.PropertyChanged += handler;
         }
@@ -80,7 +101,20 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 foreach (ServerInfo item in e.NewItems)
                 {
-                    var handler = new PropertyChangedEventHandler((_, _) => SaveServerSettings());
+                    var handler = new PropertyChangedEventHandler((_, args) =>
+                    {
+                        SaveServerSettings();
+                        // Notify when SyncthingFolderId changes
+                        if (args.PropertyName == nameof(ServerInfo.SyncthingFolderId))
+                        {
+                            OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+                        }
+                        // Notify when IIS properties change
+                        if (args.PropertyName == nameof(ServerInfo.PoolName) || args.PropertyName == nameof(ServerInfo.SiteName))
+                        {
+                            OnPropertyChanged(nameof(CanUseIisBulkOperations));
+                        }
+                    });
                     _serverHandlers[item] = handler;
                     item.PropertyChanged += handler;
                 }
@@ -99,7 +133,12 @@ public partial class MainWindowViewModel : ObservableObject
             }
 
             if (!_isInitializing)
+            {
                 SaveServerSettings();
+                // Notify when ServerList changes (items added/removed)
+                OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+                OnPropertyChanged(nameof(CanUseIisBulkOperations));
+            }
         };
 
         _isInitializing = false;
@@ -130,6 +169,8 @@ public partial class MainWindowViewModel : ObservableObject
         finally
         {
             _isInitializing = false;
+            // Notify UI about Syncthing bulk operations availability after initialization
+            OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
         }
     }
     
@@ -184,13 +225,39 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isServerControlsEnabled = true;
 
     [ObservableProperty]
+    private bool _enableFileCopySynchronization = true;
+
+    [ObservableProperty]
+    private bool _useSyncthingForSync = false;
+
+    [ObservableProperty]
+    private string? _syncthingApiUrl = "http://localhost:8384";
+
+    [ObservableProperty]
+    private string? _syncthingApiKey;
+
+    [ObservableProperty]
     private string _redisServiceStatus = "";
 
     [ObservableProperty]
     private string? _redisServiceName;
-    
+
     public bool IsBusy => _operationsService.IsBusy;
-    
+
+    public string SyncModeButtonText
+    {
+        get
+        {
+            if (UseSyncthingForSync)
+                return "SyncSystem: Syncthing";
+            if (EnableFileCopySynchronization)
+                return "SyncSystem: File Copy";
+            return "SyncSystem: Built-in";
+        }
+    }
+
+    public bool HasSyncthingApiUrl => !string.IsNullOrEmpty(SyncthingApiUrl);
+
     public string StartButtonText => _operationsService.StartButtonText;
     
     public bool IsStopButtonEnabled => _operationsService.IsStopButtonEnabled;
@@ -450,6 +517,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnIsFolderModeChanged(bool value)
     {
         OnPropertyChanged(nameof(IsIisMode));
+        OnPropertyChanged(nameof(CanUseIisBulkOperations));
         SaveServerSettings();
     }
 
@@ -471,7 +539,34 @@ public partial class MainWindowViewModel : ObservableObject
     {
         SaveServerSettings();
     }
-    
+
+    partial void OnEnableFileCopySynchronizationChanged(bool value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(SyncModeButtonText));
+        OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+    }
+
+    partial void OnUseSyncthingForSyncChanged(bool value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(SyncModeButtonText));
+        OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+    }
+
+    partial void OnSyncthingApiUrlChanged(string? value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(HasSyncthingApiUrl));
+        OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+    }
+
+    partial void OnSyncthingApiKeyChanged(string? value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+    }
+
     private void LoadIisSites(AppSettings? settings)
     {
         _iisService.LoadIisSites(IisSites, success =>
@@ -504,10 +599,20 @@ public partial class MainWindowViewModel : ObservableObject
 
         IsFolderMode = !settings.IsIisMode;
         IsServerPanelVisible = settings.IsServerPanelVisible;
+        EnableFileCopySynchronization = settings.EnableFileCopySynchronization;
+        UseSyncthingForSync = settings.UseSyncthingForSync;
+        SyncthingApiUrl = settings.SyncthingApiUrl;
+        SyncthingApiKey = settings.SyncthingApiKey;
 
         ServerList.Clear();
         foreach (var server in settings.ServerList)
             ServerList.Add(server);
+
+        // Notify UI about Syncthing bulk operations availability after settings are applied
+        if (!_isInitializing)
+        {
+            OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
+        }
     }
 
     private void SaveServerSettings()
@@ -527,10 +632,16 @@ public partial class MainWindowViewModel : ObservableObject
                 Name = s.Name,
                 NetworkPath = s.NetworkPath,
                 PoolName = s.PoolName,
-                SiteName = s.SiteName
+                SiteName = s.SiteName,
+                SyncthingFolderId = s.SyncthingFolderId,
+                SyncthingDeviceId = s.SyncthingDeviceId
             })),
             IsIisMode = IsIisMode,
-            IsServerPanelVisible = IsServerPanelVisible
+            IsServerPanelVisible = IsServerPanelVisible,
+            EnableFileCopySynchronization = EnableFileCopySynchronization,
+            UseSyncthingForSync = UseSyncthingForSync,
+            SyncthingApiUrl = SyncthingApiUrl,
+            SyncthingApiKey = SyncthingApiKey
         };
 
         _mediator.Send(new SaveSettingsCommand(settings));
@@ -677,4 +788,191 @@ public partial class MainWindowViewModel : ObservableObject
             return null;
         }
     }
+
+    /// <summary>
+    /// Property to check if bulk Syncthing operations are available
+    /// </summary>
+    public bool CanUseSyncthingBulkOperations =>
+        UseSyncthingForSync &&
+        !string.IsNullOrEmpty(SyncthingApiUrl) &&
+        !string.IsNullOrEmpty(SyncthingApiKey) &&
+        ServerList.Any(s => !string.IsNullOrEmpty(s.SyncthingFolderId));
+
+    public IAsyncRelayCommand ResumeAllSyncthingFoldersCommand { get; }
+    public IAsyncRelayCommand PauseAllSyncthingFoldersCommand { get; }
+
+    private async Task ResumeAllSyncthingFolders()
+    {
+        if (!UseSyncthingForSync)
+        {
+            _output.WriteLine("[INFO] Syncthing sync is not enabled");
+            return;
+        }
+
+        var serversWithSyncthing = ServerList
+            .Where(s => !string.IsNullOrEmpty(s.SyncthingFolderId))
+            .ToList();
+
+        if (!serversWithSyncthing.Any())
+        {
+            _output.WriteLine("[INFO] No servers have Syncthing folders configured");
+            return;
+        }
+
+        _output.WriteLine($"[INFO] ▶️ Resuming synchronization for {serversWithSyncthing.Count} Syncthing folders...");
+
+        var monitor = _operationsService.GetSyncthingMonitor();
+        if (monitor == null)
+        {
+            _output.WriteLine("[ERROR] Syncthing monitor is not configured");
+            return;
+        }
+
+        var successCount = 0;
+        foreach (var server in serversWithSyncthing)
+        {
+            var result = await monitor.ResumeFolderAsync(server.SyncthingFolderId!, CancellationToken.None);
+            if (result)
+            {
+                successCount++;
+            }
+        }
+
+        _output.WriteLine($"[OK] ✅ Resumed {successCount}/{serversWithSyncthing.Count} folders");
+
+        // Refresh status for all servers
+        await Task.Delay(1000); // Give Syncthing a moment to update
+        await _statusService.RefreshMultipleServerStatusAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
+    }
+
+    private async Task PauseAllSyncthingFolders()
+    {
+        if (!UseSyncthingForSync)
+        {
+            _output.WriteLine("[INFO] Syncthing sync is not enabled");
+            return;
+        }
+
+        var serversWithSyncthing = ServerList
+            .Where(s => !string.IsNullOrEmpty(s.SyncthingFolderId))
+            .ToList();
+
+        if (!serversWithSyncthing.Any())
+        {
+            _output.WriteLine("[INFO] No servers have Syncthing folders configured");
+            return;
+        }
+
+        _output.WriteLine($"[INFO] ⏸️ Pausing synchronization for {serversWithSyncthing.Count} Syncthing folders...");
+
+        var monitor = _operationsService.GetSyncthingMonitor();
+        if (monitor == null)
+        {
+            _output.WriteLine("[ERROR] Syncthing monitor is not configured");
+            return;
+        }
+
+        var successCount = 0;
+        foreach (var server in serversWithSyncthing)
+        {
+            var result = await monitor.PauseFolderAsync(server.SyncthingFolderId!, CancellationToken.None);
+            if (result)
+            {
+                successCount++;
+            }
+        }
+
+        _output.WriteLine($"[OK] ⏸️ Paused {successCount}/{serversWithSyncthing.Count} folders");
+
+        // Refresh status for all servers
+        await Task.Delay(1000); // Give Syncthing a moment to update
+        await _statusService.RefreshMultipleServerStatusAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
+    }
+
+    #region IIS Bulk Operations
+
+    /// <summary>
+    /// Command properties for IIS bulk operations
+    /// </summary>
+    public IAsyncRelayCommand StartAllIisCommand { get; }
+    public IAsyncRelayCommand StopAllIisCommand { get; }
+
+    /// <summary>
+    /// Property to control visibility of IIS bulk operation buttons
+    /// Only visible on Windows when IIS mode is enabled and there are servers with IIS configured
+    /// </summary>
+    public bool CanUseIisBulkOperations =>
+        IsWindows &&
+        IsIisMode &&
+        ServerList.Any(s => !string.IsNullOrEmpty(s.PoolName) || !string.IsNullOrEmpty(s.SiteName));
+
+    /// <summary>
+    /// Start all IIS sites and application pools for servers in the list
+    /// </summary>
+    private async Task StartAllIis()
+    {
+        if (!IsWindows)
+        {
+            _output.WriteLine("[INFO] IIS is only available on Windows");
+            return;
+        }
+
+        if (!IsIisMode)
+        {
+            _output.WriteLine("[INFO] IIS mode is not enabled");
+            return;
+        }
+
+        var serversWithIis = ServerList
+            .Where(s => !string.IsNullOrEmpty(s.PoolName) || !string.IsNullOrEmpty(s.SiteName))
+            .ToList();
+
+        if (!serversWithIis.Any())
+        {
+            _output.WriteLine("[INFO] No servers have IIS sites or pools configured");
+            return;
+        }
+
+        await _operationsService.StartAllIisAsync(serversWithIis);
+
+        // Refresh status for all servers
+        await Task.Delay(1000); // Give IIS a moment to update
+        await _statusService.RefreshMultipleServerStatusAsync(serversWithIis.ToArray(), CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Stop all IIS sites and application pools for servers in the list
+    /// </summary>
+    private async Task StopAllIis()
+    {
+        if (!IsWindows)
+        {
+            _output.WriteLine("[INFO] IIS is only available on Windows");
+            return;
+        }
+
+        if (!IsIisMode)
+        {
+            _output.WriteLine("[INFO] IIS mode is not enabled");
+            return;
+        }
+
+        var serversWithIis = ServerList
+            .Where(s => !string.IsNullOrEmpty(s.PoolName) || !string.IsNullOrEmpty(s.SiteName))
+            .ToList();
+
+        if (!serversWithIis.Any())
+        {
+            _output.WriteLine("[INFO] No servers have IIS sites or pools configured");
+            return;
+        }
+
+        await _operationsService.StopAllIisAsync(serversWithIis);
+
+        // Refresh status for all servers
+        await Task.Delay(1000); // Give IIS a moment to update
+        await _statusService.RefreshMultipleServerStatusAsync(serversWithIis.ToArray(), CancellationToken.None);
+    }
+
+    #endregion
 }
