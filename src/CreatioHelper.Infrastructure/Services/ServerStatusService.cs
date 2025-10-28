@@ -1,5 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services;
@@ -9,6 +10,7 @@ public class ServerStatusService : IServerStatusService
     private readonly IIisManager _iisManager;
     private readonly IMetricsService _metrics;
     private readonly ILogger<ServerStatusService> _logger;
+    private ISyncthingMonitorService? _syncthingMonitor;
 
     public ServerStatusService(
         IIisManager iisManager,
@@ -18,6 +20,14 @@ public class ServerStatusService : IServerStatusService
         _iisManager = iisManager ?? throw new ArgumentNullException(nameof(iisManager));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
+
+    /// <summary>
+    /// Set Syncthing monitor service (optional, can be null)
+    /// </summary>
+    public void SetSyncthingMonitor(ISyncthingMonitorService? monitor)
+    {
+        _syncthingMonitor = monitor;
     }
 
     public async Task<ServerInfo> RefreshServerStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
@@ -44,8 +54,32 @@ public class ServerStatusService : IServerStatusService
                     _logger.LogDebug("Retrieved site status for {SiteName}: {Status}", server.SiteName, siteStatus);
                 }
 
-                _metrics.IncrementCounter("server_status_success", new() { 
-                    ["server_name"] = server.Name ?? "unknown" 
+                // Check Syncthing status if monitor is configured
+                if (_syncthingMonitor != null &&
+                    !string.IsNullOrEmpty(server.SyncthingDeviceId) &&
+                    !string.IsNullOrEmpty(server.SyncthingFolderId))
+                {
+                    try
+                    {
+                        var syncthingStatus = await _syncthingMonitor.GetDeviceAndFolderStatusAsync(server, cancellationToken).ConfigureAwait(false);
+                        server.SyncthingStatus = syncthingStatus;
+                        _logger.LogDebug("Retrieved Syncthing status for {ServerName}: {Status}", server.Name, syncthingStatus);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to get Syncthing status for {ServerName}", server.Name);
+                        server.SyncthingStatus = "❌ Error";
+                    }
+                }
+                else
+                {
+                    server.SyncthingStatus = string.IsNullOrEmpty(server.SyncthingDeviceId) || string.IsNullOrEmpty(server.SyncthingFolderId)
+                        ? "⚙️ Not Configured"
+                        : "⏸️ Monitor Disabled";
+                }
+
+                _metrics.IncrementCounter("server_status_success", new() {
+                    ["server_name"] = server.Name ?? "unknown"
                 });
 
                 return server;
@@ -55,12 +89,13 @@ public class ServerStatusService : IServerStatusService
                 _logger.LogError(ex, "Failed to refresh status for server {ServerName}", server.Name);
                 server.PoolStatus = "Error";
                 server.SiteStatus = "Error";
-                
-                _metrics.IncrementCounter("server_status_error", new() { 
+                server.SyncthingStatus = "❌ Error";
+
+                _metrics.IncrementCounter("server_status_error", new() {
                     ["server_name"] = server.Name ?? "unknown",
                     ["error_type"] = ex.GetType().Name
                 });
-                
+
                 throw;
             }
             finally

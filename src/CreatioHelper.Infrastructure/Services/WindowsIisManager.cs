@@ -28,7 +28,10 @@ public class WindowsIisManager : IIisManager
 
     public bool IsSupported() => OperatingSystem.IsWindows();
     
-    public bool IsLocal(string serverName) => 
+    public bool IsLocal(string serverName) =>
+        string.IsNullOrWhiteSpace(serverName) ||
+        string.Equals(serverName, "localhost", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(serverName, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
 
     #region App Pool Management
@@ -45,6 +48,12 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
+                // Check if app pool exists
+                if (!await AppPoolExistsAsync(serverName, poolName, cancellationToken))
+                {
+                    return Result.Failure($"Application pool '{poolName}' does not exist on server {serverName}.");
+                }
+
                 var currentState = await GetAppPoolStateAsync(serverName, poolName, cancellationToken);
                 if (currentState == "Started")
                 {
@@ -60,7 +69,7 @@ public class WindowsIisManager : IIisManager
                 }
 
                 var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"Application pool {poolName}", cancellationToken);
-                return success 
+                return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start app pool {poolName}.");
             }
@@ -88,6 +97,12 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
+                // Check if app pool exists
+                if (!await AppPoolExistsAsync(serverName, poolName, cancellationToken))
+                {
+                    return Result.Failure($"Application pool '{poolName}' does not exist on server {serverName}.");
+                }
+
                 var currentState = await GetAppPoolStateAsync(serverName, poolName, cancellationToken);
                 if (currentState == "Stopped")
                 {
@@ -103,7 +118,7 @@ public class WindowsIisManager : IIisManager
                 }
 
                 var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"Application pool {poolName}", cancellationToken);
-                return success 
+                return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop app pool {poolName}.");
             }
@@ -149,6 +164,12 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
+                // Check if website exists
+                if (!await WebsiteExistsAsync(serverName, siteName, cancellationToken))
+                {
+                    return Result.Failure($"Website '{siteName}' does not exist on server {serverName}.");
+                }
+
                 var currentState = await GetWebsiteStateAsync(serverName, siteName, cancellationToken);
                 if (currentState == "Started")
                 {
@@ -164,7 +185,7 @@ public class WindowsIisManager : IIisManager
                 }
 
                 var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken);
-                return success 
+                return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start website {siteName}.");
             }
@@ -192,6 +213,12 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
+                // Check if website exists
+                if (!await WebsiteExistsAsync(serverName, siteName, cancellationToken))
+                {
+                    return Result.Failure($"Website '{siteName}' does not exist on server {serverName}.");
+                }
+
                 var currentState = await GetWebsiteStateAsync(serverName, siteName, cancellationToken);
                 if (currentState == "Stopped")
                 {
@@ -207,7 +234,7 @@ public class WindowsIisManager : IIisManager
                 }
 
                 var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken);
-                return success 
+                return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop website {siteName}.");
             }
@@ -510,6 +537,20 @@ public class WindowsIisManager : IIisManager
         var script = $"(Get-Website -Name '{siteName}').State";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
+    }
+
+    private async Task<bool> AppPoolExistsAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
+    {
+        var script = $"Test-Path 'IIS:\\AppPools\\{poolName}'";
+        var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
+        return result?.Trim().Equals("True", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    private async Task<bool> WebsiteExistsAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
+    {
+        var script = $"Test-Path 'IIS:\\Sites\\{siteName}'";
+        var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
+        return result?.Trim().Equals("True", StringComparison.OrdinalIgnoreCase) == true;
     }
 
     private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string expression, string desiredState, string displayName, CancellationToken cancellationToken = default)

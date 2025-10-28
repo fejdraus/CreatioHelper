@@ -201,7 +201,70 @@
                             Command="{Binding RefreshAllServersStatusCommand}"
                             Height="32"
                             IsVisible="{Binding IsWindows}" />
-                    <TextBlock Text="Target servers path:" />
+
+                    <!-- Syncthing buttons: Settings and Web UI -->
+                    <Grid ColumnDefinitions="*,Auto" >
+                        <Button Grid.Column="0"
+                                Content="{Binding SyncModeButtonText}"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Click="SyncthingSettings_Click" />
+                        <Button Grid.Column="1"
+                                Content="🌐" FontSize="20" Padding="2"
+                                Margin="5,0,0,0"
+                                Click="OpenSyncthingWeb_Click"
+                                ToolTip.Tip="Open Syncthing Web UI"
+                                Height="32"
+                                IsVisible="{Binding UseSyncthingForSync}"
+                                IsEnabled="{Binding HasSyncthingApiUrl}" />
+                    </Grid>
+
+                    <!-- Syncthing Bulk Operations: Start/Stop All -->
+                    <Grid ColumnDefinitions="*,*"
+                          IsVisible="{Binding CanUseSyncthingBulkOperations}">
+                        <Button Grid.Column="0"
+                                Content="▶️ Resume Sync"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Margin="0,0,2.5,0"
+                                Command="{Binding ResumeAllSyncthingFoldersCommand}"
+                                ToolTip.Tip="Resume synchronization for all configured Syncthing folders" />
+                        <Button Grid.Column="1"
+                                Content="⏸️ Pause Sync"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Margin="2.5,0,0,0"
+                                Command="{Binding PauseAllSyncthingFoldersCommand}"
+                                ToolTip.Tip="Pause synchronization for all configured Syncthing folders" />
+                    </Grid>
+
+                    <!-- IIS Bulk Operations: Start/Stop All Sites and Pools -->
+                    <Grid ColumnDefinitions="*,*"
+                          IsVisible="{Binding CanUseIisBulkOperations}">
+                        <Button Grid.Column="0"
+                                Content="▶️ Start All IIS"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Margin="0,0,2.5,0"
+                                Command="{Binding StartAllIisCommand}"
+                                ToolTip.Tip="Start all IIS sites and application pools" />
+                        <Button Grid.Column="1"
+                                Content="⏸️ Stop All IIS"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Margin="2.5,0,0,0"
+                                Command="{Binding StopAllIisCommand}"
+                                ToolTip.Tip="Stop all IIS sites and application pools" />
+                    </Grid>
+
+                    <TextBlock Text="Target servers:"
+                               FontWeight="Bold"
+                               Margin="0,0,0,5"/>
                 </StackPanel>
 
                 <!-- Bottom section: scrollable server list -->
@@ -219,7 +282,7 @@
                                                 IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
-                                                   MaxWidth="150" ToolTip.Tip="{Binding NetworkPath}"
+                                                   Width="250" ToolTip.Tip="{Binding NetworkPath}"
                                                    PointerPressed="ServerName_DoubleClick" />
                                         <Button Content="🔄" FontSize="20" Padding="2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RefreshServerStatusCommand, FallbackValue={x:Null}}"
@@ -263,6 +326,16 @@
                                                    Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" 
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    
+                                    <StackPanel Orientation="Horizontal" MaxWidth="310"
+                                                IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).UseSyncthingForSync}">
+                                        <TextBlock Text="Syncthing: " FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
+                                        <TextBlock Text="{Binding SyncthingStatus}"
+                                                   FontSize="11"
+                                                   FontWeight="Bold"
+                                                   Foreground="{Binding SyncthingStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"
+                                                   VerticalAlignment="Center"/>
                                     </StackPanel>
 
                                     <!-- Buttons to control pool and site -->
