@@ -11,6 +11,7 @@ public class DtoServerInfo : INotifyPropertyChanged
     private string? _poolName;
     private string? _siteName;
     private string? _syncthingFolderId;
+    private List<string> _syncthingFolderIds = new();
     private string? _syncthingDeviceId;
     private ServerSyncType _syncType = ServerSyncType.None;
 
@@ -41,6 +42,7 @@ public class DtoServerInfo : INotifyPropertyChanged
 
     /// <summary>
     /// Syncthing folder ID for this server (e.g., "default")
+    /// DEPRECATED: Use SyncthingFolderIds for multi-folder support
     /// </summary>
     public string? SyncthingFolderId
     {
@@ -48,6 +50,22 @@ public class DtoServerInfo : INotifyPropertyChanged
         set
         {
             if (SetField(ref _syncthingFolderId, value))
+            {
+                OnPropertyChanged(nameof(HasSyncthingConfig));
+            }
+        }
+    }
+
+    /// <summary>
+    /// List of Syncthing folder IDs for this server (e.g., ["default", "bin-folder"])
+    /// Supports multiple folders per server
+    /// </summary>
+    public List<string> SyncthingFolderIds
+    {
+        get => _syncthingFolderIds;
+        set
+        {
+            if (SetField(ref _syncthingFolderIds, value))
             {
                 OnPropertyChanged(nameof(HasSyncthingConfig));
             }
@@ -79,10 +97,10 @@ public class DtoServerInfo : INotifyPropertyChanged
     }
 
     /// <summary>
-    /// Returns "Yes" if both Syncthing Device ID and Folder ID are configured, "No" otherwise
+    /// Returns "Yes" if both Syncthing Device ID and at least one Folder ID are configured, "No" otherwise
     /// </summary>
     public string HasSyncthingConfig =>
-        !string.IsNullOrEmpty(SyncthingDeviceId) && !string.IsNullOrEmpty(SyncthingFolderId)
+        !string.IsNullOrEmpty(SyncthingDeviceId) && SyncthingFolderIds.Count > 0
             ? "Yes"
             : "No";
 

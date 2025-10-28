@@ -1,4 +1,6 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Enums;
@@ -9,14 +11,19 @@ public class AddServerViewModel : INotifyPropertyChanged
 {
     private readonly bool _useSyncthingForSync;
     private readonly bool _enableFileCopySync;
+    private string _newFolderId = string.Empty;
 
     public ServerInfo Server { get; }
+    public ObservableCollection<string> SyncthingFolderIds { get; }
 
     public AddServerViewModel(ServerInfo? server = null, bool useSyncthingForSync = false, bool enableFileCopySync = false)
     {
         Server = server ?? new ServerInfo();
         _useSyncthingForSync = useSyncthingForSync;
         _enableFileCopySync = enableFileCopySync;
+
+        // Initialize ObservableCollection from Server's list
+        SyncthingFolderIds = new ObservableCollection<string>(Server.SyncthingFolderIds ?? new List<string>());
     }
 
     // Visibility properties based on global sync settings
@@ -57,6 +64,55 @@ public class AddServerViewModel : INotifyPropertyChanged
     {
         get => Server.SyncthingFolderId ?? string.Empty;
         set { Server.SyncthingFolderId = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
+    }
+
+    /// <summary>
+    /// Text box for adding new folder ID
+    /// </summary>
+    public string NewFolderId
+    {
+        get => _newFolderId;
+        set
+        {
+            _newFolderId = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanAddFolder));
+        }
+    }
+
+    /// <summary>
+    /// Can add folder if text is not empty and not already in list
+    /// </summary>
+    public bool CanAddFolder => !string.IsNullOrWhiteSpace(NewFolderId) && !SyncthingFolderIds.Contains(NewFolderId.Trim());
+
+    /// <summary>
+    /// Returns true if there are folders in the list
+    /// </summary>
+    public bool HasFolders => SyncthingFolderIds.Count > 0;
+
+    /// <summary>
+    /// Add new folder ID to the list (at the beginning)
+    /// </summary>
+    public void AddFolderId()
+    {
+        if (!CanAddFolder)
+            return;
+
+        var folderId = NewFolderId.Trim();
+        SyncthingFolderIds.Insert(0, folderId); // Insert at the beginning instead of Add
+        NewFolderId = string.Empty;
+        OnPropertyChanged(nameof(CanAddFolder));
+        OnPropertyChanged(nameof(HasFolders));
+    }
+
+    /// <summary>
+    /// Remove folder ID from the list
+    /// </summary>
+    public void RemoveFolderId(string folderId)
+    {
+        SyncthingFolderIds.Remove(folderId);
+        OnPropertyChanged(nameof(CanAddFolder));
+        OnPropertyChanged(nameof(HasFolders));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -101,11 +157,14 @@ public class AddServerViewModel : INotifyPropertyChanged
                 return false;
             }
 
-            if (string.IsNullOrWhiteSpace(SyncthingFolderId))
+            if (SyncthingFolderIds.Count == 0)
             {
-                validationError = "Please enter the Syncthing Folder ID.";
+                validationError = "Please add at least one Syncthing Folder ID.";
                 return false;
             }
+
+            // Copy folder IDs back to Server object before validation completes
+            Server.SyncthingFolderIds = new List<string>(SyncthingFolderIds);
         }
 
         validationError = null;

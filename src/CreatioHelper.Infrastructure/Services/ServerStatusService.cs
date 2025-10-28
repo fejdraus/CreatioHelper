@@ -57,7 +57,7 @@ public class ServerStatusService : IServerStatusService
                 // Check Syncthing status if monitor is configured
                 if (_syncthingMonitor != null &&
                     !string.IsNullOrEmpty(server.SyncthingDeviceId) &&
-                    !string.IsNullOrEmpty(server.SyncthingFolderId))
+                    server.SyncthingFolderIds.Count > 0)
                 {
                     try
                     {
@@ -73,7 +73,7 @@ public class ServerStatusService : IServerStatusService
                 }
                 else
                 {
-                    server.SyncthingStatus = string.IsNullOrEmpty(server.SyncthingDeviceId) || string.IsNullOrEmpty(server.SyncthingFolderId)
+                    server.SyncthingStatus = string.IsNullOrEmpty(server.SyncthingDeviceId) || server.SyncthingFolderIds.Count == 0
                         ? "⚙️ Not Configured"
                         : "⏸️ Monitor Disabled";
                 }

@@ -26,8 +26,8 @@ public class SystemMetricsCollector : BackgroundService
             if (OperatingSystem.IsWindows())
             {
                 // Initialize performance counters for Windows
-                _cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-                _memoryCounter = new PerformanceCounter("Memory", "Available MBytes");
+                _cpuCounter = new System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total");
+                _memoryCounter = new System.Diagnostics.PerformanceCounter("Memory", "Available MBytes");
                 
                 // First NextValue() call initializes counters
                 _cpuCounter.NextValue();

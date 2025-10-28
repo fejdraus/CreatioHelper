@@ -33,7 +33,6 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="📁 File Copy Synchronization"
                            FontWeight="Bold"
-                           FontSize="13"
                            Foreground="#4CAF50"/>
 
                 <TextBlock Text="Network path to site:" />
@@ -52,18 +51,62 @@
             <StackPanel Spacing="8">
                 <TextBlock Text="📡 Syncthing Synchronization"
                            FontWeight="Bold"
-                           FontSize="13"
                            Foreground="#4A90E2"/>
 
                 <TextBlock Text="Syncthing Device ID:" />
                 <TextBox Text="{Binding SyncthingDeviceId, Mode=TwoWay}"
-                         Watermark="e.g., XXXXXXX-YYYYYYY-ZZZZZZZ-AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE"
-                         FontSize="11"/>
+                         Watermark="e.g., XXXXXXX-YYYYYYY-ZZZZZZZ-AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE"/>
 
-                <TextBlock Text="Syncthing Folder ID:" />
-                <TextBox Text="{Binding SyncthingFolderId, Mode=TwoWay}"
-                         Watermark="e.g., default (or custom folder ID from Syncthing)"
-                         FontSize="11"/>
+                <TextBlock Text="Syncthing Folder IDs:" Margin="0,8,0,0"/>
+
+                <!-- Add new folder section -->
+                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding NewFolderId, Mode=TwoWay}"
+                             Watermark="Enter folder ID (e.g., default, bin-folder)"
+                             Margin="0,0,8,0"/>
+                    <Button Grid.Column="1"
+                            Content="Add"
+                            Click="AddFolderButton_Click"
+                            IsEnabled="{Binding CanAddFolder}"
+                            Width="60"/>
+                </Grid>
+
+                <!-- Scrollable folder list -->
+                <Border BorderBrush="#E0E0E0"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        MaxHeight="150"
+                        IsVisible="{Binding HasFolders}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto"
+                                  Name="FolderListScrollViewer">
+                        <ItemsControl ItemsSource="{Binding SyncthingFolderIds}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E0E0E0"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="8,4">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding}"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Content="Remove"
+                                                    Padding="6,2"
+                                                    Click="RemoveFolderButton_Click"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
             </StackPanel>
         </Border>
 
