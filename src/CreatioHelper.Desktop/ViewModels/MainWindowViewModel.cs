@@ -52,7 +52,10 @@ public partial class MainWindowViewModel : ObservableObject
         _operationsService.PropertyChanged += (_, args) =>
         {
             if (args.PropertyName == nameof(IOperationsService.IsBusy))
+            {
                 OnPropertyChanged(nameof(IsBusy));
+                OnPropertyChanged(nameof(AreControlsEnabled));
+            }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
                 OnPropertyChanged(nameof(StartButtonText));
             else if (args.PropertyName == nameof(IOperationsService.IsStopButtonEnabled))
@@ -225,9 +228,17 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isLogToFileEnabled;
-    
+
     [ObservableProperty]
     private bool _isServerControlsEnabled = true;
+
+    [ObservableProperty]
+    private bool _isLoadingServerStatuses = false;
+
+    partial void OnIsLoadingServerStatusesChanged(bool value)
+    {
+        OnPropertyChanged(nameof(AreControlsEnabled));
+    }
 
     [ObservableProperty]
     private bool _enableFileCopySynchronization = true;
@@ -248,6 +259,11 @@ public partial class MainWindowViewModel : ObservableObject
     private string? _redisServiceName;
 
     public bool IsBusy => _operationsService.IsBusy;
+
+    /// <summary>
+    /// Returns true when UI controls should be enabled (not busy and not loading statuses)
+    /// </summary>
+    public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses;
 
     public string SyncModeButtonText
     {
@@ -324,7 +340,16 @@ public partial class MainWindowViewModel : ObservableObject
         {
             return;
         }
-        await _statusService.RefreshMultipleServerStatusAsync(ServerList.ToArray());
+
+        try
+        {
+            IsLoadingServerStatuses = true;
+            await _statusService.RefreshMultipleServerStatusAsync(ServerList.ToArray());
+        }
+        finally
+        {
+            IsLoadingServerStatuses = false;
+        }
     }
     
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -1121,12 +1146,30 @@ public partial class MainWindowViewModel : ObservableObject
 
                     if (syncthingServers.Any())
                     {
+                        // Block buttons during initial status refresh
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            IsLoadingServerStatuses = true;
+                        });
+
                         await _statusService.RefreshMultipleServerStatusAsync(syncthingServers, CancellationToken.None);
+
+                        // Unblock buttons after refresh
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            IsLoadingServerStatuses = false;
+                        });
                     }
                 }
                 catch (Exception ex)
                 {
                     _output.WriteLine($"[ERROR] Failed to perform initial status refresh: {ex.Message}");
+
+                    // Ensure buttons are unblocked even on error
+                    await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        IsLoadingServerStatuses = false;
+                    });
                 }
             });
         }
