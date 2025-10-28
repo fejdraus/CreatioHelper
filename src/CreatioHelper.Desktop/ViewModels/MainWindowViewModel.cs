@@ -665,6 +665,7 @@ public partial class MainWindowViewModel : ObservableObject
                 PoolName = s.PoolName,
                 SiteName = s.SiteName,
                 SyncthingFolderId = s.SyncthingFolderId,
+                SyncthingFolderIds = new List<string>(s.SyncthingFolderIds),
                 SyncthingDeviceId = s.SyncthingDeviceId
             })),
             IsIisMode = IsIisMode,
@@ -827,7 +828,7 @@ public partial class MainWindowViewModel : ObservableObject
         UseSyncthingForSync &&
         !string.IsNullOrEmpty(SyncthingApiUrl) &&
         !string.IsNullOrEmpty(SyncthingApiKey) &&
-        ServerList.Any(s => !string.IsNullOrEmpty(s.SyncthingFolderId));
+        ServerList.Any(s => s.SyncthingFolderIds.Count > 0);
 
     public IAsyncRelayCommand ResumeAllSyncthingFoldersCommand { get; }
     public IAsyncRelayCommand PauseAllSyncthingFoldersCommand { get; }
@@ -841,7 +842,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         var serversWithSyncthing = ServerList
-            .Where(s => !string.IsNullOrEmpty(s.SyncthingFolderId))
+            .Where(s => s.SyncthingFolderIds.Count > 0)
             .ToList();
 
         if (!serversWithSyncthing.Any())
@@ -850,7 +851,9 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _output.WriteLine($"[INFO] ▶️ Resuming synchronization for {serversWithSyncthing.Count} Syncthing folders...");
+        // Count total folders across all servers
+        var totalFolders = serversWithSyncthing.Sum(s => s.SyncthingFolderIds.Count);
+        _output.WriteLine($"[INFO] ▶️ Resuming synchronization for {totalFolders} Syncthing folders across {serversWithSyncthing.Count} servers...");
 
         var monitor = _operationsService.GetSyncthingMonitor();
         if (monitor == null)
@@ -862,14 +865,17 @@ public partial class MainWindowViewModel : ObservableObject
         var successCount = 0;
         foreach (var server in serversWithSyncthing)
         {
-            var result = await monitor.ResumeFolderAsync(server.SyncthingFolderId!, CancellationToken.None);
-            if (result)
+            foreach (var folderId in server.SyncthingFolderIds)
             {
-                successCount++;
+                var result = await monitor.ResumeFolderAsync(folderId, CancellationToken.None);
+                if (result)
+                {
+                    successCount++;
+                }
             }
         }
 
-        _output.WriteLine($"[OK] ✅ Resumed {successCount}/{serversWithSyncthing.Count} folders");
+        _output.WriteLine($"[OK] ✅ Resumed {successCount}/{totalFolders} folders");
 
         // Refresh status for all servers
         await Task.Delay(1000); // Give Syncthing a moment to update
@@ -885,7 +891,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         var serversWithSyncthing = ServerList
-            .Where(s => !string.IsNullOrEmpty(s.SyncthingFolderId))
+            .Where(s => s.SyncthingFolderIds.Count > 0)
             .ToList();
 
         if (!serversWithSyncthing.Any())
@@ -894,7 +900,9 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _output.WriteLine($"[INFO] ⏸️ Pausing synchronization for {serversWithSyncthing.Count} Syncthing folders...");
+        // Count total folders across all servers
+        var totalFolders = serversWithSyncthing.Sum(s => s.SyncthingFolderIds.Count);
+        _output.WriteLine($"[INFO] ⏸️ Pausing synchronization for {totalFolders} Syncthing folders across {serversWithSyncthing.Count} servers...");
 
         var monitor = _operationsService.GetSyncthingMonitor();
         if (monitor == null)
@@ -906,10 +914,13 @@ public partial class MainWindowViewModel : ObservableObject
         var successCount = 0;
         foreach (var server in serversWithSyncthing)
         {
-            var result = await monitor.PauseFolderAsync(server.SyncthingFolderId!, CancellationToken.None);
-            if (result)
+            foreach (var folderId in server.SyncthingFolderIds)
             {
-                successCount++;
+                var result = await monitor.PauseFolderAsync(folderId, CancellationToken.None);
+                if (result)
+                {
+                    successCount++;
+                }
             }
         }
 
@@ -1130,20 +1141,28 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private void UpdateServerStateFromEvent(StateChangedEventData data)
     {
-        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderId == data.Folder);
+        // Find server that contains this folder ID
+        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderIds.Contains(data.Folder));
         if (server == null)
             return;
 
-        server.SyncthingCurrentState = data.To;
+        // Update folder-specific state
+        server.UpdateFolderSyncState(
+            data.Folder,
+            server.SyncthingCompletionPercent, // Keep existing completion
+            server.SyncthingNeedBytes, // Keep existing bytes
+            server.SyncthingNeedItems, // Keep existing items
+            data.To); // Update state
 
-        // Update status text based on new state
-        server.SyncthingStatus = data.To switch
+        // Aggregated state is automatically recalculated in UpdateFolderSyncState
+        // Update status text based on aggregated state
+        server.SyncthingStatus = server.SyncthingCurrentState switch
         {
             "idle" => server.SyncthingCompletionPercent >= 100 ? "✅ Up to Date" : "⏸️ Idle",
             "scanning" => "🔍 Scanning",
             "syncing" => $"🔄 Syncing ({server.SyncthingCompletionPercent:F1}%)",
             "error" => "❌ Error",
-            _ => data.To
+            _ => server.SyncthingCurrentState
         };
     }
 
@@ -1152,21 +1171,27 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private void UpdateServerCompletionFromEvent(FolderCompletionEventData data)
     {
+        // Find server that contains this folder ID and has matching device ID
         var server = ServerList.FirstOrDefault(s =>
-            s.SyncthingFolderId == data.Folder &&
+            s.SyncthingFolderIds.Contains(data.Folder) &&
             s.SyncthingDeviceId == data.Device);
 
         if (server == null)
             return;
 
-        server.SyncthingCompletionPercent = data.Completion;
-        server.SyncthingNeedBytes = data.NeedBytes;
-        server.SyncthingNeedItems = data.NeedItems;
+        // Update folder-specific state with new completion data
+        server.UpdateFolderSyncState(
+            data.Folder,
+            data.Completion,
+            data.NeedBytes,
+            data.NeedItems,
+            server.SyncthingCurrentState); // Keep existing state
 
-        // Update status text
-        if (data.NeedBytes > 0 || data.NeedItems > 0)
+        // Aggregated values are automatically recalculated in UpdateFolderSyncState
+        // Update status text based on aggregated values
+        if (server.SyncthingNeedBytes > 0 || server.SyncthingNeedItems > 0)
         {
-            server.SyncthingStatus = $"🔄 Syncing ({data.Completion:F1}%)";
+            server.SyncthingStatus = $"🔄 Syncing ({server.SyncthingCompletionPercent:F1}%)";
         }
         else
         {
@@ -1182,7 +1207,8 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private void UpdateServerLastSyncedFile(ItemFinishedEventData data)
     {
-        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderId == data.Folder);
+        // Find server that contains this folder ID
+        var server = ServerList.FirstOrDefault(s => s.SyncthingFolderIds.Contains(data.Folder));
         if (server == null)
             return;
 
@@ -1191,7 +1217,15 @@ public partial class MainWindowViewModel : ObservableObject
         {
             // Extract filename from path
             var fileName = System.IO.Path.GetFileName(data.Item);
-            server.SyncthingLastSyncedFile = fileName;
+
+            // Update folder-specific state with last synced file
+            server.UpdateFolderSyncState(
+                data.Folder,
+                server.SyncthingCompletionPercent, // Keep existing values
+                server.SyncthingNeedBytes,
+                server.SyncthingNeedItems,
+                server.SyncthingCurrentState,
+                fileName); // Update last synced file
         }
     }
 
