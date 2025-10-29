@@ -247,7 +247,7 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _useSyncthingForSync = false;
 
     [ObservableProperty]
-    private string? _syncthingApiUrl = "http://localhost:8384";
+    private string? _syncthingApiUrl;
 
     [ObservableProperty]
     private string? _syncthingApiKey;
@@ -1059,10 +1059,14 @@ public partial class MainWindowViewModel : ObservableObject
             _syncthingEventsListener.Dispose();
             _syncthingEventsListener = null;
         }
+        
+        if (!UseSyncthingForSync)
+        {
+            return;
+        }
 
         // Only start if Syncthing is enabled and configured
-        if (!UseSyncthingForSync ||
-            string.IsNullOrEmpty(SyncthingApiUrl) ||
+        if (string.IsNullOrEmpty(SyncthingApiUrl) ||
             string.IsNullOrEmpty(SyncthingApiKey))
         {
             _output.WriteLine("[INFO] Syncthing Events Listener not started (not configured)");
