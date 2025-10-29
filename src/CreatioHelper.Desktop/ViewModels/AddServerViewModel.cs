@@ -3,7 +3,6 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Entities;
-using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.ViewModels;
 
@@ -58,12 +57,6 @@ public class AddServerViewModel : INotifyPropertyChanged
     {
         get => Server.SyncthingDeviceId ?? string.Empty;
         set { Server.SyncthingDeviceId = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
-    }
-
-    public string SyncthingFolderId
-    {
-        get => Server.SyncthingFolderId ?? string.Empty;
-        set { Server.SyncthingFolderId = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
     }
 
     /// <summary>

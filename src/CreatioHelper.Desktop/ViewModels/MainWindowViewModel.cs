@@ -85,11 +85,6 @@ public partial class MainWindowViewModel : ObservableObject
             var handler = new PropertyChangedEventHandler((_, args) =>
             {
                 SaveServerSettings();
-                // Notify when SyncthingFolderId changes
-                if (args.PropertyName == nameof(ServerInfo.SyncthingFolderId))
-                {
-                    OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
-                }
                 // Notify when IIS properties change
                 if (args.PropertyName == nameof(ServerInfo.PoolName) || args.PropertyName == nameof(ServerInfo.SiteName))
                 {
@@ -109,11 +104,6 @@ public partial class MainWindowViewModel : ObservableObject
                     var handler = new PropertyChangedEventHandler((_, args) =>
                     {
                         SaveServerSettings();
-                        // Notify when SyncthingFolderId changes
-                        if (args.PropertyName == nameof(ServerInfo.SyncthingFolderId))
-                        {
-                            OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
-                        }
                         // Notify when IIS properties change
                         if (args.PropertyName == nameof(ServerInfo.PoolName) || args.PropertyName == nameof(ServerInfo.SiteName))
                         {
@@ -689,7 +679,6 @@ public partial class MainWindowViewModel : ObservableObject
                 NetworkPath = s.NetworkPath,
                 PoolName = s.PoolName,
                 SiteName = s.SiteName,
-                SyncthingFolderId = s.SyncthingFolderId,
                 SyncthingFolderIds = new List<string>(s.SyncthingFolderIds),
                 SyncthingDeviceId = s.SyncthingDeviceId
             })),
@@ -1145,7 +1134,7 @@ public partial class MainWindowViewModel : ObservableObject
 
                     var syncthingServers = ServerList
                         .Where(s => !string.IsNullOrEmpty(s.SyncthingDeviceId) &&
-                                   !string.IsNullOrEmpty(s.SyncthingFolderId))
+                                   s.SyncthingFolderIds.Count > 0)
                         .ToArray();
 
                     if (syncthingServers.Any())
