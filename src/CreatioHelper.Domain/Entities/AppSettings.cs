@@ -31,9 +31,10 @@ public class AppSettings
     public bool UseSyncthingForSync { get; set; } = false;
 
     /// <summary>
-    /// Syncthing REST API URL (typically http://localhost:8384)
+    /// Syncthing REST API URL (e.g., http://localhost:8384)
+    /// User must configure this explicitly
     /// </summary>
-    public string? SyncthingApiUrl { get; set; } = "http://localhost:8384";
+    public string? SyncthingApiUrl { get; set; }
 
     /// <summary>
     /// Syncthing REST API key (X-API-Key header)
