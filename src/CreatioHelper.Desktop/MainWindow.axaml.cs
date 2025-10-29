@@ -207,7 +207,6 @@ namespace CreatioHelper
                     SiteName = server.SiteName,
                     PoolName = server.PoolName,
                     SyncthingDeviceId = server.SyncthingDeviceId,
-                    SyncthingFolderId = server.SyncthingFolderId,
                     SyncthingFolderIds = new List<string>(server.SyncthingFolderIds)
                 };
                 var editWindow = new AddServerWindow(clone, vm.UseSyncthingForSync, vm.EnableFileCopySynchronization);
@@ -218,7 +217,6 @@ namespace CreatioHelper
                 server.SiteName = updated.SiteName;
                 server.PoolName = updated.PoolName;
                 server.SyncthingDeviceId = updated.SyncthingDeviceId;
-                server.SyncthingFolderId = updated.SyncthingFolderId;
                 server.SyncthingFolderIds = new List<string>(updated.SyncthingFolderIds);
             }
         }
