@@ -26,6 +26,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IMetricsService _metricsService;
     private readonly ISyncthingMonitorService? _syncthingMonitor;
+    private readonly IServerStatusService _statusService;
 
     [ObservableProperty]
     private bool _isBusy;
@@ -43,6 +44,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         IWorkspacePreparer workspacePreparer,
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService,
+        IServerStatusService statusService,
         ISyncthingMonitorService? syncthingMonitor = null)
     {
         _output = output;
@@ -51,6 +53,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _workspacePreparer = workspacePreparer;
         _redisManagerFactory = redisManagerFactory;
         _metricsService = metricsService;
+        _statusService = statusService;
         _syncthingMonitor = syncthingMonitor;
     }
 
@@ -264,6 +267,17 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         _output.WriteLine("[OK] Schema regeneration and compilation completed successfully.");
                     }
 
+                    // Clear Redis cache immediately after all operations complete (before synchronization and IIS start)
+                    // This ensures IIS pools will have clean cache when they start
+                    var redisManager = _redisManagerFactory.Create(sitePath);
+                    var redisStatus = redisManager.CheckStatus();
+                    if (redisStatus)
+                    {
+                        redisManager.Clear();
+                        _output.WriteLine("[OK] Redis cache cleared.");
+                    }
+
+                    bool usedSyncthingOrchestration = false;
                     if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
                     {
                         IsStopButtonEnabled = false;
@@ -272,8 +286,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             // Choose synchronization mode based on settings
                             if (viewModel.UseSyncthingForSync && _syncthingMonitor != null)
                             {
-                                // Syncthing orchestration mode
+                                // Syncthing orchestration mode (servers are started automatically after sync completion)
                                 await PerformSyncthingOrchestrationAsync(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                                usedSyncthingOrchestration = true;
                             }
                             else if (viewModel.EnableFileCopySynchronization)
                             {
@@ -302,36 +317,34 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         IsStopButtonEnabled = true;
                     }
 
-                    var redisManager = _redisManagerFactory.Create(sitePath);
-                    var redisStatus = redisManager.CheckStatus();
-                    if (redisStatus)
-                    {
-                        redisManager.Clear();
-                    }
-
                     IsStopButtonEnabled = false;
 
-                    // Determine whether to start all servers (rebuild scenario with remote servers) or just local server
-                    bool rebuildPerformed = string.IsNullOrWhiteSpace(packagesPath) &&
-                                           string.IsNullOrWhiteSpace(packagesBefore) &&
-                                           string.IsNullOrWhiteSpace(packagesAfter);
-                    bool hasRemoteServers = viewModel.IsServerPanelVisible && serverList.Length > 0;
-
-                    // Measure startup operation time
-                    await _metricsService.MeasureAsync("startup_operations", async () =>
+                    // Start IIS pools/sites only if Syncthing orchestration was NOT used
+                    // (Syncthing orchestration starts servers automatically after sync completion)
+                    if (!usedSyncthingOrchestration)
                     {
-                        if (rebuildPerformed && hasRemoteServers)
+                        // Determine whether to start all servers (rebuild scenario with remote servers) or just local server
+                        bool rebuildPerformed = string.IsNullOrWhiteSpace(packagesPath) &&
+                                               string.IsNullOrWhiteSpace(packagesBefore) &&
+                                               string.IsNullOrWhiteSpace(packagesAfter);
+                        bool hasRemoteServers = viewModel.IsServerPanelVisible && serverList.Length > 0;
+
+                        // Measure startup operation time
+                        await _metricsService.MeasureAsync("startup_operations", async () =>
                         {
-                            // Schema rebuild was performed with remote servers - start all servers
-                            await StartAllServersAfterRebuild(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
-                        }
-                        else
-                        {
-                            // Normal flow - just start local server
-                            await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
-                        }
-                        return Task.CompletedTask;
-                    }).ConfigureAwait(false);
+                            if (rebuildPerformed && hasRemoteServers)
+                            {
+                                // Schema rebuild was performed with remote servers - start all servers
+                                await StartAllServersAfterRebuild(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                            }
+                            else
+                            {
+                                // Normal flow - just start local server
+                                await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+                            }
+                            return Task.CompletedTask;
+                        }).ConfigureAwait(false);
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -664,6 +677,13 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
         _output.WriteLine("[OK] Server pool management completed (external sync mode).");
         _metricsService.IncrementCounter("pool_management_completed");
+
+        // Refresh status for all servers
+        if (OperatingSystem.IsWindows())
+        {
+            await Task.Delay(1000, cancellationToken); // Give IIS a moment to update
+            await _statusService.RefreshMultipleServerStatusAsync(targetServers.ToArray(), cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>
@@ -795,6 +815,13 @@ public partial class OperationsService : ObservableObject, IOperationsService
         }
 
         _output.WriteLine("[OK] All servers (local + remote) started successfully.");
+
+        // Refresh status for all servers
+        if (OperatingSystem.IsWindows())
+        {
+            await Task.Delay(1000, cancellationToken); // Give IIS a moment to update
+            await _statusService.RefreshMultipleServerStatusAsync(remoteServers, cancellationToken).ConfigureAwait(false);
+        }
     }
 
     /// <summary>

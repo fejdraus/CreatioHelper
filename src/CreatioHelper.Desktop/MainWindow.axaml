@@ -278,11 +278,11 @@
                                     <StackPanel Orientation="Horizontal" Spacing="5">
                                         <Button Content="✖"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RemoveServerCommand, FallbackValue={x:Null}}"
-                                                CommandParameter="{Binding .}" 
+                                                CommandParameter="{Binding .}"
                                                 IsEnabled="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).IsServerControlsEnabled, FallbackValue=True}"/>
                                         <TextBlock Text="{Binding Name}" VerticalAlignment="Center"
                                                    TextTrimming="CharacterEllipsis"
-                                                   Width="250" ToolTip.Tip="{Binding NetworkPath}"
+                                                   Width="230" ToolTip.Tip="{Binding NetworkPath}"
                                                    PointerPressed="ServerName_DoubleClick" />
                                         <Button Content="🔄" FontSize="20" Padding="2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).RefreshServerStatusCommand, FallbackValue={x:Null}}"
