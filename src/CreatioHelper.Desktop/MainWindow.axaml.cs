@@ -82,7 +82,7 @@ namespace CreatioHelper
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
 
             // SyncthingMonitorService will be created dynamically when needed
-            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, null);
+            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, statusService, null);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
 
