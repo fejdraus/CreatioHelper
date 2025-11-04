@@ -1,6 +1,8 @@
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using System;
+using System.Net.Http;
+using System.Net.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Extensions;
@@ -44,6 +46,20 @@ public partial class App : Avalonia.Application
         services.AddHttpClient("Syncthing", client =>
         {
             client.Timeout = TimeSpan.FromSeconds(30);
+        })
+        .ConfigurePrimaryHttpMessageHandler(() =>
+        {
+            var handler = new SocketsHttpHandler
+            {
+                // Accept any certificate; Syncthing uses self-signed certs by default
+                SslOptions =
+                {
+                    RemoteCertificateValidationCallback = static (_, _, _, _) => true
+                },
+                AllowAutoRedirect = true,
+                PooledConnectionLifetime = TimeSpan.FromMinutes(10)
+            };
+            return handler;
         });
 
         services.AddApplication();
