@@ -111,15 +111,7 @@ public class SyncthingEventsListener : IDisposable
             {
                 // Build request URL with event filters
                 // We're interested in: StateChanged, FolderCompletion, ItemStarted, ItemFinished, DeviceConnected, DeviceDisconnected
-                var eventTypes = string.Join(",", new[]
-                {
-                    "StateChanged",
-                    "FolderCompletion",
-                    "ItemStarted",
-                    "ItemFinished",
-                    "DeviceConnected",
-                    "DeviceDisconnected"
-                });
+                var eventTypes = string.Join(",", "StateChanged", "FolderCompletion", "ItemStarted", "ItemFinished", "DeviceConnected", "DeviceDisconnected");
 
                 var url = $"/rest/events?since={_lastEventId}&events={eventTypes}&timeout=60";
 
@@ -140,13 +132,11 @@ public class SyncthingEventsListener : IDisposable
                     PropertyNameCaseInsensitive = true
                 });
 
-                if (events != null && events.Count > 0)
+                if (events is not { Count: > 0 }) continue;
+                foreach (var evt in events)
                 {
-                    foreach (var evt in events)
-                    {
-                        _lastEventId = evt.Id;
-                        ProcessEvent(evt);
-                    }
+                    _lastEventId = evt.Id;
+                    ProcessEvent(evt);
                 }
             }
             catch (OperationCanceledException)
