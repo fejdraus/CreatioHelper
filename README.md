@@ -5,6 +5,7 @@
 ## Key Features
 
 ### Desktop Application
+
 - **Package Management**: Install, update, and remove Creatio packages with automated workflows
 - **Schema Rebuild**: Regenerate and compile schema sources via WorkspaceConsole integration
 - **IIS Management**: Automatic start/stop of IIS sites and application pools during operations
@@ -19,9 +20,10 @@
   - Automatic remote server management (IIS sites/pools)
 
 ### Agent Service
+
 - **HTTP API**: Remote control and monitoring of Creatio instances
 - **Automation**: Scriptable deployments and operations
-- **Built-in Sync** *(in development)*: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
+- **Built-in Sync** _(in development)_: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
 
@@ -131,7 +133,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 
 ---
 
-## ![Ukraine](https://flagcdn.com/16x12/ua.png) Support the Armed Forces of Ukraine (ZSU)
+## ![Ukraine](https://flagcdn.com/48x36/ua.png) Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
 All funds raised via the links below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** and defenders on the front line.
@@ -145,4 +147,4 @@ All funds raised via the links below will be **fully transferred to support the 
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
-**Glory to Ukraine! Glory to the Heroes!** ![Ukraine](https://flagcdn.com/16x12/ua.png) 💙💛
+**Glory to Ukraine! Glory to the Heroes!** ![Ukraine](https://flagcdn.com/32x24/ua.png)
