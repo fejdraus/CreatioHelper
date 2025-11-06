@@ -11,13 +11,17 @@
 - **Redis Integration**: Automatic cache clearing after deployments
 - **Multi-Server Synchronization**: Synchronize changes across multiple Creatio instances
   - Traditional file copy synchronization
-  - **Syncthing Integration**: Real-time distributed file synchronization with multi-folder support
+  - **External Syncthing Integration**: Connect to external Syncthing instance via REST API
+    - Real-time synchronization monitoring via Events API
+    - Multi-folder support (e.g., separate folders for Terrasoft.WebApp and bin)
+    - Pause/Resume folders during operations
+    - Direct link to Syncthing Web UI
   - Automatic remote server management (IIS sites/pools)
 
 ### Agent Service
 - **HTTP API**: Remote control and monitoring of Creatio instances
 - **Automation**: Scriptable deployments and operations
-- **Syncthing-Inspired Sync**: Advanced file synchronization capabilities ([details](./SYNC_README.md))
+- **Built-in Sync** *(in development)*: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
 
@@ -47,9 +51,9 @@ All source projects are located in `src/`, and test projects in `tests/`. Main p
 
 - .NET 8 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
 - Git
-- Windows with IIS (for IIS management features)
+- Windows with IIS (for IIS management features, can also work in Folder Mode without IIS)
 - Redis (optional, for cache management)
-- Syncthing (optional, for real-time distributed synchronization)
+- [Syncthing](https://syncthing.net/) (optional, for real-time distributed file synchronization)
 
 ### Build the solution:
 
@@ -103,7 +107,7 @@ The project follows Clean Architecture principles:
 ## Documentation
 
 - **[User Guide](./USER_GUIDE.md)** - Complete guide for using CreatioHelper Desktop application
-- **[Syncthing Synchronization](./SYNC_README.md)** - Advanced file synchronization with Syncthing integration
+- **[Built-in Sync Documentation](./SYNC_README.md)** - Planned native Syncthing-inspired synchronization for Agent (in development)
 
 ## Acknowledgements
 
