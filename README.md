@@ -1,10 +1,25 @@
 # CreatioHelper
 
-**CreatioHelper** is a tool for managing Terrasoft Creatio installations via UI or API. It provides:
+**CreatioHelper** is a comprehensive cross-platform tool for managing Terrasoft Creatio installations. It streamlines development workflows through automation of routine operations and provides both GUI and API interfaces.
 
-- A graphical application for managing Creatio installations (Desktop).
-- A background service (Agent) with HTTP API for automation.
-- A clean architecture with separated business logic, infrastructure, and domain model.
+## Key Features
+
+### Desktop Application
+- **Package Management**: Install, update, and remove Creatio packages with automated workflows
+- **Schema Rebuild**: Regenerate and compile schema sources via WorkspaceConsole integration
+- **IIS Management**: Automatic start/stop of IIS sites and application pools during operations
+- **Redis Integration**: Automatic cache clearing after deployments
+- **Multi-Server Synchronization**: Synchronize changes across multiple Creatio instances
+  - Traditional file copy synchronization
+  - **Syncthing Integration**: Real-time distributed file synchronization with multi-folder support
+  - Automatic remote server management (IIS sites/pools)
+
+### Agent Service
+- **HTTP API**: Remote control and monitoring of Creatio instances
+- **Automation**: Scriptable deployments and operations
+- **Syncthing-Inspired Sync**: Advanced file synchronization capabilities ([details](./SYNC_README.md))
+
+For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
 
 ## Project Structure
 
@@ -32,6 +47,9 @@ All source projects are located in `src/`, and test projects in `tests/`. Main p
 
 - .NET 8 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
 - Git
+- Windows with IIS (for IIS management features)
+- Redis (optional, for cache management)
+- Syncthing (optional, for real-time distributed synchronization)
 
 ### Build the solution:
 
@@ -55,8 +73,10 @@ dotnet run --project src/CreatioHelper.Agent
 
 Build and test pipelines are configured with GitHub Actions:
 
-- `dotnet-build.yml` — CI pipeline: build, test, multiplatform (Windows and Linux).
-- `release-build.yml` — CD pipeline: package release builds (`.zip`) for Windows and Linux, upload to GitHub Releases.
+- `dotnet-build.yml` — CI pipeline: build, test, multiplatform (Windows and Linux)
+- `release-build.yml` — CD pipeline: package release builds (`.zip`) for Windows and Linux, upload to GitHub Releases
+
+The Desktop application is built with Avalonia, providing true cross-platform support for Windows, Linux, and macOS.
 
 ## Testing
 
@@ -80,9 +100,10 @@ The project follows Clean Architecture principles:
 - `Infrastructure` — implementation of external integrations.
 - `Desktop` and `Agent` — UI and API clients.
 
-## Wiki
+## Documentation
 
-For more information, please refer to the [Read the User Guide](./USER_GUIDE.md).
+- **[User Guide](./USER_GUIDE.md)** - Complete guide for using CreatioHelper Desktop application
+- **[Syncthing Synchronization](./SYNC_README.md)** - Advanced file synchronization with Syncthing integration
 
 ## Acknowledgements
 
