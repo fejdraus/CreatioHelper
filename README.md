@@ -131,7 +131,7 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 
 ---
 
-## 🇺🇦 💙💛 Support the Armed Forces of Ukraine (ZSU)
+## ![Ukraine](https://flagcdn.com/16x12/ua.png) Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
 All funds raised via the links below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** and defenders on the front line.
@@ -145,4 +145,4 @@ All funds raised via the links below will be **fully transferred to support the 
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
-**Glory to Ukraine! Glory to the Heroes!** 🇺🇦 💙💛
+**Glory to Ukraine! Glory to the Heroes!** ![Ukraine](https://flagcdn.com/16x12/ua.png) 💙💛
