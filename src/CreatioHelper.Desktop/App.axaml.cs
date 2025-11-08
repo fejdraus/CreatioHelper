@@ -2,7 +2,6 @@ using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using System;
 using System.Net.Http;
-using System.Net.Security;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Extensions;
