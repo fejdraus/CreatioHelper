@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Net.Http;
 using System.Text.Json;
 using System.Threading;
@@ -19,11 +18,10 @@ public class SyncthingEventsListener : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly IOutputWriter _output;
-    private readonly string _apiUrl;
-    private long _lastEventId = 0;
+    private long _lastEventId;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
-    private bool _isRunning = false;
+    private bool _isRunning;
 
     // Events for external subscription
     public event Action<StateChangedEventData>? OnStateChanged;
@@ -42,9 +40,8 @@ public class SyncthingEventsListener : IDisposable
     {
         _httpClient = httpClientFactory.CreateClient("Syncthing");
         _output = output;
-        _apiUrl = apiUrl;
 
-        _httpClient.BaseAddress = new Uri(_apiUrl);
+        _httpClient.BaseAddress = new Uri(apiUrl);
         _httpClient.Timeout = TimeSpan.FromSeconds(70); // Syncthing timeout is 60s + buffer
 
         if (!string.IsNullOrEmpty(apiKey))
@@ -81,7 +78,10 @@ public class SyncthingEventsListener : IDisposable
         _output.WriteLine("[INFO] Stopping Syncthing Events Listener");
         _isRunning = false;
 
-        _cts?.Cancel();
+        if (_cts != null)
+        {
+            await _cts.CancelAsync();
+        }
 
         if (_listenerTask != null)
         {
@@ -248,6 +248,6 @@ public class SyncthingEventsListener : IDisposable
     public void Dispose()
     {
         StopAsync().GetAwaiter().GetResult();
-        _httpClient?.Dispose();
+        _httpClient.Dispose();
     }
 }
