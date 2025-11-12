@@ -6,27 +6,53 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;
+using CreatioHelper.Services;
 
 namespace CreatioHelper;
 
 public partial class App : Avalonia.Application
 {
     public static IServiceProvider? Services { get; private set; }
+    internal static bool SuppressMainWindow { get; set; }
 
     public override void Initialize()
     {
         AvaloniaXamlLoader.Load(this);
     }
-    
+
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
+            // Skip MainWindow creation if we're just showing an error message
+            if (SuppressMainWindow)
+            {
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+
             var services = new ServiceCollection();
             ConfigureServices(services);
             Services = services.BuildServiceProvider();
 
             desktop.MainWindow = new MainWindow();
+
+            // Subscribe to single instance activation requests
+            var singleInstanceManager = Program.GetSingleInstanceManager();
+            if (singleInstanceManager != null)
+            {
+                singleInstanceManager.ActivationRequested += (sender, e) =>
+                {
+                    // Activate main window on UI thread
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        if (desktop.MainWindow != null)
+                        {
+                            WindowActivator.ActivateWindow(desktop.MainWindow);
+                        }
+                    });
+                };
+            }
         }
 
         base.OnFrameworkInitializationCompleted();
