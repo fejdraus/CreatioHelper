@@ -63,5 +63,8 @@ public partial class App : Avalonia.Application
 
         services.AddApplication();
         services.AddInfrastructureServices();
+
+        // Register UI dispatcher for Avalonia
+        services.AddSingleton<CreatioHelper.Application.Interfaces.IUIDispatcher, CreatioHelper.Services.AvaloniaUIDispatcher>();
     }
 }

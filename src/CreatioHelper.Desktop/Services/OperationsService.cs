@@ -130,17 +130,23 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     };
                     var manager = _iisManager;
 
-                    // Measure IIS operation time
-                    await _metricsService.MeasureAsync("iis_operations", async () =>
-                    {
-                        await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, cancellationToken).ConfigureAwait(false);
-                        return Task.CompletedTask;
-                    }).ConfigureAwait(false);
-
                     IsStopButtonEnabled = true;
+
+                    // Track if schema rebuild was performed with server stop
+                    bool schemaRebuildPerformed = false;
+                    // Track if servers were already stopped for package operations
+                    bool serversAlreadyStopped = false;
 
                     if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
                     {
+                        // Stop local server before deleting packages (if not stopped later)
+                        bool willStopLaterForPackages = !string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath);
+                        if (!willStopLaterForPackages)
+                        {
+                            _output.WriteLine("Stopping local server before deleting packages...");
+                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
+                        }
+
                         _output.WriteLine("Deleting packages BEFORE installation...");
                         
                         // Measure package deletion time BEFORE
@@ -170,7 +176,8 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     {
                         // Stop ALL servers (local + remote) before package installation
                         _output.WriteLine("Stopping ALL servers before package installation...");
-                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
+                        serversAlreadyStopped = true;  // Mark that servers were stopped for package install
                         _output.WriteLine("Start installation packages...");
                         bool success = false;
                         _metricsService.Measure("package_install", () =>
@@ -196,6 +203,15 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
                     {
+                        // Stop local server before deleting packages (if not stopped earlier)
+                        bool wasStoppedEarlier = !string.IsNullOrWhiteSpace(packagesBefore) ||
+                                                (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath));
+                        if (!wasStoppedEarlier)
+                        {
+                            _output.WriteLine("Stopping local server before deleting packages...");
+                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
+                        }
+
                         _output.WriteLine("Deleting packages AFTER installation...");
                         
                         // Measure package deletion time AFTER
@@ -226,18 +242,20 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         string.IsNullOrWhiteSpace(packagesBefore) &&
                         string.IsNullOrWhiteSpace(packagesAfter))
                     {
+                        schemaRebuildPerformed = true;
+
                         // If server panel is open with servers, stop all servers before rebuild
                         // If panel is closed, only local server will be stopped via PerformIisOperationsAsync
                         if (viewModel.IsServerPanelVisible && serverList.Length > 0)
                         {
                             _output.WriteLine("Stopping ALL servers (local + remote) before schema rebuild...");
-                            await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                            await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
                         }
                         else
                         {
                             _output.WriteLine("Stopping local server before schema rebuild...");
                             // Stop only local server when panel is closed
-                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, cancellationToken).ConfigureAwait(false);
+                            await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, viewModel, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
                         }
 
                         // Enable stop button during schema operations (user can cancel)
@@ -278,7 +296,11 @@ public partial class OperationsService : ObservableObject, IOperationsService
                     }
 
                     bool usedSyncthingOrchestration = false;
-                    if (OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
+                    bool usedManagePoolsOnly = false;
+
+                    // Perform synchronization only if schema rebuild was NOT performed
+                    // (schema rebuild is a local-only operation, sync happens after)
+                    if (!schemaRebuildPerformed && OperatingSystem.IsWindows() && serverList.Length > 0 && viewModel.IsServerPanelVisible)
                     {
                         IsStopButtonEnabled = false;
                         if (!cancellationToken.IsCancellationRequested)
@@ -311,7 +333,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             else
                             {
                                 // Pool management only - for external file sync (built-in sync system, etc.)
-                                await ManageServerPoolsOnlyAsync(new List<ServerInfo>(serverList), cancellationToken).ConfigureAwait(false);
+                                // Pass serversAlreadyStopped flag to skip stop if servers were stopped for package install
+                                await ManageServerPoolsOnlyAsync(new List<ServerInfo>(serverList), viewModel.IsServerPanelVisible, serversAlreadyStopped, cancellationToken).ConfigureAwait(false);
+                                usedManagePoolsOnly = true;
                             }
                         }
                         IsStopButtonEnabled = true;
@@ -319,28 +343,25 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     IsStopButtonEnabled = false;
 
-                    // Start IIS pools/sites only if Syncthing orchestration was NOT used
-                    // (Syncthing orchestration starts servers automatically after sync completion)
-                    if (!usedSyncthingOrchestration)
+                    // Start IIS pools/sites only if:
+                    // - Syncthing orchestration was NOT used (it starts servers automatically)
+                    // - ManagePoolsOnly was NOT used (it already started servers after external sync)
+                    if (!usedSyncthingOrchestration && !usedManagePoolsOnly)
                     {
-                        // Determine whether to start all servers (rebuild scenario with remote servers) or just local server
-                        bool rebuildPerformed = string.IsNullOrWhiteSpace(packagesPath) &&
-                                               string.IsNullOrWhiteSpace(packagesBefore) &&
-                                               string.IsNullOrWhiteSpace(packagesAfter);
                         bool hasRemoteServers = viewModel.IsServerPanelVisible && serverList.Length > 0;
 
                         // Measure startup operation time
                         await _metricsService.MeasureAsync("startup_operations", async () =>
                         {
-                            if (rebuildPerformed && hasRemoteServers)
+                            if ((schemaRebuildPerformed || serversAlreadyStopped) && hasRemoteServers)
                             {
-                                // Schema rebuild was performed with remote servers - start all servers
-                                await StartAllServersAfterRebuild(manager, localServerInfo, nestedPath, serverList, cancellationToken).ConfigureAwait(false);
+                                // Schema rebuild or package install was performed with remote servers - start all servers
+                                await StartAllServersAfterRebuild(manager, localServerInfo, nestedPath, serverList, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
                             }
                             else
                             {
                                 // Normal flow - just start local server
-                                await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+                                await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
                             }
                             return Task.CompletedTask;
                         }).ConfigureAwait(false);
@@ -376,114 +397,225 @@ public partial class OperationsService : ObservableObject, IOperationsService
         }, cancellationToken);
     }
 
-    private async Task PerformIisOperationsAsync(IIisManager manager, ServerInfo localServerInfo, string nestedPath, MainWindowViewModel viewModel, CancellationToken cancellationToken)
-    {
-        if (OperatingSystem.IsWindows())
-        {
-            if (File.Exists(nestedPath))
-            {
-                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
-                {
-                    var stopPoolResult = await manager.StopAppPoolAsync(Environment.MachineName, localServerInfo.PoolName, cancellationToken).ConfigureAwait(false);
-                    if (stopPoolResult.IsSuccess)
-                    {
-                        _output.WriteLine("[INFO] Main Pool stopped.");
-                    }
-                    else
-                    {
-                        _output.WriteLine($"[ERROR] Failed to stop application pool: {stopPoolResult.ErrorMessage}");
-                    }
-                }
+    #region Server Management Core Methods
 
-                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
-                {
-                    var stopSiteResult = await manager.StopWebsiteAsync(Environment.MachineName, localServerInfo.SiteName, cancellationToken).ConfigureAwait(false);
-                    if (stopSiteResult.IsSuccess)
-                    {
-                        _output.WriteLine("[INFO] Main Website stopped.");
-                    }
-                    else
-                    {
-                        _output.WriteLine($"[ERROR] Failed to stop website: {stopSiteResult.ErrorMessage}");
-                    }
-                }
-            }
-        }
-        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
+    /// <summary>
+    /// Refreshes server status on UI thread if panel is visible
+    /// Universal method for all synchronization modes
+    /// </summary>
+    private async Task RefreshServerStatusIfNeededAsync(ServerInfo server, bool isServerPanelVisible, CancellationToken cancellationToken)
+    {
+        if (isServerPanelVisible && OperatingSystem.IsWindows())
         {
-            localServerInfo.ServiceName = viewModel.ServiceName;
-            var serviceStopResult = await manager.StopServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).ConfigureAwait(false);
-            if (serviceStopResult.IsSuccess)
-            {
-                _output.WriteLine("[INFO] Main Service stopped.");
-            }
-            else
-            {
-                _output.WriteLine($"[ERROR] Failed to stop service: {serviceStopResult.ErrorMessage}");
-            }
+            await Task.Delay(500, cancellationToken); // Give IIS a moment to update
+            await _statusService.RefreshServerStatusOnUIThreadAsync(server, cancellationToken).ConfigureAwait(false);
         }
     }
 
-    private async Task PerformStartupOperationsAsync(IIisManager manager, ServerInfo localServerInfo, string nestedPath, CancellationToken cancellationToken)
+    /// <summary>
+    /// Refreshes multiple server statuses on UI thread if panel is visible
+    /// Universal method for all synchronization modes
+    /// </summary>
+    private async Task RefreshMultipleServerStatusIfNeededAsync(ServerInfo[] servers, bool isServerPanelVisible, CancellationToken cancellationToken)
     {
-        if (OperatingSystem.IsWindows())
+        if (isServerPanelVisible && OperatingSystem.IsWindows() && servers.Length > 0)
         {
-            if (File.Exists(nestedPath))
+            await Task.Delay(500, cancellationToken); // Give IIS a moment to update
+            await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(servers, cancellationToken).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Stops a single server (pool, site, or service)
+    /// </summary>
+    /// <returns>Tuple (poolStopped, siteStopped, serviceStopped)</returns>
+    private async Task<(bool poolStopped, bool siteStopped, bool serviceStopped)> StopServerAsync(
+        ServerInfo server,
+        bool isLocal,
+        string? nestedPath,
+        bool shouldRefreshUI,
+        CancellationToken cancellationToken)
+    {
+        bool poolStopped = false;
+        bool siteStopped = false;
+        bool serviceStopped = false;
+
+        string serverName = isLocal ? Environment.MachineName : (server.Name ?? "");
+        string serverLabel = isLocal ? "Local" : server.Name;
+
+        // For remote servers - always IIS mode (they don't have local nestedPath)
+        // For local server - check if file exists to determine IIS vs Service mode
+        bool isIisMode = !isLocal || (nestedPath != null && File.Exists(nestedPath));
+
+        if (OperatingSystem.IsWindows() && isIisMode)
+        {
+            // Stop IIS pool
+            if (!string.IsNullOrWhiteSpace(server.PoolName))
             {
-                if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName)) 
+                var result = await _iisManager.StopAppPoolAsync(serverName, server.PoolName, cancellationToken);
+                poolStopped = result.IsSuccess;
+                if (poolStopped)
                 {
-                    var startPoolResult = await manager.StartAppPoolAsync(Environment.MachineName, localServerInfo.PoolName, cancellationToken).ConfigureAwait(false);
-                    if (startPoolResult.IsSuccess)
+                    if (isLocal)
                     {
-                        _output.WriteLine("[INFO] Main Pool is running.");
+                        _output.WriteLine($"[INFO] {serverLabel} Pool stopped.");
                     }
                     else
                     {
-                        _output.WriteLine($"[ERROR] Failed to start application pool: {startPoolResult.ErrorMessage}");
+                        _output.WriteLine($"[INFO] Stopped app pool '{server.PoolName}' on {server.Name}");
                     }
                 }
-                if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
+                else
                 {
-                    var startSiteResult = await manager.StartWebsiteAsync(Environment.MachineName, localServerInfo.SiteName, cancellationToken).ConfigureAwait(false);
-                    if (startSiteResult.IsSuccess)
-                    {
-                        _output.WriteLine("[INFO] Main Website is running.");
-                    }
-                    else
-                    {
-                        _output.WriteLine($"[ERROR] Failed to start website: {startSiteResult.ErrorMessage}");
-                    }
+                    _output.WriteLine($"[WARN] Failed to stop app pool '{server.PoolName}' on {serverLabel}: {result.ErrorMessage}");
                 }
             }
 
-            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+            // Stop IIS site
+            if (!string.IsNullOrWhiteSpace(server.SiteName))
             {
-                var serviceStartResult = await manager.StartServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).ConfigureAwait(false);
-                if (serviceStartResult.IsSuccess)
+                var result = await _iisManager.StopWebsiteAsync(serverName, server.SiteName, cancellationToken);
+                siteStopped = result.IsSuccess;
+                if (siteStopped)
                 {
-                    _output.WriteLine("[INFO] Main Service is running.");
+                    if (isLocal)
+                    {
+                        _output.WriteLine($"[INFO] {serverLabel} Website stopped.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[INFO] Stopped website '{server.SiteName}' on {server.Name}");
+                    }
                 }
                 else
                 {
-                    _output.WriteLine("[WARNING] Failed to start main service.");
+                    _output.WriteLine($"[WARN] Failed to stop website '{server.SiteName}' on {serverLabel}: {result.ErrorMessage}");
                 }
             }
         }
-        else
+
+        // Stop Windows Service (if not IIS mode)
+        if (!isIisMode && !string.IsNullOrWhiteSpace(server.ServiceName))
         {
-            if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(localServerInfo.ServiceName))
+            var result = await _iisManager.StopServiceAsync(serverName, server.ServiceName, cancellationToken);
+            serviceStopped = result.IsSuccess;
+            if (serviceStopped)
             {
-                var serviceStartResult = await manager.StartServiceAsync(Environment.MachineName, localServerInfo.ServiceName, cancellationToken).ConfigureAwait(false);
-                if (serviceStartResult.IsSuccess)
+                _output.WriteLine($"[INFO] Main Service stopped.");
+            }
+            else
+            {
+                _output.WriteLine($"[ERROR] Failed to stop service: {result.ErrorMessage}");
+            }
+        }
+
+        // Refresh UI immediately after stopping (universal for all sync modes)
+        await RefreshServerStatusIfNeededAsync(server, shouldRefreshUI, cancellationToken);
+
+        return (poolStopped, siteStopped, serviceStopped);
+    }
+
+    /// <summary>
+    /// Starts a single server (pool, site, or service)
+    /// </summary>
+    private async Task StartServerAsync(
+        ServerInfo server,
+        bool isLocal,
+        string? nestedPath,
+        bool shouldRefreshUI,
+        bool poolWasStopped,
+        bool siteWasStopped,
+        bool serviceWasStopped,
+        CancellationToken cancellationToken)
+    {
+        string serverName = isLocal ? Environment.MachineName : (server.Name ?? "");
+        string serverLabel = isLocal ? "Main" : server.Name;
+
+        // For remote servers - always IIS mode (they don't have local nestedPath)
+        // For local server - check if file exists to determine IIS vs Service mode
+        bool isIisMode = !isLocal || (nestedPath != null && File.Exists(nestedPath));
+
+        if (OperatingSystem.IsWindows() && isIisMode)
+        {
+            // Start IIS pool if it was stopped
+            if (poolWasStopped && !string.IsNullOrWhiteSpace(server.PoolName))
+            {
+                var result = await _iisManager.StartAppPoolAsync(serverName, server.PoolName, cancellationToken);
+                if (result.IsSuccess)
                 {
-                    _output.WriteLine("[INFO] Main Service is running.");
+                    if (isLocal)
+                    {
+                        _output.WriteLine($"[INFO] {serverLabel} Pool is running.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[INFO] Started app pool '{server.PoolName}' on {server.Name}");
+                    }
                 }
                 else
                 {
-                    _output.WriteLine("[WARNING] Failed to start main service.");
+                    _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {serverLabel}: {result.ErrorMessage}");
+                }
+            }
+
+            // Start IIS site if it was stopped
+            if (siteWasStopped && !string.IsNullOrWhiteSpace(server.SiteName))
+            {
+                var result = await _iisManager.StartWebsiteAsync(serverName, server.SiteName, cancellationToken);
+                if (result.IsSuccess)
+                {
+                    if (isLocal)
+                    {
+                        _output.WriteLine($"[INFO] {serverLabel} Website is running.");
+                    }
+                    else
+                    {
+                        _output.WriteLine($"[INFO] Started website '{server.SiteName}' on {server.Name}");
+                    }
+                }
+                else
+                {
+                    _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {serverLabel}: {result.ErrorMessage}");
                 }
             }
         }
+
+        // Start Windows Service if it was stopped
+        if (serviceWasStopped && !string.IsNullOrWhiteSpace(server.ServiceName))
+        {
+            var result = await _iisManager.StartServiceAsync(serverName, server.ServiceName, cancellationToken);
+            if (result.IsSuccess)
+            {
+                _output.WriteLine($"[INFO] Main Service is running.");
+            }
+            else
+            {
+                _output.WriteLine($"[WARNING] Failed to start main service.");
+            }
+        }
+
+        // Refresh UI immediately after starting (universal for all sync modes)
+        await RefreshServerStatusIfNeededAsync(server, shouldRefreshUI, cancellationToken);
+    }
+
+    #endregion
+
+    private async Task PerformIisOperationsAsync(IIisManager manager, ServerInfo localServerInfo, string nestedPath, MainWindowViewModel viewModel, bool shouldRefreshUI, CancellationToken cancellationToken)
+    {
+        // Ensure ServiceName is set for non-IIS mode
+        if (!File.Exists(nestedPath) && !string.IsNullOrWhiteSpace(viewModel.ServiceName))
+        {
+            localServerInfo.ServiceName = viewModel.ServiceName;
+        }
+
+        await StopServerAsync(localServerInfo, isLocal: true, nestedPath, shouldRefreshUI, cancellationToken);
+    }
+
+    private async Task PerformStartupOperationsAsync(IIisManager manager, ServerInfo localServerInfo, string nestedPath, bool shouldRefreshUI, CancellationToken cancellationToken)
+    {
+        // Assume everything was stopped before (pool, site, service all = true)
+        await StartServerAsync(localServerInfo, isLocal: true, nestedPath, shouldRefreshUI,
+            poolWasStopped: true, siteWasStopped: true, serviceWasStopped: true, cancellationToken);
     }
 
     public void StopOperation() 
@@ -588,138 +720,66 @@ public partial class OperationsService : ObservableObject, IOperationsService
     /// <summary>
     /// Manages server pools without file synchronization - for external sync tools like Syncthing
     /// </summary>
-    private async Task ManageServerPoolsOnlyAsync(List<ServerInfo> targetServers, CancellationToken cancellationToken)
+    private async Task ManageServerPoolsOnlyAsync(List<ServerInfo> targetServers, bool shouldRefreshUI, bool serversAlreadyStopped, CancellationToken cancellationToken)
     {
         _output.WriteLine("[INFO] Managing server pools without file synchronization...");
 
-        // Stop all server pools and sites
-        var stopResults = new Dictionary<ServerInfo, (bool poolStopped, bool siteStopped)>();
-        foreach (var server in targetServers)
+        // Stop all server pools and sites (skip if already stopped for package operations)
+        var stopResults = new Dictionary<ServerInfo, (bool poolStopped, bool siteStopped, bool serviceStopped)>();
+
+        if (!serversAlreadyStopped)
         {
-            if (cancellationToken.IsCancellationRequested)
-            {
-                _output.WriteLine("[INFO] Pool management was cancelled.");
-                return;
-            }
-
-            bool poolStopped = true;
-            bool siteStopped = true;
-
-            if (!string.IsNullOrWhiteSpace(server.PoolName))
-            {
-                var stopPoolResult = await _iisManager.StopAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken);
-                poolStopped = stopPoolResult.IsSuccess;
-                if (!poolStopped)
-                {
-                    _output.WriteLine($"[WARN] Failed to stop app pool '{server.PoolName}' on {server.Name}: {stopPoolResult.ErrorMessage}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(server.SiteName))
-            {
-                var stopSiteResult = await _iisManager.StopWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken);
-                siteStopped = stopSiteResult.IsSuccess;
-                if (!siteStopped)
-                {
-                    _output.WriteLine($"[WARN] Failed to stop website '{server.SiteName}' on {server.Name}: {stopSiteResult.ErrorMessage}");
-                }
-            }
-
-            stopResults[server] = (poolStopped, siteStopped);
-        }
-
-        // Verify services are stopped
-        _output.WriteLine("[INFO] Verifying services are stopped...");
-        await Task.Delay(3000, cancellationToken);
-
-        await Task.Run(async () =>
-        {
-            // Start services back
             foreach (var server in targetServers)
             {
                 if (cancellationToken.IsCancellationRequested)
                 {
-                    _output.WriteLine("[INFO] Pool management restart was cancelled.");
+                    _output.WriteLine("[INFO] Pool management was cancelled.");
                     return;
                 }
 
-                var (poolWasStopped, siteWasStopped) = stopResults[server];
-
-                // Start pool if it was stopped
-                if (poolWasStopped && !string.IsNullOrWhiteSpace(server.PoolName))
-                {
-                    var startPoolResult = await _iisManager.StartAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken);
-                    if (startPoolResult.IsSuccess)
-                    {
-                        _output.WriteLine($"[INFO] Started app pool '{server.PoolName}' on {server.Name}");
-                    }
-                    else
-                    {
-                        _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name}: {startPoolResult.ErrorMessage}");
-                    }
-                }
-
-                // Start site if it was stopped
-                if (siteWasStopped && !string.IsNullOrWhiteSpace(server.SiteName))
-                {
-                    var startSiteResult = await _iisManager.StartWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken);
-                    if (startSiteResult.IsSuccess)
-                    {
-                        _output.WriteLine($"[INFO] Started website '{server.SiteName}' on {server.Name}");
-                    }
-                    else
-                    {
-                        _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name}: {startSiteResult.ErrorMessage}");
-                    }
-                }
+                var result = await StopServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI, cancellationToken);
+                stopResults[server] = result;
             }
-        }, cancellationToken);
 
-        _output.WriteLine("[OK] Server pool management completed (external sync mode).");
-        _metricsService.IncrementCounter("pool_management_completed");
-
-        // Refresh status for all servers
-        if (OperatingSystem.IsWindows())
-        {
-            await Task.Delay(1000, cancellationToken); // Give IIS a moment to update
-            await _statusService.RefreshMultipleServerStatusAsync(targetServers.ToArray(), cancellationToken).ConfigureAwait(false);
+            // Verify services are stopped
+            _output.WriteLine("[INFO] Verifying services are stopped...");
+            await Task.Delay(3000, cancellationToken);
         }
+        else
+        {
+            // Servers were already stopped for package operations, mark all as stopped
+            foreach (var server in targetServers)
+            {
+                stopResults[server] = (true, true, false); // pool, site stopped; service not used for remote
+            }
+            _output.WriteLine("[INFO] Servers already stopped from package operations.");
+        }
+
+        // Start services back
+        foreach (var server in targetServers)
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _output.WriteLine("[INFO] Pool management restart was cancelled.");
+                return;
+            }
+
+            var (poolWasStopped, siteWasStopped, serviceWasStopped) = stopResults[server];
+            await StartServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI,
+                poolWasStopped, siteWasStopped, serviceWasStopped, cancellationToken);
+        }
+
+        _output.WriteLine("[OK] Server pool management completed.");
+        _metricsService.IncrementCounter("pool_management_completed");
     }
 
     /// <summary>
     /// Stops all servers (local + remote) before package installation
     /// </summary>
-    private async Task StopAllServersBeforeInstallation(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, CancellationToken cancellationToken)
+    private async Task StopAllServersBeforeInstallation(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, bool shouldRefreshUI, CancellationToken cancellationToken)
     {
         // First stop local server
-        if (OperatingSystem.IsWindows() && File.Exists(nestedPath))
-        {
-            if (!string.IsNullOrWhiteSpace(localServerInfo.PoolName))
-            {
-                var stopPoolResult = await manager.StopAppPoolAsync(Environment.MachineName, localServerInfo.PoolName, cancellationToken).ConfigureAwait(false);
-                if (stopPoolResult.IsSuccess)
-                {
-                    _output.WriteLine("[INFO] Local Pool stopped.");
-                }
-                else
-                {
-                    _output.WriteLine($"[ERROR] Failed to stop local application pool: {stopPoolResult.ErrorMessage}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(localServerInfo.SiteName))
-            {
-                var stopSiteResult = await manager.StopWebsiteAsync(Environment.MachineName, localServerInfo.SiteName, cancellationToken).ConfigureAwait(false);
-                if (stopSiteResult.IsSuccess)
-                {
-                    _output.WriteLine("[INFO] Local Website stopped.");
-                }
-                else
-                {
-                    _output.WriteLine($"[ERROR] Failed to stop local website: {stopSiteResult.ErrorMessage}");
-                }
-            }
-        }
+        await StopServerAsync(localServerInfo, isLocal: true, nestedPath, shouldRefreshUI, cancellationToken);
 
         // Then stop all remote servers
         foreach (var server in remoteServers)
@@ -731,32 +791,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             }
 
             await Task.Delay(1000, cancellationToken); // Small delay between operations
-
-            if (!string.IsNullOrWhiteSpace(server.PoolName))
-            {
-                var stopPoolResult = await _iisManager.StopAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken);
-                if (stopPoolResult.IsSuccess)
-                {
-                    _output.WriteLine($"[INFO] Stopped app pool '{server.PoolName}' on {server.Name}");
-                }
-                else
-                {
-                    _output.WriteLine($"[WARN] Failed to stop app pool '{server.PoolName}' on {server.Name}: {stopPoolResult.ErrorMessage}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(server.SiteName))
-            {
-                var stopSiteResult = await _iisManager.StopWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken);
-                if (stopSiteResult.IsSuccess)
-                {
-                    _output.WriteLine($"[INFO] Stopped website '{server.SiteName}' on {server.Name}");
-                }
-                else
-                {
-                    _output.WriteLine($"[WARN] Failed to stop website '{server.SiteName}' on {server.Name}: {stopSiteResult.ErrorMessage}");
-                }
-            }
+            await StopServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI, cancellationToken);
         }
 
         // Wait for all services to fully stop
@@ -769,12 +804,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
     /// <summary>
     /// Starts all servers (local + remote) after schema rebuild completes
     /// </summary>
-    private async Task StartAllServersAfterRebuild(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, CancellationToken cancellationToken)
+    private async Task StartAllServersAfterRebuild(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, bool shouldRefreshUI, CancellationToken cancellationToken)
     {
         _output.WriteLine("Starting ALL servers (local + remote) after schema rebuild...");
 
         // First start local server
-        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, shouldRefreshUI, cancellationToken).ConfigureAwait(false);
 
         // Then start all remote servers
         foreach (var server in remoteServers)
@@ -786,42 +821,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
             }
 
             await Task.Delay(1000, cancellationToken); // Small delay between operations
-
-            if (!string.IsNullOrWhiteSpace(server.PoolName))
-            {
-                var startPoolResult = await _iisManager.StartAppPoolAsync(server.Name ?? "", server.PoolName, cancellationToken);
-                if (startPoolResult.IsSuccess)
-                {
-                    _output.WriteLine($"[INFO] Started app pool '{server.PoolName}' on {server.Name}");
-                }
-                else
-                {
-                    _output.WriteLine($"[WARN] Failed to start app pool '{server.PoolName}' on {server.Name}: {startPoolResult.ErrorMessage}");
-                }
-            }
-
-            if (!string.IsNullOrWhiteSpace(server.SiteName))
-            {
-                var startSiteResult = await _iisManager.StartWebsiteAsync(server.Name ?? "", server.SiteName, cancellationToken);
-                if (startSiteResult.IsSuccess)
-                {
-                    _output.WriteLine($"[INFO] Started website '{server.SiteName}' on {server.Name}");
-                }
-                else
-                {
-                    _output.WriteLine($"[WARN] Failed to start website '{server.SiteName}' on {server.Name}: {startSiteResult.ErrorMessage}");
-                }
-            }
+            // Assume all were stopped before (pool, site = true; service = false for remote)
+            await StartServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI,
+                poolWasStopped: true, siteWasStopped: true, serviceWasStopped: false, cancellationToken);
         }
 
         _output.WriteLine("[OK] All servers (local + remote) started successfully.");
-
-        // Refresh status for all servers
-        if (OperatingSystem.IsWindows())
-        {
-            await Task.Delay(1000, cancellationToken); // Give IIS a moment to update
-            await _statusService.RefreshMultipleServerStatusAsync(remoteServers, cancellationToken).ConfigureAwait(false);
-        }
     }
 
     /// <summary>
@@ -939,9 +944,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _output.WriteLine("[OK] All remote servers synchronized and started!");
         _output.WriteLine($"[INFO] Successfully started {completedServers.Count} remote servers");
 
-        // Now start local server
+        // Now start local server (Syncthing callbacks will update status)
         _output.WriteLine("[INFO] Starting local server...");
-        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, cancellationToken).ConfigureAwait(false);
+        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, false, cancellationToken).ConfigureAwait(false);
 
         _output.WriteLine("=== SYNCTHING ORCHESTRATION COMPLETED ===");
         _metricsService.IncrementCounter("syncthing_orchestration_completed");
@@ -977,28 +982,18 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
         try
         {
-            foreach (var server in serverList)
-            {
-                // Start application pool if configured
-                if (!string.IsNullOrEmpty(server.PoolName))
-                {
-                    var result = await _iisManager.StartAppPoolAsync(server.Name ?? "localhost", server.PoolName, CancellationToken.None);
-                    if (!result.IsSuccess)
-                    {
-                        _output.WriteLine($"[WARNING] Failed to start app pool {server.PoolName}: {result.ErrorMessage}");
-                    }
-                }
+            _output.WriteLine($"[INFO] Starting {serverList.Count} IIS servers...");
 
-                // Start website if configured
-                if (!string.IsNullOrEmpty(server.SiteName))
-                {
-                    var result = await _iisManager.StartWebsiteAsync(server.Name ?? "localhost", server.SiteName, CancellationToken.None);
-                    if (!result.IsSuccess)
-                    {
-                        _output.WriteLine($"[WARNING] Failed to start site {server.SiteName}: {result.ErrorMessage}");
-                    }
-                }
-            }
+            // Start all servers in parallel with UI updates
+            var tasks = serverList.Select(async server =>
+            {
+                // Assume all were stopped (pool, site, service)
+                await StartServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI: true,
+                    poolWasStopped: true, siteWasStopped: true, serviceWasStopped: false, CancellationToken.None);
+            });
+
+            await Task.WhenAll(tasks);
+            _output.WriteLine("[OK] All IIS servers started.");
         }
         catch (Exception ex)
         {
@@ -1027,28 +1022,16 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
         try
         {
-            foreach (var server in serverList)
-            {
-                // Stop website first if configured
-                if (!string.IsNullOrEmpty(server.SiteName))
-                {
-                    var result = await _iisManager.StopWebsiteAsync(server.Name ?? "localhost", server.SiteName, CancellationToken.None);
-                    if (!result.IsSuccess)
-                    {
-                        _output.WriteLine($"[WARNING] Failed to stop site {server.SiteName}: {result.ErrorMessage}");
-                    }
-                }
+            _output.WriteLine($"[INFO] Stopping {serverList.Count} IIS servers...");
 
-                // Stop application pool if configured
-                if (!string.IsNullOrEmpty(server.PoolName))
-                {
-                    var result = await _iisManager.StopAppPoolAsync(server.Name ?? "localhost", server.PoolName, CancellationToken.None);
-                    if (!result.IsSuccess)
-                    {
-                        _output.WriteLine($"[WARNING] Failed to stop app pool {server.PoolName}: {result.ErrorMessage}");
-                    }
-                }
-            }
+            // Stop all servers in parallel with UI updates
+            var tasks = serverList.Select(async server =>
+            {
+                await StopServerAsync(server, isLocal: false, nestedPath: null, shouldRefreshUI: true, CancellationToken.None);
+            });
+
+            await Task.WhenAll(tasks);
+            _output.WriteLine("[OK] All IIS servers stopped.");
         }
         catch (Exception ex)
         {
