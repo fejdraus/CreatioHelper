@@ -6,7 +6,6 @@
         Width="550"
         MinWidth="550"
         MaxWidth="550"
-        MinHeight="300"
         MaxHeight="600"
         SizeToContent="Height"
         Title="Synchronization Settings"
@@ -83,7 +82,7 @@
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Spacing="10"
-                    Margin="10, 10 ,10, 0">
+                    Margin="10, 10 ,10, 10">
             <Button Width="100"
                     Content="OK"
                     IsDefault="True"

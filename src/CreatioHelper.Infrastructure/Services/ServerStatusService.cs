@@ -10,16 +10,19 @@ public class ServerStatusService : IServerStatusService
     private readonly IIisManager _iisManager;
     private readonly IMetricsService _metrics;
     private readonly ILogger<ServerStatusService> _logger;
+    private readonly IUIDispatcher? _uiDispatcher;
     private ISyncthingMonitorService? _syncthingMonitor;
 
     public ServerStatusService(
         IIisManager iisManager,
         IMetricsService metrics,
-        ILogger<ServerStatusService> logger)
+        ILogger<ServerStatusService> logger,
+        IUIDispatcher? uiDispatcher = null)
     {
         _iisManager = iisManager ?? throw new ArgumentNullException(nameof(iisManager));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _uiDispatcher = uiDispatcher;
     }
 
     /// <summary>
@@ -112,9 +115,9 @@ public class ServerStatusService : IServerStatusService
         await _metrics.MeasureAsync("multiple_server_status_refresh", async () =>
         {
             _logger.LogInformation("Refreshing status for {ServerCount} servers", servers.Length);
-            
+
             var semaphore = new SemaphoreSlim(Math.Min(servers.Length, Environment.ProcessorCount));
-            
+
             var tasks = servers.Select(async server =>
             {
                 await semaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -133,16 +136,53 @@ public class ServerStatusService : IServerStatusService
             });
 
             await Task.WhenAll(tasks).ConfigureAwait(false);
-            
+
             var successCount = servers.Count(s => s.PoolStatus != "Error" && s.SiteStatus != "Error");
-            _logger.LogInformation("Status refresh completed: {SuccessCount}/{TotalCount} servers successful", 
+            _logger.LogInformation("Status refresh completed: {SuccessCount}/{TotalCount} servers successful",
                 successCount, servers.Length);
-                
+
             _metrics.SetGauge("servers_online", successCount);
             _metrics.SetGauge("servers_total", servers.Length);
-            
+
             return new object();
         });
+    }
+
+    /// <summary>
+    /// Refresh server status on UI thread (safe for UI binding updates)
+    /// </summary>
+    public async Task<ServerInfo> RefreshServerStatusOnUIThreadAsync(ServerInfo server, CancellationToken cancellationToken = default)
+    {
+        if (_uiDispatcher == null)
+        {
+            _logger.LogWarning("UI dispatcher not available, falling back to direct refresh");
+            return await RefreshServerStatusAsync(server, cancellationToken).ConfigureAwait(false);
+        }
+
+        return await _uiDispatcher.InvokeAsync(async () =>
+        {
+            return await RefreshServerStatusAsync(server, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Refresh multiple server statuses on UI thread (safe for UI binding updates)
+    /// </summary>
+    public async Task RefreshMultipleServerStatusOnUIThreadAsync(ServerInfo[]? servers, CancellationToken cancellationToken = default)
+    {
+        if (servers == null || servers.Length == 0) return;
+
+        if (_uiDispatcher == null)
+        {
+            _logger.LogWarning("UI dispatcher not available, falling back to direct refresh");
+            await RefreshMultipleServerStatusAsync(servers, cancellationToken).ConfigureAwait(false);
+            return;
+        }
+
+        await _uiDispatcher.InvokeAsync(async () =>
+        {
+            await RefreshMultipleServerStatusAsync(servers, cancellationToken).ConfigureAwait(false);
+        }).ConfigureAwait(false);
     }
 
     private async Task<string?> GetPoolStatusAsync(string serverName, string poolName, CancellationToken cancellationToken)

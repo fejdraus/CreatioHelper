@@ -319,9 +319,9 @@ public partial class MainWindowViewModel : ObservableObject
         {
             return;
         }
-        await _statusService.RefreshServerStatusAsync(server);
+        await _statusService.RefreshServerStatusOnUIThreadAsync(server);
     }
-    
+
     [RelayCommand]
     private async Task RefreshAllServersStatus()
     {
@@ -334,7 +334,7 @@ public partial class MainWindowViewModel : ObservableObject
         try
         {
             IsLoadingServerStatuses = true;
-            await _statusService.RefreshMultipleServerStatusAsync(ServerList.ToArray());
+            await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(ServerList.ToArray());
         }
         finally
         {
@@ -361,7 +361,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 if (OperatingSystem.IsWindows())
                 {
-                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusOnUIThreadAsync(server);
                     _output.WriteLine($"[SUCCESS] Application pool '{server.PoolName}' status {serverInfo.PoolStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
@@ -400,7 +400,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 if (OperatingSystem.IsWindows())
                 {
-                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusOnUIThreadAsync(server);
                     _output.WriteLine($"[SUCCESS] Application pool '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
@@ -439,7 +439,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 if (OperatingSystem.IsWindows())
                 {
-                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusOnUIThreadAsync(server);
                     _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
@@ -468,17 +468,17 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         server.IsStatusLoading = true;
-        
+
         try
         {
             _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
-            
+
             var result = await _iisManager.StartWebsiteAsync(server.Name ?? Environment.MachineName, server.SiteName, CancellationToken.None);
             if (result.IsSuccess)
             {
                 if (OperatingSystem.IsWindows())
                 {
-                    var serverInfo = await _statusService.RefreshServerStatusAsync(server);
+                    var serverInfo = await _statusService.RefreshServerStatusOnUIThreadAsync(server);
                     _output.WriteLine($"[SUCCESS] Website '{server.SiteName}' status {serverInfo.SiteStatus} on server '{server.Name ?? "Unknown"}'.");
                 }
             }
@@ -658,6 +658,42 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _settingsLoaded = true;
             InitializeSyncthingEventsListener();
+
+            // Refresh server statuses at startup if panel is visible
+            if (IsServerPanelVisible && ServerList.Any() && OperatingSystem.IsWindows())
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await Task.Delay(500); // Small delay to let UI finish loading
+
+                        // Block buttons during initial status refresh
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            IsLoadingServerStatuses = true;
+                        });
+
+                        await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(ServerList.ToArray(), CancellationToken.None);
+
+                        // Unblock buttons after refresh
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            IsLoadingServerStatuses = false;
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _output.WriteLine($"[WARNING] Failed to refresh server statuses at startup: {ex.Message}");
+
+                        // Ensure buttons are unblocked even on error
+                        await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            IsLoadingServerStatuses = false;
+                        });
+                    }
+                });
+            }
         }
     }
 
@@ -705,7 +741,7 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _iisManager.StartServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
-            await _statusService.RefreshServerStatusAsync(server);
+            await _statusService.RefreshServerStatusOnUIThreadAsync(server);
         }
         else
         {
@@ -725,7 +761,7 @@ public partial class MainWindowViewModel : ObservableObject
         var result = await _iisManager.StopServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
-            await _statusService.RefreshServerStatusAsync(server);
+            await _statusService.RefreshServerStatusOnUIThreadAsync(server);
         }
         else
         {
@@ -893,7 +929,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         // Refresh status for all servers
         await Task.Delay(1000); // Give Syncthing a moment to update
-        await _statusService.RefreshMultipleServerStatusAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
+        await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
     }
 
     private async Task PauseAllSyncthingFolders()
@@ -942,7 +978,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         // Refresh status for all servers
         await Task.Delay(1000); // Give Syncthing a moment to update
-        await _statusService.RefreshMultipleServerStatusAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
+        await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(serversWithSyncthing.ToArray(), CancellationToken.None);
     }
 
     #region IIS Bulk Operations
@@ -990,10 +1026,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         await _operationsService.StartAllIisAsync(serversWithIis);
-
-        // Refresh status for all servers
-        await Task.Delay(1000); // Give IIS a moment to update
-        await _statusService.RefreshMultipleServerStatusAsync(serversWithIis.ToArray(), CancellationToken.None);
+        // UI is automatically updated inside StartAllIisAsync for each server
     }
 
     /// <summary>
@@ -1024,10 +1057,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         await _operationsService.StopAllIisAsync(serversWithIis);
-
-        // Refresh status for all servers
-        await Task.Delay(1000); // Give IIS a moment to update
-        await _statusService.RefreshMultipleServerStatusAsync(serversWithIis.ToArray(), CancellationToken.None);
+        // UI is automatically updated inside StopAllIisAsync for each server
     }
 
     #endregion
@@ -1145,7 +1175,7 @@ public partial class MainWindowViewModel : ObservableObject
                             IsLoadingServerStatuses = true;
                         });
 
-                        await _statusService.RefreshMultipleServerStatusAsync(syncthingServers, CancellationToken.None);
+                        await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(syncthingServers, CancellationToken.None);
 
                         // Unblock buttons after refresh
                         await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
@@ -1284,7 +1314,7 @@ public partial class MainWindowViewModel : ObservableObject
             // Device reconnected, refresh status
             _ = Task.Run(async () =>
             {
-                await _statusService.RefreshServerStatusAsync(server, CancellationToken.None);
+                await _statusService.RefreshServerStatusOnUIThreadAsync(server, CancellationToken.None);
             });
         }
     }
