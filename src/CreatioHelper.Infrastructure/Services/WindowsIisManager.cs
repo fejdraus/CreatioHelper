@@ -556,7 +556,7 @@ public class WindowsIisManager : IIisManager
     private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string expression, string desiredState, string displayName, CancellationToken cancellationToken = default)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // wait up to 1 minute
+        const int maxAttempts = 240; // wait up to 20 minutes for slow-stopping pools
         
         while (attempts < maxAttempts)
         {
