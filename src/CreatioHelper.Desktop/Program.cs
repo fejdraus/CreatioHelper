@@ -25,6 +25,12 @@ class Program
     [STAThread]
     public static void Main(string[] args)
     {
+        // Initialize crash logger
+        CrashLogger.Initialize();
+
+        // Setup global exception handlers
+        SetupGlobalExceptionHandlers();
+
         // ✅ Register Windows code pages, including 866 (DOS Cyrillic)
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
@@ -48,11 +54,60 @@ class Program
         }
         catch (Exception ex)
         {
+            CrashLogger.LogCrash(ex, "Main");
             ShowErrorMessageAndExit($"Error starting application: {ex.Message}");
         }
         finally
         {
             _singleInstanceManager?.Dispose();
+        }
+    }
+
+    private static void SetupGlobalExceptionHandlers()
+    {
+        // Handle unhandled exceptions in non-UI threads
+        AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
+        {
+            var exception = e.ExceptionObject as Exception ?? new Exception("Unknown exception object");
+            CrashLogger.LogCrash(exception, "AppDomain.UnhandledException");
+
+            if (e.IsTerminating)
+            {
+                try
+                {
+                    ShowCrashMessage(exception);
+                }
+                catch
+                {
+                    // Ignore errors showing message during termination
+                }
+            }
+        };
+
+        // Handle unobserved task exceptions
+        TaskScheduler.UnobservedTaskException += (sender, e) =>
+        {
+            CrashLogger.LogCrash(e.Exception, "TaskScheduler.UnobservedTaskException");
+            e.SetObserved(); // Prevent process termination
+        };
+    }
+
+    private static void ShowCrashMessage(Exception exception)
+    {
+        var message = $"Application has crashed unexpectedly.\n\n" +
+                      $"Error: {exception.Message}\n\n" +
+                      $"A crash report has been saved to crash.log";
+
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        {
+            try
+            {
+                MessageBox(IntPtr.Zero, message, "CreatioHelper - Critical Error", MB_OK | 0x00000010 /* MB_ICONERROR */);
+            }
+            catch
+            {
+                // Ignore
+            }
         }
     }
 
