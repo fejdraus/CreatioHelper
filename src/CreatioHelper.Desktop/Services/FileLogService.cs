@@ -12,14 +12,18 @@ public static class FileLogService
 {
     private static readonly ConcurrentQueue<LogEntry> Queue = new();
     private static readonly SemaphoreSlim Semaphore = new(1, 1);
-    
+    private static readonly Timer FlushTimer;
+
     public static bool Enabled { get; set; }
     public static string LogFilePath { get; set; } = "log.txt";
 
     static FileLogService()
     {
         // Flush queue every 1 second
-        new Timer(async _ => await FlushQueueAsync(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        FlushTimer = new Timer(_ =>
+        {
+            _ = FlushQueueAsync();
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
     }
 
     public static void AppendLine(string line)
