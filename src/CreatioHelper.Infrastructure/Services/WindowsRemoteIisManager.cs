@@ -479,7 +479,7 @@ namespace CreatioHelper.Infrastructure.Services
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
             string? currentState;
-            var maxAttempts = 120;
+            var maxAttempts = 240; // wait up to 20 minutes for slow-stopping pools
             var attempts = 0;
             do
             {

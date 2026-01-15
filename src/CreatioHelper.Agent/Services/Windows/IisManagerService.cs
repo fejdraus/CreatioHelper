@@ -423,7 +423,7 @@ public class IisManagerService : IWebServerService
     private async Task<bool> WaitForSiteStateAsync(string siteName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // wait up to 1 minute
+        const int maxAttempts = 240; // wait up to 20 minutes for slow-stopping sites
         
         while (attempts < maxAttempts)
         {
@@ -446,7 +446,7 @@ public class IisManagerService : IWebServerService
     private async Task<bool> WaitForAppPoolStateAsync(string poolName, string desiredState)
     {
         var attempts = 0;
-        const int maxAttempts = 12; // wait up to 1 minute
+        const int maxAttempts = 240; // wait up to 20 minutes for slow-stopping pools
         
         while (attempts < maxAttempts)
         {
