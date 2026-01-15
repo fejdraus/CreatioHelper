@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using CreatioHelper.Application.Extensions;
 using CreatioHelper.Infrastructure.Extensions;
 using CreatioHelper.Services;
+using MsBox.Avalonia;
 
 namespace CreatioHelper;
 
@@ -22,6 +23,9 @@ public partial class App : Avalonia.Application
 
     public override void OnFrameworkInitializationCompleted()
     {
+        // Setup Avalonia UI thread exception handler
+        SetupAvaloniaExceptionHandler();
+
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             // Skip MainWindow creation if we're just showing an error message
@@ -56,6 +60,35 @@ public partial class App : Avalonia.Application
         }
 
         base.OnFrameworkInitializationCompleted();
+    }
+
+    private void SetupAvaloniaExceptionHandler()
+    {
+        // Handle unhandled exceptions in Avalonia UI thread
+        Avalonia.Threading.Dispatcher.UIThread.UnhandledException += (sender, e) =>
+        {
+            CrashLogger.LogCrash(e.Exception, "Avalonia.UIThread.UnhandledException");
+
+            // Show error message to user
+            try
+            {
+                var message = $"An unexpected error occurred:\n\n{e.Exception.Message}\n\n" +
+                              $"A crash report has been saved to crash.log\n\n" +
+                              $"The application will attempt to continue, but may be unstable.";
+
+                _ = MessageBoxManager
+                    .GetMessageBoxStandard("Error", message,
+                        MsBox.Avalonia.Enums.ButtonEnum.Ok,
+                        MsBox.Avalonia.Enums.Icon.Error)
+                    .ShowAsync();
+            }
+            catch
+            {
+                // Ignore errors showing message box
+            }
+
+            e.Handled = true; // Prevent application termination
+        };
     }
 
     private static void ConfigureServices(IServiceCollection services)

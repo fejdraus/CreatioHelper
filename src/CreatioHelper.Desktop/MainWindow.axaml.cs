@@ -108,6 +108,20 @@ namespace CreatioHelper
             };
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
+            Closed += OnMainWindowClosed;
+        }
+
+        private async void OnMainWindowClosed(object? sender, EventArgs e)
+        {
+            // Flush all pending logs before exit
+            try
+            {
+                await FileLogService.FlushAsync();
+            }
+            catch
+            {
+                // Ignore errors during cleanup
+            }
         }
 
         private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
