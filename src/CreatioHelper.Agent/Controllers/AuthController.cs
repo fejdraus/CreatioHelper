@@ -3,8 +3,10 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using CreatioHelper.Agent.Configuration;
+using CreatioHelper.Agent.Services;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -15,15 +17,18 @@ public class AuthController : ControllerBase
     private readonly AuthenticationSettings _authSettings;
     private readonly JwtSettings _jwtSettings;
     private readonly ILogger<AuthController> _logger;
+    private readonly LoginRateLimiter _rateLimiter;
 
     public AuthController(
         IOptions<AuthenticationSettings> authSettings,
         IOptions<JwtSettings> jwtSettings,
-        ILogger<AuthController> logger)
+        ILogger<AuthController> logger,
+        LoginRateLimiter rateLimiter)
     {
         _authSettings = authSettings.Value;
         _jwtSettings = jwtSettings.Value;
         _logger = logger;
+        _rateLimiter = rateLimiter;
     }
 
     /// <summary>
@@ -37,21 +42,50 @@ public class AuthController : ControllerBase
     {
         try
         {
-            // Validate user credentials from configuration
-            var user = _authSettings.Users.FirstOrDefault(u => 
-                u.Username == request.Username && u.Password == request.Password);
-            
-            if (user != null)
+            // Get client IP for rate limiting
+            var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+
+            // Check rate limiting
+            if (!_rateLimiter.IsAllowed(clientIp))
             {
+                var remainingLockout = _rateLimiter.GetRemainingLockoutTime(clientIp);
+                _logger.LogWarning("Rate limited login attempt from IP: {IpAddress}", clientIp);
+                return StatusCode(429, new
+                {
+                    message = "Too many failed login attempts. Please try again later.",
+                    retryAfterSeconds = remainingLockout?.TotalSeconds ?? 900
+                });
+            }
+
+            // Validate user credentials from configuration
+            // First find user by username, then do timing-safe password comparison
+            var user = _authSettings.Users.FirstOrDefault(u =>
+                u.Username == request.Username);
+
+            // Always perform password comparison even if user is null to prevent timing attacks
+            var passwordBytes = Encoding.UTF8.GetBytes(request.Password ?? "");
+            var expectedBytes = user != null
+                ? Encoding.UTF8.GetBytes(user.Password ?? "")
+                : Encoding.UTF8.GetBytes(string.Empty);
+
+            // Use constant-time comparison to prevent timing attacks
+            var passwordMatch = user != null &&
+                passwordBytes.Length == expectedBytes.Length &&
+                CryptographicOperations.FixedTimeEquals(passwordBytes, expectedBytes);
+
+            if (passwordMatch)
+            {
+                // Clear rate limit on successful login
+                _rateLimiter.RecordSuccessfulLogin(clientIp);
                 var tokenHandler = new JwtSecurityTokenHandler();
                 var key = Encoding.ASCII.GetBytes(_jwtSettings.Secret);
                 var expires = DateTime.UtcNow.AddHours(_jwtSettings.ExpirationHours);
                 
                 var tokenDescriptor = new SecurityTokenDescriptor
                 {
-                    Subject = new ClaimsIdentity(new[] 
+                    Subject = new ClaimsIdentity(new[]
                     {
-                        new Claim("username", user.Username),
+                        new Claim("username", user!.Username),
                         new Claim("role", user.Role),
                         new Claim(ClaimTypes.Name, user.Username),
                         new Claim(ClaimTypes.Role, user.Role)
@@ -75,7 +109,9 @@ public class AuthController : ControllerBase
                 });
             }
             
-            _logger.LogWarning("Failed login attempt for user: {Username}", request.Username);
+            // Record failed attempt for rate limiting
+            _rateLimiter.RecordFailedAttempt(clientIp);
+            _logger.LogWarning("Failed login attempt for user: {Username} from IP: {IpAddress}", request.Username, clientIp);
             return Unauthorized(new { message = "Invalid credentials" });
         }
         catch (Exception ex)

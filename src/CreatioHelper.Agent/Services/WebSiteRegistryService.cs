@@ -3,13 +3,21 @@ using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services;
 
-public class WebSiteRegistryService
+public class WebSiteRegistryService : IDisposable
 {
     private readonly ILogger<WebSiteRegistryService> _logger;
     private readonly string _registryPath;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private WebSiteRegistry _registry = new();
     private bool _loaded;
+    private bool _disposed;
+
+    /// <summary>
+    /// Escapes a string for safe use in bash single-quoted strings.
+    /// Single quotes are escaped by ending the string, adding an escaped single quote, and starting a new string.
+    /// </summary>
+    private static string EscapeBashString(string value)
+        => value.Replace("'", "'\\''");
 
     public WebSiteRegistryService(ILogger<WebSiteRegistryService> logger, IWebHostEnvironment environment)
     {
@@ -22,12 +30,12 @@ public class WebSiteRegistryService
         if (_loaded)
             return;
 
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
             if (!_loaded)
             {
-                await LoadRegistryAsync();
+                await LoadRegistryAsync().ConfigureAwait(false);
                 _loaded = true;
             }
         }
@@ -39,20 +47,20 @@ public class WebSiteRegistryService
 
     public async Task<List<WebSiteInfo>> GetAllSitesAsync()
     {
-        await EnsureLoadedAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
         var sites = new List<WebSiteInfo>();
-        
+
         // 1. Auto-discover IIS sites
         if (OperatingSystem.IsWindows())
         {
-            var iisSites = await DiscoverIisSitesAsync();
+            var iisSites = await DiscoverIisSitesAsync().ConfigureAwait(false);
             sites.AddRange(iisSites);
         }
-        
+
         // 2. Auto-discover Systemd services
         if (OperatingSystem.IsLinux())
         {
-            var systemdSites = await DiscoverSystemdSitesAsync();
+            var systemdSites = await DiscoverSystemdSitesAsync().ConfigureAwait(false);
             sites.AddRange(systemdSites);
         }
         
@@ -78,11 +86,11 @@ public class WebSiteRegistryService
     private async Task<List<WebSiteInfo>> DiscoverIisSitesAsync()
     {
         var sites = new List<WebSiteInfo>();
-        
+
         try
         {
             var script = "Get-Website | Select-Object Name, State | ConvertTo-Json";
-            var result = await ExecutePowerShellAsync(script);
+            var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
             
             if (!string.IsNullOrWhiteSpace(result))
             {
@@ -144,20 +152,20 @@ public class WebSiteRegistryService
     private async Task<List<WebSiteInfo>> DiscoverSystemdSitesAsync()
     {
         var sites = new List<WebSiteInfo>();
-        
+
         try
         {
             // Search for services with specific names or descriptions
             var script = "systemctl list-units --type=service --state=loaded --no-legend | grep -E '(kestrel|web|http|api)' | awk '{print $1}' | sed 's/.service$//'";
-            var result = await ExecuteBashAsync(script);
-            
+            var result = await ExecuteBashAsync(script).ConfigureAwait(false);
+
             if (!string.IsNullOrWhiteSpace(result))
             {
                 var serviceNames = result.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                
+
                 foreach (var serviceName in serviceNames)
                 {
-                    var status = await GetSystemdServiceStatusAsync(serviceName);
+                    var status = await GetSystemdServiceStatusAsync(serviceName).ConfigureAwait(false);
                     sites.Add(new WebSiteInfo
                     {
                         Name = serviceName,
@@ -181,8 +189,8 @@ public class WebSiteRegistryService
     // Manual site registration
     public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, Dictionary<string, string>? properties = null)
     {
-        await EnsureLoadedAsync();
-        await _semaphore.WaitAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
             var existing = _registry.Sites.FirstOrDefault(s => s.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase));
@@ -207,7 +215,7 @@ public class WebSiteRegistryService
             }
             
             _registry.LastUpdated = DateTime.UtcNow;
-            await SaveRegistryAsync();
+            await SaveRegistryAsync().ConfigureAwait(false);
             _logger.LogInformation("Registered website: {DisplayName} -> {ServiceName} ({Type})", displayName, serviceName, type);
         }
         finally
@@ -218,17 +226,17 @@ public class WebSiteRegistryService
 
     public async Task UnregisterWebSiteAsync(string siteName)
     {
-        await EnsureLoadedAsync();
-        await _semaphore.WaitAsync();
+        await EnsureLoadedAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            var removed = _registry.Sites.RemoveAll(s => 
+            var removed = _registry.Sites.RemoveAll(s =>
                 s.Name.Equals(siteName, StringComparison.OrdinalIgnoreCase) && !s.AutoDiscovered);
-            
+
             if (removed > 0)
             {
                 _registry.LastUpdated = DateTime.UtcNow;
-                await SaveRegistryAsync();
+                await SaveRegistryAsync().ConfigureAwait(false);
                 _logger.LogInformation("Unregistered website: {SiteName}", siteName);
             }
         }
@@ -257,7 +265,7 @@ public class WebSiteRegistryService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -268,9 +276,12 @@ public class WebSiteRegistryService
             if (process == null)
                 return null;
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
+
+            var output = await outputTask.ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(error))
             {
@@ -308,9 +319,12 @@ public class WebSiteRegistryService
             if (process == null)
                 return null;
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            var error = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+            await process.WaitForExitAsync().ConfigureAwait(false);
+
+            var output = await outputTask.ConfigureAwait(false);
+            var error = await errorTask.ConfigureAwait(false);
 
             if (!string.IsNullOrWhiteSpace(error))
             {
@@ -330,7 +344,7 @@ public class WebSiteRegistryService
     {
         try
         {
-            var result = await ExecuteBashAsync($"systemctl is-active {serviceName}");
+            var result = await ExecuteBashAsync($"systemctl is-active '{EscapeBashString(serviceName)}'").ConfigureAwait(false);
             return result switch
             {
                 "active" => "Started",
@@ -339,8 +353,9 @@ public class WebSiteRegistryService
                 _ => "Unknown"
             };
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to get systemd service status for {ServiceName}", serviceName);
             return "Unknown";
         }
     }
@@ -355,7 +370,7 @@ public class WebSiteRegistryService
 
         try
         {
-            var json = await File.ReadAllTextAsync(_registryPath);
+            var json = await File.ReadAllTextAsync(_registryPath).ConfigureAwait(false);
             _registry = JsonSerializer.Deserialize<WebSiteRegistry>(json) ?? new WebSiteRegistry();
             _logger.LogInformation("Loaded {Count} websites from registry", _registry.Sites.Count);
         }
@@ -370,17 +385,26 @@ public class WebSiteRegistryService
     {
         try
         {
-            var json = JsonSerializer.Serialize(_registry, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
+            var json = JsonSerializer.Serialize(_registry, new JsonSerializerOptions
+            {
+                WriteIndented = true
             });
-            await File.WriteAllTextAsync(_registryPath, json);
+            await File.WriteAllTextAsync(_registryPath, json).ConfigureAwait(false);
             _logger.LogDebug("Saved website registry to {Path}", _registryPath);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save website registry to {Path}", _registryPath);
             throw;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _semaphore.Dispose();
+            _disposed = true;
         }
     }
 }

@@ -9,6 +9,16 @@ public class SystemdServiceManager : IWebServerService
 {
     private readonly ILogger<SystemdServiceManager> _logger;
 
+    // Regex pattern for valid systemd service names (alphanumeric, dots, hyphens, underscores, @)
+    private static readonly System.Text.RegularExpressions.Regex ValidServiceNameRegex =
+        new(@"^[a-zA-Z0-9._@-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// Validates that a service name contains only safe characters.
+    /// </summary>
+    private static bool IsValidServiceName(string serviceName)
+        => !string.IsNullOrWhiteSpace(serviceName) && ValidServiceNameRegex.IsMatch(serviceName);
+
     public SystemdServiceManager(ILogger<SystemdServiceManager> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -28,6 +38,11 @@ public class SystemdServiceManager : IWebServerService
             return new WebServerResult { Success = false, Message = "Service name is required." };
         }
 
+        if (!IsValidServiceName(serviceName))
+        {
+            return new WebServerResult { Success = false, Message = "Invalid service name format." };
+        }
+
         try
         {
             var currentState = await GetServiceStateAsync(serviceName);
@@ -45,16 +60,16 @@ public class SystemdServiceManager : IWebServerService
             }
 
             var success = await WaitForServiceStateAsync(serviceName, "active");
-            return new WebServerResult 
-            { 
-                Success = success, 
+            return new WebServerResult
+            {
+                Success = success,
                 Message = success ? $"Service {serviceName} started successfully." : $"Failed to start service {serviceName}."
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting service {ServiceName}", serviceName);
-            return new WebServerResult { Success = false, Message = ex.Message };
+            return new WebServerResult { Success = false, Message = "Failed to start service." };
         }
     }
 
@@ -68,6 +83,11 @@ public class SystemdServiceManager : IWebServerService
         if (string.IsNullOrWhiteSpace(serviceName))
         {
             return new WebServerResult { Success = false, Message = "Service name is required." };
+        }
+
+        if (!IsValidServiceName(serviceName))
+        {
+            return new WebServerResult { Success = false, Message = "Invalid service name format." };
         }
 
         try
@@ -87,16 +107,16 @@ public class SystemdServiceManager : IWebServerService
             }
 
             var success = await WaitForServiceStateAsync(serviceName, "inactive");
-            return new WebServerResult 
-            { 
-                Success = success, 
+            return new WebServerResult
+            {
+                Success = success,
                 Message = success ? $"Service {serviceName} stopped successfully." : $"Failed to stop service {serviceName}."
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error stopping service {ServiceName}", serviceName);
-            return new WebServerResult { Success = false, Message = ex.Message };
+            return new WebServerResult { Success = false, Message = "Failed to stop service." };
         }
     }
 
@@ -106,14 +126,19 @@ public class SystemdServiceManager : IWebServerService
 
     public async Task<WebServerResult> GetSiteStatusAsync(string serviceName)
     {
+        if (!IsValidServiceName(serviceName))
+        {
+            return new WebServerResult { Success = false, Message = "Invalid service name format." };
+        }
+
         try
         {
             var state = await GetServiceStateAsync(serviceName);
             var details = await GetServiceDetailsAsync(serviceName);
-            
-            return new WebServerResult 
-            { 
-                Success = true, 
+
+            return new WebServerResult
+            {
+                Success = true,
                 Message = $"Service {serviceName} status retrieved successfully.",
                 Data = new Data { ServiceName = serviceName, Status = state ?? "Unknown", Details = details }
             };
@@ -121,7 +146,7 @@ public class SystemdServiceManager : IWebServerService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting service status {ServiceName}", serviceName);
-            return new WebServerResult { Success = false, Message = ex.Message };
+            return new WebServerResult { Success = false, Message = "Failed to get service status." };
         }
     }
 
@@ -273,15 +298,17 @@ public class SystemdServiceManager : IWebServerService
 
     private async Task<string> GetServicePortAsync(string serviceName)
     {
+        // serviceName is already validated by callers using IsValidServiceName
         try
         {
             var pidText = await ExecuteSystemctlWithOutputAsync($"show -p MainPID --value {serviceName}");
             if (int.TryParse(pidText?.Trim(), out var pid) && pid > 0)
             {
+                // pid is an integer, so it's safe to use in the command (no injection possible)
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = "sh",
-                    Arguments = $"-c 'ss -ltnp | grep \"${pid},\"'",
+                    Arguments = $"-c \"ss -ltnp | grep 'pid={pid},'\"",
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     UseShellExecute = false,
@@ -300,9 +327,9 @@ public class SystemdServiceManager : IWebServerService
                     return match.Groups[1].Value;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // ignore errors
+            _logger.LogDebug(ex, "Failed to get service port for {ServiceName}", serviceName);
         }
 
         return string.Empty;

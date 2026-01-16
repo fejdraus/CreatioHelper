@@ -441,7 +441,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         bool serviceStopped = false;
 
         string serverName = isLocal ? Environment.MachineName : (server.Name ?? "");
-        string serverLabel = isLocal ? "Local" : server.Name;
+        string serverLabel = isLocal ? "Local" : (server.Name ?? "Remote");
 
         // For remote servers - always IIS mode (they don't have local nestedPath)
         // For local server - check if file exists to determine IIS vs Service mode
@@ -529,7 +529,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         CancellationToken cancellationToken)
     {
         string serverName = isLocal ? Environment.MachineName : (server.Name ?? "");
-        string serverLabel = isLocal ? "Main" : server.Name;
+        string serverLabel = isLocal ? "Main" : (server.Name ?? "Remote");
 
         // For remote servers - always IIS mode (they don't have local nestedPath)
         // For local server - check if file exists to determine IIS vs Service mode

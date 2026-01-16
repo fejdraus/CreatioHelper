@@ -1,4 +1,5 @@
 using CreatioHelper.Infrastructure.Services.Performance;
+using Microsoft.AspNetCore.Authorization;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -57,7 +58,6 @@ public class HealthController : ControllerBase
             {
                 Status = "Error",
                 Message = "Health check system error",
-                Error = ex.Message,
                 Timestamp = DateTime.UtcNow
             });
         }
@@ -67,6 +67,7 @@ public class HealthController : ControllerBase
     /// Get detailed information about all components
     /// </summary>
     [HttpGet("detailed")]
+    [Authorize]
     public async Task<ActionResult<object>> GetDetailedHealth()
     {
         try
@@ -104,7 +105,6 @@ public class HealthController : ControllerBase
             {
                 Status = "Error",
                 Message = "Health check system error",
-                Error = ex.Message,
                 Timestamp = DateTime.UtcNow
             });
         }
@@ -114,6 +114,7 @@ public class HealthController : ControllerBase
     /// Check the health of a specific component
     /// </summary>
     [HttpGet("component/{componentName}")]
+    [Authorize]
     public async Task<ActionResult<object>> GetComponentHealth(string componentName)
     {
         try
@@ -140,7 +141,7 @@ public class HealthController : ControllerBase
             {
                 Component = componentName,
                 Status = "Error",
-                Message = $"Health check failed: {ex.Message}",
+                Message = "Health check failed",
                 Timestamp = DateTime.UtcNow
             });
         }

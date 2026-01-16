@@ -1,6 +1,8 @@
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Entities.Events;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
@@ -13,6 +15,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest/events")]
+[Authorize(Roles = Roles.ReadRoles)]
 public class EventsController : ControllerBase
 {
     private readonly IEventLogger _eventLogger;
@@ -51,7 +54,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting events since {Since}: {Message}", since, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -77,7 +80,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting events from disk since {Since}: {Message}", since, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -85,6 +88,7 @@ public class EventsController : ControllerBase
     /// Создать подписку на события (для веб-сокетов или SSE)
     /// </summary>
     [HttpPost("subscribe")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public Task<IActionResult> CreateSubscription([FromBody] EventSubscriptionRequest request)
     {
         try
@@ -104,7 +108,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating event subscription: {Message}", ex.Message);
-            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error", message = ex.Message }));
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -112,6 +116,7 @@ public class EventsController : ControllerBase
     /// Отправить пользовательское событие (для тестирования)
     /// </summary>
     [HttpPost("test")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public Task<IActionResult> SendTestEvent([FromBody] TestEventRequest request)
     {
         try
@@ -133,7 +138,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending test event: {Message}", ex.Message);
-            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error", message = ex.Message }));
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -151,7 +156,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting event statistics: {Message}", ex.Message);
-            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error", message = ex.Message }));
+            return Task.FromResult<IActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -159,6 +164,7 @@ public class EventsController : ControllerBase
     /// Очистить старые события
     /// </summary>
     [HttpPost("cleanup")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> CleanupOldEvents([FromBody] CleanupRequest request, CancellationToken cancellationToken = default)
     {
         try
@@ -171,7 +177,7 @@ public class EventsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cleaning up old events: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

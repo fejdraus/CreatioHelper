@@ -1,4 +1,6 @@
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
 
@@ -26,6 +28,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/status?folder=default
     /// </summary>
     [HttpGet("status")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<ActionResult<object>> GetStatus([FromQuery] string folder)
     {
         try
@@ -82,7 +85,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting folder status for {Folder}", folder);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -91,6 +94,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/completion?folder=default&device=DEVICE-ID
     /// </summary>
     [HttpGet("completion")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<ActionResult<object>> GetCompletion([FromQuery] string folder, [FromQuery] string device)
     {
         try
@@ -100,23 +104,28 @@ public class DatabaseController : ControllerBase
 
             // Get completion statistics for specific device
             var statistics = await _syncEngine.GetStatisticsAsync();
-            
+
+            // TODO: Implement real completion calculation when sync repositories are implemented
+            // Currently returns placeholder data indicating 100% completion
+            _logger.LogDebug("Returning placeholder completion data for folder {Folder}, device {Device}", folder, device);
+
             return Ok(new
             {
-                completion = 100.0, // Placeholder - calculate actual completion
-                globalBytes = 1024000,
+                completion = 100.0,
+                globalBytes = (statistics?.TotalBytesIn ?? 0) + (statistics?.TotalBytesOut ?? 0),
                 needBytes = 0,
-                globalItems = 100,
+                globalItems = (statistics?.TotalFilesReceived ?? 0) + (statistics?.TotalFilesSent ?? 0),
                 needItems = 0,
                 needDeletes = 0,
-                sequence = 1000,
-                remoteState = "idle"
+                sequence = statistics?.SyncedFolders ?? 0,
+                remoteState = "idle",
+                _warning = "Placeholder data - sync completion tracking not yet implemented"
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting completion for {Folder} on {Device}", folder, device);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -125,6 +134,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/browse?folder=default&prefix=path
     /// </summary>
     [HttpGet("browse")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<ActionResult<object>> Browse([FromQuery] string folder, [FromQuery] string? prefix, [FromQuery] bool dirsonly = false)
     {
         try
@@ -132,12 +142,29 @@ public class DatabaseController : ControllerBase
             if (string.IsNullOrEmpty(folder))
                 return BadRequest(new { error = "folder parameter required" });
 
+            // Validate prefix path to prevent path traversal attacks
+            if (!string.IsNullOrEmpty(prefix) && (prefix.Contains("..") || Path.IsPathRooted(prefix)))
+                return BadRequest(new { error = "Invalid prefix path" });
+
             var folderInfo = await _syncEngine.GetFolderAsync(folder);
             if (folderInfo == null)
                 return NotFound(new { error = "folder not found" });
 
             var basePath = folderInfo.Path;
             var searchPath = string.IsNullOrEmpty(prefix) ? basePath : Path.Combine(basePath, prefix);
+
+            // Additional check: ensure resolved path is within the folder
+            var searchFullPath = Path.GetFullPath(searchPath);
+            var folderFullPath = Path.GetFullPath(basePath);
+
+            // Normalize folder path to end with separator for accurate prefix matching
+            if (!folderFullPath.EndsWith(Path.DirectorySeparatorChar))
+                folderFullPath += Path.DirectorySeparatorChar;
+
+            // Path must equal the folder or start with folder + separator
+            if (!searchFullPath.Equals(folderFullPath.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) &&
+                !searchFullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = "Invalid prefix path" });
 
             var entries = new List<object>();
 
@@ -178,7 +205,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error browsing folder {Folder} with prefix {Prefix}", folder, prefix);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -187,6 +214,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/file?folder=default&file=path/to/file
     /// </summary>
     [HttpGet("file")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<ActionResult<object>> GetFile([FromQuery] string folder, [FromQuery] string file)
     {
         try
@@ -194,12 +222,28 @@ public class DatabaseController : ControllerBase
             if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(file))
                 return BadRequest(new { error = "folder and file parameters required" });
 
+            // Validate file path to prevent path traversal attacks
+            if (file.Contains("..") || Path.IsPathRooted(file))
+                return BadRequest(new { error = "Invalid file path" });
+
             var folderInfo = await _syncEngine.GetFolderAsync(folder);
             if (folderInfo == null)
                 return NotFound(new { error = "folder not found" });
 
             var filePath = Path.Combine(folderInfo.Path, file);
-            
+
+            // Additional check: ensure resolved path is within the folder
+            var fullPath = Path.GetFullPath(filePath);
+            var folderFullPath = Path.GetFullPath(folderInfo.Path);
+
+            // Normalize folder path to end with separator for accurate prefix matching
+            if (!folderFullPath.EndsWith(Path.DirectorySeparatorChar))
+                folderFullPath += Path.DirectorySeparatorChar;
+
+            // Path must start with folder + separator (files cannot equal folder path)
+            if (!fullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
+                return BadRequest(new { error = "Invalid file path" });
+
             if (!System.IO.File.Exists(filePath))
                 return NotFound(new { error = "file not found" });
 
@@ -234,7 +278,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting file {File} in folder {Folder}", file, folder);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -243,6 +287,7 @@ public class DatabaseController : ControllerBase
     /// POST /rest/db/scan?folder=default&sub=path
     /// </summary>
     [HttpPost("scan")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> Scan([FromQuery] string folder, [FromQuery] string? sub, [FromQuery] int next = 0)
     {
         try
@@ -260,7 +305,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error scanning folder {Folder}", folder);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -269,6 +314,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/need?folder=default
     /// </summary>
     [HttpGet("need")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public Task<ActionResult<object>> GetNeed([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
         try
@@ -276,13 +322,20 @@ public class DatabaseController : ControllerBase
             if (string.IsNullOrEmpty(folder))
                 return Task.FromResult<ActionResult<object>>(BadRequest(new { error = "folder parameter required" }));
 
-            // Return files that need to be synchronized
-            var files = new List<object>();
-            
-            // Placeholder - in real implementation, this would return actual needed files
+            // Bounds checking for pagination parameters
+            page = Math.Max(1, page);
+            perpage = Math.Clamp(perpage, 1, 1000);
+
+            // TODO: Implement real "need" tracking when sync repositories are implemented
+            // Currently returns empty list indicating no files need synchronization
+            _logger.LogDebug("Returning placeholder need data for folder {Folder} (page {Page})", folder, page);
+
+            // Return files that need to be synchronized (placeholder - always empty)
+            var files = Array.Empty<object>();
+
             return Task.FromResult<ActionResult<object>>(Ok(new
             {
-                files = files.ToArray(),
+                files = files,
                 page = page,
                 perpage = perpage,
                 progress = new[]
@@ -294,15 +347,16 @@ public class DatabaseController : ControllerBase
                         pct = 100.0
                     }
                 },
-                queued = files.ToArray(),
-                rest = files.ToArray(),
-                total = 0
+                queued = files,
+                rest = files,
+                total = 0,
+                _warning = "Placeholder data - sync need tracking not yet implemented"
             }));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting need for folder {Folder}", folder);
-            return Task.FromResult<ActionResult<object>>(StatusCode(500, new { error = ex.Message }));
+            return Task.FromResult<ActionResult<object>>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -311,6 +365,7 @@ public class DatabaseController : ControllerBase
     /// POST /rest/db/override?folder=default
     /// </summary>
     [HttpPost("override")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public Task<ActionResult> Override([FromQuery] string folder)
     {
         try
@@ -326,7 +381,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error overriding folder {Folder}", folder);
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = ex.Message }));
+            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -335,6 +390,7 @@ public class DatabaseController : ControllerBase
     /// POST /rest/db/revert?folder=default
     /// </summary>
     [HttpPost("revert")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public Task<ActionResult> Revert([FromQuery] string folder)
     {
         try
@@ -350,7 +406,7 @@ public class DatabaseController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reverting folder {Folder}", folder);
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = ex.Message }));
+            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 }

@@ -14,15 +14,15 @@ public class UserCredentials
 
 public class JwtSettings
 {
-    public required string Secret { get; set; }
-    public required string Issuer { get; set; }
-    public required string Audience { get; set; }
+    public string Secret { get; set; } = string.Empty;
+    public string Issuer { get; set; } = "CreatioHelper.Agent";
+    public string Audience { get; set; } = "CreatioHelper.Client";
     public int ExpirationHours { get; set; } = 24;
 }
 
 public class SwaggerAuthSettings
 {
-    public required string Username { get; set; }
-    public required string Password { get; set; }
-    public bool Enabled { get; set; } = true;
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public bool Enabled { get; set; } = false;
 }

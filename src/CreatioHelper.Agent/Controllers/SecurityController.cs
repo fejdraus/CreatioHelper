@@ -1,5 +1,7 @@
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Cryptography.X509Certificates;
@@ -31,6 +33,7 @@ public class SecurityController : ControllerBase
     /// Получить конфигурацию безопасности системы
     /// </summary>
     [HttpGet("config")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSecurityConfiguration(CancellationToken cancellationToken = default)
     {
         try
@@ -52,7 +55,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting security configuration");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -60,6 +63,7 @@ public class SecurityController : ControllerBase
     /// Получить информацию о сертификатах устройств
     /// </summary>
     [HttpGet("certificates")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetCertificates(CancellationToken cancellationToken = default)
     {
         try
@@ -91,7 +95,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting certificates information");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -99,6 +103,7 @@ public class SecurityController : ControllerBase
     /// Создать новый сертификат устройства
     /// </summary>
     [HttpPost("certificates/create")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> CreateCertificate(
         [FromBody] CreateCertificateRequest request,
         CancellationToken cancellationToken = default)
@@ -149,7 +154,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating certificate");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -157,14 +162,29 @@ public class SecurityController : ControllerBase
     /// Проверить валидность сертификата
     /// </summary>
     [HttpPost("certificates/validate")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> ValidateCertificate(
         [FromBody] ValidateCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var certificateBytes = Convert.FromBase64String(request.CertificateBase64);
-            var certificate = new X509Certificate2(certificateBytes);
+            byte[] certificateBytes;
+            X509Certificate2 certificate;
+
+            try
+            {
+                certificateBytes = Convert.FromBase64String(request.CertificateBase64);
+                certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
+            }
+            catch (FormatException)
+            {
+                return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
+            }
 
             var validationResult = await _certificateManager.ValidateCertificateAsync(
                 certificate,
@@ -176,7 +196,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error validating certificate");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -184,14 +204,29 @@ public class SecurityController : ControllerBase
     /// Добавить устройство в список доверенных
     /// </summary>
     [HttpPost("trusted-devices")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> AddTrustedDevice(
         [FromBody] AddTrustedDeviceRequest request,
         CancellationToken cancellationToken = default)
     {
         try
         {
-            var certificateBytes = Convert.FromBase64String(request.CertificateBase64);
-            var certificate = new X509Certificate2(certificateBytes);
+            byte[] certificateBytes;
+            X509Certificate2 certificate;
+
+            try
+            {
+                certificateBytes = Convert.FromBase64String(request.CertificateBase64);
+                certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
+            }
+            catch (FormatException)
+            {
+                return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
+            }
+            catch (System.Security.Cryptography.CryptographicException)
+            {
+                return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
+            }
 
             var deviceId = _certificateManager.ComputeDeviceId(certificate);
 
@@ -219,7 +254,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding trusted device");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -227,6 +262,7 @@ public class SecurityController : ControllerBase
     /// Удалить устройство из списка доверенных
     /// </summary>
     [HttpDelete("trusted-devices/{deviceId}")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RemoveTrustedDevice(
         string deviceId,
         CancellationToken cancellationToken = default)
@@ -251,7 +287,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error removing trusted device");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -259,6 +295,7 @@ public class SecurityController : ControllerBase
     /// Получить список доверенных устройств
     /// </summary>
     [HttpGet("trusted-devices")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetTrustedDevices(CancellationToken cancellationToken = default)
     {
         try
@@ -269,7 +306,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting trusted devices");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -277,6 +314,7 @@ public class SecurityController : ControllerBase
     /// Выполнить аудит безопасности
     /// </summary>
     [HttpPost("audit")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> PerformSecurityAudit(CancellationToken cancellationToken = default)
     {
         try
@@ -287,7 +325,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error performing security audit");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -295,6 +333,7 @@ public class SecurityController : ControllerBase
     /// Получить статистику безопасности
     /// </summary>
     [HttpGet("statistics")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSecurityStatistics(CancellationToken cancellationToken = default)
     {
         try
@@ -305,7 +344,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting security statistics");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -313,6 +352,7 @@ public class SecurityController : ControllerBase
     /// Получить события безопасности
     /// </summary>
     [HttpGet("events")]
+    [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSecurityEvents(
         [FromQuery] DateTime? since = null,
         [FromQuery] SecurityEventType? eventType = null,
@@ -331,7 +371,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting security events");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -339,6 +379,7 @@ public class SecurityController : ControllerBase
     /// Очистить старые события безопасности
     /// </summary>
     [HttpPost("events/cleanup")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> CleanupSecurityEvents(
         [FromBody] CleanupEventsRequest request,
         CancellationToken cancellationToken = default)
@@ -356,7 +397,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error cleaning up security events");
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -364,6 +405,7 @@ public class SecurityController : ControllerBase
     /// Обновить сертификат если требуется
     /// </summary>
     [HttpPost("certificates/{deviceId}/renew")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RenewCertificate(
         string deviceId,
         [FromBody] RenewCertificateRequest request,
@@ -406,7 +448,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error renewing certificate for device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -414,6 +456,7 @@ public class SecurityController : ControllerBase
     /// Экспортировать сертификат
     /// </summary>
     [HttpPost("certificates/{deviceId}/export")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> ExportCertificate(
         string deviceId,
         [FromBody] ExportCertificateRequest request,
@@ -444,7 +487,7 @@ public class SecurityController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting certificate for device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }
