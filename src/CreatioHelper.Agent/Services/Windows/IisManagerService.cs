@@ -6,11 +6,18 @@ namespace CreatioHelper.Agent.Services.Windows;
 public class IisManagerService : IWebServerService
 {
     private readonly ILogger<IisManagerService> _logger;
-    
+
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
+
+    /// <summary>
+    /// Escapes a string for safe use in PowerShell single-quoted strings.
+    /// Single quotes are escaped by doubling them.
+    /// </summary>
+    private static string EscapePowerShellString(string value)
+        => value.Replace("'", "''");
 
     public IisManagerService(ILogger<IisManagerService> logger)
     {
@@ -41,7 +48,7 @@ public class IisManagerService : IWebServerService
 
             if (currentState == "Stopped")
             {
-                if (!await ExecuteScriptAsync($"Start-Website -Name '{siteName}'"))
+                if (!await ExecuteScriptAsync($"Start-Website -Name '{EscapePowerShellString(siteName)}'"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to start site {siteName}." };
                 }
@@ -83,7 +90,7 @@ public class IisManagerService : IWebServerService
 
             if (currentState == "Started")
             {
-                if (!await ExecuteScriptAsync($"Stop-Website -Name '{siteName}'"))
+                if (!await ExecuteScriptAsync($"Stop-Website -Name '{EscapePowerShellString(siteName)}'"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to stop site {siteName}." };
                 }
@@ -125,7 +132,7 @@ public class IisManagerService : IWebServerService
 
             if (currentState == "Stopped")
             {
-                if (!await ExecuteScriptAsync($"Start-WebAppPool -Name '{poolName}'"))
+                if (!await ExecuteScriptAsync($"Start-WebAppPool -Name '{EscapePowerShellString(poolName)}'"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to start app pool {poolName}." };
                 }
@@ -167,7 +174,7 @@ public class IisManagerService : IWebServerService
 
             if (currentState == "Started")
             {
-                if (!await ExecuteScriptAsync($"Stop-WebAppPool -Name '{poolName}'"))
+                if (!await ExecuteScriptAsync($"Stop-WebAppPool -Name '{EscapePowerShellString(poolName)}'"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to stop app pool {poolName}." };
                 }
@@ -330,7 +337,7 @@ public class IisManagerService : IWebServerService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -344,8 +351,14 @@ public class IisManagerService : IWebServerService
                 return false;
             }
 
-            var errorText = await process.StandardError.ReadToEndAsync();
+            // Read streams concurrently to avoid deadlock, then wait for process exit
+            var errorTask = process.StandardError.ReadToEndAsync();
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+
             await process.WaitForExitAsync();
+
+            var errorText = await errorTask;
+            _ = await outputTask; // Consume output to prevent buffer deadlock
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
@@ -373,7 +386,7 @@ public class IisManagerService : IWebServerService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -387,9 +400,14 @@ public class IisManagerService : IWebServerService
                 return null;
             }
 
-            var outputText = await process.StandardOutput.ReadToEndAsync();
-            var errorText = await process.StandardError.ReadToEndAsync();
+            // Read streams concurrently to avoid deadlock, then wait for process exit
+            var outputTask = process.StandardOutput.ReadToEndAsync();
+            var errorTask = process.StandardError.ReadToEndAsync();
+
             await process.WaitForExitAsync();
+
+            var outputText = await outputTask;
+            var errorText = await errorTask;
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
@@ -408,14 +426,14 @@ public class IisManagerService : IWebServerService
 
     private async Task<string?> GetSiteStateAsync(string siteName)
     {
-        var script = $"(Get-Website -Name '{siteName}').State";
+        var script = $"(Get-Website -Name '{EscapePowerShellString(siteName)}').State";
         var result = await ExecuteScriptWithOutputAsync(script);
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
     }
 
     private async Task<string?> GetAppPoolStateAsync(string poolName)
     {
-        var script = $"(Get-WebAppPoolState -Name '{poolName}').Value";
+        var script = $"(Get-WebAppPoolState -Name '{EscapePowerShellString(poolName)}').Value";
         var result = await ExecuteScriptWithOutputAsync(script);
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
     }

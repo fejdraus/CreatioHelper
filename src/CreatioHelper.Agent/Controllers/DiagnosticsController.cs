@@ -48,7 +48,7 @@ public class DiagnosticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to generate diagnostics summary");
-            return StatusCode(500, new { Error = "Failed to generate diagnostics", ex.Message });
+            return StatusCode(500, new { Error = "Failed to generate diagnostics" });
         }
     }
 
@@ -85,7 +85,7 @@ public class DiagnosticsController : ControllerBase
         {
             _logger.LogError(ex, "Force system check failed");
             diagnosticContext.MarkFailure(ex.Message);
-            return StatusCode(500, new { Error = "System check failed", ex.Message });
+            return StatusCode(500, new { Error = "System check failed" });
         }
     }
 
@@ -124,7 +124,7 @@ public class DiagnosticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get recent issues");
-            return StatusCode(500, new { Error = "Failed to get issues", ex.Message });
+            return StatusCode(500, new { Error = "Failed to get issues" });
         }
     }
 }

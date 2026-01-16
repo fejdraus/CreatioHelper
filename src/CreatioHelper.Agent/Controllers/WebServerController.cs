@@ -84,7 +84,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to get web server type setting");
-            return StatusCode(500, new { Message = "Failed to get setting", Error = ex.Message });
+            return StatusCode(500, new { error = "Failed to get setting" });
         }
     }
 
@@ -149,7 +149,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error stopping site {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -191,7 +191,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting app pool {PoolName}", poolName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -233,7 +233,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error stopping app pool {PoolName}", poolName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -285,7 +285,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting status for site {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -318,7 +318,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting all sites");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -351,7 +351,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting all app pools");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -384,7 +384,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting multiple server statuses");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -418,7 +418,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting detailed sites information");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -451,7 +451,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting detailed app pools information");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -503,7 +503,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting web server overview");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -545,7 +545,7 @@ public class WebServerController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting site {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

@@ -1,8 +1,10 @@
-using Microsoft.AspNetCore.Mvc;
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities.Events;
-using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
+using System.Text.Json.Serialization;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -12,6 +14,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest")]
+[Authorize(Roles = Roles.ReadRoles)]
 public class SyncthingEventsController : ControllerBase
 {
     private readonly IEventLogger _eventLogger;

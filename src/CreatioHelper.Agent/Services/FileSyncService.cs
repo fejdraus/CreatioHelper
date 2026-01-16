@@ -79,8 +79,10 @@ public class FileSyncService : IFileSyncService
         {
             return await Task.Run(() => Directory.Exists(path) || File.Exists(path));
         }
-        catch
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
+            // Expected exceptions for invalid/inaccessible paths
+            _logger.LogDebug(ex, "Path validation failed for {Path}", path);
             return false;
         }
     }

@@ -1,10 +1,11 @@
 namespace CreatioHelper.Agent.Services;
 
-public class ConfigurationService : IConfigurationService
+public class ConfigurationService : IConfigurationService, IDisposable
 {
     private readonly string _configPath;
     private readonly ILogger<ConfigurationService> _logger;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private bool _disposed;
 
     public ConfigurationService(ILogger<ConfigurationService> logger, IWebHostEnvironment environment)
     {
@@ -24,10 +25,10 @@ public class ConfigurationService : IConfigurationService
 
     public async Task<T?> GetSettingAsync<T>(string key, T? defaultValue = default)
     {
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            var settings = await LoadSettingsAsync();
+            var settings = await LoadSettingsAsync().ConfigureAwait(false);
             
             if (TryGetNestedValue(settings, key, out var value) && value is JsonElement element)
             {
@@ -51,14 +52,15 @@ public class ConfigurationService : IConfigurationService
 
     public async Task SetSettingAsync<T>(string key, T value)
     {
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
-            var settings = await LoadSettingsAsync();
+            var settings = await LoadSettingsAsync().ConfigureAwait(false);
             SetNestedValue(settings, key, value);
-            await SaveSettingsAsync(settings);
+            await SaveSettingsAsync(settings).ConfigureAwait(false);
             
-            _logger.LogInformation("Setting {Key} set to {Value}", key, value);
+            // Log only the key, not the value - values may contain sensitive data
+            _logger.LogInformation("Setting {Key} updated", key);
         }
         finally
         {
@@ -73,7 +75,7 @@ public class ConfigurationService : IConfigurationService
 
         try
         {
-            var json = await File.ReadAllTextAsync(_configPath);
+            var json = await File.ReadAllTextAsync(_configPath).ConfigureAwait(false);
             return JsonSerializer.Deserialize<Dictionary<string, object>>(json) ?? new Dictionary<string, object>();
         }
         catch (Exception ex)
@@ -87,16 +89,25 @@ public class ConfigurationService : IConfigurationService
     {
         try
         {
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions 
-            { 
-                WriteIndented = true 
+            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
+            {
+                WriteIndented = true
             });
-            await File.WriteAllTextAsync(_configPath, json);
+            await File.WriteAllTextAsync(_configPath, json).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to save settings to {Path}", _configPath);
             throw;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _semaphore.Dispose();
+            _disposed = true;
         }
     }
 

@@ -1,13 +1,24 @@
 using System.Diagnostics;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.MacOS;
 
 [SupportedOSPlatform("macos")]
-public class LaunchdServiceManager : IWebServerService
+public partial class LaunchdServiceManager : IWebServerService
 {
     private readonly ILogger<LaunchdServiceManager> _logger;
+
+    // Regex pattern for valid launchd service names (alphanumeric, dots, hyphens, underscores)
+    [GeneratedRegex(@"^[a-zA-Z0-9._-]+$", RegexOptions.Compiled)]
+    private static partial Regex ValidServiceNameRegex();
+
+    /// <summary>
+    /// Validates that a service name contains only safe characters.
+    /// </summary>
+    private static bool IsValidServiceName(string serviceName)
+        => !string.IsNullOrWhiteSpace(serviceName) && ValidServiceNameRegex().IsMatch(serviceName);
 
     public LaunchdServiceManager(ILogger<LaunchdServiceManager> logger)
     {
@@ -23,9 +34,9 @@ public class LaunchdServiceManager : IWebServerService
             return new WebServerResult { Success = false, Message = "Launchd management is only available on macOS." };
         }
 
-        if (string.IsNullOrWhiteSpace(serviceName))
+        if (!IsValidServiceName(serviceName))
         {
-            return new WebServerResult { Success = false, Message = "Service name is required." };
+            return new WebServerResult { Success = false, Message = "Invalid service name. Only alphanumeric characters, dots, hyphens, and underscores are allowed." };
         }
 
         try
@@ -72,9 +83,9 @@ public class LaunchdServiceManager : IWebServerService
             return new WebServerResult { Success = false, Message = "Launchd management is only available on macOS." };
         }
 
-        if (string.IsNullOrWhiteSpace(serviceName))
+        if (!IsValidServiceName(serviceName))
         {
-            return new WebServerResult { Success = false, Message = "Service name is required." };
+            return new WebServerResult { Success = false, Message = "Invalid service name. Only alphanumeric characters, dots, hyphens, and underscores are allowed." };
         }
 
         try
@@ -113,6 +124,11 @@ public class LaunchdServiceManager : IWebServerService
 
     public async Task<WebServerResult> GetSiteStatusAsync(string serviceName)
     {
+        if (!IsValidServiceName(serviceName))
+        {
+            return new WebServerResult { Success = false, Message = "Invalid service name. Only alphanumeric characters, dots, hyphens, and underscores are allowed." };
+        }
+
         try
         {
             var state = await GetServiceStateAsync(serviceName);
@@ -284,8 +300,9 @@ public class LaunchdServiceManager : IWebServerService
             
             return "loaded";
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to get service state for {ServiceName}", serviceName);
             return "not loaded";
         }
     }
@@ -330,9 +347,9 @@ public class LaunchdServiceManager : IWebServerService
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // ignore errors and return empty string
+            _logger.LogDebug(ex, "Failed to get service port for PID {Pid}", pid);
         }
 
         return string.Empty;

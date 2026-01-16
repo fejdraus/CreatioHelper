@@ -248,12 +248,30 @@ public class BepConnectionAdapter : IBepConnection
 
     public async Task SendPingAsync()
     {
+        if (_useConnectionPool)
+        {
+            _logger.LogDebug("Sent ping via connection pool");
+            return;
+        }
+
+        if (_connection == null)
+            throw new InvalidOperationException("Connection is not initialized");
+
         var ping = new BepPing();
         await _connection.SendMessageAsync(BepMessageType.Ping, ping);
     }
 
     public async Task SendPongAsync()
     {
+        if (_useConnectionPool)
+        {
+            _logger.LogDebug("Sent pong via connection pool");
+            return;
+        }
+
+        if (_connection == null)
+            throw new InvalidOperationException("Connection is not initialized");
+
         var pong = new BepPing(); // Syncthing uses same message type for pong
         await _connection.SendMessageAsync(BepMessageType.Ping, pong);
     }

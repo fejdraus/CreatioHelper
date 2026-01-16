@@ -28,7 +28,7 @@ public class SystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system info");
-            return StatusCode(500, ex.Message);
+            return StatusCode(500, new { error = "Failed to get system info" });
         }
     }
 
