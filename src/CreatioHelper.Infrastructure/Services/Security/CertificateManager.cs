@@ -174,7 +174,7 @@ public class CertificateManager : ICertificateManager
             if (string.IsNullOrEmpty(privateKeyPath))
             {
                 // Загружаем сертификат с приватным ключом из одного файла
-                certificate = new X509Certificate2(certificatePath, password, 
+                certificate = X509CertificateLoader.LoadPkcs12FromFile(certificatePath, password,
                     X509KeyStorageFlags.Exportable | X509KeyStorageFlags.PersistKeySet);
             }
             else
@@ -559,9 +559,9 @@ public class CertificateManager : ICertificateManager
             var result = format switch
             {
                 CertificateExportFormat.Pem => X509Certificate2.CreateFromPem(Encoding.UTF8.GetString(certificateData)),
-                CertificateExportFormat.Der => new X509Certificate2(certificateData),
-                CertificateExportFormat.Pkcs12 => new X509Certificate2(certificateData, password),
-                CertificateExportFormat.Pkcs7 => new X509Certificate2(certificateData),
+                CertificateExportFormat.Der => X509CertificateLoader.LoadCertificate(certificateData),
+                CertificateExportFormat.Pkcs12 => X509CertificateLoader.LoadPkcs12(certificateData, password),
+                CertificateExportFormat.Pkcs7 => X509CertificateLoader.LoadCertificate(certificateData),
                 _ => throw new NotSupportedException($"Import format {format} not supported")
             };
             return Task.FromResult(result);

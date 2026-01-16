@@ -1,3 +1,4 @@
+using System.Security.Cryptography.X509Certificates;
 using System.Xml;
 using StackExchange.Redis;
 using CreatioHelper.Domain.Entities;
@@ -36,7 +37,7 @@ namespace CreatioHelper.Infrastructure.Services.Redis
             {
                 options.CertificateSelection += delegate
                 {
-                    return new System.Security.Cryptography.X509Certificates.X509Certificate2(redisInfo.CertificatePath, redisInfo.CertificatePassword);
+                    return X509CertificateLoader.LoadPkcs12FromFile(redisInfo.CertificatePath, redisInfo.CertificatePassword);
                 };
             }
 

@@ -60,7 +60,7 @@ public class MetricsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting performance metrics");
-            return StatusCode(500, new { error = "Failed to retrieve metrics", message = ex.Message });
+            return StatusCode(500, new { error = "Failed to retrieve metrics" });
         }
     }
 
@@ -100,7 +100,7 @@ public class MetricsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error generating Prometheus metrics");
-            return StatusCode(500, $"# Error generating metrics: {ex.Message}");
+            return StatusCode(500, "# Error generating metrics");
         }
     }
 
@@ -201,8 +201,9 @@ public class MetricsController : ControllerBase
             var workingSet = Environment.WorkingSet;
             return Task.FromResult(workingSet / 1024.0 / 1024.0); // MB
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to get memory usage");
             return Task.FromResult(0.0);
         }
     }
@@ -214,8 +215,9 @@ public class MetricsController : ControllerBase
             // Simplified implementation - a more complex calculation is needed in reality
             return Task.FromResult(0.0);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to get CPU usage");
             return Task.FromResult(0.0);
         }
     }

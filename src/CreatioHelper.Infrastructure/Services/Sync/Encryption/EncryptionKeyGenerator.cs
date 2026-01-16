@@ -52,10 +52,9 @@ public class EncryptionKeyGenerator : IDisposable
             // Use known bytes as salt (Syncthing compatibility)
             var salt = GetKnownBytes(folderId);
             var passwordBytes = Encoding.UTF8.GetBytes(password);
-            
+
             // Use PBKDF2 as SCrypt alternative for now
-            using var pbkdf2 = new Rfc2898DeriveBytes(passwordBytes, salt, 100000, HashAlgorithmName.SHA256);
-            var key = pbkdf2.GetBytes(KeySize);
+            var key = Rfc2898DeriveBytes.Pbkdf2(passwordBytes, salt, 100000, HashAlgorithmName.SHA256, KeySize);
             
             // Cache the key
             _folderKeyCache[cacheKey] = key;

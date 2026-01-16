@@ -44,7 +44,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting all sites");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -84,7 +84,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error registering site {DisplayName}", request.DisplayName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -127,7 +127,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating site {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -158,7 +158,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error unregistering site {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -182,7 +182,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting site info for {SiteName}", siteName);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -227,7 +227,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting sites by type {Type}", type);
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
     
@@ -264,7 +264,7 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting site stats");
-            return StatusCode(500, new { ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

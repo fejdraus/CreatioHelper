@@ -6,10 +6,25 @@ using CreatioHelper.Infrastructure.Services.Performance;
 using CreatioHelper.Infrastructure.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
+using System.Security.Cryptography;
 using System.Text;
-using Microsoft.OpenApi;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configure Serilog
+builder.Host.UseSerilog((context, configuration) =>
+{
+    configuration
+        .ReadFrom.Configuration(context.Configuration)
+        .Enrich.FromLogContext()
+        .WriteTo.Console()
+        .WriteTo.File("logs/agent-.log",
+            rollingInterval: RollingInterval.Day,
+            retainedFileCountLimit: 30,
+            fileSizeLimitBytes: 10_485_760, // 10 MB
+            rollOnFileSizeLimit: true);
+});
 
 builder.Services.AddApplicationInsightsTelemetry();
 
@@ -20,7 +35,7 @@ builder.Services.AddSignalR();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo 
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.OpenApiInfo
     {
         Title = "CreatioHelper Agent API",
         Version = "v1",
@@ -32,16 +47,16 @@ builder.Services.AddSwaggerGen(c =>
 3. Click 'Authorize' button below and enter: Bearer {your-token}
 4. Now you can call protected endpoints"
     });
-    
+
     // JWT Authorization
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
     {
         Description = @"JWT Authorization header using the Bearer scheme.
                       Enter 'Bearer' [space] and then your token in the text input below.
                       Example: 'Bearer 12345abcdef'",
         Name = "Authorization",
-        In = ParameterLocation.Header,
-        Type = SecuritySchemeType.ApiKey,
+        In = Microsoft.OpenApi.ParameterLocation.Header,
+        Type = Microsoft.OpenApi.SecuritySchemeType.ApiKey,
         Scheme = "Bearer"
     });
 });
@@ -55,13 +70,31 @@ builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSet
 builder.Services.Configure<SwaggerAuthSettings>(builder.Configuration.GetSection("SwaggerAuth"));
 
 // JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
+
+// Validate JWT Secret is configured
+if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length < 32)
 {
-    Secret = "YourSuperSecretKeyThatIsAtLeast32CharactersLong!",
-    Issuer = "CreatioHelper.Agent",
-    Audience = "CreatioHelper.Client",
-    ExpirationHours = 24
-};
+    if (builder.Environment.IsDevelopment())
+    {
+        // Generate random secret for development - prevents accidental production exposure
+        var randomBytes = new byte[32];
+        RandomNumberGenerator.Fill(randomBytes);
+        jwtSettings.Secret = Convert.ToBase64String(randomBytes);
+        Log.Warning("Generated random JWT secret for development. Tokens will not persist across restarts. Configure JwtSettings:Secret for stable development.");
+    }
+    else
+    {
+        throw new InvalidOperationException(
+            "JWT Secret is not configured or is too short (minimum 32 characters). " +
+            "Configure JwtSettings:Secret via environment variable 'JwtSettings__Secret' or in appsettings.json");
+    }
+}
+
+// Set defaults if not configured
+jwtSettings.Issuer ??= "CreatioHelper.Agent";
+jwtSettings.Audience ??= "CreatioHelper.Client";
+if (jwtSettings.ExpirationHours <= 0) jwtSettings.ExpirationHours = 24;
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -95,6 +128,9 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Rate limiting for login endpoint
+builder.Services.AddSingleton<CreatioHelper.Agent.Services.LoginRateLimiter>();
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
@@ -111,16 +147,41 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.SetIsOriginAllowed(_ => true)
-            .AllowAnyMethod()
-            .AllowAnyHeader()
-            .AllowCredentials();
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
+
+        if (allowedOrigins?.Length > 0)
+        {
+            // Use configured origins in production
+            policy.WithOrigins(allowedOrigins)
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        }
+        else if (builder.Environment.IsDevelopment())
+        {
+            // Allow any origin only in development (without credentials for security)
+            policy.SetIsOriginAllowed(_ => true)
+                .AllowAnyMethod()
+                .AllowAnyHeader();
+        }
+        else
+        {
+            // Default: localhost only in production if no origins configured
+            policy.WithOrigins("http://localhost", "https://localhost")
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials();
+        }
     });
 });
 
 builder.Services.Configure<AgentConfig>(builder.Configuration.GetSection("AgentConfig"));
 builder.Services.AddPlatformServices();
 builder.Services.AddPerformanceServices();
+builder.Services.AddSyncthingAutoStop(builder.Configuration);
+
+// Add heartbeat service
+builder.Services.AddHostedService<HeartbeatService>();
 
 // Add sync services with configuration
 var syncConfigFromFile = builder.Configuration.GetSection("Sync").Get<SyncConfigurationFromFile>();
@@ -128,8 +189,8 @@ SyncConfiguration? syncConfig = null;
 
 if (syncConfigFromFile != null)
 {
-    Console.WriteLine($"Loaded sync config: DeviceId={syncConfigFromFile.DeviceId}, Port={syncConfigFromFile.Port}");
-    
+    Log.Debug("Loaded sync config: DeviceId={DeviceId}, Port={Port}", syncConfigFromFile.DeviceId, syncConfigFromFile.Port);
+
     // Convert from file config to domain config
     syncConfig = new SyncConfiguration(syncConfigFromFile.DeviceId, syncConfigFromFile.DeviceName);
     syncConfig.SetPort(syncConfigFromFile.Port);
@@ -137,7 +198,7 @@ if (syncConfigFromFile != null)
 }
 else
 {
-    Console.WriteLine("No sync config found in appsettings");
+    Log.Debug("No sync config found in appsettings");
 }
 builder.Services.AddSyncServices(syncConfig);
 
@@ -152,7 +213,7 @@ applicationLifetime.ApplicationStopping.Register(() =>
 });
 
 #if DEBUG
-// Swagger configuration with security
+// Swagger configuration - only enabled in development for security
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -163,50 +224,25 @@ if (app.Environment.IsDevelopment())
         c.DefaultModelsExpandDepth(-1);
     });
 }
-else
-{
-    // In production, require authentication for Swagger
-    var swaggerAuthSettings = builder.Configuration.GetSection("SwaggerAuth").Get<SwaggerAuthSettings>();
-    
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "CreatioHelper Agent API v1");
-        c.DocumentTitle = "CreatioHelper Agent API";
-        c.DefaultModelsExpandDepth(-1);
-    });
-    
-    // Simple basic auth middleware for Swagger in production
-    if (swaggerAuthSettings?.Enabled == true)
-    {
-        app.Use(async (context, next) =>
-        {
-            if (context.Request.Path.StartsWithSegments("/swagger"))
-            {
-                string? authHeader = context.Request.Headers["Authorization"];
-                if (authHeader != null && authHeader.StartsWith("Basic "))
-                {
-                    var encodedUsernamePassword = authHeader["Basic ".Length..].Trim();
-                    var decodedUsernamePassword = Encoding.UTF8.GetString(Convert.FromBase64String(encodedUsernamePassword));
-                    var username = decodedUsernamePassword.Split(':', 2)[0];
-                    var password = decodedUsernamePassword.Split(':', 2)[1];
-                    
-                    if (username == swaggerAuthSettings.Username && password == swaggerAuthSettings.Password)
-                    {
-                        await next();
-                        return;
-                    }
-                }
-                
-                context.Response.Headers["WWW-Authenticate"] = "Basic";
-                context.Response.StatusCode = 401;
-                return;
-            }
-            await next();
-        });
-    }
-}
 #endif
+
+// Security Headers middleware
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "DENY";
+    context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["Permissions-Policy"] = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
+
+    // Add HSTS header for HTTPS requests (1 year)
+    if (context.Request.IsHttps)
+    {
+        context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
+    }
+
+    await next();
+});
 
 // Expose health checks endpoint
 app.MapHealthChecks("/health");
@@ -228,42 +264,58 @@ app.MapGet("/metrics", async (IMetricsService metricsService) =>
     return Results.Text(prometheusFormat, "text/plain");
 }).RequireAuthorization();
 
+// SignalR test page - only enabled in development
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/test-signalr", () => Results.Content("""
+                                                      <!DOCTYPE html>
+                                                      <html>
+                                                      <head>
+                                                          <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
+                                                      </head>
+                                                      <body>
+                                                          <h1>SignalR Test</h1>
+                                                          <div id="messages"></div>
 
-app.MapGet("/test-signalr", () => Results.Content("""
-                                                  <!DOCTYPE html>
-                                                  <html>
-                                                  <head>
-                                                      <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.1/signalr.min.js"></script>
-                                                  </head>
-                                                  <body>
-                                                      <h1>SignalR Test</h1>
-                                                      <div id="messages"></div>
-                                                      
-                                                      <script>
-                                                          console.log("🚀 Starting SignalR connection...");
-                                                          
-                                                          const connection = new signalR.HubConnectionBuilder()
-                                                              .withUrl("/monitoringHub")
-                                                              .configureLogging(signalR.LogLevel.Debug)
-                                                              .build();
-                                                  
-                                                          connection.start().then(() => {
-                                                              console.log("Connected!");
-                                                              document.getElementById("messages").innerHTML += "<p>Connected!</p>";
-                                                              return connection.invoke("JoinGroup", "monitoring");
-                                                          }).then(() => {
-                                                              console.log("Joined monitoring group");
-                                                              document.getElementById("messages").innerHTML += "<p>Joined monitoring group</p>";
-                                                          }).catch(err => {
-                                                              console.error("Connection error:", err);
-                                                              document.getElementById("messages").innerHTML += `<p>Error: ${err}</p>`;
-                                                          });
-                                                      </script>
-                                                  </body>
-                                                  </html>
-                                                  """, "text/html"));
+                                                          <script>
+                                                              console.log("🚀 Starting SignalR connection...");
 
-app.Run();
+                                                              const connection = new signalR.HubConnectionBuilder()
+                                                                  .withUrl("/monitoringHub")
+                                                                  .configureLogging(signalR.LogLevel.Debug)
+                                                                  .build();
+
+                                                              connection.start().then(() => {
+                                                                  console.log("Connected!");
+                                                                  document.getElementById("messages").innerHTML += "<p>Connected!</p>";
+                                                                  return connection.invoke("JoinGroup", "monitoring");
+                                                              }).then(() => {
+                                                                  console.log("Joined monitoring group");
+                                                                  document.getElementById("messages").innerHTML += "<p>Joined monitoring group</p>";
+                                                              }).catch(err => {
+                                                                  console.error("Connection error:", err);
+                                                                  document.getElementById("messages").innerHTML += `<p>Error: ${err}</p>`;
+                                                              });
+                                                          </script>
+                                                      </body>
+                                                      </html>
+                                                      """, "text/html"));
+}
+
+try
+{
+    Log.Information("Starting CreatioHelper Agent");
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+    throw;
+}
+finally
+{
+    Log.CloseAndFlush();
+}
 
 // Helper function to convert metrics to Prometheus format
 string ConvertToPrometheusFormat(Dictionary<string, object> metrics)

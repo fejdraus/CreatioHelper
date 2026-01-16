@@ -21,3 +21,14 @@ CLAUDE.md
 nul
 /src/CreatioHelper.Agent/Data
 src/CreatioHelper.Agent/key.pem
+
+# Agent logs
+logs/
+
+# Development settings with credentials (use appsettings.Development.json.template as reference)
+appsettings.Development.json
+**/appsettings.*.local.json
+
+# Production settings with credentials - NEVER commit real production secrets!
+**/appsettings.Production.json
+cert.pem

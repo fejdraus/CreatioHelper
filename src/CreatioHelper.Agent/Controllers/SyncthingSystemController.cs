@@ -1,5 +1,7 @@
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
@@ -12,6 +14,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest/system")]
+[Authorize(Roles = Roles.ReadRoles)]
 public class SyncthingSystemController : ControllerBase
 {
     private readonly ISyncEngine _syncEngine;
@@ -67,7 +70,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system status");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -277,7 +280,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system config");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -286,6 +289,7 @@ public class SyncthingSystemController : ControllerBase
     /// POST /rest/system/config
     /// </summary>
     [HttpPost("config")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
     {
         try
@@ -300,7 +304,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating system config");
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = ex.Message }));
+            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
         }
     }
 
@@ -309,6 +313,7 @@ public class SyncthingSystemController : ControllerBase
     /// POST /rest/system/restart
     /// </summary>
     [HttpPost("restart")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult Restart()
     {
         try
@@ -319,15 +324,16 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error restarting system");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
     /// <summary>
-    /// System shutdown - 100% Syncthing compatible  
+    /// System shutdown - 100% Syncthing compatible
     /// POST /rest/system/shutdown
     /// </summary>
     [HttpPost("shutdown")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult Shutdown()
     {
         try
@@ -338,7 +344,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error shutting down system");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -371,7 +377,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system log");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -380,6 +386,7 @@ public class SyncthingSystemController : ControllerBase
     /// POST /rest/system/log/clear
     /// </summary>
     [HttpPost("log/clear")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult ClearLog()
     {
         try
@@ -390,7 +397,7 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error clearing system log");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

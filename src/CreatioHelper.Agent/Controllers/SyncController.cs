@@ -4,6 +4,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
+using CreatioHelper.Agent.Authorization;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -13,6 +14,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Roles = Roles.ReadRoles)]
 public class SyncController : ControllerBase
 {
     private readonly ISyncEngine _syncEngine;
@@ -38,7 +40,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting device ID");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -71,7 +73,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting sync status");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -100,7 +102,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting devices");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -108,6 +110,7 @@ public class SyncController : ControllerBase
     /// Add a new device
     /// </summary>
     [HttpPost("devices")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<SyncDeviceDto>> AddDevice([FromBody] AddDeviceRequest request)
     {
         try
@@ -134,7 +137,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding device {DeviceId}", request.DeviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -168,7 +171,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -176,6 +179,7 @@ public class SyncController : ControllerBase
     /// Pause a device
     /// </summary>
     [HttpPost("devices/{deviceId}/pause")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> PauseDevice(string deviceId)
     {
         try
@@ -190,7 +194,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error pausing device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -198,6 +202,7 @@ public class SyncController : ControllerBase
     /// Resume a device
     /// </summary>
     [HttpPost("devices/{deviceId}/resume")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> ResumeDevice(string deviceId)
     {
         try
@@ -212,7 +217,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resuming device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -253,7 +258,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting folders");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -261,6 +266,7 @@ public class SyncController : ControllerBase
     /// Add a new folder
     /// </summary>
     [HttpPost("folders")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<SyncFolderDto>> AddFolder([FromBody] AddFolderRequest request)
     {
         try
@@ -294,7 +300,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error adding folder {FolderId}", request.FolderId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -335,7 +341,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting folder {FolderId}", folderId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -343,6 +349,7 @@ public class SyncController : ControllerBase
     /// Pause a folder
     /// </summary>
     [HttpPost("folders/{folderId}/pause")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> PauseFolder(string folderId)
     {
         try
@@ -357,7 +364,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error pausing folder {FolderId}", folderId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -365,6 +372,7 @@ public class SyncController : ControllerBase
     /// Resume a folder
     /// </summary>
     [HttpPost("folders/{folderId}/resume")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> ResumeFolder(string folderId)
     {
         try
@@ -379,7 +387,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resuming folder {FolderId}", folderId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -387,6 +395,7 @@ public class SyncController : ControllerBase
     /// Scan a folder
     /// </summary>
     [HttpPost("folders/{folderId}/scan")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> ScanFolder(string folderId, [FromQuery] bool deep = false)
     {
         try
@@ -401,7 +410,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error scanning folder {FolderId}", folderId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -409,6 +418,7 @@ public class SyncController : ControllerBase
     /// Share a folder with a device
     /// </summary>
     [HttpPost("folders/{folderId}/share")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> ShareFolder(string folderId, [FromBody] ShareFolderRequest request)
     {
         try
@@ -418,12 +428,13 @@ public class SyncController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            _logger.LogWarning(ex, "Invalid argument sharing folder {FolderId} with device {DeviceId}", folderId, request.DeviceId);
+            return BadRequest(new { error = "Invalid folder or device" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sharing folder {FolderId} with device {DeviceId}", folderId, request.DeviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -431,6 +442,7 @@ public class SyncController : ControllerBase
     /// Unshare a folder from a device
     /// </summary>
     [HttpPost("folders/{folderId}/unshare")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> UnshareFolder(string folderId, [FromBody] ShareFolderRequest request)
     {
         try
@@ -440,12 +452,13 @@ public class SyncController : ControllerBase
         }
         catch (ArgumentException ex)
         {
-            return BadRequest(new { error = ex.Message });
+            _logger.LogWarning(ex, "Invalid argument unsharing folder {FolderId} from device {DeviceId}", folderId, request.DeviceId);
+            return BadRequest(new { error = "Invalid folder or device" });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error unsharing folder {FolderId} from device {DeviceId}", folderId, request.DeviceId);
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -463,7 +476,7 @@ public class SyncController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting statistics");
-            return StatusCode(500, new { error = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

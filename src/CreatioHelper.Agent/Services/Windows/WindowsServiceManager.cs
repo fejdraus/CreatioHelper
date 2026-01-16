@@ -7,6 +7,13 @@ public class WindowsServiceManager : IWebServerService
 {
     private readonly ILogger<WindowsServiceManager> _logger;
 
+    /// <summary>
+    /// Escapes a string for safe use in PowerShell single-quoted strings.
+    /// Single quotes are escaped by doubling them.
+    /// </summary>
+    private static string EscapePowerShellString(string value)
+        => value.Replace("'", "''");
+
     public WindowsServiceManager(ILogger<WindowsServiceManager> logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -36,7 +43,7 @@ public class WindowsServiceManager : IWebServerService
 
             if (currentState == "Stopped")
             {
-                if (!await ExecuteServiceCommandAsync($"Start-Service -Name '{serviceName}'"))
+                if (!await ExecuteServiceCommandAsync($"Start-Service -Name '{EscapePowerShellString(serviceName)}'"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to start service {serviceName}." };
                 }
@@ -78,7 +85,7 @@ public class WindowsServiceManager : IWebServerService
 
             if (currentState == "Running")
             {
-                if (!await ExecuteServiceCommandAsync($"Stop-Service -Name '{serviceName}' -Force"))
+                if (!await ExecuteServiceCommandAsync($"Stop-Service -Name '{EscapePowerShellString(serviceName)}' -Force"))
                 {
                     return new WebServerResult { Success = false, Message = $"Failed to stop service {serviceName}." };
                 }
@@ -183,7 +190,7 @@ public class WindowsServiceManager : IWebServerService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -222,7 +229,7 @@ public class WindowsServiceManager : IWebServerService
             var startInfo = new ProcessStartInfo
             {
                 FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
+                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
@@ -257,13 +264,13 @@ public class WindowsServiceManager : IWebServerService
 
     private async Task<string?> GetServiceStateAsync(string serviceName)
     {
-        var result = await ExecuteServiceCommandWithOutputAsync($"(Get-Service -Name '{serviceName}').Status");
+        var result = await ExecuteServiceCommandWithOutputAsync($"(Get-Service -Name '{EscapePowerShellString(serviceName)}').Status");
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
     }
 
     private async Task<string?> GetServiceDetailsAsync(string serviceName)
     {
-        var result = await ExecuteServiceCommandWithOutputAsync($"Get-Service -Name '{serviceName}' | Select-Object * | ConvertTo-Json");
+        var result = await ExecuteServiceCommandWithOutputAsync($"Get-Service -Name '{EscapePowerShellString(serviceName)}' | Select-Object * | ConvertTo-Json");
         return result?.Trim();
     }
 
@@ -272,7 +279,7 @@ public class WindowsServiceManager : IWebServerService
         try
         {
             var pidText = await ExecuteServiceCommandWithOutputAsync(
-                $"(Get-WmiObject -Class Win32_Service -Filter \"Name='{serviceName}'\").ProcessId");
+                $"(Get-WmiObject -Class Win32_Service -Filter \"Name='{EscapePowerShellString(serviceName)}'\").ProcessId");
 
             if (int.TryParse(pidText?.Split('\n', '\r').LastOrDefault()?.Trim(), out var pid) && pid > 0)
             {
@@ -283,8 +290,9 @@ public class WindowsServiceManager : IWebServerService
 
             return string.Empty;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogDebug(ex, "Failed to get service port for {ServiceName}", serviceName);
             return "";
         }
     }

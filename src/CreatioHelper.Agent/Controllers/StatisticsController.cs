@@ -1,5 +1,7 @@
+using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
 
@@ -10,6 +12,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest/stats")]
+[Authorize(Roles = Roles.ReadRoles)]
 public class StatisticsController : ControllerBase
 {
     private readonly IStatisticsCollector _statisticsCollector;
@@ -45,7 +48,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting device statistics for {DeviceId}: {Message}", deviceId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -73,7 +76,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting folder statistics for {FolderId}: {Message}", folderId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -109,7 +112,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting connection statistics for {DeviceId}: {Message}", deviceId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -127,7 +130,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system statistics: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -145,7 +148,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting performance statistics: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -191,7 +194,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting statistics summary: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -210,7 +213,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting statistics: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -218,6 +221,7 @@ public class StatisticsController : ControllerBase
     /// Записать статистику устройства (для тестирования)
     /// </summary>
     [HttpPost("device/{deviceId}/traffic")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RecordDeviceTraffic(
         string deviceId,
         [FromBody] DeviceTrafficRequest request,
@@ -232,7 +236,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording device traffic for {DeviceId}: {Message}", deviceId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -240,6 +244,7 @@ public class StatisticsController : ControllerBase
     /// Записать обработку файла (для тестирования)
     /// </summary>
     [HttpPost("folder/{folderId}/file")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RecordFileProcessed(
         string folderId,
         [FromBody] FileProcessedRequest request,
@@ -254,7 +259,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording file processing for {FolderId}: {Message}", folderId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -262,6 +267,7 @@ public class StatisticsController : ControllerBase
     /// Записать метрики производительности (для тестирования)
     /// </summary>
     [HttpPost("performance")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> RecordPerformanceMetrics(
         [FromBody] PerformanceMetricsRequest request,
         CancellationToken cancellationToken = default)
@@ -284,7 +290,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error recording performance metrics: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -292,6 +298,7 @@ public class StatisticsController : ControllerBase
     /// Сбросить статистику устройства
     /// </summary>
     [HttpDelete("device/{deviceId}")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> ResetDeviceStatistics(string deviceId, CancellationToken cancellationToken = default)
     {
         try
@@ -303,7 +310,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resetting device statistics for {DeviceId}: {Message}", deviceId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -311,6 +318,7 @@ public class StatisticsController : ControllerBase
     /// Сбросить статистику папки
     /// </summary>
     [HttpDelete("folder/{folderId}")]
+    [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> ResetFolderStatistics(string folderId, CancellationToken cancellationToken = default)
     {
         try
@@ -322,7 +330,7 @@ public class StatisticsController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error resetting folder statistics for {FolderId}: {Message}", folderId, ex.Message);
-            return StatusCode(500, new { error = "Internal server error", message = ex.Message });
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }

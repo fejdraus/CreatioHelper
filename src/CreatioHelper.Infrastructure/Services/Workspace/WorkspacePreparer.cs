@@ -206,7 +206,6 @@ public class WorkspacePreparer : IWorkspacePreparer
     public void UpdateOutConfig(string configPath, bool quartzIsActive)
     {
         if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
-        ArgumentNullException.ThrowIfNull(quartzIsActive);
 
         var xmlDoc = new XmlDocument();
         xmlDoc.Load(configPath);
