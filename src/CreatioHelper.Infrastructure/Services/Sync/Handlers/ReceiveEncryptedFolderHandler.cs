@@ -1,4 +1,5 @@
 #pragma warning disable CS1998 // Async method lacks await (for interface implementation stubs)
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -11,8 +12,14 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class ReceiveEncryptedFolderHandler : SyncFolderHandlerBase
 {
-    public ReceiveEncryptedFolderHandler(ILogger<ReceiveEncryptedFolderHandler> logger, ConflictResolutionEngine conflictEngine) 
-        : base(logger, conflictEngine)
+    public ReceiveEncryptedFolderHandler(
+        ILogger<ReceiveEncryptedFolderHandler> logger,
+        ConflictResolutionEngine conflictEngine,
+        FileDownloader fileDownloader,
+        FileUploader fileUploader,
+        ISyncProtocol protocol,
+        ISyncDatabase database)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
     }
 
@@ -22,15 +29,21 @@ public class ReceiveEncryptedFolderHandler : SyncFolderHandlerBase
 
     public override bool CanReceiveChanges => true;
 
-    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles, 
+    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Starting ReceiveEncrypted pull for folder {FolderId}", folder.Id);
 
         bool hasChanges = false;
-        var remoteFilesList = remoteFiles.ToList();
+        var deviceId = GetActiveDeviceId(folder);
 
-        foreach (var remoteFile in remoteFilesList)
+        if (string.IsNullOrEmpty(deviceId))
+        {
+            _logger.LogWarning("No device available for ReceiveEncrypted folder {FolderId}", folder.Id);
+            return false;
+        }
+
+        foreach (var remoteFile in remoteFiles)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -45,16 +58,33 @@ public class ReceiveEncryptedFolderHandler : SyncFolderHandlerBase
             // и сохраняются без расшифровки
             _logger.LogTrace("Receiving encrypted file {FileName} without decryption", remoteFile.FileName);
 
-            // TODO: Скачать зашифрованный файл напрямую
-            // TODO: Сохранить в зашифрованном виде без расшифровки
-            // TODO: Обновить локальные метаданные с пометкой о шифровании
-            
-            hasChanges = true;
+            // Сохраняем в зашифрованном виде (путь остается тем же)
+            var localPath = Path.Combine(folder.Path, remoteFile.FileName);
+            var syncFileInfo = SyncFileInfo.FromFileMetadata(remoteFile);
+
+            // Скачиваем файл напрямую без расшифровки
+            var result = await _fileDownloader.DownloadFileAsync(
+                deviceId, folder.Id, syncFileInfo, localPath, cancellationToken);
+
+            if (result.Success)
+            {
+                // Обновить метаданные с пометкой о шифровании
+                remoteFile.LocalFlags |= FileLocalFlags.Encrypted;
+                await _database.FileMetadata.UpsertAsync(remoteFile);
+                hasChanges = true;
+                _logger.LogInformation("ReceiveEncrypted: Downloaded encrypted {FileName}",
+                    remoteFile.FileName);
+            }
+            else
+            {
+                _logger.LogError("ReceiveEncrypted: Failed to download {FileName}: {Error}",
+                    remoteFile.FileName, result.Error);
+            }
         }
 
-        _logger.LogDebug("ReceiveEncrypted pull completed for folder {FolderId}, hasChanges: {HasChanges}", 
+        _logger.LogDebug("ReceiveEncrypted pull completed for folder {FolderId}, hasChanges: {HasChanges}",
             folder.Id, hasChanges);
-        
+
         return hasChanges;
     }
 

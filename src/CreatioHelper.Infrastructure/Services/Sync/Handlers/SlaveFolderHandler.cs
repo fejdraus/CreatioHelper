@@ -1,3 +1,4 @@
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -9,8 +10,14 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class SlaveFolderHandler : ReceiveOnlyFolderHandler
 {
-    public SlaveFolderHandler(ILogger<SlaveFolderHandler> logger, ConflictResolutionEngine conflictEngine) 
-        : base(logger, conflictEngine)
+    public SlaveFolderHandler(
+        ILogger<SlaveFolderHandler> logger,
+        ConflictResolutionEngine conflictEngine,
+        FileDownloader fileDownloader,
+        FileUploader fileUploader,
+        ISyncProtocol protocol,
+        ISyncDatabase database)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
     }
 

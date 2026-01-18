@@ -16,12 +16,14 @@ public class SyncDatabase : ISyncDatabase
     private SqliteConnection? _connection;
     private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     
-    // Repository instances
-    private IFileMetadataRepository? _fileMetadata;
-    private IBlockInfoRepository? _blockInfo;
-    private IDeviceInfoRepository? _deviceInfo;
-    private IFolderConfigRepository? _folderConfig;
-    private IGlobalStateRepository? _globalState;
+    // Repository instances (thread-safe lazy initialization with volatile for double-checked locking)
+    private volatile IFileMetadataRepository? _fileMetadata;
+    private volatile IBlockInfoRepository? _blockInfo;
+    private volatile IDeviceInfoRepository? _deviceInfo;
+    private volatile IFolderConfigRepository? _folderConfig;
+    private volatile IGlobalStateRepository? _globalState;
+    private volatile IEventLogRepository? _eventLog;
+    private readonly object _repoLock = new();
 
     public SyncDatabase(ILogger<SyncDatabase> logger, ILoggerFactory loggerFactory, IOptions<SyncDatabaseOptions> options)
     {
@@ -38,20 +40,95 @@ public class SyncDatabase : ISyncDatabase
         _connectionString = $"Data Source={dbPath};Cache=Shared;Pooling=true;Journal Mode=WAL;Synchronous=NORMAL;Temp Store=MEMORY;Busy Timeout=30000;";
     }
 
-    public IFileMetadataRepository FileMetadata => 
-        _fileMetadata ??= new FileMetadataRepository(GetConnection, _logger);
+    public IFileMetadataRepository FileMetadata
+    {
+        get
+        {
+            if (_fileMetadata == null)
+            {
+                lock (_repoLock)
+                {
+                    _fileMetadata ??= new FileMetadataRepository(GetConnection, _logger);
+                }
+            }
+            return _fileMetadata;
+        }
+    }
 
-    public IBlockInfoRepository BlockInfo => 
-        _blockInfo ??= new SqliteBlockInfoRepository(_loggerFactory.CreateLogger<SqliteBlockInfoRepository>(), _connectionString);
+    public IBlockInfoRepository BlockInfo
+    {
+        get
+        {
+            if (_blockInfo == null)
+            {
+                lock (_repoLock)
+                {
+                    _blockInfo ??= new SqliteBlockInfoRepository(_loggerFactory.CreateLogger<SqliteBlockInfoRepository>(), _connectionString);
+                }
+            }
+            return _blockInfo;
+        }
+    }
 
-    public IDeviceInfoRepository DeviceInfo => 
-        _deviceInfo ??= new DeviceInfoRepository(GetConnection, _logger);
+    public IDeviceInfoRepository DeviceInfo
+    {
+        get
+        {
+            if (_deviceInfo == null)
+            {
+                lock (_repoLock)
+                {
+                    _deviceInfo ??= new DeviceInfoRepository(GetConnection, _logger);
+                }
+            }
+            return _deviceInfo;
+        }
+    }
 
-    public IFolderConfigRepository FolderConfig => 
-        _folderConfig ??= new FolderConfigRepository(GetConnection, _logger);
+    public IFolderConfigRepository FolderConfig
+    {
+        get
+        {
+            if (_folderConfig == null)
+            {
+                lock (_repoLock)
+                {
+                    _folderConfig ??= new FolderConfigRepository(GetConnection, _logger);
+                }
+            }
+            return _folderConfig;
+        }
+    }
 
-    public IGlobalStateRepository GlobalState => 
-        _globalState ??= new GlobalStateRepository(GetConnection, _logger);
+    public IGlobalStateRepository GlobalState
+    {
+        get
+        {
+            if (_globalState == null)
+            {
+                lock (_repoLock)
+                {
+                    _globalState ??= new GlobalStateRepository(GetConnection, _logger);
+                }
+            }
+            return _globalState;
+        }
+    }
+
+    public IEventLogRepository EventLog
+    {
+        get
+        {
+            if (_eventLog == null)
+            {
+                lock (_repoLock)
+                {
+                    _eventLog ??= new EventLogRepository(GetConnection, _logger);
+                }
+            }
+            return _eventLog;
+        }
+    }
 
     public async Task InitializeAsync()
     {
@@ -108,7 +185,7 @@ public class SyncDatabase : ISyncDatabase
 
     private async Task ExecutePragmaAsync(string pragma)
     {
-        using var command = _connection!.CreateCommand();
+        using var command = GetConnection().CreateCommand();
         command.CommandText = $"PRAGMA {pragma};";
         await command.ExecuteNonQueryAsync();
     }
@@ -249,26 +326,33 @@ public class SyncDatabase : ISyncDatabase
     private async Task RunMigrationsAsync()
     {
         var currentVersion = await GlobalState.GetSchemaVersionAsync();
-        const int latestVersion = 3;
+        const int latestVersion = 4;
 
         if (currentVersion < latestVersion)
         {
             _logger.LogInformation($"Running database migrations from version {currentVersion} to {latestVersion}");
-            
+
             // Migration v1 -> v2: Add performance indexes
             if (currentVersion < 2)
             {
                 await ApplyMigrationV2Async();
                 _logger.LogInformation("Applied migration v2: Performance indexes");
             }
-            
+
             // Migration v2 -> v3: Add Syncthing compatibility enhancements
             if (currentVersion < 3)
             {
                 await ApplyMigrationV3Async();
                 _logger.LogInformation("Applied migration v3: Syncthing compatibility enhancements");
             }
-            
+
+            // Migration v3 -> v4: Add event log, need index, and connection stats
+            if (currentVersion < 4)
+            {
+                await ApplyMigrationV4Async();
+                _logger.LogInformation("Applied migration v4: Event log, need index, and connection stats");
+            }
+
             await GlobalState.SetSchemaVersionAsync(latestVersion);
             _logger.LogInformation($"Database migrated to version {latestVersion}");
         }
@@ -297,7 +381,7 @@ public class SyncDatabase : ISyncDatabase
                 blprotobuf BLOB NOT NULL,
                 created_at TEXT NOT NULL DEFAULT (datetime('now'))
             );
-            
+
             -- Add blocks table with Syncthing structure
             CREATE TABLE IF NOT EXISTS blocks (
                 hash TEXT NOT NULL,
@@ -308,13 +392,117 @@ public class SyncDatabase : ISyncDatabase
                 PRIMARY KEY (hash, blocklist_hash, idx),
                 FOREIGN KEY(blocklist_hash) REFERENCES blocklists(blocklist_hash) ON DELETE CASCADE DEFERRABLE INITIALLY DEFERRED
             );
-            
+
             -- Add performance indexes for new tables
             CREATE INDEX IF NOT EXISTS idx_blocklists_created_at ON blocklists(created_at);
             CREATE INDEX IF NOT EXISTS idx_blocks_hash ON blocks(hash);
             CREATE INDEX IF NOT EXISTS idx_blocks_blocklist_hash ON blocks(blocklist_hash);
         ";
-        
+
+        using var command = GetConnection().CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task ApplyMigrationV4Async()
+    {
+        var sql = @"
+            -- Event log table for sync events (Syncthing compatible)
+            CREATE TABLE IF NOT EXISTS event_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                global_id TEXT NOT NULL,
+                event_type TEXT NOT NULL,
+                event_time TEXT NOT NULL,
+                data TEXT NOT NULL,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            -- Need index table for pending downloads (Syncthing need model)
+            CREATE TABLE IF NOT EXISTS need_index (
+                folder_id TEXT NOT NULL,
+                file_name TEXT NOT NULL,
+                size INTEGER NOT NULL,
+                modified_time TEXT NOT NULL,
+                version_vector TEXT NOT NULL,
+                block_hashes TEXT,
+                block_size INTEGER NOT NULL,
+                priority INTEGER NOT NULL DEFAULT 50,
+                retry_count INTEGER NOT NULL DEFAULT 0,
+                last_error TEXT,
+                queued_at TEXT NOT NULL DEFAULT (datetime('now')),
+                started_at TEXT,
+                PRIMARY KEY (folder_id, file_name)
+            );
+
+            -- Connection statistics table
+            CREATE TABLE IF NOT EXISTS connection_stats (
+                device_id TEXT NOT NULL,
+                connected_at TEXT NOT NULL,
+                disconnected_at TEXT,
+                duration_seconds INTEGER NOT NULL DEFAULT 0,
+                bytes_sent INTEGER NOT NULL DEFAULT 0,
+                bytes_received INTEGER NOT NULL DEFAULT 0,
+                messages_sent INTEGER NOT NULL DEFAULT 0,
+                messages_received INTEGER NOT NULL DEFAULT 0,
+                connection_type TEXT NOT NULL DEFAULT 'tcp',
+                address TEXT,
+                error TEXT,
+                PRIMARY KEY (device_id, connected_at)
+            );
+
+            -- Device completion tracking
+            CREATE TABLE IF NOT EXISTS folder_device_completion (
+                folder_id TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                completion_pct REAL NOT NULL DEFAULT 0,
+                global_bytes INTEGER NOT NULL DEFAULT 0,
+                need_bytes INTEGER NOT NULL DEFAULT 0,
+                global_items INTEGER NOT NULL DEFAULT 0,
+                need_items INTEGER NOT NULL DEFAULT 0,
+                need_deletes INTEGER NOT NULL DEFAULT 0,
+                updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (folder_id, device_id)
+            );
+
+            -- Pending folder shares
+            CREATE TABLE IF NOT EXISTS pending_folders (
+                folder_id TEXT NOT NULL,
+                device_id TEXT NOT NULL,
+                folder_label TEXT,
+                receive_encrypted BOOLEAN NOT NULL DEFAULT 0,
+                remote_encrypted BOOLEAN NOT NULL DEFAULT 0,
+                offered_at TEXT NOT NULL DEFAULT (datetime('now')),
+                PRIMARY KEY (folder_id, device_id)
+            );
+
+            -- Pending device invitations
+            CREATE TABLE IF NOT EXISTS pending_devices (
+                device_id TEXT PRIMARY KEY,
+                device_name TEXT,
+                address TEXT,
+                introduced_by TEXT,
+                offered_at TEXT NOT NULL DEFAULT (datetime('now'))
+            );
+
+            -- Performance indexes for event log
+            CREATE INDEX IF NOT EXISTS idx_event_log_type ON event_log(event_type);
+            CREATE INDEX IF NOT EXISTS idx_event_log_time ON event_log(event_time);
+            CREATE INDEX IF NOT EXISTS idx_event_log_global_id ON event_log(global_id);
+
+            -- Performance indexes for need index
+            CREATE INDEX IF NOT EXISTS idx_need_index_folder_id ON need_index(folder_id);
+            CREATE INDEX IF NOT EXISTS idx_need_index_priority ON need_index(priority);
+            CREATE INDEX IF NOT EXISTS idx_need_index_queued_at ON need_index(queued_at);
+
+            -- Performance indexes for connection stats
+            CREATE INDEX IF NOT EXISTS idx_connection_stats_device_id ON connection_stats(device_id);
+            CREATE INDEX IF NOT EXISTS idx_connection_stats_connected_at ON connection_stats(connected_at);
+
+            -- Performance indexes for completion tracking
+            CREATE INDEX IF NOT EXISTS idx_folder_device_completion_folder ON folder_device_completion(folder_id);
+            CREATE INDEX IF NOT EXISTS idx_folder_device_completion_device ON folder_device_completion(device_id);
+        ";
+
         using var command = GetConnection().CreateCommand();
         command.CommandText = sql;
         await command.ExecuteNonQueryAsync();

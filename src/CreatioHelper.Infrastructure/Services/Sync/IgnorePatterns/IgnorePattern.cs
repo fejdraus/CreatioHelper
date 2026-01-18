@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.FileSystemGlobbing;
 using Microsoft.Extensions.FileSystemGlobbing.Abstractions;
@@ -83,7 +84,8 @@ public class IgnorePattern
     }
     
     /// <summary>
-    /// Simple glob pattern matching similar to Syncthing behavior
+    /// Advanced glob pattern matching compatible with Syncthing/gitignore behavior.
+    /// Supports: *, **, ?, [abc], [!abc], [a-z]
     /// </summary>
     private bool MatchesSimple(string path, string pattern)
     {
@@ -91,59 +93,256 @@ public class IgnorePattern
         if (pattern.EndsWith('/'))
         {
             var dirPattern = pattern[..^1]; // Remove trailing slash
-            // Match if path starts with the directory pattern
-            return path.StartsWith(dirPattern + "/", IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
-                   path.Equals(dirPattern, IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
+            // Match if path starts with the directory pattern or equals it
+            var comparison = IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            return path.StartsWith(dirPattern + "/", comparison) ||
+                   path.Equals(dirPattern, comparison) ||
+                   GlobMatch(path, dirPattern);
         }
-        
-        // Simple glob patterns
-        if (pattern.Contains('*'))
-        {
-            return IsGlobMatch(path, pattern);
-        }
-        
-        // Exact match
-        return path.Equals(pattern, IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal) ||
-               (!IsRooted && Path.GetFileName(path).Equals(pattern, IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal));
-    }
-    
-    /// <summary>
-    /// Simple glob matching for * patterns
-    /// </summary>
-    private bool IsGlobMatch(string input, string pattern)
-    {
-        var comparison = IsCaseInsensitive ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        
-        if (pattern == "*")
+
+        // Try full path match first
+        if (GlobMatch(path, pattern))
             return true;
-            
-        if (pattern.StartsWith("*."))
+
+        // For non-rooted patterns, also try matching against filename only
+        // Use the already-normalized path parameter to extract filename
+        if (!IsRooted && !pattern.Contains('/'))
         {
-            var extension = pattern[2..];
-            return input.EndsWith("." + extension, comparison) ||
-                   (!IsRooted && Path.GetFileName(input).EndsWith("." + extension, comparison));
+            var filename = path.Contains('/')
+                ? path[(path.LastIndexOf('/') + 1)..]
+                : path;
+            if (GlobMatch(filename, pattern))
+                return true;
         }
-        
-        // Convert glob to regex for complex patterns
-        var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
-            .Replace("\\*", ".*")
-            .Replace("\\?", ".") + "$";
-            
-        var options = IsCaseInsensitive ? 
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase : 
-            System.Text.RegularExpressions.RegexOptions.None;
-            
-        var matches = System.Text.RegularExpressions.Regex.IsMatch(input, regexPattern, options);
-        if (matches) return true;
-        
-        // Try filename only for non-rooted patterns
-        if (!IsRooted)
-        {
-            var filename = Path.GetFileName(input);
-            return System.Text.RegularExpressions.Regex.IsMatch(filename, regexPattern, options);
-        }
-        
+
         return false;
+    }
+
+    /// <summary>
+    /// Full gitignore/Syncthing-compatible glob pattern matching.
+    /// Supports:
+    /// - * matches zero or more characters (except /)
+    /// - ** matches zero or more directories
+    /// - ? matches exactly one character (except /)
+    /// - [abc] matches any character in the set
+    /// - [!abc] or [^abc] matches any character NOT in the set
+    /// - [a-z] matches character ranges
+    /// </summary>
+    private bool GlobMatch(string input, string pattern)
+    {
+        var regex = GlobToRegex(pattern);
+        var options = IsCaseInsensitive
+            ? RegexOptions.IgnoreCase | RegexOptions.CultureInvariant
+            : RegexOptions.CultureInvariant;
+
+        try
+        {
+            return Regex.IsMatch(input, regex, options, TimeSpan.FromSeconds(1));
+        }
+        catch (RegexMatchTimeoutException)
+        {
+            // Pattern took too long, treat as no match
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Converts a gitignore-style glob pattern to a regular expression.
+    /// </summary>
+    private static string GlobToRegex(string pattern)
+    {
+        var sb = new StringBuilder();
+        sb.Append('^');
+
+        var i = 0;
+        var len = pattern.Length;
+
+        while (i < len)
+        {
+            var c = pattern[i];
+
+            switch (c)
+            {
+                case '*':
+                    // Check for **
+                    if (i + 1 < len && pattern[i + 1] == '*')
+                    {
+                        // Check for **/ pattern (matches zero or more directories)
+                        if (i + 2 < len && pattern[i + 2] == '/')
+                        {
+                            // **/ matches zero or more directories including empty
+                            sb.Append("(?:.*/)?");
+                            i += 3;
+                        }
+                        // Check for /** at the end (matches everything under a directory)
+                        else if (i > 0 && pattern[i - 1] == '/')
+                        {
+                            // /** matches everything
+                            sb.Append(".*");
+                            i += 2;
+                        }
+                        else
+                        {
+                            // Standalone ** matches everything including /
+                            sb.Append(".*");
+                            i += 2;
+                        }
+                    }
+                    else
+                    {
+                        // Single * matches anything except /
+                        sb.Append("[^/]*");
+                        i++;
+                    }
+                    break;
+
+                case '?':
+                    // ? matches any single character except /
+                    sb.Append("[^/]");
+                    i++;
+                    break;
+
+                case '[':
+                    // Character class
+                    var classEnd = ParseCharacterClass(pattern, i, sb);
+                    if (classEnd > i)
+                    {
+                        i = classEnd;
+                    }
+                    else
+                    {
+                        // Invalid character class, treat [ as literal
+                        sb.Append("\\[");
+                        i++;
+                    }
+                    break;
+
+                case '/':
+                    // Path separator
+                    sb.Append('/');
+                    i++;
+                    break;
+
+                // Regex metacharacters that need escaping
+                case '\\':
+                case '.':
+                case '+':
+                case '^':
+                case '$':
+                case '|':
+                case '(':
+                case ')':
+                case '{':
+                case '}':
+                    sb.Append('\\');
+                    sb.Append(c);
+                    i++;
+                    break;
+
+                default:
+                    sb.Append(c);
+                    i++;
+                    break;
+            }
+        }
+
+        sb.Append('$');
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// Parses a character class [abc], [!abc], [^abc], [a-z] and appends to StringBuilder.
+    /// Returns the index after the closing ], or the original index if not a valid class.
+    /// </summary>
+    private static int ParseCharacterClass(string pattern, int start, StringBuilder sb)
+    {
+        var len = pattern.Length;
+        if (start >= len || pattern[start] != '[')
+            return start;
+
+        var i = start + 1;
+        if (i >= len)
+            return start; // Unterminated [
+
+        // Check for negation
+        var negate = false;
+        if (pattern[i] == '!' || pattern[i] == '^')
+        {
+            negate = true;
+            i++;
+        }
+
+        // Allow ] as first character in class
+        var classChars = new StringBuilder();
+        if (i < len && pattern[i] == ']')
+        {
+            classChars.Append("\\]");
+            i++;
+        }
+
+        // Parse until closing ]
+        while (i < len && pattern[i] != ']')
+        {
+            var c = pattern[i];
+
+            // Check for range (a-z)
+            if (i + 2 < len && pattern[i + 1] == '-' && pattern[i + 2] != ']')
+            {
+                var rangeStart = c;
+                var rangeEnd = pattern[i + 2];
+
+                // Escape special regex chars in ranges
+                if (NeedsEscapeInClass(rangeStart))
+                    classChars.Append('\\');
+                classChars.Append(rangeStart);
+
+                classChars.Append('-');
+
+                if (NeedsEscapeInClass(rangeEnd))
+                    classChars.Append('\\');
+                classChars.Append(rangeEnd);
+
+                i += 3;
+            }
+            else
+            {
+                // Single character
+                if (NeedsEscapeInClass(c))
+                    classChars.Append('\\');
+                classChars.Append(c);
+                i++;
+            }
+        }
+
+        // Check for valid closing ]
+        if (i >= len || pattern[i] != ']')
+            return start; // Unterminated character class
+
+        // Don't match / in character classes (Syncthing behavior)
+        if (negate)
+        {
+            // [^.../] - negated class that also excludes /
+            sb.Append("[^/");
+            sb.Append(classChars);
+            sb.Append(']');
+        }
+        else
+        {
+            // Character class without /
+            sb.Append('[');
+            sb.Append(classChars);
+            sb.Append(']');
+        }
+
+        return i + 1; // Return position after ]
+    }
+
+    /// <summary>
+    /// Determines if a character needs escaping inside a regex character class.
+    /// </summary>
+    private static bool NeedsEscapeInClass(char c)
+    {
+        return c == '\\' || c == ']' || c == '^' || c == '-';
     }
     
     public override string ToString()

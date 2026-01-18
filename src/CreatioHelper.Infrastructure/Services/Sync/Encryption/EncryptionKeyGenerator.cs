@@ -1,47 +1,52 @@
 using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Logging;
-using System.Security.Cryptography.X509Certificates;
+using Org.BouncyCastle.Crypto.Digests;
+using Org.BouncyCastle.Crypto.Generators;
+using Org.BouncyCastle.Crypto.Parameters;
 
 namespace CreatioHelper.Infrastructure.Services.Sync.Encryption;
 
 /// <summary>
-/// Key generator compatible with Syncthing's encryption scheme
-/// Uses Scrypt for folder keys and HKDF for file keys
+/// Key generator compatible with Syncthing's encryption scheme.
+/// Uses Scrypt for folder keys, HKDF for file keys, and AES-SIV for tokens.
 /// </summary>
 public class EncryptionKeyGenerator : IDisposable
 {
     private readonly ILogger<EncryptionKeyGenerator> _logger;
+    private readonly AesSivCipher _aesSiv;
     private readonly Dictionary<string, byte[]> _folderKeyCache;
     private readonly Dictionary<string, byte[]> _fileKeyCache;
     private readonly object _lock = new();
     private bool _disposed = false;
 
-    // Constants matching Syncthing
+    // Constants matching Syncthing exactly
     private const int KeySize = 32;
-    private const int ScryptN = 32768;
+    private const int ScryptN = 32768;  // 2^15 - Syncthing default
     private const int ScryptR = 8;
     private const int ScryptP = 1;
-    private static readonly byte[] HkdfSalt = Encoding.UTF8.GetBytes("syncthing");
+    private static readonly byte[] HkdfInfo = Encoding.UTF8.GetBytes("syncthing");
 
     public EncryptionKeyGenerator(ILogger<EncryptionKeyGenerator> logger)
     {
         _logger = logger;
+        _aesSiv = new AesSivCipher();
         _folderKeyCache = new Dictionary<string, byte[]>();
         _fileKeyCache = new Dictionary<string, byte[]>();
-        
-        _logger.LogDebug("EncryptionKeyGenerator initialized");
+
+        _logger.LogDebug("EncryptionKeyGenerator initialized with AES-SIV cipher");
     }
 
     /// <summary>
-    /// Derives a folder key from password using Scrypt (Syncthing compatible)
+    /// Derives a folder key from password using Scrypt (Syncthing compatible).
+    /// Matches Syncthing's keyFromPassword function in lib/protocol/encryption.go
     /// </summary>
     public byte[] KeyFromPassword(string folderId, string password)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptionKeyGenerator));
-        
+
         var cacheKey = $"{folderId}:{password}";
-        
+
         lock (_lock)
         {
             if (_folderKeyCache.TryGetValue(cacheKey, out var cachedKey))
@@ -50,30 +55,32 @@ public class EncryptionKeyGenerator : IDisposable
             }
 
             // Use known bytes as salt (Syncthing compatibility)
+            // Salt = "syncthing" + folderId
             var salt = GetKnownBytes(folderId);
             var passwordBytes = Encoding.UTF8.GetBytes(password);
 
-            // Use PBKDF2 as SCrypt alternative for now
-            var key = Rfc2898DeriveBytes.Pbkdf2(passwordBytes, salt, 100000, HashAlgorithmName.SHA256, KeySize);
-            
+            // Use Scrypt with Syncthing's exact parameters: N=32768, r=8, p=1
+            var key = SCrypt.Generate(passwordBytes, salt, ScryptN, ScryptR, ScryptP, KeySize);
+
             // Cache the key
             _folderKeyCache[cacheKey] = key;
-            
-            _logger.LogDebug("Generated folder key for folder {FolderId}", folderId);
+
+            _logger.LogDebug("Generated folder key for folder {FolderId} using Scrypt", folderId);
             return key;
         }
     }
 
     /// <summary>
-    /// Derives a file-specific key from folder key using HKDF (Syncthing compatible)
+    /// Derives a file-specific key from folder key using HKDF (Syncthing compatible).
+    /// Matches Syncthing's FileKey function in lib/protocol/encryption.go
     /// </summary>
     public byte[] FileKey(string filename, byte[] folderKey)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(EncryptionKeyGenerator));
         if (folderKey.Length != KeySize) throw new ArgumentException("Invalid folder key size");
-        
+
         var cacheKey = $"{Convert.ToBase64String(folderKey)}:{filename}";
-        
+
         lock (_lock)
         {
             if (_fileKeyCache.TryGetValue(cacheKey, out var cachedKey))
@@ -81,22 +88,22 @@ public class EncryptionKeyGenerator : IDisposable
                 return cachedKey;
             }
 
-            // Simple HKDF-like key derivation using HMAC-SHA256
-            var inputKey = new byte[folderKey.Length + Encoding.UTF8.GetByteCount(filename)];
-            Buffer.BlockCopy(folderKey, 0, inputKey, 0, folderKey.Length);
+            // HKDF-SHA256 with:
+            // - IKM (Input Key Material): folder key
+            // - Salt: filename bytes
+            // - Info: "syncthing"
             var filenameBytes = Encoding.UTF8.GetBytes(filename);
-            Buffer.BlockCopy(filenameBytes, 0, inputKey, folderKey.Length, filenameBytes.Length);
-            
-            using var hmac = new HMACSHA256(HkdfSalt);
-            var hash1 = hmac.ComputeHash(inputKey);
-            
+
+            var hkdf = new HkdfBytesGenerator(new Sha256Digest());
+            hkdf.Init(new HkdfParameters(folderKey, filenameBytes, HkdfInfo));
+
             var fileKey = new byte[KeySize];
-            Buffer.BlockCopy(hash1, 0, fileKey, 0, Math.Min(hash1.Length, KeySize));
+            hkdf.GenerateBytes(fileKey, 0, KeySize);
 
             // Cache the key
             _fileKeyCache[cacheKey] = fileKey;
-            
-            _logger.LogDebug("Generated file key for {Filename}", filename);
+
+            _logger.LogDebug("Generated file key for {Filename} using HKDF", filename);
             return fileKey;
         }
     }
@@ -135,24 +142,28 @@ public class EncryptionKeyGenerator : IDisposable
     }
 
     /// <summary>
-    /// AES-SIV deterministic encryption (placeholder - needs actual implementation)
+    /// AES-SIV deterministic encryption using RFC 5297.
+    /// Provides authenticated encryption that is nonce-misuse resistant.
     /// </summary>
     private byte[] AesSivEncrypt(byte[] plaintext, byte[] key, byte[]? additionalData)
     {
-        // TODO: Implement proper AES-SIV encryption
-        // For now, use HMAC as a placeholder
-        using var hmac = new HMACSHA256(key);
-        var hash = hmac.ComputeHash(plaintext);
-        
         if (additionalData != null)
         {
-            var combined = new byte[plaintext.Length + additionalData.Length];
-            Buffer.BlockCopy(plaintext, 0, combined, 0, plaintext.Length);
-            Buffer.BlockCopy(additionalData, 0, combined, plaintext.Length, additionalData.Length);
-            hash = hmac.ComputeHash(combined);
+            return _aesSiv.Encrypt(plaintext, key, additionalData);
         }
-        
-        return hash;
+        return _aesSiv.Encrypt(plaintext, key);
+    }
+
+    /// <summary>
+    /// AES-SIV deterministic decryption using RFC 5297.
+    /// </summary>
+    private byte[] AesSivDecrypt(byte[] ciphertext, byte[] key, byte[]? additionalData)
+    {
+        if (additionalData != null)
+        {
+            return _aesSiv.Decrypt(ciphertext, key, additionalData);
+        }
+        return _aesSiv.Decrypt(ciphertext, key);
     }
 
     public void Dispose()

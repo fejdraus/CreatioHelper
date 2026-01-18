@@ -3,13 +3,14 @@ using CreatioHelper.Domain.Common;
 namespace CreatioHelper.Domain.Entities;
 
 /// <summary>
-/// NAT traversal configuration for UPnP/PMP
+/// NAT traversal configuration for UPnP/PMP/STUN
 /// </summary>
 public class NatTraversalConfiguration
 {
     public bool Enabled { get; set; } = true;
     public bool UpnpEnabled { get; set; } = true;
     public bool PmpEnabled { get; set; } = true;
+    public bool StunEnabled { get; set; } = true;
     public int DiscoveryIntervalMinutes { get; set; } = 15;
     public int RenewalIntervalMinutes { get; set; } = 30;
     public int LeaseTimeMinutes { get; set; } = 60;
@@ -17,6 +18,21 @@ public class NatTraversalConfiguration
     public List<string> PreferredExternalPorts { get; set; } = new();
     public bool AllowPortMapping { get; set; } = true;
     public bool AllowPortForwarding { get; set; } = true;
+
+    /// <summary>
+    /// STUN keepalive interval in seconds (default: 10, Syncthing compatible).
+    /// </summary>
+    public int? StunKeepAliveSeconds { get; set; } = 10;
+
+    /// <summary>
+    /// List of STUN servers to use for external IP discovery.
+    /// </summary>
+    public List<string> StunServers { get; set; } = new()
+    {
+        "stun.syncthing.net:3478",
+        "stun.l.google.com:19302",
+        "stun1.l.google.com:19302"
+    };
 }
 
 /// <summary>

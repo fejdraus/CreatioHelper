@@ -7,6 +7,24 @@ using CreatioHelper.Domain.Entities.Statistics;
 namespace CreatioHelper.Application.Interfaces;
 
 /// <summary>
+/// Upload result for statistics recording
+/// </summary>
+public class UploadRecordInfo
+{
+    public string DeviceId { get; set; } = string.Empty;
+    public string FolderId { get; set; } = string.Empty;
+    public string FileName { get; set; } = string.Empty;
+    public long BytesUploaded { get; set; }
+    public long TotalFileSize { get; set; }
+    public int BlocksTransferred { get; set; }
+    public int BlocksSkipped { get; set; }
+    public bool IsDeltaUpload { get; set; }
+    public TimeSpan Duration { get; set; }
+    public bool Success { get; set; }
+    public string? Error { get; set; }
+}
+
+/// <summary>
 /// Интерфейс для сбора и управления статистикой синхронизации (на основе Syncthing Statistics)
 /// </summary>
 public interface IStatisticsCollector
@@ -124,6 +142,31 @@ public interface IStatisticsCollector
     /// Экспортировать статистики в JSON
     /// </summary>
     Task<string> ExportStatisticsAsync(DateTime? since = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Record an upload operation (success or failure)
+    /// </summary>
+    Task RecordUploadAsync(UploadRecordInfo uploadInfo, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get global upload statistics
+    /// </summary>
+    Task<UploadStatistics> GetUploadStatisticsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get upload statistics for a specific device
+    /// </summary>
+    Task<UploadStatistics> GetDeviceUploadStatisticsAsync(string deviceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get upload statistics for a specific folder
+    /// </summary>
+    Task<UploadStatistics> GetFolderUploadStatisticsAsync(string folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reset upload statistics (global, device, or folder)
+    /// </summary>
+    Task ResetUploadStatisticsAsync(string? deviceId = null, string? folderId = null, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -159,8 +159,10 @@ public class FileComparator
                 break;
 
             case FileComparisonResult.LocalNewer:
-                plan.AddUploadAction(localFile, FileActionReason.ModifiedContent);
-                _logger.LogDebug("Local file newer: {FileName}", localFile.RelativePath);
+                // Pass remoteFile for delta upload - remote has blocks we can compare against
+                plan.AddUploadAction(localFile, FileActionReason.ModifiedContent, remoteFile);
+                _logger.LogDebug("Local file newer: {FileName} (remote has {RemoteBlocks} blocks for delta comparison)",
+                    localFile.RelativePath, remoteFile.Blocks.Count);
                 break;
 
             case FileComparisonResult.RemoteNewer:

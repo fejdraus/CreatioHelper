@@ -1,4 +1,5 @@
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Application.Interfaces;
 
@@ -46,6 +47,15 @@ public interface IFileMetadataRepository : IDisposable
     /// Get files that need to be downloaded (similar to Syncthing's need list)
     /// </summary>
     Task<IEnumerable<FileMetadata>> GetNeededFilesAsync(string folderId);
+
+    /// <summary>
+    /// Get files that need to be downloaded with specific ordering (Syncthing pull order)
+    /// </summary>
+    Task<IEnumerable<FileMetadata>> GetNeededFilesOrderedAsync(
+        string folderId,
+        SyncPullOrder order,
+        int limit = 0,
+        int offset = 0);
     
     /// <summary>
     /// Mark file as locally changed with new sequence number

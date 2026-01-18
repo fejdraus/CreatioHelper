@@ -1,5 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Enums;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Sync.Database;
@@ -32,6 +33,7 @@ public class StubFileMetadataRepository : IFileMetadataRepository
     public Task<long> GetGlobalSequenceAsync(string folderId) => Task.FromResult(0L);
     public Task UpdateGlobalSequenceAsync(string folderId, long sequence) => Task.CompletedTask;
     public Task<IEnumerable<FileMetadata>> GetNeededFilesAsync(string folderId) => Task.FromResult(Enumerable.Empty<FileMetadata>());
+    public Task<IEnumerable<FileMetadata>> GetNeededFilesOrderedAsync(string folderId, SyncPullOrder order, int limit = 0, int offset = 0) => Task.FromResult(Enumerable.Empty<FileMetadata>());
     public Task MarkLocallyChangedAsync(string folderId, string fileName, long sequence) => Task.CompletedTask;
     public void Dispose() { }
 }
