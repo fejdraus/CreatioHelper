@@ -130,11 +130,11 @@ public class CaseSensitivityWrapperTests : IDisposable
     {
         // Arrange
         var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
-        var testFile = Path.Combine(_testDir, "TestFile.txt");
-        await File.WriteAllTextAsync(testFile, "content");
+        var fileName = "TestFile.txt";
+        await File.WriteAllTextAsync(Path.Combine(_testDir, fileName), "content");
 
-        // Act
-        var result = await fs.FileExistsExactAsync(testFile);
+        // Act - use relative path
+        var result = await fs.FileExistsExactAsync(fileName);
 
         // Assert
         Assert.True(result);
@@ -145,10 +145,9 @@ public class CaseSensitivityWrapperTests : IDisposable
     {
         // Arrange
         var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
-        var nonExistent = Path.Combine(_testDir, "NonExistent.txt");
 
-        // Act
-        var result = await fs.FileExistsExactAsync(nonExistent);
+        // Act - use relative path
+        var result = await fs.FileExistsExactAsync("NonExistent.txt");
 
         // Assert
         Assert.False(result);
@@ -159,11 +158,11 @@ public class CaseSensitivityWrapperTests : IDisposable
     {
         // Arrange
         var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
-        var testFile = Path.Combine(_testDir, "ActualFile.txt");
-        await File.WriteAllTextAsync(testFile, "content");
+        var fileName = "ActualFile.txt";
+        await File.WriteAllTextAsync(Path.Combine(_testDir, fileName), "content");
 
-        // Act
-        var result = await fs.GetActualPathAsync(testFile);
+        // Act - use relative path
+        var result = await fs.GetActualPathAsync(fileName);
 
         // Assert
         Assert.NotNull(result);
@@ -176,8 +175,8 @@ public class CaseSensitivityWrapperTests : IDisposable
         // Arrange
         var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
 
-        // Act
-        var result = await fs.GetActualPathAsync(Path.Combine(_testDir, "nonexistent.txt"));
+        // Act - use relative path
+        var result = await fs.GetActualPathAsync("nonexistent.txt");
 
         // Assert
         Assert.Null(result);
