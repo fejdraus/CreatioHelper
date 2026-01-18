@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Entities.Events;
+using CreatioHelper.Infrastructure.Services.Sync.FileSystem;
 using Microsoft.Extensions.Logging;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
 
@@ -11,26 +12,46 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// <summary>
 /// File system watcher and change detection (based on Syncthing fs watcher)
 /// Inspired by Syncthing's lib/fs and lib/scanner packages
+/// Uses WatchAggregator for intelligent event batching (based on Syncthing lib/watchaggregator)
 /// </summary>
 public class FileWatcher : IDisposable
 {
     private readonly ILogger<FileWatcher> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly AdaptiveBlockSizer _blockSizer;
     private readonly IEventLogger? _eventLogger;
     private readonly ConcurrentDictionary<string, FileSystemWatcher> _watchers = new();
+    private readonly ConcurrentDictionary<string, WatchAggregator> _aggregators = new();
     private readonly ConcurrentDictionary<string, Timer> _scanTimers = new();
     private readonly ConcurrentDictionary<string, DateTime> _lastScans = new();
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<string, SyncFileInfo>> _folderFiles = new();
+    private readonly ConcurrentDictionary<string, string> _folderPaths = new(); // folderId -> basePath
     private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private readonly WatchAggregatorOptions _aggregatorOptions;
 
     public event EventHandler<FileChangedEventArgs>? FileChanged;
     public event EventHandler<FolderScanCompletedEventArgs>? FolderScanCompleted;
 
-    public FileWatcher(ILogger<FileWatcher> logger, AdaptiveBlockSizer blockSizer, IEventLogger? eventLogger = null)
+    /// <summary>
+    /// Event fired when aggregated paths are ready to scan
+    /// </summary>
+    public event EventHandler<AggregatedPathsReadyEventArgs>? AggregatedPathsReady;
+
+    public FileWatcher(ILogger<FileWatcher> logger, ILoggerFactory loggerFactory, AdaptiveBlockSizer blockSizer, IEventLogger? eventLogger = null, WatchAggregatorOptions? aggregatorOptions = null)
     {
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _blockSizer = blockSizer;
         _eventLogger = eventLogger;
+        _aggregatorOptions = aggregatorOptions ?? new WatchAggregatorOptions();
+    }
+
+    /// <summary>
+    /// Legacy constructor for backwards compatibility
+    /// </summary>
+    public FileWatcher(ILogger<FileWatcher> logger, AdaptiveBlockSizer blockSizer, IEventLogger? eventLogger = null)
+        : this(logger, null!, blockSizer, eventLogger, null)
+    {
     }
 
     public void WatchFolder(SyncFolder folder)
@@ -42,10 +63,28 @@ public class FileWatcher : IDisposable
 
         try
         {
+            // Store folder path for later use
+            _folderPaths[folder.Id] = folder.Path;
+
+            // Create WatchAggregator for this folder
+            var aggregatorOptions = new WatchAggregatorOptions
+            {
+                NotifyDelay = TimeSpan.FromSeconds(folder.FSWatcherDelayS > 0 ? folder.FSWatcherDelayS : 10),
+                NotifyTimeout = TimeSpan.FromSeconds(folder.FSWatcherDelayS > 0 ? folder.FSWatcherDelayS * 6 : 60),
+                MaxFiles = _aggregatorOptions.MaxFiles,
+                MaxFilesPerDir = _aggregatorOptions.MaxFilesPerDir
+            };
+
+            var aggregatorLogger = _loggerFactory?.CreateLogger<WatchAggregator>()
+                ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<WatchAggregator>.Instance;
+            var aggregator = new WatchAggregator(aggregatorLogger, folder.Id, aggregatorOptions);
+            aggregator.PathsReady += (paths, eventType) => OnAggregatedPathsReady(folder.Id, folder.Path, paths, eventType);
+            _aggregators[folder.Id] = aggregator;
+
             var watcher = new FileSystemWatcher(folder.Path)
             {
                 IncludeSubdirectories = true,
-                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | 
+                NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName |
                               NotifyFilters.Size | NotifyFilters.LastWrite | NotifyFilters.CreationTime
             };
 
@@ -90,10 +129,17 @@ public class FileWatcher : IDisposable
             watcher.Dispose();
         }
 
+        if (_aggregators.TryRemove(folderId, out var aggregator))
+        {
+            aggregator.Dispose();
+        }
+
         if (_scanTimers.TryRemove(folderId, out var timer))
         {
             timer.Dispose();
         }
+
+        _folderPaths.TryRemove(folderId, out _);
 
         _logger.LogInformation("Stopped watching folder {FolderId}", folderId);
         
@@ -344,84 +390,148 @@ public class FileWatcher : IDisposable
     {
         try
         {
-            // Debounce rapid file system events
-            _ = Task.Delay(100).ContinueWith(_ =>
+            // Get the base path for this folder
+            if (!_folderPaths.TryGetValue(folderId, out var basePath))
             {
-                try
-                {
-                    if (changeType == FileChangeType.Deleted)
-                    {
-                        // Handle deletion: mark file as deleted in tracking map
-                        var folderFileMap = _folderFiles.GetOrAdd(folderId, _ => new ConcurrentDictionary<string, SyncFileInfo>());
-                        
-                        // Try to find the file in our tracking map by path
-                        var deletedFile = folderFileMap.Values.FirstOrDefault(f => f.RelativePath.EndsWith(Path.GetRelativePath(Path.GetDirectoryName(filePath) ?? "", filePath), StringComparison.OrdinalIgnoreCase));
-                        
-                        if (deletedFile != null && !deletedFile.IsDeleted)
-                        {
-                            _logger.LogInformation("🗑️ File deleted: {FileName} in folder {FolderId}", deletedFile.RelativePath, folderId);
-                        
-                        // Log file deletion event
-                        _eventLogger?.LogEvent(EventType.LocalChangeDetected, 
-                            new { Action = "Deleted", Size = deletedFile.Size }, 
-                            $"File deleted: {deletedFile.RelativePath}", 
-                            null, folderId, deletedFile.RelativePath);
-                            deletedFile.MarkAsDeleted();
-                            deletedFile.Vector.Increment(Environment.MachineName); // Update vector clock for deletion
-                        }
-                    }
-                    else if (File.Exists(filePath))
-                    {
-                        // Handle creation/modification: file will be picked up in next scan
-                        _logger.LogDebug("File {ChangeType}: {FilePath} in folder {FolderId}", changeType, filePath, folderId);
-                        
-                        // Log file change event
-                        var eventType = changeType switch
-                        {
-                            FileChangeType.Created => EventType.LocalChangeDetected,
-                            FileChangeType.Modified => EventType.LocalChangeDetected,
-                            FileChangeType.Renamed => EventType.LocalChangeDetected,
-                            _ => EventType.LocalChangeDetected
-                        };
-                        
-                        // Get file size if file exists for creation/modification events
-                        long fileSize = 0;
-                        if (changeType != FileChangeType.Deleted && File.Exists(filePath))
-                        {
-                            try
-                            {
-                                fileSize = new FileInfo(filePath).Length;
-                            }
-                            catch
-                            {
-                                fileSize = 0; // Ignore errors getting file size
-                            }
-                        }
-                        
-                        _eventLogger?.LogEvent(eventType, 
-                            new { Action = changeType.ToString(), Size = fileSize }, 
-                            $"File {changeType.ToString().ToLower()}: {Path.GetFileName(filePath)}", 
-                            null, folderId, filePath);
-                    }
-                    
-                    var eventArgs = new FileChangedEventArgs(folderId, filePath, changeType, oldPath, 0);
-                    FileChanged?.Invoke(this, eventArgs);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error in debounced file system event handler for {FilePath}", filePath);
-                }
-            });
+                _logger.LogWarning("No base path found for folder {FolderId}", folderId);
+                return;
+            }
+
+            // Convert to relative path
+            var relativePath = Path.GetRelativePath(basePath, filePath).Replace('\\', '/');
+
+            // Convert FileChangeType to FsEventType
+            var fsEventType = changeType == FileChangeType.Deleted ? FsEventType.Remove : FsEventType.NonRemove;
+
+            // Send event to aggregator for batching
+            if (_aggregators.TryGetValue(folderId, out var aggregator))
+            {
+                aggregator.AddEvent(new FsEvent { Name = relativePath, Type = fsEventType });
+                _logger.LogTrace("Sent event to aggregator: {ChangeType} {RelativePath} in folder {FolderId}",
+                    changeType, relativePath, folderId);
+            }
+            else
+            {
+                // Fallback: immediate processing if no aggregator (legacy mode)
+                ProcessFileEventImmediately(folderId, filePath, relativePath, changeType, oldPath);
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing file system event for {FilePath}", filePath);
-            
+
             // Log file system event error
-            _eventLogger?.LogEvent(EventType.Failure, 
-                new { FilePath = filePath, Error = ex.Message }, 
-                $"Error processing file system event: {ex.Message}", 
+            _eventLogger?.LogEvent(EventType.Failure,
+                new { FilePath = filePath, Error = ex.Message },
+                $"Error processing file system event: {ex.Message}",
                 null, null, filePath);
+        }
+    }
+
+    /// <summary>
+    /// Called when WatchAggregator has batched paths ready for scanning
+    /// </summary>
+    private void OnAggregatedPathsReady(string folderId, string basePath, IReadOnlyList<string> paths, FsEventType eventType)
+    {
+        _logger.LogInformation("Aggregated {Count} paths ready for folder {FolderId} (type={EventType})",
+            paths.Count, folderId, eventType);
+
+        // Log aggregated event
+        _eventLogger?.LogEvent(EventType.LocalChangeDetected,
+            new { FolderId = folderId, PathCount = paths.Count, EventType = eventType.ToString() },
+            $"Aggregated {paths.Count} file changes in folder {folderId}",
+            null, folderId);
+
+        // Fire the aggregated paths event
+        AggregatedPathsReady?.Invoke(this, new AggregatedPathsReadyEventArgs(folderId, basePath, paths.ToList(), eventType));
+
+        // Also fire individual FileChanged events for backwards compatibility
+        foreach (var relativePath in paths)
+        {
+            var fullPath = Path.Combine(basePath, relativePath.Replace('/', Path.DirectorySeparatorChar));
+            var changeType = eventType == FsEventType.Remove ? FileChangeType.Deleted :
+                            (File.Exists(fullPath) ? FileChangeType.Modified : FileChangeType.Created);
+
+            ProcessFileEventImmediately(folderId, fullPath, relativePath, changeType, null);
+        }
+    }
+
+    /// <summary>
+    /// Process a file event immediately (used by aggregator callback and legacy mode)
+    /// </summary>
+    private void ProcessFileEventImmediately(string folderId, string filePath, string relativePath, FileChangeType changeType, string? oldPath)
+    {
+        try
+        {
+            if (changeType == FileChangeType.Deleted)
+            {
+                // Handle deletion: mark file as deleted in tracking map
+                var folderFileMap = _folderFiles.GetOrAdd(folderId, _ => new ConcurrentDictionary<string, SyncFileInfo>());
+
+                if (folderFileMap.TryGetValue(relativePath, out var deletedFile) && !deletedFile.IsDeleted)
+                {
+                    _logger.LogInformation("File deleted: {FileName} in folder {FolderId}", relativePath, folderId);
+
+                    // Log file deletion event
+                    _eventLogger?.LogEvent(EventType.LocalChangeDetected,
+                        new { Action = "Deleted", Size = deletedFile.Size },
+                        $"File deleted: {relativePath}",
+                        null, folderId, relativePath);
+
+                    deletedFile.MarkAsDeleted();
+                    deletedFile.Vector.Increment(Environment.MachineName);
+                }
+            }
+            else if (File.Exists(filePath))
+            {
+                // Handle creation/modification
+                _logger.LogDebug("File {ChangeType}: {FilePath} in folder {FolderId}", changeType, relativePath, folderId);
+
+                // Get file size
+                long fileSize = 0;
+                try
+                {
+                    fileSize = new FileInfo(filePath).Length;
+                }
+                catch
+                {
+                    // Ignore errors getting file size
+                }
+
+                _eventLogger?.LogEvent(EventType.LocalChangeDetected,
+                    new { Action = changeType.ToString(), Size = fileSize },
+                    $"File {changeType.ToString().ToLower()}: {Path.GetFileName(filePath)}",
+                    null, folderId, filePath);
+            }
+
+            var eventArgs = new FileChangedEventArgs(folderId, filePath, changeType, oldPath, 0);
+            FileChanged?.Invoke(this, eventArgs);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing file event for {FilePath}", filePath);
+        }
+    }
+
+    /// <summary>
+    /// Mark a path as being modified by us (aggregator will ignore it)
+    /// </summary>
+    public void MarkInProgress(string folderId, string relativePath)
+    {
+        if (_aggregators.TryGetValue(folderId, out var aggregator))
+        {
+            aggregator.MarkInProgress(relativePath);
+        }
+    }
+
+    /// <summary>
+    /// Unmark a path as being modified by us
+    /// </summary>
+    public void UnmarkInProgress(string folderId, string relativePath)
+    {
+        if (_aggregators.TryGetValue(folderId, out var aggregator))
+        {
+            aggregator.UnmarkInProgress(relativePath);
         }
     }
 
@@ -434,10 +544,20 @@ public class FileWatcher : IDisposable
             watcher.Dispose();
         }
 
+        foreach (var aggregator in _aggregators.Values)
+        {
+            aggregator.Dispose();
+        }
+
         foreach (var timer in _scanTimers.Values)
         {
             timer.Dispose();
         }
+
+        _watchers.Clear();
+        _aggregators.Clear();
+        _scanTimers.Clear();
+        _folderPaths.Clear();
 
         _cancellationTokenSource.Dispose();
     }
@@ -481,4 +601,23 @@ public enum FileChangeType
     Modified,
     Deleted,
     Renamed
+}
+
+/// <summary>
+/// Event args for aggregated paths ready to scan
+/// </summary>
+public class AggregatedPathsReadyEventArgs : EventArgs
+{
+    public string FolderId { get; }
+    public string BasePath { get; }
+    public List<string> RelativePaths { get; }
+    public FsEventType EventType { get; }
+
+    public AggregatedPathsReadyEventArgs(string folderId, string basePath, List<string> relativePaths, FsEventType eventType)
+    {
+        FolderId = folderId;
+        BasePath = basePath;
+        RelativePaths = relativePaths;
+        EventType = eventType;
+    }
 }

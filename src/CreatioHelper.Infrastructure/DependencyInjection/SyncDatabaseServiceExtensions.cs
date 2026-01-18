@@ -39,33 +39,15 @@ public static class SyncDatabaseServiceExtensions
             return new SqliteBlockInfoRepository(logger, connectionString);
         });
         
-        // WARNING: Stub implementations are used for repositories that are not yet implemented
-        // These return empty/null results and should NOT be used in production for critical operations
-        // TODO: Implement proper SQLite repositories for production use
-        services.AddTransient<IDeviceInfoRepository>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<StubDeviceInfoRepository>>();
-            logger.LogWarning("Using StubDeviceInfoRepository - this is not suitable for production use");
-            return new StubDeviceInfoRepository();
-        });
-        services.AddTransient<IFolderConfigRepository>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<StubFolderConfigRepository>>();
-            logger.LogWarning("Using StubFolderConfigRepository - this is not suitable for production use");
-            return new StubFolderConfigRepository();
-        });
-        services.AddTransient<IFileMetadataRepository>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<StubFileMetadataRepository>>();
-            logger.LogWarning("Using StubFileMetadataRepository - this is not suitable for production use");
-            return new StubFileMetadataRepository();
-        });
-        services.AddTransient<IGlobalStateRepository>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<StubGlobalStateRepository>>();
-            logger.LogWarning("Using StubGlobalStateRepository - this is not suitable for production use");
-            return new StubGlobalStateRepository();
-        });
+        // Repository services - delegate to ISyncDatabase which manages SQLite repositories
+        services.AddSingleton<IDeviceInfoRepository>(provider =>
+            provider.GetRequiredService<ISyncDatabase>().DeviceInfo);
+        services.AddSingleton<IFolderConfigRepository>(provider =>
+            provider.GetRequiredService<ISyncDatabase>().FolderConfig);
+        services.AddSingleton<IFileMetadataRepository>(provider =>
+            provider.GetRequiredService<ISyncDatabase>().FileMetadata);
+        services.AddSingleton<IGlobalStateRepository>(provider =>
+            provider.GetRequiredService<ISyncDatabase>().GlobalState);
 
         return services;
     }
