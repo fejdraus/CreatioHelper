@@ -1,4 +1,5 @@
 using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Domain.Entities;
 
@@ -47,7 +48,19 @@ public class SyncPlan : AggregateRoot
 
     public void AddUploadAction(SyncFileInfo localFile, FileActionReason reason)
     {
+        AddUploadAction(localFile, reason, null);
+    }
+
+    /// <summary>
+    /// Add upload action with remote file info for delta upload
+    /// </summary>
+    /// <param name="localFile">Local file to upload</param>
+    /// <param name="reason">Reason for upload</param>
+    /// <param name="remoteFile">Current state of file on remote device (for delta comparison)</param>
+    public void AddUploadAction(SyncFileInfo localFile, FileActionReason reason, SyncFileInfo? remoteFile)
+    {
         var action = new FileAction(localFile.Name, FileActionType.Upload, reason, localFile.Size, localFile);
+        action.RemoteFileInfo = remoteFile;
         FilesToUpload.Add(action);
         TotalBytesToUpload += localFile.Size;
         TotalFilesToUpload++;
@@ -66,6 +79,38 @@ public class SyncPlan : AggregateRoot
     }
 
     public bool HasWork => FilesToDownload.Any() || FilesToUpload.Any() || FilesToDelete.Any();
+
+    /// <summary>
+    /// Sort files to download according to the specified pull order.
+    /// </summary>
+    public void SortDownloads(SyncPullOrder order)
+    {
+        FilesToDownload = order switch
+        {
+            SyncPullOrder.Alphabetic => FilesToDownload.OrderBy(f => f.FileName).ToList(),
+            SyncPullOrder.SmallestFirst => FilesToDownload.OrderBy(f => f.FileSize).ToList(),
+            SyncPullOrder.LargestFirst => FilesToDownload.OrderByDescending(f => f.FileSize).ToList(),
+            SyncPullOrder.OldestFirst => FilesToDownload.OrderBy(f => f.FileInfo?.ModifiedTime ?? DateTime.MaxValue).ToList(),
+            SyncPullOrder.NewestFirst => FilesToDownload.OrderByDescending(f => f.FileInfo?.ModifiedTime ?? DateTime.MinValue).ToList(),
+            _ => FilesToDownload.OrderBy(_ => Guid.NewGuid()).ToList() // Random
+        };
+    }
+
+    /// <summary>
+    /// Sort files to upload according to the specified pull order.
+    /// </summary>
+    public void SortUploads(SyncPullOrder order)
+    {
+        FilesToUpload = order switch
+        {
+            SyncPullOrder.Alphabetic => FilesToUpload.OrderBy(f => f.FileName).ToList(),
+            SyncPullOrder.SmallestFirst => FilesToUpload.OrderBy(f => f.FileSize).ToList(),
+            SyncPullOrder.LargestFirst => FilesToUpload.OrderByDescending(f => f.FileSize).ToList(),
+            SyncPullOrder.OldestFirst => FilesToUpload.OrderBy(f => f.FileInfo?.ModifiedTime ?? DateTime.MaxValue).ToList(),
+            SyncPullOrder.NewestFirst => FilesToUpload.OrderByDescending(f => f.FileInfo?.ModifiedTime ?? DateTime.MinValue).ToList(),
+            _ => FilesToUpload.OrderBy(_ => Guid.NewGuid()).ToList() // Random
+        };
+    }
 
     public override bool IsValid()
     {
@@ -101,7 +146,17 @@ public class FileAction
     // Delta sync properties
     public object? DeltaSyncPlan { get; set; } // Reference to DeltaSyncPlan for optimized transfers
     public long? OptimizedSize { get; set; } // Actual bytes to transfer after delta optimization
-    public SyncFileInfo? RemoteFile => FileInfo; // Alias for clarity
+
+    /// <summary>
+    /// For download: alias for FileInfo (remote file we're downloading)
+    /// For upload: current state of file on remote device (for delta comparison)
+    /// </summary>
+    public SyncFileInfo? RemoteFileInfo { get; set; }
+
+    /// <summary>
+    /// Alias for backward compatibility (download scenarios)
+    /// </summary>
+    public SyncFileInfo? RemoteFile => RemoteFileInfo ?? FileInfo;
     
     // Block-level deduplication properties
     public object? OptimizedPlan { get; set; } // Reference to OptimizedTransferPlan for block deduplication

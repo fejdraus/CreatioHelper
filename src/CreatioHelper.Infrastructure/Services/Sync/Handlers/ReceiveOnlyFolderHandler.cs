@@ -1,4 +1,5 @@
 #pragma warning disable CS1998 // Async method lacks await (for interface implementation stubs)
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -10,8 +11,14 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
 {
-    public ReceiveOnlyFolderHandler(ILogger<ReceiveOnlyFolderHandler> logger, ConflictResolutionEngine conflictEngine) 
-        : base(logger, conflictEngine)
+    public ReceiveOnlyFolderHandler(
+        ILogger<ReceiveOnlyFolderHandler> logger,
+        ConflictResolutionEngine conflictEngine,
+        FileDownloader fileDownloader,
+        FileUploader fileUploader,
+        ISyncProtocol protocol,
+        ISyncDatabase database)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
     }
 
@@ -21,15 +28,21 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
 
     public override bool CanReceiveChanges => true;
 
-    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles, 
+    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Starting ReceiveOnly pull for folder {FolderId}", folder.Id);
 
         bool hasChanges = false;
-        var remoteFilesList = remoteFiles.ToList();
+        var deviceId = GetActiveDeviceId(folder);
 
-        foreach (var remoteFile in remoteFilesList)
+        if (string.IsNullOrEmpty(deviceId))
+        {
+            _logger.LogWarning("No device available for ReceiveOnly folder {FolderId}", folder.Id);
+            return false;
+        }
+
+        foreach (var remoteFile in remoteFiles)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -40,13 +53,27 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
                 continue;
             }
 
-            // TODO: Скачать удаленный файл
-            // TODO: Обновить локальные метаданные
-            
-            hasChanges = true;
+            var localPath = Path.Combine(folder.Path, remoteFile.FileName);
+            var syncFileInfo = SyncFileInfo.FromFileMetadata(remoteFile);
+
+            var result = await _fileDownloader.DownloadFileAsync(
+                deviceId, folder.Id, syncFileInfo, localPath, cancellationToken);
+
+            if (result.Success)
+            {
+                // Обновить метаданные
+                await _database.FileMetadata.UpsertAsync(remoteFile);
+                hasChanges = true;
+                _logger.LogInformation("ReceiveOnly: Downloaded {FileName}", remoteFile.FileName);
+            }
+            else
+            {
+                _logger.LogError("ReceiveOnly: Failed to download {FileName}: {Error}",
+                    remoteFile.FileName, result.Error);
+            }
         }
 
-        _logger.LogDebug("ReceiveOnly pull completed for folder {FolderId}, hasChanges: {HasChanges}", 
+        _logger.LogDebug("ReceiveOnly pull completed for folder {FolderId}, hasChanges: {HasChanges}",
             folder.Id, hasChanges);
 
         return hasChanges;

@@ -63,6 +63,8 @@ public enum SyncEventType : long
     PerformanceAlert = 1L << 51,
     DownloadCompleted = 1L << 52,
     UploadCompleted = 1L << 53,
+    DownloadFailed = 1L << 55,
+    UploadFailed = 1L << 56,
     
     // Security events
     CertificateExpired = 1L << 35,
@@ -97,7 +99,7 @@ public enum SyncEventType : long
     TcpConnectionClosed = 1L << 54,
     
     // All events mask
-    AllEvents = (1L << 55) - 1,
+    AllEvents = (1L << 57) - 1,
     
     // Common event masks for subscriptions
     DeviceEvents = DeviceDiscovered | DeviceConnected | DeviceDisconnected | 
@@ -127,7 +129,10 @@ public enum SyncEventType : long
                     
     DiscoveryEvents = DiscoveryStarted | DiscoveryCompleted | DiscoveryFailed,
     
-    ErrorEvents = Failure | SyncError | FolderErrors | DiscoveryFailed,
+    ErrorEvents = Failure | SyncError | FolderErrors | DiscoveryFailed | DownloadFailed | UploadFailed,
+
+    TransferCompletedEvents = DownloadCompleted | UploadCompleted,
+    TransferFailedEvents = DownloadFailed | UploadFailed,
     
     // Default mask for most subscriptions (excludes low-priority events)
     DefaultEventMask = AllEvents & ~(Debug | DownloadProgress | RemoteDownloadProgress | FolderScanProgress)

@@ -5,12 +5,15 @@ using Microsoft.Extensions.Logging;
 namespace CreatioHelper.Infrastructure.Services.Sync.Encryption;
 
 /// <summary>
-/// Syncthing-compatible encryption implementation using ChaCha20-Poly1305 and AES-SIV
+/// Syncthing-compatible encryption implementation using ChaCha20-Poly1305 and AES-SIV.
+/// - ChaCha20-Poly1305: Used for file content encryption (randomized)
+/// - AES-SIV (RFC 5297): Used for filename encryption (deterministic)
 /// </summary>
 public class SyncthingEncryption : IDisposable
 {
     private readonly ILogger<SyncthingEncryption> _logger;
     private readonly RandomNumberGenerator _rng;
+    private readonly AesSivCipher _aesSiv;
     private bool _disposed = false;
 
     // Constants matching Syncthing
@@ -20,12 +23,18 @@ public class SyncthingEncryption : IDisposable
     private const int MinPaddedSize = 1024; // Minimum padded block size
     public const int BlockOverhead = TagSize + NonceSize;
 
+    /// <summary>
+    /// AES-SIV tag size (16 bytes).
+    /// </summary>
+    public const int SivTagSize = AesSivCipher.SivTagSize;
+
     public SyncthingEncryption(ILogger<SyncthingEncryption> logger)
     {
         _logger = logger;
         _rng = RandomNumberGenerator.Create();
-        
-        _logger.LogDebug("SyncthingEncryption initialized");
+        _aesSiv = new AesSivCipher();
+
+        _logger.LogDebug("SyncthingEncryption initialized with AES-SIV support");
     }
 
     /// <summary>
@@ -75,104 +84,69 @@ public class SyncthingEncryption : IDisposable
     }
 
     /// <summary>
-    /// Encrypts data with deterministic result using AES-SIV (placeholder)
+    /// Encrypts data with deterministic result using AES-SIV (RFC 5297).
+    /// The same plaintext and key always produce the same ciphertext.
+    /// This is used for filename encryption in Syncthing encrypted folders.
     /// </summary>
-    public byte[] EncryptDeterministic(byte[] data, byte[] key, byte[]? additionalData = null)
+    /// <param name="data">The plaintext data to encrypt.</param>
+    /// <param name="key">The 256-bit encryption key.</param>
+    /// <param name="associatedData">Optional associated data (authenticated but not encrypted).</param>
+    /// <returns>The ciphertext with prepended SIV tag.</returns>
+    public byte[] EncryptDeterministic(byte[] data, byte[] key, byte[]? associatedData = null)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(SyncthingEncryption));
-        if (key.Length != KeySize) throw new ArgumentException("Invalid key size");
-
-        // TODO: Implement proper AES-SIV encryption
-        // For now, use HMAC-based deterministic encryption as placeholder
-        using var hmac = new HMACSHA256(key);
-        
-        var inputData = data;
-        if (additionalData != null)
-        {
-            inputData = new byte[data.Length + additionalData.Length];
-            Buffer.BlockCopy(data, 0, inputData, 0, data.Length);
-            Buffer.BlockCopy(additionalData, 0, inputData, data.Length, additionalData.Length);
-        }
-        
-        var hash = hmac.ComputeHash(inputData);
-        
-        // Create deterministic "ciphertext" by XORing with key-derived data
-        var result = new byte[data.Length + 16]; // +16 for "authentication tag"
-        
-        for (int i = 0; i < data.Length; i++)
-        {
-            result[i] = (byte)(data[i] ^ hash[i % hash.Length]);
-        }
-        
-        // Append authentication tag
-        Buffer.BlockCopy(hash, 0, result, data.Length, 16);
-        
-        return result;
-    }
-
-    /// <summary>
-    /// Decrypts deterministic encryption using AES-SIV (placeholder)
-    /// </summary>
-    public byte[] DecryptDeterministic(byte[] encryptedData, byte[] key, byte[]? additionalData = null)
-    {
-        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingEncryption));
-        if (key.Length != KeySize) throw new ArgumentException("Invalid key size");
-        if (encryptedData.Length < 16) throw new ArgumentException("Data too short");
+        if (key.Length != KeySize) throw new ArgumentException($"Key must be {KeySize} bytes", nameof(key));
 
         try
         {
-            // TODO: Implement proper AES-SIV decryption
-            // For now, reverse the HMAC-based encryption
-            var dataLength = encryptedData.Length - 16;
-            var ciphertext = new byte[dataLength];
-            var tag = new byte[16];
-            
-            Buffer.BlockCopy(encryptedData, 0, ciphertext, 0, dataLength);
-            Buffer.BlockCopy(encryptedData, dataLength, tag, 0, 16);
-            
-            using var hmac = new HMACSHA256(key);
-            var plaintext = new byte[dataLength];
-            
-            // First pass - decrypt to get plaintext
-            var hash = hmac.ComputeHash(key); // Initial hash for XOR
-            for (int i = 0; i < dataLength; i++)
+            if (associatedData != null)
             {
-                plaintext[i] = (byte)(ciphertext[i] ^ hash[i % hash.Length]);
+                return _aesSiv.Encrypt(data, key, associatedData);
             }
-            
-            // Verify authentication by recomputing hash
-            var verifyData = plaintext;
-            if (additionalData != null)
+            else
             {
-                verifyData = new byte[plaintext.Length + additionalData.Length];
-                Buffer.BlockCopy(plaintext, 0, verifyData, 0, plaintext.Length);
-                Buffer.BlockCopy(additionalData, 0, verifyData, plaintext.Length, additionalData.Length);
+                return _aesSiv.Encrypt(data, key);
             }
-            
-            var expectedHash = hmac.ComputeHash(verifyData);
-            
-            // Compare authentication tags
-            bool valid = true;
-            for (int i = 0; i < 16; i++)
-            {
-                if (tag[i] != expectedHash[i])
-                {
-                    valid = false;
-                    break;
-                }
-            }
-            
-            if (!valid)
-            {
-                throw new CryptographicException("Authentication tag mismatch");
-            }
-            
-            return plaintext;
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to decrypt deterministic data");
-            throw new CryptographicException("Deterministic decryption failed", ex);
+            _logger.LogWarning(ex, "AES-SIV encryption failed");
+            throw new CryptographicException("AES-SIV encryption failed", ex);
+        }
+    }
+
+    /// <summary>
+    /// Decrypts data encrypted with AES-SIV (RFC 5297).
+    /// </summary>
+    /// <param name="encryptedData">The ciphertext with prepended SIV tag.</param>
+    /// <param name="key">The 256-bit encryption key.</param>
+    /// <param name="associatedData">Optional associated data (must match encryption).</param>
+    /// <returns>The decrypted plaintext.</returns>
+    public byte[] DecryptDeterministic(byte[] encryptedData, byte[] key, byte[]? associatedData = null)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingEncryption));
+        if (key.Length != KeySize) throw new ArgumentException($"Key must be {KeySize} bytes", nameof(key));
+        if (encryptedData.Length < SivTagSize) throw new ArgumentException("Data too short for AES-SIV", nameof(encryptedData));
+
+        try
+        {
+            if (associatedData != null)
+            {
+                return _aesSiv.Decrypt(encryptedData, key, associatedData);
+            }
+            else
+            {
+                return _aesSiv.Decrypt(encryptedData, key);
+            }
+        }
+        catch (CryptographicException)
+        {
+            throw; // Re-throw authentication failures
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "AES-SIV decryption failed");
+            throw new CryptographicException("AES-SIV decryption failed", ex);
         }
     }
 

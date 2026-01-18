@@ -51,7 +51,10 @@ public class SyncEngineTests : IDisposable
         
         var fileDownloaderLogger = Mock.Of<ILogger<FileDownloader>>();
         var fileDownloader = new FileDownloader(fileDownloaderLogger, _mockProtocol.Object);
-        
+
+        var fileUploaderLogger = Mock.Of<ILogger<FileUploader>>();
+        var fileUploader = new FileUploader(fileUploaderLogger, _mockProtocol.Object);
+
         var deltaSyncEngineLogger = Mock.Of<ILogger<DeltaSyncEngine>>();
         var deltaSyncEngine = new DeltaSyncEngine(deltaSyncEngineLogger, blockSizer);
         
@@ -100,6 +103,7 @@ public class SyncEngineTests : IDisposable
                 conflictResolver,
                 fileComparator,
                 fileDownloader,
+                fileUploader,
                 blockRequestHandler,
                 deltaSyncEngine,
                 blockDuplicationDetector,

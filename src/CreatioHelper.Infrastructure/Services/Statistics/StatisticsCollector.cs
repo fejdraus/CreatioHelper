@@ -3,6 +3,7 @@ using System.Text.Json;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Entities.Events;
+using CreatioHelper.Domain.Entities.Statistics;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
@@ -27,6 +28,12 @@ public class StatisticsCollector : BackgroundService, IStatisticsCollector
     private readonly PerformanceStatistics _performanceStats;
     private readonly object _systemStatsLock = new();
     private readonly object _performanceStatsLock = new();
+
+    // Upload statistics
+    private readonly UploadStatistics _globalUploadStats;
+    private readonly ConcurrentDictionary<string, UploadStatistics> _deviceUploadStats;
+    private readonly ConcurrentDictionary<string, UploadStatistics> _folderUploadStats;
+    private readonly object _uploadStatsLock = new();
     
     private readonly Timer _statsUpdateTimer;
     private const int StatsUpdateIntervalMs = 30000; // 30 seconds like Syncthing
@@ -39,9 +46,14 @@ public class StatisticsCollector : BackgroundService, IStatisticsCollector
         
         _deviceStats = new ConcurrentDictionary<string, DeviceStatisticsReference>();
         _folderStats = new ConcurrentDictionary<string, FolderStatisticsReference>();
-        
+
         _systemStats = new SystemStatistics { StartTime = DateTime.UtcNow };
         _performanceStats = new PerformanceStatistics();
+
+        // Initialize upload statistics
+        _globalUploadStats = new UploadStatistics();
+        _deviceUploadStats = new ConcurrentDictionary<string, UploadStatistics>();
+        _folderUploadStats = new ConcurrentDictionary<string, UploadStatistics>();
         
         // Timer для периодического обновления статистики
         _statsUpdateTimer = new Timer(UpdatePeriodicStatistics, null, StatsUpdateIntervalMs, StatsUpdateIntervalMs);
@@ -355,14 +367,237 @@ public class StatisticsCollector : BackgroundService, IStatisticsCollector
             SystemStatistics = await GetSystemStatisticsAsync(cancellationToken),
             PerformanceStatistics = await GetPerformanceStatisticsAsync(cancellationToken),
             DeviceStatistics = await GetAllDeviceStatisticsAsync(cancellationToken),
-            FolderStatistics = await GetAllFolderStatisticsAsync(cancellationToken)
+            FolderStatistics = await GetAllFolderStatisticsAsync(cancellationToken),
+            UploadStatistics = await GetUploadStatisticsAsync(cancellationToken)
         };
-        
+
         return JsonSerializer.Serialize(export, new JsonSerializerOptions
         {
             WriteIndented = true,
             PropertyNamingPolicy = JsonNamingPolicy.CamelCase
         });
+    }
+
+    public Task RecordUploadAsync(UploadRecordInfo uploadInfo, CancellationToken cancellationToken = default)
+    {
+        lock (_uploadStatsLock)
+        {
+            if (uploadInfo.Success)
+            {
+                // Record in global stats
+                _globalUploadStats.RecordUpload(
+                    uploadInfo.FileName,
+                    uploadInfo.BytesUploaded,
+                    uploadInfo.TotalFileSize,
+                    uploadInfo.BlocksTransferred,
+                    uploadInfo.BlocksSkipped,
+                    uploadInfo.IsDeltaUpload,
+                    uploadInfo.Duration);
+
+                // Record in device stats
+                var deviceStats = _deviceUploadStats.GetOrAdd(uploadInfo.DeviceId,
+                    id => new UploadStatistics { DeviceId = id });
+                deviceStats.RecordUpload(
+                    uploadInfo.FileName,
+                    uploadInfo.BytesUploaded,
+                    uploadInfo.TotalFileSize,
+                    uploadInfo.BlocksTransferred,
+                    uploadInfo.BlocksSkipped,
+                    uploadInfo.IsDeltaUpload,
+                    uploadInfo.Duration);
+
+                // Record in folder stats
+                var folderStats = _folderUploadStats.GetOrAdd(uploadInfo.FolderId,
+                    id => new UploadStatistics { FolderId = id });
+                folderStats.RecordUpload(
+                    uploadInfo.FileName,
+                    uploadInfo.BytesUploaded,
+                    uploadInfo.TotalFileSize,
+                    uploadInfo.BlocksTransferred,
+                    uploadInfo.BlocksSkipped,
+                    uploadInfo.IsDeltaUpload,
+                    uploadInfo.Duration);
+
+                _logger.LogDebug("Recorded upload: {FileName} to device {DeviceId} ({BytesUploaded} bytes, delta: {IsDelta})",
+                    uploadInfo.FileName, uploadInfo.DeviceId, uploadInfo.BytesUploaded, uploadInfo.IsDeltaUpload);
+            }
+            else
+            {
+                // Record failure
+                _globalUploadStats.RecordFailure(uploadInfo.FileName, uploadInfo.Error ?? "Unknown error");
+
+                var deviceStats = _deviceUploadStats.GetOrAdd(uploadInfo.DeviceId,
+                    id => new UploadStatistics { DeviceId = id });
+                deviceStats.RecordFailure(uploadInfo.FileName, uploadInfo.Error ?? "Unknown error");
+
+                var folderStats = _folderUploadStats.GetOrAdd(uploadInfo.FolderId,
+                    id => new UploadStatistics { FolderId = id });
+                folderStats.RecordFailure(uploadInfo.FileName, uploadInfo.Error ?? "Unknown error");
+
+                _logger.LogWarning("Recorded upload failure: {FileName} to device {DeviceId} - {Error}",
+                    uploadInfo.FileName, uploadInfo.DeviceId, uploadInfo.Error);
+            }
+        }
+
+        // Also log as an event
+        _eventLogger.LogFileEvent(
+            uploadInfo.Success ? EventType.UploadCompleted : EventType.UploadFailed,
+            uploadInfo.FolderId,
+            uploadInfo.FileName,
+            uploadInfo.Success
+                ? $"Uploaded {uploadInfo.BytesUploaded} bytes ({(uploadInfo.IsDeltaUpload ? "delta" : "full")})"
+                : $"Upload failed: {uploadInfo.Error}",
+            new
+            {
+                uploadInfo.DeviceId,
+                uploadInfo.BytesUploaded,
+                uploadInfo.TotalFileSize,
+                uploadInfo.IsDeltaUpload,
+                uploadInfo.BlocksTransferred,
+                uploadInfo.BlocksSkipped,
+                uploadInfo.Duration.TotalMilliseconds
+            });
+
+        return Task.CompletedTask;
+    }
+
+    public Task<UploadStatistics> GetUploadStatisticsAsync(CancellationToken cancellationToken = default)
+    {
+        lock (_uploadStatsLock)
+        {
+            // Return a copy to avoid external modification
+            return Task.FromResult(new UploadStatistics
+            {
+                TotalUploads = _globalUploadStats.TotalUploads,
+                SuccessfulUploads = _globalUploadStats.SuccessfulUploads,
+                FailedUploads = _globalUploadStats.FailedUploads,
+                TotalBytesUploaded = _globalUploadStats.TotalBytesUploaded,
+                TotalBytesWithoutDelta = _globalUploadStats.TotalBytesWithoutDelta,
+                BytesSavedByDelta = _globalUploadStats.BytesSavedByDelta,
+                FullUploads = _globalUploadStats.FullUploads,
+                DeltaUploads = _globalUploadStats.DeltaUploads,
+                TotalBlocksTransferred = _globalUploadStats.TotalBlocksTransferred,
+                BlocksSkippedByDelta = _globalUploadStats.BlocksSkippedByDelta,
+                TotalUploadTimeMs = _globalUploadStats.TotalUploadTimeMs,
+                FastestUploadMs = _globalUploadStats.FastestUploadMs,
+                SlowestUploadMs = _globalUploadStats.SlowestUploadMs,
+                FirstUploadAt = _globalUploadStats.FirstUploadAt,
+                LastUploadAt = _globalUploadStats.LastUploadAt,
+                LastFileName = _globalUploadStats.LastFileName,
+                LastError = _globalUploadStats.LastError,
+                LastErrorAt = _globalUploadStats.LastErrorAt,
+                StartedAt = _globalUploadStats.StartedAt
+            });
+        }
+    }
+
+    public Task<UploadStatistics> GetDeviceUploadStatisticsAsync(string deviceId, CancellationToken cancellationToken = default)
+    {
+        if (_deviceUploadStats.TryGetValue(deviceId, out var stats))
+        {
+            lock (_uploadStatsLock)
+            {
+                return Task.FromResult(new UploadStatistics
+                {
+                    DeviceId = stats.DeviceId,
+                    TotalUploads = stats.TotalUploads,
+                    SuccessfulUploads = stats.SuccessfulUploads,
+                    FailedUploads = stats.FailedUploads,
+                    TotalBytesUploaded = stats.TotalBytesUploaded,
+                    TotalBytesWithoutDelta = stats.TotalBytesWithoutDelta,
+                    BytesSavedByDelta = stats.BytesSavedByDelta,
+                    FullUploads = stats.FullUploads,
+                    DeltaUploads = stats.DeltaUploads,
+                    TotalBlocksTransferred = stats.TotalBlocksTransferred,
+                    BlocksSkippedByDelta = stats.BlocksSkippedByDelta,
+                    TotalUploadTimeMs = stats.TotalUploadTimeMs,
+                    FastestUploadMs = stats.FastestUploadMs,
+                    SlowestUploadMs = stats.SlowestUploadMs,
+                    FirstUploadAt = stats.FirstUploadAt,
+                    LastUploadAt = stats.LastUploadAt,
+                    LastFileName = stats.LastFileName,
+                    LastError = stats.LastError,
+                    LastErrorAt = stats.LastErrorAt,
+                    StartedAt = stats.StartedAt
+                });
+            }
+        }
+
+        return Task.FromResult(new UploadStatistics { DeviceId = deviceId });
+    }
+
+    public Task<UploadStatistics> GetFolderUploadStatisticsAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        if (_folderUploadStats.TryGetValue(folderId, out var stats))
+        {
+            lock (_uploadStatsLock)
+            {
+                return Task.FromResult(new UploadStatistics
+                {
+                    FolderId = stats.FolderId,
+                    TotalUploads = stats.TotalUploads,
+                    SuccessfulUploads = stats.SuccessfulUploads,
+                    FailedUploads = stats.FailedUploads,
+                    TotalBytesUploaded = stats.TotalBytesUploaded,
+                    TotalBytesWithoutDelta = stats.TotalBytesWithoutDelta,
+                    BytesSavedByDelta = stats.BytesSavedByDelta,
+                    FullUploads = stats.FullUploads,
+                    DeltaUploads = stats.DeltaUploads,
+                    TotalBlocksTransferred = stats.TotalBlocksTransferred,
+                    BlocksSkippedByDelta = stats.BlocksSkippedByDelta,
+                    TotalUploadTimeMs = stats.TotalUploadTimeMs,
+                    FastestUploadMs = stats.FastestUploadMs,
+                    SlowestUploadMs = stats.SlowestUploadMs,
+                    FirstUploadAt = stats.FirstUploadAt,
+                    LastUploadAt = stats.LastUploadAt,
+                    LastFileName = stats.LastFileName,
+                    LastError = stats.LastError,
+                    LastErrorAt = stats.LastErrorAt,
+                    StartedAt = stats.StartedAt
+                });
+            }
+        }
+
+        return Task.FromResult(new UploadStatistics { FolderId = folderId });
+    }
+
+    public Task ResetUploadStatisticsAsync(string? deviceId = null, string? folderId = null, CancellationToken cancellationToken = default)
+    {
+        lock (_uploadStatsLock)
+        {
+            if (deviceId != null)
+            {
+                if (_deviceUploadStats.TryGetValue(deviceId, out var deviceStats))
+                {
+                    deviceStats.Reset();
+                }
+                _logger.LogDebug("Reset upload statistics for device: {DeviceId}", deviceId);
+            }
+            else if (folderId != null)
+            {
+                if (_folderUploadStats.TryGetValue(folderId, out var folderStats))
+                {
+                    folderStats.Reset();
+                }
+                _logger.LogDebug("Reset upload statistics for folder: {FolderId}", folderId);
+            }
+            else
+            {
+                // Reset all
+                _globalUploadStats.Reset();
+                foreach (var stats in _deviceUploadStats.Values)
+                {
+                    stats.Reset();
+                }
+                foreach (var stats in _folderUploadStats.Values)
+                {
+                    stats.Reset();
+                }
+                _logger.LogDebug("Reset all upload statistics");
+            }
+        }
+
+        return Task.CompletedTask;
     }
     
     private DeviceStatisticsReference GetDeviceStatisticsReference(string deviceId)

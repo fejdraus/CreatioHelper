@@ -530,65 +530,129 @@ public class BepProtocol : ISyncProtocol, IDisposable
     {
         var uri = new Uri(address);
         var tcpClient = new TcpClient();
-        
-        await tcpClient.ConnectAsync(uri.Host, uri.Port);
-        
-        // TODO: For testing, disable TLS temporarily
-        // var sslStream = new SslStream(tcpClient.GetStream(), false, ValidateServerCertificate);
-        // await sslStream.AuthenticateAsClientAsync(uri.Host, new X509CertificateCollection { _certificate }, false);
-        
-        var connection = new BepConnection(device.DeviceId, tcpClient, tcpClient.GetStream(), _logger, isOutgoing: true);
-        
+
+        await tcpClient.ConnectAsync(uri.Host, uri.Port, cancellationToken);
+
+        // Establish TLS connection with Syncthing-compatible certificate validation
+        var sslStream = new SslStream(
+            tcpClient.GetStream(),
+            false,
+            (sender, cert, chain, errors) => ValidateRemoteCertificate(cert, device.DeviceId));
+
+        var sslOptions = new SslClientAuthenticationOptions
+        {
+            TargetHost = uri.Host,
+            ClientCertificates = new X509CertificateCollection { _certificate },
+            EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+            CertificateRevocationCheckMode = X509RevocationMode.NoCheck // Self-signed certs don't have revocation
+        };
+
+        await sslStream.AuthenticateAsClientAsync(sslOptions, cancellationToken);
+
+        var connection = new BepConnection(device.DeviceId, tcpClient, sslStream, _logger, isOutgoing: true);
+
         // Subscribe to connection events
         connection.MessageReceived += OnConnectionMessageReceived;
-        
+
         await connection.StartAsync();
-        
+
         // Send Hello message
         await connection.SendHelloAsync(DeviceId, DeviceName, ClientName, ClientVersion);
-        
+
         return connection;
     }
 
     private async Task HandleIncomingConnectionAsync(TcpClient tcpClient, CancellationToken cancellationToken)
     {
+        SslStream? sslStream = null;
         try
         {
-            // TODO: For testing, disable TLS temporarily
-            // sslStream = new SslStream(tcpClient.GetStream(), false);
-            // await sslStream.AuthenticateAsServerAsync(_certificate, false, false);
-            
-            // For testing, use a dummy device ID - in real implementation, extract from TLS certificate
-            var deviceId = "unknown-device";
-            
-            // Try to find the device in our known devices by checking if any device is trying to connect
-            var connectedDevices = _connections.Keys;
-            _logger.LogInformation("Incoming connection from unknown device, will use stream directly");
-            
-            var connection = new BepConnection(deviceId, tcpClient, tcpClient.GetStream(), _logger, isOutgoing: false);
-            
+            // Establish TLS connection as server
+            sslStream = new SslStream(tcpClient.GetStream(), false);
+
+            var sslOptions = new SslServerAuthenticationOptions
+            {
+                ServerCertificate = _certificate,
+                ClientCertificateRequired = true,
+                EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
+                RemoteCertificateValidationCallback = (sender, cert, chain, errors) => cert != null // Accept any client cert, validate by device ID
+            };
+
+            await sslStream.AuthenticateAsServerAsync(sslOptions, cancellationToken);
+
+            // Extract device ID from client certificate
+            var deviceId = ExtractDeviceIdFromCertificate(sslStream.RemoteCertificate);
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                _logger.LogWarning("Incoming connection without valid client certificate");
+                sslStream.Dispose();
+                tcpClient.Dispose();
+                return;
+            }
+
+            _logger.LogInformation("Incoming TLS connection from device {DeviceId}", deviceId);
+
+            var connection = new BepConnection(deviceId, tcpClient, sslStream, _logger, isOutgoing: false);
+
             // Subscribe to connection events
             connection.MessageReceived += OnConnectionMessageReceived;
             connection.DeviceIdUpdated += OnConnectionDeviceIdUpdated;
-            
+
             _connections[deviceId] = connection;
-            
+
             await connection.StartAsync();
-            
-            _logger.LogInformation("BEP device {DeviceId} connected", deviceId);
+
+            _logger.LogInformation("BEP device {DeviceId} connected via TLS", deviceId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling incoming BEP connection");
-            // Stream will be disposed by connection
+            sslStream?.Dispose();
             tcpClient.Dispose();
         }
     }
 
-    private bool ValidateServerCertificate(object sender, X509Certificate? certificate, X509Chain? chain, SslPolicyErrors sslPolicyErrors)
+    /// <summary>
+    /// Validates a remote certificate using Syncthing-compatible device ID verification.
+    /// In Syncthing, certificates are self-signed and validated by matching the certificate
+    /// fingerprint (SHA-256 hash) to the expected device ID.
+    /// </summary>
+    private bool ValidateRemoteCertificate(X509Certificate? certificate, string expectedDeviceId)
     {
-        // In Syncthing, device certificates are self-signed and validated by fingerprint
+        if (certificate == null)
+        {
+            _logger.LogWarning("Remote certificate is null");
+            return false;
+        }
+
+        // Extract device ID from certificate fingerprint
+        var actualDeviceId = ExtractDeviceIdFromCertificate(certificate);
+
+        // Normalize device IDs for comparison (case-insensitive, remove hyphens)
+        var normalizedExpected = NormalizeDeviceId(expectedDeviceId);
+        var normalizedActual = NormalizeDeviceId(actualDeviceId);
+
+        if (!string.Equals(normalizedExpected, normalizedActual, StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Certificate device ID mismatch. Expected: {Expected}, Actual: {Actual}",
+                expectedDeviceId, actualDeviceId);
+            return false;
+        }
+
+        _logger.LogDebug("Certificate validated for device {DeviceId}", expectedDeviceId);
         return true;
+    }
+
+    /// <summary>
+    /// Normalizes a device ID by removing hyphens and converting to lowercase.
+    /// </summary>
+    private static string NormalizeDeviceId(string deviceId)
+    {
+        if (string.IsNullOrEmpty(deviceId))
+            return string.Empty;
+        return deviceId.Replace("-", "").ToLowerInvariant();
     }
 
     private string ExtractDeviceIdFromCertificate(X509Certificate? certificate)

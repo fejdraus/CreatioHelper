@@ -26,6 +26,7 @@ public class SqliteSyncDatabase : ISyncDatabase
     private IDeviceInfoRepository? _deviceInfo;
     private IFolderConfigRepository? _folderConfig;
     private IGlobalStateRepository? _globalState;
+    private IEventLogRepository? _eventLog;
 
     public SqliteSyncDatabase(ILogger<SqliteSyncDatabase> logger, ILoggerFactory loggerFactory, string databasePath)
     {
@@ -49,8 +50,11 @@ public class SqliteSyncDatabase : ISyncDatabase
     public IFolderConfigRepository FolderConfig => 
         _folderConfig ??= new FolderConfigRepository(() => CreateConnection(), _logger);
 
-    public IGlobalStateRepository GlobalState => 
+    public IGlobalStateRepository GlobalState =>
         _globalState ??= new GlobalStateRepository(() => CreateConnection(), _logger);
+
+    public IEventLogRepository EventLog =>
+        _eventLog ??= new EventLogRepository(() => CreateConnection(), _logger);
 
     public async Task InitializeAsync()
     {
@@ -561,6 +565,7 @@ public class SqliteSyncDatabase : ISyncDatabase
                 _deviceInfo?.Dispose();
                 _folderConfig?.Dispose();
                 _globalState?.Dispose();
+                _eventLog?.Dispose();
 
                 _logger.LogDebug("SQLite sync database disposed");
             }

@@ -36,7 +36,12 @@ public interface ISyncDatabase : IDisposable
     /// Global state repository for sequence numbers and vector clocks
     /// </summary>
     IGlobalStateRepository GlobalState { get; }
-    
+
+    /// <summary>
+    /// Event log repository for persisting sync events
+    /// </summary>
+    IEventLogRepository EventLog { get; }
+
     /// <summary>
     /// Begin database transaction
     /// </summary>

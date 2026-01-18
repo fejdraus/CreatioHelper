@@ -1,3 +1,4 @@
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -9,8 +10,14 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class MasterFolderHandler : SendOnlyFolderHandler
 {
-    public MasterFolderHandler(ILogger<MasterFolderHandler> logger, ConflictResolutionEngine conflictEngine) 
-        : base(logger, conflictEngine)
+    public MasterFolderHandler(
+        ILogger<MasterFolderHandler> logger,
+        ConflictResolutionEngine conflictEngine,
+        FileDownloader fileDownloader,
+        FileUploader fileUploader,
+        ISyncProtocol protocol,
+        ISyncDatabase database)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
     }
 
@@ -78,12 +85,8 @@ public class MasterFolderHandler : SendOnlyFolderHandler
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            // TODO: Получить локальную версию файла
-            // TODO: Сравнить локальную и удаленную версии
-            // TODO: Если есть различия - создать конфликт для принудительного разрешения
-
-            // Пример логики создания конфликта
-            var localFile = GetLocalFile(folder, remoteFile.FileName); // TODO: реализовать
+            // Получить локальную версию файла из базы данных
+            var localFile = await GetLocalFileAsync(folder.Id, remoteFile.FileName);
             if (localFile != null && _conflictEngine.IsInConflict(localFile, remoteFile))
             {
                 conflicts.Add(new FileConflict(
@@ -109,20 +112,33 @@ public class MasterFolderHandler : SendOnlyFolderHandler
     {
         _logger.LogInformation("Starting automatic override for Master folder {FolderId}", folder.Id);
 
-        // TODO: Найти все файлы, которые различаются между локальной и глобальной версией
-        // TODO: Принудительно перезаписать глобальную версию локальной
-        // TODO: Уведомить все подключенные устройства об изменениях
+        var localFiles = await GetLocalFilesAsync(folder.Id);
+        var connectedDevices = await GetConnectedDevicesAsync(folder, cancellationToken);
 
-        await Task.CompletedTask;
+        if (!connectedDevices.Any())
+        {
+            _logger.LogWarning("No connected devices for Master folder override");
+            return false;
+        }
+
+        foreach (var localFile in localFiles)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            var localPath = Path.Combine(folder.Path, localFile.FileName);
+            if (!File.Exists(localPath))
+                continue;
+
+            var syncFileInfo = SyncFileInfo.FromFileMetadata(localFile);
+
+            foreach (var deviceId in connectedDevices)
+            {
+                await _fileUploader.UploadFileAsync(
+                    deviceId, folder.Id, localPath, syncFileInfo, cancellationToken);
+            }
+        }
+
         return true;
-    }
-
-    /// <summary>
-    /// Получить локальный файл по имени (заглушка для TODO)
-    /// </summary>
-    private FileMetadata? GetLocalFile(SyncFolder folder, string fileName)
-    {
-        // TODO: Реализовать получение локального файла из базы данных или файловой системы
-        return null;
     }
 }

@@ -8,6 +8,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
+    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
+    <PackageReference Include="Grpc.Tools" Version="2.69.0" PrivateAssets="All" />
+
+    <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+
+    <!-- Existing packages -->
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.2" />
@@ -22,6 +30,9 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.9" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.2" />
+
+    <!-- Prometheus metrics for monitoring -->
+    <PackageReference Include="prometheus-net" Version="8.2.1" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,6 +40,11 @@
     <ProjectReference Include="..\CreatioHelper.Domain\CreatioHelper.Domain.csproj" />
     <ProjectReference Include="..\CreatioHelper.Shared\CreatioHelper.Shared.csproj" />
     <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- Phase 1: Protobuf file compilation -->
+  <ItemGroup>
+    <Protobuf Include="Services\Sync\Proto\bep.proto" GrpcServices="None" />
   </ItemGroup>
 
 </Project>

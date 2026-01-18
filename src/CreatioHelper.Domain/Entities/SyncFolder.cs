@@ -1,4 +1,5 @@
 using CreatioHelper.Domain.Common;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Domain.Entities;
 
@@ -48,6 +49,10 @@ public class SyncFolder : AggregateRoot
     public bool SyncXattrs { get; private set; }
     public bool SendXattrs { get; private set; }
     
+    // Pull order properties (Syncthing compatibility)
+    public SyncPullOrder PullOrder { get; private set; } = SyncPullOrder.Random;
+    public SyncBlockPullOrder BlockPullOrder { get; private set; } = SyncBlockPullOrder.Standard;
+
     // Advanced sync mode properties
     public bool AllowRevert { get; private set; } = true;
     public bool AllowOverride { get; private set; } = true;
@@ -172,6 +177,22 @@ public class SyncFolder : AggregateRoot
     public void SetMinDiskFree(string minDiskFree)
     {
         MinDiskFree = minDiskFree;
+    }
+
+    /// <summary>
+    /// Set the order in which files are downloaded during sync.
+    /// </summary>
+    public void SetPullOrder(SyncPullOrder order)
+    {
+        PullOrder = order;
+    }
+
+    /// <summary>
+    /// Set the order in which blocks are requested during file download.
+    /// </summary>
+    public void SetBlockPullOrder(SyncBlockPullOrder order)
+    {
+        BlockPullOrder = order;
     }
     
     /// <summary>

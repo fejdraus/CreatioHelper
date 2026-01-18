@@ -76,7 +76,7 @@ public class BepHello
     public string ClientVersion { get; set; } = string.Empty;  // client_version (field 3)
     public int NumConnections { get; set; } = 1;               // num_connections (field 4)
     public long Timestamp { get; set; }                        // timestamp (field 5)
-    
+
     // Extension for device identification when TLS is disabled (non-standard)
     public string DeviceId { get; set; } = string.Empty;
 }
@@ -110,6 +110,7 @@ public class BepFolder
 public class BepDevice
 {
     public byte[] Id { get; set; } = Array.Empty<byte>();
+    public string DeviceId { get; set; } = string.Empty;  // String representation for convenience
     public string Name { get; set; } = string.Empty;
     public List<string> Addresses { get; set; } = new();
     public BepCompression Compression { get; set; }
@@ -128,6 +129,7 @@ public class BepIndex
 {
     public string Folder { get; set; } = string.Empty;
     public List<BepFileInfo> Files { get; set; } = new();
+    public long LastSequence { get; set; }
 }
 
 /// <summary>
@@ -137,6 +139,7 @@ public class BepIndexUpdate
 {
     public string Folder { get; set; } = string.Empty;
     public List<BepFileInfo> Files { get; set; } = new();
+    public long LastSequence { get; set; }
 }
 
 /// <summary>
@@ -151,6 +154,7 @@ public class BepFileInfo
     public ulong ModifiedBy { get; set; } // Short device ID
     public BepVector Version { get; set; } = new();
     public long Sequence { get; set; }
+    public int BlockSize { get; set; } // Block size for this file
     public List<BepBlockInfo> Blocks { get; set; } = new();
     public string Symlink { get; set; } = string.Empty;
     public byte[] BlocksHash { get; set; } = Array.Empty<byte>();
@@ -236,6 +240,7 @@ public class BepWindowsData
 {
     public string OwnerName { get; set; } = string.Empty;
     public byte[] OwnerSid { get; set; } = Array.Empty<byte>();
+    public bool OwnerIsGroup { get; set; }
 }
 
 /// <summary>
@@ -247,6 +252,7 @@ public class BepLinuxData
     public string GroupName { get; set; } = string.Empty;
     public int Uid { get; set; }
     public int Gid { get; set; }
+    public List<BepXattr> Xattrs { get; set; } = new();
 }
 
 /// <summary>
@@ -258,6 +264,7 @@ public class BepDarwinData
     public string GroupName { get; set; } = string.Empty;
     public int Uid { get; set; }
     public int Gid { get; set; }
+    public List<BepXattr> Xattrs { get; set; } = new();
 }
 
 /// <summary>
@@ -269,6 +276,7 @@ public class BepFreebsdData
     public string GroupName { get; set; } = string.Empty;
     public int Uid { get; set; }
     public int Gid { get; set; }
+    public List<BepXattr> Xattrs { get; set; } = new();
 }
 
 /// <summary>
@@ -280,6 +288,7 @@ public class BepNetbsdData
     public string GroupName { get; set; } = string.Empty;
     public int Uid { get; set; }
     public int Gid { get; set; }
+    public List<BepXattr> Xattrs { get; set; } = new();
 }
 
 /// <summary>
@@ -326,6 +335,7 @@ public class BepFileDownloadProgressUpdate
     public string Name { get; set; } = string.Empty;
     public BepVector Version { get; set; } = new();
     public List<int> BlockIndexes { get; set; } = new();
+    public int BlockSize { get; set; }
 }
 
 /// <summary>
