@@ -10,6 +10,10 @@ using CreatioHelper.Infrastructure.Services.Security;
 using CreatioHelper.Infrastructure.Services.Events;
 using CreatioHelper.Infrastructure.Services.Statistics;
 using CreatioHelper.Infrastructure.Services.Sync.Events;
+using CreatioHelper.Infrastructure.Services.Sync.Diagnostics;
+using CreatioHelper.Infrastructure.Services.Sync.FileSystem;
+using CreatioHelper.Infrastructure.Services.Sync.Security;
+using CreatioHelper.Infrastructure.Services.Sync.Transfer;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -297,6 +301,84 @@ public static class SyncServiceExtensions
         });
         services.AddHostedService<DatabaseMaintenanceService>(provider =>
             (DatabaseMaintenanceService)provider.GetRequiredService<IDatabaseMaintenanceService>());
+
+        // ============================================
+        // Syncthing-compatible extended services
+        // ============================================
+
+        // Diagnostics Services
+        services.AddSingleton<IDebugFacilities, DebugFacilities>();
+
+        services.AddSingleton<UsageReportingOptions>(provider =>
+        {
+            var config = provider.GetService<IConfiguration>();
+            var options = config?.GetSection("UsageReporting").Get<UsageReportingOptions>() ?? new UsageReportingOptions();
+            return options;
+        });
+        services.AddSingleton<IUsageReportingService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<UsageReportingService>>();
+            var httpClient = new HttpClient();
+            var options = provider.GetRequiredService<UsageReportingOptions>();
+            return new UsageReportingService(logger, httpClient, options);
+        });
+
+        services.AddSingleton<UpgradeOptions>(provider =>
+        {
+            var config = provider.GetService<IConfiguration>();
+            var options = config?.GetSection("Upgrade").Get<UpgradeOptions>() ?? new UpgradeOptions();
+            return options;
+        });
+        services.AddSingleton<IUpgradeService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<UpgradeService>>();
+            var httpClient = new HttpClient();
+            var options = provider.GetRequiredService<UpgradeOptions>();
+            return new UpgradeService(logger, httpClient, options);
+        });
+
+        // FileSystem Services - Factories for folder-specific instances
+        services.AddSingleton<CaseSensitiveFileSystemFactory>();
+        services.AddSingleton<ExtendedAttributeProviderFactory>();
+        services.AddSingleton<OwnershipProviderFactory>();
+
+        services.AddSingleton<IFolderMarkerService, FolderMarkerService>();
+
+        services.AddSingleton<IFsyncController>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<FsyncController>>();
+            var config = provider.GetService<IConfiguration>();
+            var fsyncEnabled = config?.GetValue<bool>("Sync:FsyncEnabled") ?? true;
+            return new FsyncController(logger, fsyncEnabled);
+        });
+
+        services.AddSingleton<ICopyRangeOptimizer>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<CopyRangeOptimizer>>();
+            var config = provider.GetService<IConfiguration>();
+            var methodStr = config?.GetValue<string>("Sync:CopyRangeMethod") ?? "Auto";
+            var method = Enum.TryParse<CopyRangeMethod>(methodStr, true, out var m) ? m : CopyRangeMethod.Auto;
+            return new CopyRangeOptimizer(logger, method);
+        });
+
+        // Security Services
+        services.AddSingleton<IApiTokenAuthService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ApiTokenAuthService>>();
+            var config = provider.GetService<IConfiguration>();
+            var storagePath = config?.GetValue<string>("Security:TokenStoragePath");
+            return new ApiTokenAuthService(logger, storagePath);
+        });
+
+        services.AddSingleton<IUntrustedDeviceHandler>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<UntrustedDeviceHandler>>();
+            var encryptionService = provider.GetRequiredService<IEncryptionService>();
+            return new UntrustedDeviceHandler(logger, encryptionService);
+        });
+
+        // Transfer Services
+        services.AddSingleton<ConcurrentFileWriterFactory>();
 
         return services;
     }
