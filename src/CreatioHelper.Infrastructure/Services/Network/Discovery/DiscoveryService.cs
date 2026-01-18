@@ -17,6 +17,7 @@ public class DiscoveryService : IAsyncDisposable
 
     private CancellationTokenSource? _cancellationTokenSource;
     private List<string> _ourAddresses = new();
+    private Task? _deviceTimeoutTask;
 
     /// <summary>
     /// Event fired when a device is discovered.
@@ -92,6 +93,9 @@ public class DiscoveryService : IAsyncDisposable
         }
 
         await Task.WhenAll(tasks);
+
+        // Start device timeout detection
+        _deviceTimeoutTask = RunDeviceTimeoutDetectionAsync(_cancellationTokenSource.Token);
 
         _logger.LogInformation("Discovery service started (Local={Local}, Global={Global})",
             _options.EnableLocalDiscovery, _options.EnableGlobalDiscovery);
@@ -277,6 +281,67 @@ public class DiscoveryService : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Periodically checks for devices that haven't been seen recently and fires DeviceLost.
+    /// </summary>
+    private async Task RunDeviceTimeoutDetectionAsync(CancellationToken cancellationToken)
+    {
+        var checkInterval = TimeSpan.FromSeconds(_options.DeviceTimeoutCheckIntervalSeconds);
+        var timeout = TimeSpan.FromSeconds(_options.DeviceTimeoutSeconds);
+
+        while (!cancellationToken.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(checkInterval, cancellationToken);
+
+                var now = DateTime.UtcNow;
+                var lostDevices = new List<string>();
+
+                foreach (var kvp in _knownDevices)
+                {
+                    // Skip static devices - they don't timeout
+                    if (kvp.Value.DiscoveryMethod == DiscoveryMethod.Static)
+                        continue;
+
+                    var age = now - kvp.Value.DiscoveredAt;
+                    if (age > timeout)
+                    {
+                        lostDevices.Add(kvp.Key);
+                    }
+                }
+
+                foreach (var deviceId in lostDevices)
+                {
+                    if (_knownDevices.TryRemove(deviceId, out _))
+                    {
+                        _logger.LogInformation("Device lost (timeout): {DeviceId}", deviceId);
+
+                        if (DeviceLost != null)
+                        {
+                            try
+                            {
+                                await DeviceLost.Invoke(deviceId);
+                            }
+                            catch (Exception ex)
+                            {
+                                _logger.LogWarning(ex, "Error invoking DeviceLost handler for {DeviceId}", deviceId);
+                            }
+                        }
+                    }
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error in device timeout detection");
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
@@ -325,4 +390,14 @@ public class DiscoveryOptions
     /// If null, uses default Syncthing discovery servers.
     /// </summary>
     public List<string>? GlobalDiscoveryServers { get; set; }
+
+    /// <summary>
+    /// Timeout in seconds after which a device is considered lost if not seen.
+    /// </summary>
+    public int DeviceTimeoutSeconds { get; set; } = 300; // 5 minutes
+
+    /// <summary>
+    /// Interval in seconds between device timeout checks.
+    /// </summary>
+    public int DeviceTimeoutCheckIntervalSeconds { get; set; } = 60; // 1 minute
 }
