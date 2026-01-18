@@ -9,6 +9,7 @@ using CreatioHelper.Infrastructure.Services.Network.UPnP;
 using CreatioHelper.Infrastructure.Services.Security;
 using CreatioHelper.Infrastructure.Services.Events;
 using CreatioHelper.Infrastructure.Services.Statistics;
+using CreatioHelper.Infrastructure.Services.Sync.Events;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -137,6 +138,7 @@ public static class SyncServiceExtensions
         services.AddSingleton<ConflictResolver>();
         services.AddSingleton<FileComparator>();
         services.AddSingleton<FileDownloader>();
+        services.AddSingleton<FileUploader>();
         
         // Syncthing-compatible block services
         services.AddSingleton<SyncthingBlockCalculator>();
@@ -254,6 +256,7 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<ConflictResolver>(),
                 provider.GetRequiredService<FileComparator>(),
                 provider.GetRequiredService<FileDownloader>(),
+                provider.GetRequiredService<FileUploader>(),
                 provider.GetRequiredService<BlockRequestHandler>(),
                 provider.GetRequiredService<DeltaSyncEngine>(),
                 provider.GetRequiredService<BlockDuplicationDetector>(),
@@ -271,8 +274,29 @@ public static class SyncServiceExtensions
         // Register event broadcaster
         services.AddSingleton<SyncEventBroadcaster>();
 
+        // Event Subscription Service (REST API compatible)
+        services.AddSingleton<SyncEventQueue>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SyncEventQueue>>();
+            var eventLogRepository = provider.GetService<IEventLogRepository>();
+            return new SyncEventQueue(logger, eventLogRepository: eventLogRepository);
+        });
+        services.AddSingleton<IEventSubscriptionService, EventSubscriptionService>();
+
         // Register sync engine as hosted service
         services.AddHostedService<SyncEngineHostedService>();
+
+        // Database Maintenance Service
+        services.AddSingleton<IDatabaseMaintenanceService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<DatabaseMaintenanceService>>();
+            var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "CreatioHelper", "Sync", $"sync_{syncConfig.DeviceId}.db");
+            var connectionString = $"Data Source={databasePath};Cache=Shared;Foreign Keys=True;";
+            return new DatabaseMaintenanceService(logger, connectionString);
+        });
+        services.AddHostedService<DatabaseMaintenanceService>(provider =>
+            (DatabaseMaintenanceService)provider.GetRequiredService<IDatabaseMaintenanceService>());
 
         return services;
     }

@@ -1,5 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Enums;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using System.Text.Json;
@@ -151,8 +152,50 @@ public class FileMetadataRepository : IFileMetadataRepository
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
                    block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
-            FROM file_metadata 
+            FROM file_metadata
             WHERE folder_id = @folderId AND locally_changed = 0 AND is_deleted = 0";
+
+        using var command = _getConnection().CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@folderId", folderId);
+
+        var results = new List<FileMetadata>();
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            results.Add(MapFromReader(reader));
+        }
+
+        return results;
+    }
+
+    public async Task<IEnumerable<FileMetadata>> GetNeededFilesOrderedAsync(
+        string folderId,
+        SyncPullOrder order,
+        int limit = 0,
+        int offset = 0)
+    {
+        var orderClause = order switch
+        {
+            SyncPullOrder.Random => "ORDER BY RANDOM()",
+            SyncPullOrder.Alphabetic => "ORDER BY file_name ASC",
+            SyncPullOrder.SmallestFirst => "ORDER BY size ASC",
+            SyncPullOrder.LargestFirst => "ORDER BY size DESC",
+            SyncPullOrder.OldestFirst => "ORDER BY modified_time ASC",
+            SyncPullOrder.NewestFirst => "ORDER BY modified_time DESC",
+            _ => "ORDER BY RANDOM()"
+        };
+
+        var limitClause = limit > 0 ? $"LIMIT {limit}" : "";
+        var offsetClause = offset > 0 ? $"OFFSET {offset}" : "";
+
+        var sql = $@"
+            SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
+                   is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
+                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+            FROM file_metadata
+            WHERE folder_id = @folderId AND locally_changed = 0 AND is_deleted = 0
+            {orderClause} {limitClause} {offsetClause}";
 
         using var command = _getConnection().CreateCommand();
         command.CommandText = sql;

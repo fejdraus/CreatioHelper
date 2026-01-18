@@ -6,6 +6,7 @@ using CreatioHelper.Domain.Entities.Events;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Infrastructure.Services.Sync.Relay;
 using CreatioHelper.Infrastructure.Services.Network;
+using CreatioHelper.Infrastructure.Services.Metrics;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
@@ -27,6 +28,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly ConflictResolver _conflictResolver;
     private readonly FileComparator _fileComparator;
     private readonly FileDownloader _fileDownloader;
+    private readonly FileUploader _fileUploader;
     private readonly BlockRequestHandler _blockRequestHandler;
     private readonly DeltaSyncEngine _deltaSyncEngine;
     private readonly BlockDuplicationDetector _blockDuplicationDetector;
@@ -61,6 +63,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         ConflictResolver conflictResolver,
         FileComparator fileComparator,
         FileDownloader fileDownloader,
+        FileUploader fileUploader,
         BlockRequestHandler blockRequestHandler,
         DeltaSyncEngine deltaSyncEngine,
         BlockDuplicationDetector blockDuplicationDetector,
@@ -86,6 +89,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         _conflictResolver = conflictResolver;
         _fileComparator = fileComparator;
         _fileDownloader = fileDownloader;
+        _fileUploader = fileUploader;
         _blockRequestHandler = blockRequestHandler;
         _deltaSyncEngine = deltaSyncEngine;
         _blockDuplicationDetector = blockDuplicationDetector;
@@ -434,10 +438,15 @@ public class SyncEngine : ISyncEngine, IDisposable
         if (folder.IsPaused)
         {
             _logger.LogDebug("Skipping scan of paused folder {FolderId}", folderId);
+            FolderMetrics.SetState(folderId, FolderMetrics.State.Paused);
             return;
         }
 
         _logger.LogInformation("Scanning folder {FolderId} (deep: {Deep})", folderId, deep);
+
+        // Set folder state to scanning and start timer
+        FolderMetrics.SetState(folderId, FolderMetrics.State.Scanning);
+        using var scanTimer = FolderMetrics.StartScan(folderId);
 
         if (_folderStatuses.TryGetValue(folderId, out var status))
         {
@@ -743,21 +752,25 @@ public class SyncEngine : ISyncEngine, IDisposable
     private void OnDeviceConnected(object? sender, DeviceConnectedEventArgs e)
     {
         _logger.LogInformation("Device {DeviceId} connected", e.Device.DeviceId);
-        
+
+        // Record connection metrics
+        ConnectionMetrics.RecordConnectionEstablished(e.Device.DeviceId, e.Device.ConnectionType ?? "TCP");
+        ConnectionMetrics.SetTotalConnections(_devices.Count(d => d.Value.IsConnected));
+
         // Log device connection event
-        _eventLogger.LogDeviceEvent(EventType.DeviceConnected, e.Device.DeviceId, 
-            $"Device connected: {e.Device.DeviceId}", new { 
-                DeviceId = e.Device.DeviceId, 
+        _eventLogger.LogDeviceEvent(EventType.DeviceConnected, e.Device.DeviceId,
+            $"Device connected: {e.Device.DeviceId}", new {
+                DeviceId = e.Device.DeviceId,
                 ConnectedAt = DateTime.UtcNow,
                 ConnectionType = e.Device.ConnectionType ?? "TCP",
-                Address = e.Device.LastAddress 
+                Address = e.Device.LastAddress
             });
-        
+
         // Record device connection in statistics
         _ = Task.Run(async () => {
             await _statisticsCollector.RecordDeviceConnectedAsync(
-                e.Device.DeviceId, 
-                e.Device.ConnectionType ?? "TCP", 
+                e.Device.DeviceId,
+                e.Device.ConnectionType ?? "TCP",
                 e.Device.LastAddress ?? "unknown");
         });
         
@@ -780,12 +793,16 @@ public class SyncEngine : ISyncEngine, IDisposable
     private void OnDeviceDisconnected(object? sender, DeviceDisconnectedEventArgs e)
     {
         _logger.LogInformation("Device {DeviceId} disconnected", e.DeviceId);
-        
+
+        // Record disconnection metrics
+        ConnectionMetrics.RecordConnectionClosed(e.DeviceId, "disconnect");
+        ConnectionMetrics.SetTotalConnections(_devices.Count(d => d.Value.IsConnected) - 1);
+
         // Log device disconnection event
-        _eventLogger.LogDeviceEvent(EventType.DeviceDisconnected, e.DeviceId, 
-            $"Device disconnected: {e.DeviceId}", new { 
-                DeviceId = e.DeviceId, 
-                DisconnectedAt = DateTime.UtcNow 
+        _eventLogger.LogDeviceEvent(EventType.DeviceDisconnected, e.DeviceId,
+            $"Device disconnected: {e.DeviceId}", new {
+                DeviceId = e.DeviceId,
+                DisconnectedAt = DateTime.UtcNow
             });
         
         if (_devices.TryGetValue(e.DeviceId, out var device))
@@ -931,11 +948,15 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         _logger.LogInformation("Executing sync plan for folder {FolderId} (Type: {FolderType})", folder.Id, folder.SyncType);
 
+        // Set folder state to syncing
+        FolderMetrics.SetState(folder.Id, FolderMetrics.State.Syncing);
+
         // Get the appropriate folder handler based on folder type
         var folderHandler = _syncFolderHandlerFactory.CreateHandler(folder);
         _logger.LogDebug("Using handler {HandlerType} for folder {FolderId}", folderHandler.GetType().Name, folder.Id);
 
         var syncSummary = new SyncSummary();
+        var syncStartTime = DateTime.UtcNow;
 
         try
         {
@@ -985,13 +1006,10 @@ public class SyncEngine : ISyncEngine, IDisposable
                 {
                     try
                     {
-                        _logger.LogInformation("Uploading file: {FileName} ({Reason})", 
+                        _logger.LogInformation("Uploading file: {FileName} ({Reason})",
                             uploadAction.FileName, uploadAction.Reason);
 
-                        // TODO: Implement actual file upload
-                        // For now, just log the action
-                        _logger.LogInformation("Would upload {FileName} ({FileSize} bytes)", 
-                            uploadAction.FileName, uploadAction.FileSize);
+                        await UploadFileFromPlanAsync(folder, syncPlan.DeviceId, uploadAction);
 
                         syncSummary.FilesTransferred++;
                         syncSummary.BytesTransferred += uploadAction.FileSize;
@@ -1033,28 +1051,43 @@ public class SyncEngine : ISyncEngine, IDisposable
                 }
             }
 
-            // Handle conflicts
-            foreach (var conflict in syncPlan.Conflicts)
+            // Handle conflicts using folder-type-specific handler
+            if (syncPlan.Conflicts.Any())
             {
                 try
                 {
-                    _logger.LogWarning("Handling conflict: {FileName} ({ConflictType})", 
-                        conflict.FileName, conflict.ConflictType);
+                    // Get the appropriate handler for this folder type
+                    var handler = _syncFolderHandlerFactory.CreateHandler(folder);
 
-                    // TODO: Implement conflict resolution
-                    // For now, just log and count as conflict
-                    syncSummary.Conflicts++;
-
-                    ConflictDetected?.Invoke(this, new ConflictDetectedEventArgs(folder.Id, conflict.FileName, new List<ConflictVersion>
+                    foreach (var conflict in syncPlan.Conflicts)
                     {
-                        new() { DeviceId = "local", ModifiedTime = conflict.LocalFile.ModifiedTime, Size = conflict.LocalFile.Size, Hash = conflict.LocalFile.Hash },
-                        new() { DeviceId = syncPlan.DeviceId, ModifiedTime = conflict.RemoteFile.ModifiedTime, Size = conflict.RemoteFile.Size, Hash = conflict.RemoteFile.Hash }
-                    }));
+                        try
+                        {
+                            _logger.LogWarning("Handling conflict: {FileName} ({ConflictType}) using {HandlerType}",
+                                conflict.FileName, conflict.ConflictType, handler.GetType().Name);
+
+                            // Resolve conflict through the handler
+                            await handler.ResolveConflictsAsync(folder, new[] { conflict }, _cancellationTokenSource.Token);
+
+                            syncSummary.Conflicts++;
+
+                            ConflictDetected?.Invoke(this, new ConflictDetectedEventArgs(folder.Id, conflict.FileName, new List<ConflictVersion>
+                            {
+                                new() { DeviceId = "local", ModifiedTime = conflict.LocalFile.ModifiedTime, Size = conflict.LocalFile.Size, Hash = conflict.LocalFile.Hash },
+                                new() { DeviceId = syncPlan.DeviceId, ModifiedTime = conflict.RemoteFile.ModifiedTime, Size = conflict.RemoteFile.Size, Hash = conflict.RemoteFile.Hash }
+                            }));
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error handling conflict for file {FileName}", conflict.FileName);
+                            syncSummary.Errors.Add(ex.Message);
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error handling conflict for file {FileName}", conflict.FileName);
-                    syncSummary.Errors.Add(ex.Message);
+                    _logger.LogError(ex, "Error creating handler for folder {FolderId}", folder.Id);
+                    syncSummary.Errors.Add($"Failed to create conflict handler: {ex.Message}");
                 }
             }
 
@@ -1062,13 +1095,37 @@ public class SyncEngine : ISyncEngine, IDisposable
             _statistics.TotalFilesReceived += syncSummary.FilesTransferred;
             _statistics.TotalBytesIn += syncSummary.BytesTransferred;
 
+            // Record folder metrics
+            var syncDuration = (DateTime.UtcNow - syncStartTime).TotalSeconds;
+            FolderMetrics.RecordPull(folder.Id, syncDuration, syncSummary.BytesTransferred);
+
+            // Record conflict metrics
+            if (syncSummary.Conflicts > 0)
+            {
+                for (int i = 0; i < syncSummary.Conflicts; i++)
+                    FolderMetrics.RecordConflict(folder.Id);
+            }
+
+            // Record error metrics
+            foreach (var error in syncSummary.Errors)
+            {
+                FolderMetrics.RecordError(folder.Id, "sync_error");
+            }
+
+            // Set folder state back to idle
+            FolderMetrics.SetState(folder.Id, FolderMetrics.State.Idle);
+
             FolderSynced?.Invoke(this, new FolderSyncedEventArgs(folder.Id, syncSummary));
 
             _logger.LogInformation("Sync plan executed for folder {FolderId}: {FilesTransferred} files, {BytesTransferred} bytes, {Conflicts} conflicts, {Errors} errors",
-                folder.Id, syncSummary.FilesTransferred, syncSummary.BytesTransferred, syncSummary.Conflicts, syncSummary.Errors);
+                folder.Id, syncSummary.FilesTransferred, syncSummary.BytesTransferred, syncSummary.Conflicts, syncSummary.Errors.Count);
         }
         catch (Exception ex)
         {
+            // Record error state
+            FolderMetrics.SetState(folder.Id, FolderMetrics.State.Error);
+            FolderMetrics.RecordError(folder.Id, ex.GetType().Name);
+
             _logger.LogError(ex, "Error executing sync plan for folder {FolderId}", folder.Id);
             throw;
         }
@@ -1102,6 +1159,104 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             _logger.LogError("Failed to download {FileName}: {Error}", result.FileName, result.Error);
             throw new InvalidOperationException($"Download failed: {result.Error}");
+        }
+    }
+
+    private async Task UploadFileFromPlanAsync(SyncFolder folder, string deviceId, FileAction uploadAction)
+    {
+        var localFilePath = Path.Combine(folder.Path, uploadAction.FileName.Replace('/', Path.DirectorySeparatorChar));
+
+        if (!File.Exists(localFilePath))
+        {
+            _logger.LogWarning("Cannot upload {FileName}: local file not found at {LocalPath}",
+                uploadAction.FileName, localFilePath);
+            return;
+        }
+
+        _logger.LogInformation("Uploading {FileName} from {LocalPath} to device {DeviceId}",
+            uploadAction.FileName, localFilePath, deviceId);
+
+        // Build SyncFileInfo if not provided
+        SyncFileInfo fileInfo;
+        if (uploadAction.FileInfo != null)
+        {
+            fileInfo = uploadAction.FileInfo;
+        }
+        else
+        {
+            // Create file info from local file
+            var localFileInfo = new FileInfo(localFilePath);
+            fileInfo = new SyncFileInfo(
+                folder.Id,
+                uploadAction.FileName,
+                uploadAction.FileName,
+                localFileInfo.Length,
+                localFileInfo.LastWriteTimeUtc);
+
+            // Calculate blocks
+            var blocks = await _fileUploader.CalculateFileBlocksAsync(localFilePath, _cancellationTokenSource.Token);
+            fileInfo.SetBlocks(blocks);
+        }
+
+        // Use delta upload if remote file info is available
+        if (uploadAction.RemoteFileInfo != null)
+        {
+            var deltaResult = await _fileUploader.DeltaUploadAsync(
+                deviceId,
+                folder.Id,
+                localFilePath,
+                fileInfo,
+                uploadAction.RemoteFileInfo,
+                _cancellationTokenSource.Token);
+
+            if (deltaResult.Success)
+            {
+                if (deltaResult.IsDeltaUpload)
+                {
+                    _logger.LogInformation(
+                        "Delta upload of {FileName}: {ChangedBlocks}/{TotalBlocks} blocks changed, " +
+                        "{ChangedBytes}/{TotalBytes} bytes transferred ({TransferPercent:F1}%), saved {BytesSaved} bytes in {Duration}ms",
+                        deltaResult.FileName,
+                        deltaResult.ChangedBlocks,
+                        deltaResult.TotalBlocks,
+                        deltaResult.ChangedBytes,
+                        deltaResult.TotalBytes,
+                        deltaResult.TransferPercentage,
+                        deltaResult.BytesSaved,
+                        deltaResult.Duration.TotalMilliseconds);
+                }
+                else
+                {
+                    _logger.LogInformation("Full upload of {FileName}: {TotalBytes} bytes in {Duration}ms (no remote info available)",
+                        deltaResult.FileName, deltaResult.TotalBytes, deltaResult.Duration.TotalMilliseconds);
+                }
+            }
+            else
+            {
+                _logger.LogError("Failed delta upload of {FileName}: {Error}", deltaResult.FileName, deltaResult.Error);
+                throw new InvalidOperationException($"Delta upload failed: {deltaResult.Error}");
+            }
+        }
+        else
+        {
+            // Fall back to full upload
+            var result = await _fileUploader.UploadFileAsync(
+                deviceId,
+                folder.Id,
+                localFilePath,
+                fileInfo,
+                _cancellationTokenSource.Token);
+
+            if (result.Success)
+            {
+                _logger.LogInformation("Full upload of {FileName}: {BytesTransferred} bytes in {Duration}ms",
+                    result.FileName, result.BytesTransferred, result.Duration.TotalMilliseconds);
+            }
+            else
+            {
+                _logger.LogError("Failed to upload {FileName}: {Error}", result.FileName, result.Error);
+                throw new InvalidOperationException($"Upload failed: {result.Error}");
+            }
         }
     }
 
@@ -1227,18 +1382,24 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogDebug("Completed scan of folder {FolderId}: {FileCount} files in {Duration}ms",
             e.FolderId, e.Files.Count, e.Duration.TotalMilliseconds);
 
+        // Record folder metrics
+        FolderMetrics.SetState(e.FolderId, FolderMetrics.State.Idle);
+        FolderMetrics.SetFileCount(e.FolderId, "local", e.Files.Count);
+        var totalSize = e.Files.Sum(f => f.Size);
+        FolderMetrics.SetTotalBytes(e.FolderId, "local", totalSize);
+        FolderMetrics.RecordLastScan(e.FolderId);
+
         // Log folder scan completed event
-        _eventLogger.LogFolderEvent(EventType.FolderScanComplete, e.FolderId, 
-            $"Folder scan completed: {e.Files.Count} files in {e.Duration.TotalMilliseconds:F1}ms", new { 
+        _eventLogger.LogFolderEvent(EventType.FolderScanComplete, e.FolderId,
+            $"Folder scan completed: {e.Files.Count} files in {e.Duration.TotalMilliseconds:F1}ms", new {
                 FolderId = e.FolderId,
                 FileCount = e.Files.Count,
-                TotalSize = e.Files.Sum(f => f.Size),
+                TotalSize = totalSize,
                 Duration = e.Duration.TotalMilliseconds,
-                CompletedAt = DateTime.UtcNow 
+                CompletedAt = DateTime.UtcNow
             });
 
         // Record folder scan statistics
-        var totalSize = e.Files.Sum(f => f.Size);
         _ = Task.Run(async () => {
             await _statisticsCollector.RecordFolderScanCompletedAsync(e.FolderId, e.Files.Count, totalSize);
         });

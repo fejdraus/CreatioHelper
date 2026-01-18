@@ -1,4 +1,5 @@
 #pragma warning disable CS1998 // Async method lacks await (for interface implementation stubs)
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
 
@@ -10,8 +11,14 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class SendOnlyFolderHandler : SyncFolderHandlerBase
 {
-    public SendOnlyFolderHandler(ILogger<SendOnlyFolderHandler> logger, ConflictResolutionEngine conflictEngine) 
-        : base(logger, conflictEngine)
+    public SendOnlyFolderHandler(
+        ILogger<SendOnlyFolderHandler> logger,
+        ConflictResolutionEngine conflictEngine,
+        FileDownloader fileDownloader,
+        FileUploader fileUploader,
+        ISyncProtocol protocol,
+        ISyncDatabase database)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
     }
 
@@ -21,67 +28,86 @@ public class SendOnlyFolderHandler : SyncFolderHandlerBase
 
     public override bool CanReceiveChanges => false;
 
-    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles, 
+    public override async Task<bool> PullAsync(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Starting SendOnly pull (metadata only) for folder {FolderId}", folder.Id);
 
-        // В режиме SendOnly мы не получаем содержимое файлов, только метаданные
-        bool hasMetadataUpdates = false;
-        var remoteFilesList = remoteFiles.ToList();
+        // SendOnly НЕ скачивает файлы, только обновляет метаданные для сравнения
+        bool hasChanges = false;
+        var localFiles = await GetLocalFilesAsync(folder.Id);
+        var localDict = localFiles.ToDictionary(f => f.FileName);
 
-        foreach (var remoteFile in remoteFilesList)
+        foreach (var remoteFile in remoteFiles)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            // Игнорируем файлы, которые нельзя обработать
-            if (remoteFile.LocalFlags.HasFlag(FileLocalFlags.Ignored))
+            // Пометить удалённый файл как игнорируемый если он отличается
+            if (localDict.TryGetValue(remoteFile.FileName, out var localFile))
             {
-                remoteFile.LocalFlags |= FileLocalFlags.Ignored;
-                hasMetadataUpdates = true;
-                continue;
+                if (!HashesEqual(localFile.Hash, remoteFile.Hash))
+                {
+                    // Удалённая версия отличается - игнорируем её
+                    _logger.LogDebug("SendOnly: Ignoring remote version of {FileName}", remoteFile.FileName);
+                }
             }
-
-            // Проверяем эквивалентность без содержимого (только метаданные)
-            // TODO: Сравнить с локальной версией на основе времени модификации, размера, прав доступа
-            // TODO: Обновить метаданные если необходимо
-            
-            hasMetadataUpdates = true;
         }
 
-        _logger.LogDebug("SendOnly pull completed for folder {FolderId}, hasMetadataUpdates: {HasMetadataUpdates}", 
-            folder.Id, hasMetadataUpdates);
+        _logger.LogDebug("SendOnly pull completed for folder {FolderId}, hasChanges: {HasChanges}",
+            folder.Id, hasChanges);
 
-        return hasMetadataUpdates;
+        return hasChanges;
     }
 
-    public override async Task<bool> PushAsync(SyncFolder folder, IEnumerable<FileMetadata> localFiles, 
+    public override async Task<bool> PushAsync(SyncFolder folder, IEnumerable<FileMetadata> localFiles,
         CancellationToken cancellationToken = default)
     {
         _logger.LogDebug("Starting SendOnly push for folder {FolderId}", folder.Id);
 
         bool hasChanges = false;
-        var localFilesList = localFiles.ToList();
+        var connectedDevices = await GetConnectedDevicesAsync(folder, cancellationToken);
 
-        foreach (var localFile in localFilesList)
+        if (!connectedDevices.Any())
+        {
+            _logger.LogDebug("No connected devices for folder {FolderId}", folder.Id);
+            return false;
+        }
+
+        foreach (var localFile in localFiles)
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
 
-            if (!CanApplyFileChange(folder, localFile, isIncoming: false))
+            var localPath = Path.Combine(folder.Path, localFile.FileName);
+            if (!File.Exists(localPath))
             {
-                _logger.LogDebug("Skipping local file {FileName} - cannot apply change", localFile.FileName);
+                _logger.LogDebug("Skipping local file {FileName} - file does not exist", localFile.FileName);
                 continue;
             }
 
-            // TODO: Отправить локальные изменения на все устройства
-            // TODO: Обновить глобальный индекс с локальными изменениями
-            
-            hasChanges = true;
+            var syncFileInfo = SyncFileInfo.FromFileMetadata(localFile);
+
+            foreach (var deviceId in connectedDevices)
+            {
+                var result = await _fileUploader.UploadFileAsync(
+                    deviceId, folder.Id, localPath, syncFileInfo, cancellationToken);
+
+                if (result.Success)
+                {
+                    hasChanges = true;
+                    _logger.LogInformation("SendOnly: Uploaded {FileName} to {DeviceId}",
+                        localFile.FileName, deviceId);
+                }
+                else
+                {
+                    _logger.LogError("SendOnly: Failed to upload {FileName} to {DeviceId}: {Error}",
+                        localFile.FileName, deviceId, result.Error);
+                }
+            }
         }
 
-        _logger.LogDebug("SendOnly push completed for folder {FolderId}, hasChanges: {HasChanges}", 
+        _logger.LogDebug("SendOnly push completed for folder {FolderId}, hasChanges: {HasChanges}",
             folder.Id, hasChanges);
 
         return hasChanges;

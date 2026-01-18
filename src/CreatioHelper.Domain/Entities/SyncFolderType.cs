@@ -87,12 +87,17 @@ public enum FileLocalFlags
     /// Удаленный файл недоступен или поврежден
     /// </summary>
     RemoteInvalid = 1 << 6,  // 64
-    
+
+    /// <summary>
+    /// Файл хранится в зашифрованном виде (для receive-encrypted папок)
+    /// </summary>
+    Encrypted = 1 << 7,      // 128
+
     /// <summary>
     /// Флаги, которые делают файл невалидным для синхронизации
     /// </summary>
     LocalInvalidFlags = Unsupported | Ignored | MustRescan | ReceiveOnly | Invalid,
-    
+
     /// <summary>
     /// Флаги, которые могут создавать конфликты
     /// </summary>
