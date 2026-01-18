@@ -441,4 +441,389 @@ public class UpgradeServiceTests : IDisposable
         Assert.Equal(1024 * 1024, asset.Size);
         Assert.Equal("abc123", asset.Sha256);
     }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_NoAssetForPlatform_ReturnsFalse()
+    {
+        // Arrange
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        var release = new ReleaseInfo
+        {
+            Tag = "v2.0.0",
+            Assets = new List<ReleaseAsset>() // No assets
+        };
+
+        // Act
+        var result = await service.DownloadUpdateAsync(release);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_HttpError_ReturnsFalse()
+    {
+        // Arrange
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ThrowsAsync(new HttpRequestException("Network error"));
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        var release = new ReleaseInfo
+        {
+            Tag = "v2.0.0",
+            Assets = new List<ReleaseAsset>
+            {
+                new ReleaseAsset
+                {
+                    Name = "app-windows-amd64.zip",
+                    Url = "https://example.com/download.zip",
+                    Size = 1024
+                }
+            }
+        };
+
+        // Act
+        var result = await service.DownloadUpdateAsync(release);
+
+        // Assert
+        Assert.False(result);
+        Assert.Equal(UpgradeState.Failed, service.State);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_Success_DownloadsFile()
+    {
+        // Arrange
+        var content = new byte[] { 1, 2, 3, 4, 5 };
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(content)
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        var release = new ReleaseInfo
+        {
+            Tag = "v2.0.0",
+            Assets = new List<ReleaseAsset>
+            {
+                new ReleaseAsset
+                {
+                    Name = "test-download.zip",
+                    Url = "https://example.com/download.zip",
+                    Size = content.Length
+                }
+            }
+        };
+
+        // Act
+        var result = await service.DownloadUpdateAsync(release);
+
+        // Assert
+        Assert.True(result);
+        Assert.Equal(UpgradeState.RestartRequired, service.State);
+        Assert.True(File.Exists(Path.Combine(_testDir, "test-download.zip")));
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_HashMismatch_ReturnsFalse()
+    {
+        // Arrange
+        var content = new byte[] { 1, 2, 3, 4, 5 };
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(content)
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        var release = new ReleaseInfo
+        {
+            Tag = "v2.0.0",
+            Assets = new List<ReleaseAsset>
+            {
+                new ReleaseAsset
+                {
+                    Name = "test-hash-check.zip",
+                    Url = "https://example.com/download.zip",
+                    Size = content.Length,
+                    Sha256 = "invalid-hash-value"
+                }
+            }
+        };
+
+        // Act
+        var result = await service.DownloadUpdateAsync(release);
+
+        // Assert
+        Assert.False(result);
+        Assert.Equal(UpgradeState.Failed, service.State);
+    }
+
+    [Fact]
+    public async Task DownloadUpdateAsync_ReportsProgress()
+    {
+        // Arrange
+        var content = new byte[1024]; // 1KB
+        new Random(42).NextBytes(content);
+
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new ByteArrayContent(content)
+                {
+                    Headers = { ContentLength = content.Length }
+                }
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        var release = new ReleaseInfo
+        {
+            Tag = "v2.0.0",
+            Assets = new List<ReleaseAsset>
+            {
+                new ReleaseAsset
+                {
+                    Name = "test-progress.zip",
+                    Url = "https://example.com/download.zip",
+                    Size = content.Length
+                }
+            }
+        };
+
+        var progressReports = new List<UpgradeProgress>();
+        var progress = new Progress<UpgradeProgress>(p => progressReports.Add(p));
+
+        // Act
+        var result = await service.DownloadUpdateAsync(release, progress);
+
+        // Assert
+        Assert.True(result);
+        Assert.NotEmpty(progressReports);
+    }
+
+    [Fact]
+    public async Task ApplyUpdateAsync_NoDownloadedUpdate_ReturnsFalse()
+    {
+        // Arrange
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+
+        // Act
+        var result = await service.ApplyUpdateAsync();
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public void StartAutoCheck_StartsChecking()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+
+        // Act
+        service.StartAutoCheck(cts.Token);
+
+        // Assert - no exception thrown
+        cts.Cancel();
+        service.StopAutoCheck();
+    }
+
+    [Fact]
+    public void StopAutoCheck_StopsChecking()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        service.StartAutoCheck(cts.Token);
+
+        // Act
+        service.StopAutoCheck();
+
+        // Assert - no exception thrown
+    }
+
+    [Fact]
+    public void StartAutoCheck_CalledTwice_DoesNotThrow()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+
+        // Act
+        service.StartAutoCheck(cts.Token);
+        service.StartAutoCheck(cts.Token); // Should not throw
+
+        // Assert
+        cts.Cancel();
+        service.StopAutoCheck();
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_UpdateAvailable_RaisesEvent()
+    {
+        // Arrange
+        var releaseJson = """
+        [
+            {
+                "tag": "v99.0.0",
+                "prerelease": false,
+                "assets": [
+                    {
+                        "name": "app-windows-amd64.zip",
+                        "url": "https://example.com/download.zip",
+                        "size": 1024
+                    }
+                ]
+            }
+        ]
+        """;
+
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(releaseJson, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        UpgradeCheckResult? eventResult = null;
+        service.UpdateAvailable += (s, e) => eventResult = e;
+
+        // Act
+        var result = await service.CheckForUpdateAsync();
+
+        // Assert
+        Assert.True(result.UpdateAvailable);
+        Assert.NotNull(eventResult);
+        Assert.True(eventResult.UpdateAvailable);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_WithPrerelease_Filtered()
+    {
+        // Arrange
+        _options.IncludePrereleases = false;
+        var releaseJson = """
+        [
+            {
+                "tag": "v99.0.0-beta",
+                "prerelease": true,
+                "assets": []
+            }
+        ]
+        """;
+
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(releaseJson, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+
+        // Act
+        var result = await service.CheckForUpdateAsync();
+
+        // Assert
+        Assert.False(result.UpdateAvailable);
+    }
+
+    [Fact]
+    public async Task CheckForUpdateAsync_IncludePrerelease_ReturnsPrerelease()
+    {
+        // Arrange
+        _options.IncludePrereleases = true;
+        // Use a version tag that Version.TryParse can handle (no semver prerelease suffix)
+        var releaseJson = """
+        [
+            {
+                "tag": "v99.0.0",
+                "prerelease": true,
+                "assets": [
+                    {
+                        "name": "app-windows-amd64.zip",
+                        "url": "https://example.com/download.zip",
+                        "size": 1024
+                    }
+                ]
+            }
+        ]
+        """;
+
+        _httpHandlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>(
+                "SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(releaseJson, System.Text.Encoding.UTF8, "application/json")
+            });
+
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+
+        // Act
+        var result = await service.CheckForUpdateAsync();
+
+        // Assert
+        Assert.True(result.UpdateAvailable);
+    }
+
+    [Fact]
+    public void Dispose_StopsAutoCheck()
+    {
+        // Arrange
+        using var cts = new CancellationTokenSource();
+        var service = new UpgradeService(_loggerMock.Object, _httpClient, _options);
+        service.StartAutoCheck(cts.Token);
+
+        // Act
+        service.Dispose();
+
+        // Assert - no exception thrown, auto-check stopped
+    }
+
+    [Fact]
+    public void ReleaseInfo_Properties()
+    {
+        // Arrange
+        var release = new ReleaseInfo
+        {
+            Tag = "v1.2.3",
+            Prerelease = true,
+            Changelog = "Fixed bugs",
+            PublishedAt = new DateTime(2024, 1, 1)
+        };
+
+        // Assert
+        Assert.Equal("v1.2.3", release.Tag);
+        Assert.True(release.Prerelease);
+        Assert.Equal("Fixed bugs", release.Changelog);
+        Assert.Equal(new DateTime(2024, 1, 1), release.PublishedAt);
+    }
 }

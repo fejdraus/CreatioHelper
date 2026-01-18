@@ -4,8 +4,26 @@ using Moq;
 
 namespace CreatioHelper.UnitTests.Sync.FileSystem;
 
-public class CaseSensitivityWrapperTests
+public class CaseSensitivityWrapperTests : IDisposable
 {
+    private readonly Mock<ILogger<CaseSensitiveFileSystem>> _loggerMock;
+    private readonly string _testDir;
+
+    public CaseSensitivityWrapperTests()
+    {
+        _loggerMock = new Mock<ILogger<CaseSensitiveFileSystem>>();
+        _testDir = Path.Combine(Path.GetTempPath(), $"casefs_tests_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(_testDir);
+    }
+
+    public void Dispose()
+    {
+        if (Directory.Exists(_testDir))
+        {
+            try { Directory.Delete(_testDir, true); } catch { }
+        }
+    }
+
     [Fact]
     public void CaseSensitivity_Auto_DefaultValue()
     {
@@ -21,6 +39,192 @@ public class CaseSensitivityWrapperTests
     {
         // Assert
         Assert.True(Enum.IsDefined(typeof(CaseSensitivity), sensitivity));
+    }
+
+    [Fact]
+    public void Constructor_AutoMode_DeterminesPlatformSensitivity()
+    {
+        // Arrange & Act
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.Auto);
+
+        // Assert
+        Assert.Equal(CaseSensitivity.Auto, fs.Mode);
+    }
+
+    [Fact]
+    public void Constructor_ForceCaseMode_SetsCaseSensitive()
+    {
+        // Arrange & Act
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
+
+        // Assert
+        Assert.True(fs.IsCaseSensitive);
+    }
+
+    [Fact]
+    public void Constructor_IgnoreCaseMode_SetsCaseInsensitive()
+    {
+        // Arrange & Act
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+
+        // Assert
+        Assert.False(fs.IsCaseSensitive);
+    }
+
+    [Fact]
+    public void NormalizePath_CaseInsensitive_LowercasesPath()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+
+        // Act
+        var result = fs.NormalizePath("Documents/MyFile.TXT");
+
+        // Assert
+        Assert.Equal("documents/myfile.txt", result);
+    }
+
+    [Fact]
+    public void NormalizePath_CaseSensitive_PreservesCase()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
+
+        // Act
+        var result = fs.NormalizePath("Documents/MyFile.TXT");
+
+        // Assert
+        Assert.Equal("Documents/MyFile.TXT", result);
+    }
+
+    [Fact]
+    public void PathEquals_CaseInsensitive_MatchesDifferentCases()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+
+        // Act
+        var result = fs.PathEquals("Documents/File.txt", "documents/file.TXT");
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public void PathEquals_CaseSensitive_RequiresExactMatch()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
+
+        // Act
+        var sameCase = fs.PathEquals("Documents/File.txt", "Documents/File.txt");
+        var diffCase = fs.PathEquals("Documents/File.txt", "documents/file.TXT");
+
+        // Assert
+        Assert.True(sameCase);
+        Assert.False(diffCase);
+    }
+
+    [Fact]
+    public async Task FileExistsExactAsync_ExistingFile_ReturnsTrue()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
+        var testFile = Path.Combine(_testDir, "TestFile.txt");
+        await File.WriteAllTextAsync(testFile, "content");
+
+        // Act
+        var result = await fs.FileExistsExactAsync(testFile);
+
+        // Assert
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task FileExistsExactAsync_NonExistent_ReturnsFalse()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.ForceCase);
+        var nonExistent = Path.Combine(_testDir, "NonExistent.txt");
+
+        // Act
+        var result = await fs.FileExistsExactAsync(nonExistent);
+
+        // Assert
+        Assert.False(result);
+    }
+
+    [Fact]
+    public async Task GetActualPathAsync_ExistingFile_ReturnsActualPath()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+        var testFile = Path.Combine(_testDir, "ActualFile.txt");
+        await File.WriteAllTextAsync(testFile, "content");
+
+        // Act
+        var result = await fs.GetActualPathAsync(testFile);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Contains("ActualFile.txt", result);
+    }
+
+    [Fact]
+    public async Task GetActualPathAsync_NonExistent_ReturnsNull()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+
+        // Act
+        var result = await fs.GetActualPathAsync(Path.Combine(_testDir, "nonexistent.txt"));
+
+        // Assert
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public async Task DetectCaseConflictsAsync_NoConflicts_ReturnsEmpty()
+    {
+        // Arrange
+        var fs = new CaseSensitiveFileSystem(_loggerMock.Object, _testDir, CaseSensitivity.IgnoreCase);
+        await File.WriteAllTextAsync(Path.Combine(_testDir, "file1.txt"), "content");
+        await File.WriteAllTextAsync(Path.Combine(_testDir, "file2.txt"), "content");
+
+        // Act
+        var conflicts = await fs.DetectCaseConflictsAsync(_testDir);
+
+        // Assert
+        Assert.Empty(conflicts);
+    }
+
+    [Fact]
+    public void CaseConflict_RecordProperties()
+    {
+        // Arrange
+        var conflict = new CaseConflict("File.txt", "FILE.TXT", "file.txt");
+
+        // Assert
+        Assert.Equal("File.txt", conflict.Path1);
+        Assert.Equal("FILE.TXT", conflict.Path2);
+        Assert.Equal("file.txt", conflict.NormalizedPath);
+    }
+
+    [Fact]
+    public void CaseSensitiveFileSystemFactory_CreatesFileSystem()
+    {
+        // Arrange
+        var loggerFactory = new Mock<ILoggerFactory>();
+        loggerFactory.Setup(x => x.CreateLogger(It.IsAny<string>()))
+            .Returns(_loggerMock.Object);
+        var factory = new CaseSensitiveFileSystemFactory(loggerFactory.Object);
+
+        // Act
+        var fs = factory.Create(_testDir, CaseSensitivity.Auto);
+
+        // Assert
+        Assert.NotNull(fs);
+        Assert.Equal(CaseSensitivity.Auto, fs.Mode);
     }
 }
 
