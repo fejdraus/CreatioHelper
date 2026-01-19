@@ -15,8 +15,15 @@ public class RelayConnectionManager : IDisposable
     private readonly X509Certificate2 _clientCertificate;
     private readonly ConcurrentDictionary<string, RelayClient> _relayClients = new();
     private readonly ConcurrentDictionary<string, List<string>> _deviceRelayMap = new();
+    private readonly ConcurrentDictionary<string, RelayReconnectionState> _reconnectionStates = new();
     private readonly Timer _healthCheckTimer;
     private volatile bool _disposed;
+
+    // Exponential backoff configuration
+    private const int MinReconnectDelaySeconds = 5;
+    private const int MaxReconnectDelaySeconds = 300; // 5 minutes max
+    private const double BackoffMultiplier = 2.0;
+    private const int MaxConsecutiveFailures = 10;
 
     // Default public relay servers (can be configured)
     private readonly List<string> _defaultRelayServers = new()
@@ -31,7 +38,7 @@ public class RelayConnectionManager : IDisposable
     {
         _logger = logger;
         _clientCertificate = clientCertificate;
-        
+
         // Setup periodic health checks
         _healthCheckTimer = new Timer(HealthCheckCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
@@ -219,7 +226,12 @@ public class RelayConnectionManager : IDisposable
                 if (client.IsConnected)
                 {
                     var pingSuccessful = await client.PingAsync();
-                    if (!pingSuccessful)
+                    if (pingSuccessful)
+                    {
+                        // Reset reconnection state on successful ping
+                        ResetReconnectionState(relayUri);
+                    }
+                    else
                     {
                         _logger.LogWarning("Ping failed for relay {RelayUri}", relayUri);
                     }
@@ -227,17 +239,122 @@ public class RelayConnectionManager : IDisposable
                 else
                 {
                     _logger.LogDebug("Relay {RelayUri} is disconnected", relayUri);
-                    // Attempt to reconnect
-                    await client.ConnectAsync();
+                    // Attempt to reconnect with exponential backoff
+                    await AttemptReconnectWithBackoffAsync(relayUri, client);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Health check failed for relay {RelayUri}", relayUri);
+                RecordReconnectionFailure(relayUri);
             }
         }).ToArray();
 
         await Task.WhenAll(healthCheckTasks);
+    }
+
+    /// <summary>
+    /// Attempt to reconnect to a relay with exponential backoff
+    /// </summary>
+    private async Task AttemptReconnectWithBackoffAsync(string relayUri, RelayClient client)
+    {
+        var state = _reconnectionStates.GetOrAdd(relayUri, _ => new RelayReconnectionState());
+
+        // Check if we should attempt reconnection based on backoff
+        if (!ShouldAttemptReconnection(state))
+        {
+            var nextAttemptIn = state.NextReconnectTime - DateTime.UtcNow;
+            _logger.LogDebug("Skipping reconnection attempt for relay {RelayUri}, next attempt in {Delay:F0}s",
+                relayUri, nextAttemptIn.TotalSeconds);
+            return;
+        }
+
+        // Check if we've exceeded max consecutive failures
+        if (state.ConsecutiveFailures >= MaxConsecutiveFailures)
+        {
+            _logger.LogWarning("Relay {RelayUri} has exceeded maximum consecutive failures ({MaxFailures}), " +
+                "removing from active connections", relayUri, MaxConsecutiveFailures);
+
+            // Remove from clients and clean up
+            if (_relayClients.TryRemove(relayUri, out var removedClient))
+            {
+                removedClient.Dispose();
+            }
+            _reconnectionStates.TryRemove(relayUri, out _);
+            return;
+        }
+
+        _logger.LogInformation("Attempting to reconnect to relay {RelayUri} (attempt {Attempt})",
+            relayUri, state.ConsecutiveFailures + 1);
+
+        try
+        {
+            var connected = await client.ConnectAsync();
+            if (connected)
+            {
+                _logger.LogInformation("Successfully reconnected to relay {RelayUri} after {Attempts} attempts",
+                    relayUri, state.ConsecutiveFailures + 1);
+                ResetReconnectionState(relayUri);
+            }
+            else
+            {
+                RecordReconnectionFailure(relayUri);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Reconnection attempt to relay {RelayUri} failed", relayUri);
+            RecordReconnectionFailure(relayUri);
+        }
+    }
+
+    /// <summary>
+    /// Check if we should attempt reconnection based on backoff timing
+    /// </summary>
+    private bool ShouldAttemptReconnection(RelayReconnectionState state)
+    {
+        return DateTime.UtcNow >= state.NextReconnectTime;
+    }
+
+    /// <summary>
+    /// Record a reconnection failure and update backoff state
+    /// </summary>
+    private void RecordReconnectionFailure(string relayUri)
+    {
+        var state = _reconnectionStates.GetOrAdd(relayUri, _ => new RelayReconnectionState());
+
+        state.ConsecutiveFailures++;
+        state.LastFailureTime = DateTime.UtcNow;
+
+        // Calculate next reconnect delay with exponential backoff
+        var backoffSeconds = Math.Min(
+            MinReconnectDelaySeconds * Math.Pow(BackoffMultiplier, state.ConsecutiveFailures - 1),
+            MaxReconnectDelaySeconds);
+
+        // Add jitter (up to 10% of the delay) to prevent thundering herd
+        var jitter = Random.Shared.NextDouble() * 0.1 * backoffSeconds;
+        state.NextReconnectTime = DateTime.UtcNow.AddSeconds(backoffSeconds + jitter);
+
+        _logger.LogDebug("Relay {RelayUri} reconnection failure #{Failures}, next attempt in {Delay:F0}s",
+            relayUri, state.ConsecutiveFailures, backoffSeconds + jitter);
+    }
+
+    /// <summary>
+    /// Reset reconnection state after successful connection
+    /// </summary>
+    private void ResetReconnectionState(string relayUri)
+    {
+        if (_reconnectionStates.TryGetValue(relayUri, out var state))
+        {
+            if (state.ConsecutiveFailures > 0)
+            {
+                _logger.LogDebug("Resetting reconnection state for relay {RelayUri} after {Failures} failures",
+                    relayUri, state.ConsecutiveFailures);
+            }
+            state.ConsecutiveFailures = 0;
+            state.LastFailureTime = null;
+            state.NextReconnectTime = DateTime.UtcNow;
+        }
     }
 
     /// <summary>
@@ -305,4 +422,25 @@ public class RelayConnectionEventArgs : EventArgs
         RelayClient = relayClient;
         RelayUri = relayUri;
     }
+}
+
+/// <summary>
+/// Tracks reconnection state for exponential backoff
+/// </summary>
+internal class RelayReconnectionState
+{
+    /// <summary>
+    /// Number of consecutive connection failures
+    /// </summary>
+    public int ConsecutiveFailures { get; set; }
+
+    /// <summary>
+    /// Time of the last connection failure
+    /// </summary>
+    public DateTime? LastFailureTime { get; set; }
+
+    /// <summary>
+    /// Next time a reconnection should be attempted
+    /// </summary>
+    public DateTime NextReconnectTime { get; set; } = DateTime.UtcNow;
 }

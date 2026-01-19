@@ -93,6 +93,11 @@ public interface IUPnPDevice
     /// Gets port mappings from this device
     /// </summary>
     Task<List<UPnPPortMapping>> GetPortMappingsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a specific port mapping entry by external port and protocol
+    /// </summary>
+    Task<UPnPPortMapping?> GetSpecificPortMappingEntryAsync(int externalPort, string protocol, CancellationToken cancellationToken = default);
 }
 
 /// <summary>
