@@ -38,7 +38,17 @@ public enum CopyRangeMethod
     /// <summary>
     /// Auto-detect best available method
     /// </summary>
-    Auto
+    Auto,
+
+    /// <summary>
+    /// Windows CopyFileEx API
+    /// </summary>
+    WindowsCopy,
+
+    /// <summary>
+    /// Memory-mapped file copy
+    /// </summary>
+    MemoryMapped
 }
 
 /// <summary>
