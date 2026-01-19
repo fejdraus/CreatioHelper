@@ -16,8 +16,9 @@ public class MasterFolderHandler : SendOnlyFolderHandler
         FileDownloader fileDownloader,
         FileUploader fileUploader,
         ISyncProtocol protocol,
-        ISyncDatabase database)
-        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
+        ISyncDatabase database,
+        SyncConfiguration configuration)
+        : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database, configuration)
     {
     }
 
