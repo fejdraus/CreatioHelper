@@ -120,18 +120,23 @@ public class AppSettingsManagerTests : IDisposable
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
                 GC.Collect();
-                
+
                 SetDirectoryAttributesRecursive(directory, FileAttributes.Normal);
                 directory.Delete(true);
-                break;
+                return; // Success
             }
             catch (IOException) when (i < 4)
             {
-                Thread.Sleep(200);
+                Thread.Sleep(200 * (i + 1));
             }
             catch (UnauthorizedAccessException) when (i < 4)
             {
-                Thread.Sleep(200);
+                Thread.Sleep(200 * (i + 1));
+            }
+            catch
+            {
+                // Silently ignore on final attempt - temp directories will be cleaned up by the OS
+                return;
             }
         }
     }
