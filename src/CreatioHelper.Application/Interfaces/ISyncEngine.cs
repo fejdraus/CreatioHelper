@@ -25,6 +25,27 @@ public interface ISyncEngine
     Task<SyncStatistics> GetStatisticsAsync();
     Task<SyncConfiguration> GetConfigurationAsync();
     string DeviceId { get; } // Device ID property
+
+    /// <summary>
+    /// Override local changes to global state (for SendOnly folders)
+    /// </summary>
+    Task<bool> OverrideFolderAsync(string folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Revert local changes to match global state (for ReceiveOnly folders)
+    /// </summary>
+    Task<bool> RevertFolderAsync(string folderId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get completion status for a device on a folder
+    /// </summary>
+    Task<FolderCompletionStatus> GetCompletionAsync(string folderId, string deviceId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get list of files that need to be synchronized
+    /// </summary>
+    Task<FolderNeedList> GetNeedListAsync(string folderId, int page = 1, int perPage = 100, CancellationToken cancellationToken = default);
+
     event EventHandler<FolderSyncedEventArgs> FolderSynced;
     event EventHandler<ConflictDetectedEventArgs> ConflictDetected;
     event EventHandler<SyncErrorEventArgs> SyncError;
@@ -142,4 +163,133 @@ public enum SyncState
     Syncing,
     Error,
     Paused
+}
+
+/// <summary>
+/// Completion status for a device on a folder
+/// </summary>
+public class FolderCompletionStatus
+{
+    /// <summary>
+    /// Completion percentage (0-100)
+    /// </summary>
+    public double Completion { get; set; }
+
+    /// <summary>
+    /// Total global bytes
+    /// </summary>
+    public long GlobalBytes { get; set; }
+
+    /// <summary>
+    /// Bytes needed to complete sync
+    /// </summary>
+    public long NeedBytes { get; set; }
+
+    /// <summary>
+    /// Total global items (files + directories)
+    /// </summary>
+    public int GlobalItems { get; set; }
+
+    /// <summary>
+    /// Items needed to complete sync
+    /// </summary>
+    public int NeedItems { get; set; }
+
+    /// <summary>
+    /// Deletes needed
+    /// </summary>
+    public int NeedDeletes { get; set; }
+
+    /// <summary>
+    /// Current sequence number
+    /// </summary>
+    public long Sequence { get; set; }
+
+    /// <summary>
+    /// Remote device state (idle, syncing, etc.)
+    /// </summary>
+    public string RemoteState { get; set; } = "unknown";
+}
+
+/// <summary>
+/// List of files that need to be synchronized
+/// </summary>
+public class FolderNeedList
+{
+    /// <summary>
+    /// Files that need to be downloaded
+    /// </summary>
+    public List<NeedFile> Files { get; set; } = new();
+
+    /// <summary>
+    /// Current page
+    /// </summary>
+    public int Page { get; set; } = 1;
+
+    /// <summary>
+    /// Items per page
+    /// </summary>
+    public int PerPage { get; set; } = 100;
+
+    /// <summary>
+    /// Total number of files needed
+    /// </summary>
+    public int Total { get; set; }
+
+    /// <summary>
+    /// Overall progress information
+    /// </summary>
+    public SyncProgress Progress { get; set; } = new();
+}
+
+/// <summary>
+/// Information about a file that needs synchronization
+/// </summary>
+public class NeedFile
+{
+    /// <summary>
+    /// File name (relative path)
+    /// </summary>
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// File size in bytes
+    /// </summary>
+    public long Size { get; set; }
+
+    /// <summary>
+    /// Last modification time
+    /// </summary>
+    public DateTime ModifiedTime { get; set; }
+
+    /// <summary>
+    /// File type (file, directory, symlink)
+    /// </summary>
+    public string Type { get; set; } = "file";
+
+    /// <summary>
+    /// Devices that have this file
+    /// </summary>
+    public List<string> Availability { get; set; } = new();
+}
+
+/// <summary>
+/// Sync progress information
+/// </summary>
+public class SyncProgress
+{
+    /// <summary>
+    /// Total bytes to transfer
+    /// </summary>
+    public long BytesTotal { get; set; }
+
+    /// <summary>
+    /// Bytes already transferred
+    /// </summary>
+    public long BytesDone { get; set; }
+
+    /// <summary>
+    /// Completion percentage
+    /// </summary>
+    public double Percentage => BytesTotal > 0 ? (double)BytesDone / BytesTotal * 100 : 100;
 }
