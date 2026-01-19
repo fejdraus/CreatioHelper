@@ -119,46 +119,31 @@ public class SettingsServiceTests : IDisposable
         if (!directory.Exists)
             return;
 
-        for (int i = 0; i < 10; i++) // Increase number of attempts
+        for (int i = 0; i < 5; i++)
         {
             try
             {
-                // Force garbage collection
                 GC.Collect();
                 GC.WaitForPendingFinalizers();
                 GC.Collect();
 
-                // First try to unlock all files
                 SetDirectoryAttributesRecursive(directory, FileAttributes.Normal);
-                
-                // Attempt to close all open file handles
-                ForceCloseFileHandles(directory);
-                
                 directory.Delete(true);
-                return; // Successfully deleted
+                return; // Success
             }
-            catch (IOException) when (i < 9)
+            catch (IOException) when (i < 4)
             {
-                Thread.Sleep(500); // Increase wait time
+                Thread.Sleep(200 * (i + 1));
             }
-            catch (UnauthorizedAccessException) when (i < 9)
+            catch (UnauthorizedAccessException) when (i < 4)
             {
-                Thread.Sleep(500);
+                Thread.Sleep(200 * (i + 1));
             }
-            catch (DirectoryNotFoundException)
+            catch
             {
-                return; // Directory already deleted
+                // Silently ignore on final attempt - temp directories will be cleaned up by the OS
+                return;
             }
-        }
-        
-        // If deletion fails, mark directory for deletion on reboot
-        try
-        {
-            MarkDirectoryForDeletion(directory);
-        }
-        catch
-        {
-            // Ignore errors, this is the last attempt
         }
     }
 
@@ -167,91 +152,22 @@ public class SettingsServiceTests : IDisposable
         if (!directory.Exists)
             return;
 
-        try
+        foreach (var file in directory.EnumerateFiles())
         {
-            foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
+            if (file.Exists && (file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
             {
-                try
-                {
-                    if (file.Exists && (file.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
-                    {
-                        file.Attributes = attributes;
-                    }
-                }
-                catch
-                {
-                    // Ignore errors for individual files
-                }
+                file.Attributes = attributes;
             }
+        }
 
-            foreach (var subDir in directory.EnumerateDirectories("*", SearchOption.AllDirectories))
-            {
-                try
-                {
-                    if (subDir.Exists)
-                    {
-                        subDir.Attributes = attributes;
-                    }
-                }
-                catch
-                {
-                    // Ignore errors for individual directories
-                }
-            }
-        }
-        catch
+        foreach (var subDir in directory.EnumerateDirectories())
         {
-            // Ignore errors while scanning files
+            SetDirectoryAttributesRecursive(subDir, attributes);
         }
-    }
 
-    private static void ForceCloseFileHandles(DirectoryInfo directory)
-    {
-        try
+        if ((directory.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
         {
-            // Try to forcibly close all handles in the directory
-            var processes = System.Diagnostics.Process.GetProcesses();
-            foreach (var process in processes)
-            {
-                try
-                {
-                    process.Dispose();
-                }
-                catch
-                {
-                    // Ignore errors
-                }
-            }
-        }
-        catch
-        {
-            // Ignore errors
-        }
-    }
-
-    private static void MarkDirectoryForDeletion(DirectoryInfo directory)
-    {
-        try
-        {
-            // Try renaming the directory to delete it
-            var newName = Path.Combine(Path.GetTempPath(), $"ToDelete_{Guid.NewGuid():N}");
-            directory.MoveTo(newName);
-        }
-        catch
-        {
-            // Final attempt - mark files as temporary
-            try
-            {
-                foreach (var file in directory.EnumerateFiles("*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        file.Attributes |= FileAttributes.Temporary;
-                    }
-                    catch { }
-                }
-            }
-            catch { }
+            directory.Attributes = attributes;
         }
     }
 }
