@@ -102,24 +102,19 @@ public class DatabaseController : ControllerBase
             if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(device))
                 return BadRequest(new { error = "folder and device parameters required" });
 
-            // Get completion statistics for specific device
-            var statistics = await _syncEngine.GetStatisticsAsync();
-
-            // TODO: Implement real completion calculation when sync repositories are implemented
-            // Currently returns placeholder data indicating 100% completion
-            _logger.LogDebug("Returning placeholder completion data for folder {Folder}, device {Device}", folder, device);
+            // Get real completion status from SyncEngine
+            var completion = await _syncEngine.GetCompletionAsync(folder, device);
 
             return Ok(new
             {
-                completion = 100.0,
-                globalBytes = (statistics?.TotalBytesIn ?? 0) + (statistics?.TotalBytesOut ?? 0),
-                needBytes = 0,
-                globalItems = (statistics?.TotalFilesReceived ?? 0) + (statistics?.TotalFilesSent ?? 0),
-                needItems = 0,
-                needDeletes = 0,
-                sequence = statistics?.SyncedFolders ?? 0,
-                remoteState = "idle",
-                _warning = "Placeholder data - sync completion tracking not yet implemented"
+                completion = completion.Completion,
+                globalBytes = completion.GlobalBytes,
+                needBytes = completion.NeedBytes,
+                globalItems = completion.GlobalItems,
+                needItems = completion.NeedItems,
+                needDeletes = completion.NeedDeletes,
+                sequence = completion.Sequence,
+                remoteState = completion.RemoteState
             });
         }
         catch (Exception ex)
@@ -315,48 +310,53 @@ public class DatabaseController : ControllerBase
     /// </summary>
     [HttpGet("need")]
     [Authorize(Roles = Roles.ReadRoles)]
-    public Task<ActionResult<object>> GetNeed([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
+    public async Task<ActionResult<object>> GetNeed([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
         try
         {
             if (string.IsNullOrEmpty(folder))
-                return Task.FromResult<ActionResult<object>>(BadRequest(new { error = "folder parameter required" }));
+                return BadRequest(new { error = "folder parameter required" });
 
             // Bounds checking for pagination parameters
             page = Math.Max(1, page);
             perpage = Math.Clamp(perpage, 1, 1000);
 
-            // TODO: Implement real "need" tracking when sync repositories are implemented
-            // Currently returns empty list indicating no files need synchronization
-            _logger.LogDebug("Returning placeholder need data for folder {Folder} (page {Page})", folder, page);
+            // Get real need list from SyncEngine
+            var needList = await _syncEngine.GetNeedListAsync(folder, page, perpage);
 
-            // Return files that need to be synchronized (placeholder - always empty)
-            var files = Array.Empty<object>();
+            // Convert to Syncthing-compatible format
+            var files = needList.Files.Select(f => new
+            {
+                name = f.Name,
+                size = f.Size,
+                modified = f.ModifiedTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                type = f.Type,
+                availability = f.Availability
+            }).ToArray();
 
-            return Task.FromResult<ActionResult<object>>(Ok(new
+            return Ok(new
             {
                 files = files,
-                page = page,
-                perpage = perpage,
+                page = needList.Page,
+                perpage = needList.PerPage,
                 progress = new[]
                 {
                     new
                     {
-                        bytesTotal = 0,
-                        bytesDone = 0,
-                        pct = 100.0
+                        bytesTotal = needList.Progress.BytesTotal,
+                        bytesDone = needList.Progress.BytesDone,
+                        pct = needList.Progress.Percentage
                     }
                 },
                 queued = files,
-                rest = files,
-                total = 0,
-                _warning = "Placeholder data - sync need tracking not yet implemented"
-            }));
+                rest = Array.Empty<object>(),
+                total = needList.Total
+            });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting need for folder {Folder}", folder);
-            return Task.FromResult<ActionResult<object>>(StatusCode(500, new { error = "Internal server error" }));
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -366,22 +366,31 @@ public class DatabaseController : ControllerBase
     /// </summary>
     [HttpPost("override")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public Task<ActionResult> Override([FromQuery] string folder)
+    public async Task<ActionResult> Override([FromQuery] string folder)
     {
         try
         {
             if (string.IsNullOrEmpty(folder))
-                return Task.FromResult<ActionResult>(BadRequest(new { error = "folder parameter required" }));
+                return BadRequest(new { error = "folder parameter required" });
 
             _logger.LogInformation("Override requested for folder {Folder}", folder);
-            
-            // In real implementation, this would override conflicted files
-            return Task.FromResult<ActionResult>(Ok(new { message = "override completed" }));
+
+            // Call real override implementation in SyncEngine
+            var result = await _syncEngine.OverrideFolderAsync(folder);
+
+            if (result)
+            {
+                return Ok(new { message = "override completed" });
+            }
+            else
+            {
+                return BadRequest(new { error = "override failed - folder may not support this operation" });
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error overriding folder {Folder}", folder);
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -391,22 +400,31 @@ public class DatabaseController : ControllerBase
     /// </summary>
     [HttpPost("revert")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public Task<ActionResult> Revert([FromQuery] string folder)
+    public async Task<ActionResult> Revert([FromQuery] string folder)
     {
         try
         {
             if (string.IsNullOrEmpty(folder))
-                return Task.FromResult<ActionResult>(BadRequest(new { error = "folder parameter required" }));
+                return BadRequest(new { error = "folder parameter required" });
 
             _logger.LogInformation("Revert requested for folder {Folder}", folder);
-            
-            // In real implementation, this would revert local changes
-            return Task.FromResult<ActionResult>(Ok(new { message = "revert completed" }));
+
+            // Call real revert implementation in SyncEngine
+            var result = await _syncEngine.RevertFolderAsync(folder);
+
+            if (result)
+            {
+                return Ok(new { message = "revert completed" });
+            }
+            else
+            {
+                return BadRequest(new { error = "revert failed - folder may not support this operation" });
+            }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error reverting folder {Folder}", folder);
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 }
