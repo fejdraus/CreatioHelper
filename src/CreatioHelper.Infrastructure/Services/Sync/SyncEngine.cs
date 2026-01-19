@@ -1824,6 +1824,226 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
     }
 
+    /// <summary>
+    /// Override local changes to global state (for SendOnly folders)
+    /// Syncthing-compatible: POST /rest/db/override
+    /// </summary>
+    public async Task<bool> OverrideFolderAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        if (!_folders.TryGetValue(folderId, out var folder))
+        {
+            _logger.LogWarning("Cannot override: folder {FolderId} not found", folderId);
+            return false;
+        }
+
+        // Only SendOnly and Master folders can override
+        if (folder.SyncType != SyncFolderType.SendOnly && folder.SyncType != SyncFolderType.Master)
+        {
+            _logger.LogWarning("Cannot override: folder {FolderId} is type {FolderType}, override only supported for SendOnly/Master",
+                folderId, folder.SyncType);
+            return false;
+        }
+
+        var handler = _syncFolderHandlerFactory.CreateHandler(folder);
+
+        // SendOnlyFolderHandler has OverrideAsync method
+        if (handler is Handlers.SendOnlyFolderHandler sendOnlyHandler)
+        {
+            _logger.LogInformation("Executing override for SendOnly folder {FolderId}", folderId);
+            return await sendOnlyHandler.OverrideAsync(folder, cancellationToken);
+        }
+
+        // MasterFolderHandler inherits from SendOnlyFolderHandler
+        if (handler is Handlers.MasterFolderHandler masterHandler)
+        {
+            _logger.LogInformation("Executing override for Master folder {FolderId}", folderId);
+            return await masterHandler.OverrideAsync(folder, cancellationToken);
+        }
+
+        _logger.LogWarning("Handler for folder {FolderId} does not support Override operation", folderId);
+        return false;
+    }
+
+    /// <summary>
+    /// Revert local changes to match global state (for ReceiveOnly folders)
+    /// Syncthing-compatible: POST /rest/db/revert
+    /// </summary>
+    public async Task<bool> RevertFolderAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        if (!_folders.TryGetValue(folderId, out var folder))
+        {
+            _logger.LogWarning("Cannot revert: folder {FolderId} not found", folderId);
+            return false;
+        }
+
+        // Only ReceiveOnly and Slave folders can revert
+        if (folder.SyncType != SyncFolderType.ReceiveOnly && folder.SyncType != SyncFolderType.Slave)
+        {
+            _logger.LogWarning("Cannot revert: folder {FolderId} is type {FolderType}, revert only supported for ReceiveOnly/Slave",
+                folderId, folder.SyncType);
+            return false;
+        }
+
+        var handler = _syncFolderHandlerFactory.CreateHandler(folder);
+
+        // ReceiveOnlyFolderHandler has RevertAsync method
+        if (handler is Handlers.ReceiveOnlyFolderHandler receiveOnlyHandler)
+        {
+            _logger.LogInformation("Executing revert for ReceiveOnly folder {FolderId}", folderId);
+            return await receiveOnlyHandler.RevertAsync(folder, cancellationToken);
+        }
+
+        // SlaveFolderHandler inherits from ReceiveOnlyFolderHandler
+        if (handler is Handlers.SlaveFolderHandler slaveHandler)
+        {
+            _logger.LogInformation("Executing revert for Slave folder {FolderId}", folderId);
+            return await slaveHandler.RevertAsync(folder, cancellationToken);
+        }
+
+        _logger.LogWarning("Handler for folder {FolderId} does not support Revert operation", folderId);
+        return false;
+    }
+
+    /// <summary>
+    /// Get completion status for a device on a folder
+    /// Syncthing-compatible: GET /rest/db/completion
+    /// </summary>
+    public async Task<FolderCompletionStatus> GetCompletionAsync(string folderId, string deviceId, CancellationToken cancellationToken = default)
+    {
+        var result = new FolderCompletionStatus();
+
+        if (!_folders.TryGetValue(folderId, out var folder))
+        {
+            _logger.LogWarning("GetCompletion: folder {FolderId} not found", folderId);
+            return result;
+        }
+
+        try
+        {
+            // Get all file metadata for the folder
+            var allFiles = await _database.FileMetadata.GetAllAsync(folderId);
+            var filesList = allFiles.ToList();
+
+            // Calculate global totals
+            result.GlobalBytes = filesList.Sum(f => f.Size);
+            result.GlobalItems = filesList.Count;
+
+            // Get files that need to be synchronized (not locally changed, not deleted)
+            var neededFiles = await _database.FileMetadata.GetNeededFilesAsync(folderId);
+            var neededList = neededFiles.ToList();
+
+            result.NeedBytes = neededList.Sum(f => f.Size);
+            result.NeedItems = neededList.Count;
+            result.NeedDeletes = filesList.Count(f => f.IsDeleted && !f.LocallyChanged);
+
+            // Calculate completion percentage
+            if (result.GlobalBytes > 0)
+            {
+                var completedBytes = result.GlobalBytes - result.NeedBytes;
+                result.Completion = (double)completedBytes / result.GlobalBytes * 100;
+            }
+            else
+            {
+                result.Completion = 100.0;
+            }
+
+            // Get current sequence
+            result.Sequence = await _database.FileMetadata.GetGlobalSequenceAsync(folderId);
+
+            // Get remote device state
+            if (_devices.TryGetValue(deviceId, out var device))
+            {
+                result.RemoteState = device.IsConnected ? "syncing" : "disconnected";
+            }
+            else
+            {
+                result.RemoteState = "unknown";
+            }
+
+            // If folder is in a status map, use that state
+            if (_folderStatuses.TryGetValue(folderId, out var status))
+            {
+                result.RemoteState = status.State.ToString().ToLowerInvariant();
+            }
+
+            _logger.LogDebug("Completion for folder {FolderId}, device {DeviceId}: {Completion:F1}% ({NeedItems} items, {NeedBytes} bytes needed)",
+                folderId, deviceId, result.Completion, result.NeedItems, result.NeedBytes);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error calculating completion for folder {FolderId}, device {DeviceId}", folderId, deviceId);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Get list of files that need to be synchronized
+    /// Syncthing-compatible: GET /rest/db/need
+    /// </summary>
+    public async Task<FolderNeedList> GetNeedListAsync(string folderId, int page = 1, int perPage = 100, CancellationToken cancellationToken = default)
+    {
+        var result = new FolderNeedList
+        {
+            Page = page,
+            PerPage = perPage
+        };
+
+        if (!_folders.TryGetValue(folderId, out var folder))
+        {
+            _logger.LogWarning("GetNeedList: folder {FolderId} not found", folderId);
+            return result;
+        }
+
+        try
+        {
+            // Get files that need synchronization with pagination
+            var offset = (page - 1) * perPage;
+            var neededFiles = await _database.FileMetadata.GetNeededFilesOrderedAsync(
+                folderId,
+                Domain.Enums.SyncPullOrder.SmallestFirst, // Default to smallest first like Syncthing
+                perPage,
+                offset);
+
+            var neededList = neededFiles.ToList();
+
+            // Get total count for pagination
+            var allNeeded = await _database.FileMetadata.GetNeededFilesAsync(folderId);
+            var allNeededList = allNeeded.ToList();
+            result.Total = allNeededList.Count;
+
+            // Convert to NeedFile objects
+            result.Files = neededList.Select(f => new NeedFile
+            {
+                Name = f.FileName,
+                Size = f.Size,
+                ModifiedTime = f.ModifiedTime,
+                Type = f.FileType == Domain.Entities.FileType.Directory ? "directory" :
+                       f.IsSymlink ? "symlink" : "file",
+                Availability = new List<string> { f.ModifiedBy ?? "unknown" }
+            }).ToList();
+
+            // Calculate progress
+            var totalNeedBytes = allNeededList.Sum(f => f.Size);
+            var completedBytes = 0L; // Would need to track in-progress downloads
+
+            result.Progress = new SyncProgress
+            {
+                BytesTotal = totalNeedBytes,
+                BytesDone = completedBytes
+            };
+
+            _logger.LogDebug("NeedList for folder {FolderId}: page {Page}, {Count}/{Total} items",
+                folderId, page, result.Files.Count, result.Total);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting need list for folder {FolderId}", folderId);
+        }
+
+        return result;
+    }
+
     public void Dispose()
     {
         _cancellationTokenSource.Cancel();
