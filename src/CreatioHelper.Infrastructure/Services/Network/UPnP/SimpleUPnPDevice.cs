@@ -178,7 +178,7 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
         }
     }
 
-    public Task<List<UPnPPortMapping>> GetPortMappingsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<UPnPPortMapping>> GetPortMappingsAsync(CancellationToken cancellationToken = default)
     {
         if (_disposed) throw new ObjectDisposedException(nameof(SimpleUPnPDevice));
 
@@ -188,20 +188,161 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
         {
             if (string.IsNullOrEmpty(ControlUrl))
             {
-                return Task.FromResult(mappings);
+                return mappings;
             }
 
-            // Try to get existing port mappings (this is complex and device-specific)
-            // For now, return empty list - full implementation would enumerate existing mappings
-            _logger.LogDebug("Port mapping enumeration not fully implemented for device {DeviceId}", DeviceId);
-            
-            return Task.FromResult(mappings);
+            // Enumerate all port mappings using GetGenericPortMappingEntry
+            // Start from index 0 and increment until we get an error (714 = NoSuchEntryInArray)
+            int index = 0;
+            const int maxMappings = 1000; // Safety limit
+
+            while (index < maxMappings)
+            {
+                var mapping = await GetGenericPortMappingEntryAsync(index, cancellationToken);
+                if (mapping == null)
+                {
+                    // No more entries or error occurred
+                    break;
+                }
+
+                mappings.Add(mapping);
+                index++;
+            }
+
+            _logger.LogDebug("Retrieved {MappingCount} port mappings from device {DeviceId}", mappings.Count, DeviceId);
+            return mappings;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting port mappings from device {DeviceId}", DeviceId);
-            return Task.FromResult(mappings);
+            return mappings;
         }
+    }
+
+    /// <summary>
+    /// Get a specific port mapping entry by index
+    /// </summary>
+    private async Task<UPnPPortMapping?> GetGenericPortMappingEntryAsync(int index, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var soapAction = "GetGenericPortMappingEntry";
+            var serviceType = GetServiceType();
+
+            var soapBody = $@"
+                <u:{soapAction} xmlns:u=""{serviceType}"">
+                    <NewPortMappingIndex>{index}</NewPortMappingIndex>
+                </u:{soapAction}>";
+
+            var response = await SendSoapRequestAsync(soapAction, serviceType, soapBody, cancellationToken);
+
+            if (string.IsNullOrEmpty(response) || response.Contains("soap:Fault"))
+            {
+                // Check if this is the "no such entry" error (714) which is expected at end of list
+                if (response?.Contains("714") == true || response?.Contains("NoSuchEntryInArray") == true ||
+                    response?.Contains("SpecifiedArrayIndexInvalid") == true)
+                {
+                    return null;
+                }
+
+                _logger.LogDebug("GetGenericPortMappingEntry returned fault for index {Index}", index);
+                return null;
+            }
+
+            // Parse XML response
+            var xDoc = XDocument.Parse(response);
+
+            var mapping = new UPnPPortMapping
+            {
+                ExternalPort = ParseIntElement(xDoc, "NewExternalPort"),
+                InternalPort = ParseIntElement(xDoc, "NewInternalPort"),
+                InternalClient = ParseStringElement(xDoc, "NewInternalClient") ?? string.Empty,
+                Protocol = ParseStringElement(xDoc, "NewProtocol") ?? "TCP",
+                Description = ParseStringElement(xDoc, "NewPortMappingDescription") ?? string.Empty,
+                Enabled = ParseIntElement(xDoc, "NewEnabled") == 1,
+                LeaseDuration = ParseIntElement(xDoc, "NewLeaseDuration")
+            };
+
+            return mapping;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error getting port mapping entry at index {Index}", index);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Check if a specific port mapping exists
+    /// </summary>
+    public async Task<UPnPPortMapping?> GetSpecificPortMappingEntryAsync(int externalPort, string protocol, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SimpleUPnPDevice));
+
+        try
+        {
+            if (string.IsNullOrEmpty(ControlUrl))
+            {
+                return null;
+            }
+
+            var soapAction = "GetSpecificPortMappingEntry";
+            var serviceType = GetServiceType();
+
+            var soapBody = $@"
+                <u:{soapAction} xmlns:u=""{serviceType}"">
+                    <NewRemoteHost></NewRemoteHost>
+                    <NewExternalPort>{externalPort}</NewExternalPort>
+                    <NewProtocol>{protocol}</NewProtocol>
+                </u:{soapAction}>";
+
+            var response = await SendSoapRequestAsync(soapAction, serviceType, soapBody, cancellationToken);
+
+            if (string.IsNullOrEmpty(response) || response.Contains("soap:Fault"))
+            {
+                return null;
+            }
+
+            // Parse XML response
+            var xDoc = XDocument.Parse(response);
+
+            var mapping = new UPnPPortMapping
+            {
+                ExternalPort = externalPort,
+                InternalPort = ParseIntElement(xDoc, "NewInternalPort"),
+                InternalClient = ParseStringElement(xDoc, "NewInternalClient") ?? string.Empty,
+                Protocol = protocol,
+                Description = ParseStringElement(xDoc, "NewPortMappingDescription") ?? string.Empty,
+                Enabled = ParseIntElement(xDoc, "NewEnabled") == 1,
+                LeaseDuration = ParseIntElement(xDoc, "NewLeaseDuration")
+            };
+
+            _logger.LogDebug("Found existing mapping for port {ExternalPort}:{Protocol} on device {DeviceId}",
+                externalPort, protocol, DeviceId);
+            return mapping;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Error checking specific port mapping {ExternalPort}:{Protocol} on device {DeviceId}",
+                externalPort, protocol, DeviceId);
+            return null;
+        }
+    }
+
+    private static int ParseIntElement(XDocument doc, string elementName)
+    {
+        var element = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == elementName);
+        if (element != null && int.TryParse(element.Value, out var value))
+        {
+            return value;
+        }
+        return 0;
+    }
+
+    private static string? ParseStringElement(XDocument doc, string elementName)
+    {
+        var element = doc.Descendants().FirstOrDefault(e => e.Name.LocalName == elementName);
+        return element?.Value;
     }
 
     private async Task InitializeDeviceAsync(string locationUrl)
