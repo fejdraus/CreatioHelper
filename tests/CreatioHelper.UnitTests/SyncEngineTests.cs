@@ -81,7 +81,7 @@ public class SyncEngineTests : IDisposable
         var parallelBlockTransfer = new ParallelBlockTransfer(parallelBlockTransferLogger, 32);
         
         var transferOptimizerLogger = Mock.Of<ILogger<TransferOptimizer>>();
-        var transferOptimizer = new TransferOptimizer(transferOptimizerLogger, blockDuplicationDetector, parallelBlockTransfer, _mockDatabase.Object);
+        var transferOptimizer = new TransferOptimizer(transferOptimizerLogger, blockDuplicationDetector, parallelBlockTransfer, _mockDatabase.Object, _mockProtocol.Object);
         
         var syncFolderHandlerFactoryLogger = Mock.Of<ILogger<SyncFolderHandlerFactory>>();
         var mockServiceProvider = Mock.Of<IServiceProvider>();

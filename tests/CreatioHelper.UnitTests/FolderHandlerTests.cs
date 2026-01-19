@@ -400,13 +400,16 @@ public class SendOnlyFolderHandlerTests : IDisposable
         _fileUploader = new FileUploader(mockUploaderLogger, _mockProtocol.Object);
         _conflictEngine = new ConflictResolutionEngine(mockConflictEngineLogger);
 
+        var syncConfig = new SyncConfiguration("test-device-id", "TestDevice");
+
         _handler = new SendOnlyFolderHandler(
             _mockLogger.Object,
             _conflictEngine,
             _fileDownloader,
             _fileUploader,
             _mockProtocol.Object,
-            _mockDatabase.Object);
+            _mockDatabase.Object,
+            syncConfig);
 
         _testDirectory = Path.Combine(Path.GetTempPath(), "SendOnlyHandlerTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);

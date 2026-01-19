@@ -18,7 +18,8 @@ public class TransferOptimizer
     private readonly BlockDuplicationDetector _duplicationDetector;
     private readonly ParallelBlockTransfer _blockTransfer;
     private readonly ISyncDatabase _database;
-    
+    private readonly ISyncProtocol _protocol;
+
     // Optimization statistics
     private readonly ConcurrentDictionary<string, TransferStats> _deviceStats = new();
     private readonly TransferMetrics _globalMetrics = new();
@@ -27,12 +28,14 @@ public class TransferOptimizer
         ILogger<TransferOptimizer> logger,
         BlockDuplicationDetector duplicationDetector,
         ParallelBlockTransfer blockTransfer,
-        ISyncDatabase database)
+        ISyncDatabase database,
+        ISyncProtocol protocol)
     {
         _logger = logger;
         _duplicationDetector = duplicationDetector;
         _blockTransfer = blockTransfer;
         _database = database;
+        _protocol = protocol;
     }
 
     /// <summary>
@@ -545,7 +548,7 @@ public class TransferOptimizer
                     case BlockTransferType.RemoteDownload:
                         // Download from remote device
                         var remoteBlockData = await DownloadBlockFromRemoteAsync(
-                            deviceId, plan.FolderId, blockPlan, cancellationToken);
+                            deviceId, plan.FolderId, plan.RemoteFileInfo.Name, blockPlan, cancellationToken);
                         if (remoteBlockData != null)
                         {
                             await fileStream.WriteAsync(remoteBlockData, cancellationToken);
@@ -621,26 +624,43 @@ public class TransferOptimizer
     }
     
     private async Task<byte[]?> DownloadBlockFromRemoteAsync(
-        string deviceId, 
-        string folderId, 
-        BlockTransferPlan blockPlan, 
+        string deviceId,
+        string folderId,
+        string fileName,
+        BlockTransferPlan blockPlan,
         CancellationToken cancellationToken)
     {
         try
         {
-            // This would normally use the protocol to request the block
-            // For now, simulate block download
-            _logger.LogTrace("Downloading block {Hash} from device {DeviceId}", blockPlan.Hash, deviceId);
-            
-            // TODO: Implement actual block download using ISyncProtocol
-            await Task.Delay(50, cancellationToken); // Simulate network delay
-            
-            // Return mock data for now
-            return new byte[blockPlan.Size];
+            _logger.LogTrace("Downloading block {Hash} at offset {Offset} ({Size} bytes) from device {DeviceId} for file {FileName}",
+                blockPlan.Hash, blockPlan.Offset, blockPlan.Size, deviceId, fileName);
+
+            var blockData = await _protocol.RequestBlockAsync(
+                deviceId,
+                folderId,
+                fileName,
+                blockPlan.Offset,
+                blockPlan.Size,
+                blockPlan.Hash);
+
+            if (blockData == null || blockData.Length == 0)
+            {
+                _logger.LogWarning("Received empty block for {FileName} at offset {Offset}", fileName, blockPlan.Offset);
+                return null;
+            }
+
+            if (blockData.Length != blockPlan.Size)
+            {
+                _logger.LogWarning("Block size mismatch for {FileName}: expected {Expected}, got {Actual}",
+                    fileName, blockPlan.Size, blockData.Length);
+            }
+
+            return blockData;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error downloading block {Hash} from device {DeviceId}", blockPlan.Hash, deviceId);
+            _logger.LogError(ex, "Error downloading block {Hash} from device {DeviceId} for file {FileName}",
+                blockPlan.Hash, deviceId, fileName);
             return null;
         }
     }
