@@ -337,11 +337,11 @@ public class PendingManagerTests
     }
 
     [Fact]
-    public void GetStatus_ReturnsCorrectCounts()
+    public async Task GetStatus_ReturnsCorrectCounts()
     {
         // Arrange
-        _manager.AddPendingDeviceAsync(new PendingDevice { DeviceId = "device-1", DeviceName = "Test" }).Wait();
-        _manager.AddPendingFolderAsync(new PendingFolder { FolderId = "folder-1", OfferedByDeviceId = "device-1" }).Wait();
+        await _manager.AddPendingDeviceAsync(new PendingDevice { DeviceId = "device-1", DeviceName = "Test" });
+        await _manager.AddPendingFolderAsync(new PendingFolder { FolderId = "folder-1", OfferedByDeviceId = "device-1" });
 
         // Act
         var status = _manager.GetStatus();

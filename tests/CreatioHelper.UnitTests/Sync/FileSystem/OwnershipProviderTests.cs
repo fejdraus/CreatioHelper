@@ -6,6 +6,7 @@ using Moq;
 
 namespace CreatioHelper.UnitTests.Sync.FileSystem;
 
+[SupportedOSPlatform("windows")]
 public class OwnershipProviderTests : IDisposable
 {
     private readonly Mock<ILogger<WindowsOwnershipProvider>> _loggerMock;

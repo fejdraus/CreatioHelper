@@ -128,7 +128,7 @@ public class SparseFileHandlerTests : IDisposable
         // Assert
         var readData = new byte[256];
         await using var stream = File.OpenRead(filePath);
-        await stream.ReadAsync(readData);
+        await stream.ReadExactlyAsync(readData);
         Assert.Equal(data, readData);
     }
 
@@ -148,7 +148,7 @@ public class SparseFileHandlerTests : IDisposable
         await using var stream = File.OpenRead(filePath);
         stream.Seek(500, SeekOrigin.Begin);
         var readData = new byte[5];
-        await stream.ReadAsync(readData);
+        await stream.ReadExactlyAsync(readData);
         Assert.Equal(data, readData);
     }
 

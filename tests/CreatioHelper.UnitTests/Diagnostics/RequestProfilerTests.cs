@@ -501,7 +501,7 @@ public class RequestProfilerTests
     }
 
     [Fact]
-    public void ConcurrentRequests_ThreadSafe()
+    public async Task ConcurrentRequests_ThreadSafe()
     {
         // Arrange
         var tasks = new List<Task>();
@@ -516,7 +516,7 @@ public class RequestProfilerTests
             }));
         }
 
-        Task.WaitAll(tasks.ToArray());
+        await Task.WhenAll(tasks);
 
         // Assert
         var summary = _profiler.GetSummary();
