@@ -93,7 +93,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
                 break;
 
             // Проверяем, есть ли неожиданные локальные изменения
-            if (HasUnexpectedLocalChanges(localFile))
+            if (await HasUnexpectedLocalChangesAsync(folder, localFile))
             {
                 // Помечаем флагом FlagLocalReceiveOnly
                 localFile.LocalFlags |= FileLocalFlags.ReceiveOnly;
@@ -306,15 +306,25 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
     /// <summary>
     /// Проверить, есть ли неожиданные локальные изменения в файле
     /// </summary>
-    private bool HasUnexpectedLocalChanges(FileMetadata localFile)
+    private async Task<bool> HasUnexpectedLocalChangesAsync(SyncFolder folder, FileMetadata localFile)
     {
-        // TODO: Сравнить с глобальной версией файла
-        // Если файл изменен локально, но не должен был изменяться в receive-only папке
-        
-        // Пока что простая проверка - если файл не помечен флагом, но изменен
-        return !localFile.LocalFlags.HasFlag(FileLocalFlags.ReceiveOnly) && 
-               !localFile.IsDeleted && 
-               localFile.Hash != null && localFile.Hash.Length > 0;
+        // Уже помечен как ReceiveOnly - нет смысла проверять снова
+        if (localFile.LocalFlags.HasFlag(FileLocalFlags.ReceiveOnly))
+            return false;
+
+        // Удаленные файлы не считаются неожиданными изменениями
+        if (localFile.IsDeleted)
+            return false;
+
+        // Получаем глобальную версию файла для сравнения
+        var globalFile = await _database.FileMetadata.GetGlobalFileAsync(folder.Id, localFile.FileName);
+
+        // Если глобальной версии нет - файл создан локально (неожиданное изменение)
+        if (globalFile == null)
+            return true;
+
+        // Сравниваем с глобальной версией используя существующий паттерн IsEquivalent
+        return !IsEquivalent(localFile, globalFile, folder);
     }
 
     /// <summary>

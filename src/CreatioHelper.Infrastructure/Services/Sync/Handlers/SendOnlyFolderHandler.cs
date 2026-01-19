@@ -10,15 +10,19 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Handlers;
 /// </summary>
 public class SendOnlyFolderHandler : SyncFolderHandlerBase
 {
+    private readonly SyncConfiguration _configuration;
+
     public SendOnlyFolderHandler(
         ILogger<SendOnlyFolderHandler> logger,
         ConflictResolutionEngine conflictEngine,
         FileDownloader fileDownloader,
         FileUploader fileUploader,
         ISyncProtocol protocol,
-        ISyncDatabase database)
+        ISyncDatabase database,
+        SyncConfiguration configuration)
         : base(logger, conflictEngine, fileDownloader, fileUploader, protocol, database)
     {
+        _configuration = configuration;
     }
 
     public override SyncFolderType SupportedType => SyncFolderType.SendOnly;
@@ -192,8 +196,7 @@ public class SendOnlyFolderHandler : SyncFolderHandlerBase
     /// </summary>
     private string GetLocalDeviceId()
     {
-        // TODO: Получить реальный локальный device ID из конфигурации
-        return "local";
+        return _configuration.DeviceId;
     }
 
     /// <summary>
