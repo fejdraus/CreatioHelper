@@ -1,4 +1,3 @@
-#pragma warning disable CS1998 // Async method lacks await (for interface implementation stubs)
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -125,21 +124,168 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
 
         _logger.LogInformation("Starting revert operation for ReceiveOnly folder {FolderId}", folder.Id);
 
-        bool hasReverts = false;
+        var filesToUpdate = new List<FileMetadata>();
+        var directoriesToDelete = new List<string>();
+        int revertedCount = 0;
 
-        // TODO: Получить все локальные файлы с флагом ReceiveOnly
-        // TODO: Для каждого такого файла:
-        // 1. Убрать флаг FlagLocalReceiveOnly
-        // 2. Если файл существует только локально - удалить его
-        // 3. Если файл отличается от глобального - откатить к глобальной версии
-        // 4. Обновить локальный индекс
+        // 1. Получить все локальные файлы с флагом ReceiveOnly
+        var receiveOnlyFiles = await _database.FileMetadata.GetByLocalFlagsAsync(
+            folder.Id, FileLocalFlags.ReceiveOnly);
 
-        await Task.CompletedTask;
-        
-        _logger.LogInformation("Revert operation completed for folder {FolderId}, hasReverts: {HasReverts}", 
-            folder.Id, hasReverts);
+        foreach (var localFile in receiveOnlyFiles)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
 
-        return hasReverts;
+            // Убираем флаг ReceiveOnly
+            localFile.LocalFlags &= ~FileLocalFlags.ReceiveOnly;
+
+            // 2. Получить глобальную версию файла
+            var globalFile = await _database.FileMetadata.GetGlobalFileAsync(folder.Id, localFile.FileName);
+
+            if (globalFile == null)
+            {
+                // Файл существует только локально - нужно удалить
+                _logger.LogDebug("Revert: File {FileName} exists only locally, marking for deletion",
+                    localFile.FileName);
+
+                if (localFile.FileType == FileType.Directory)
+                {
+                    // Директории откладываем на потом (удаляем от листьев к корню)
+                    directoriesToDelete.Add(localFile.FileName);
+                }
+                else
+                {
+                    // Удаляем файл с диска
+                    var localPath = Path.Combine(folder.Path, localFile.FileName);
+                    if (File.Exists(localPath))
+                    {
+                        try
+                        {
+                            File.Delete(localPath);
+                            _logger.LogDebug("Revert: Deleted local file {FileName}", localFile.FileName);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Revert: Failed to delete file {FileName}", localFile.FileName);
+                            continue;
+                        }
+                    }
+
+                    // Помечаем файл как удаленный с пустой версией
+                    localFile.IsDeleted = true;
+                    localFile.VersionVector = string.Empty;
+                    filesToUpdate.Add(localFile);
+                    revertedCount++;
+                }
+            }
+            else if (IsEquivalent(localFile, globalFile, folder))
+            {
+                // Локальный файл эквивалентен глобальному - просто обновляем метаданные
+                _logger.LogDebug("Revert: File {FileName} is equivalent to global, updating metadata",
+                    localFile.FileName);
+
+                // Используем глобальную версию
+                localFile.VersionVector = globalFile.VersionVector;
+                localFile.Hash = globalFile.Hash;
+                localFile.Size = globalFile.Size;
+                localFile.ModifiedTime = globalFile.ModifiedTime;
+                filesToUpdate.Add(localFile);
+                revertedCount++;
+            }
+            else
+            {
+                // Файл отличается от глобального - сбрасываем версию, чтобы следующий pull заменил его
+                _logger.LogDebug("Revert: File {FileName} differs from global, resetting version for re-pull",
+                    localFile.FileName);
+
+                localFile.VersionVector = string.Empty; // Empty version = needs to be pulled
+                filesToUpdate.Add(localFile);
+                revertedCount++;
+            }
+        }
+
+        // 3. Удаляем директории от листьев к корню
+        directoriesToDelete.Sort((a, b) => b.Length.CompareTo(a.Length)); // Сортируем по длине пути (длинные первые)
+
+        foreach (var dirName in directoriesToDelete)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            var dirPath = Path.Combine(folder.Path, dirName);
+            if (Directory.Exists(dirPath))
+            {
+                try
+                {
+                    // Пытаемся удалить только если директория пуста
+                    if (!Directory.EnumerateFileSystemEntries(dirPath).Any())
+                    {
+                        Directory.Delete(dirPath);
+                        _logger.LogDebug("Revert: Deleted empty directory {DirName}", dirName);
+
+                        // Добавляем запись об удалении директории
+                        filesToUpdate.Add(new FileMetadata
+                        {
+                            FolderId = folder.Id,
+                            FileName = dirName,
+                            FileType = FileType.Directory,
+                            IsDeleted = true,
+                            VersionVector = string.Empty,
+                            ModifiedTime = DateTime.UtcNow,
+                            UpdatedAt = DateTime.UtcNow
+                        });
+                        revertedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Revert: Failed to delete directory {DirName}", dirName);
+                }
+            }
+        }
+
+        // 4. Batch обновление базы данных
+        if (filesToUpdate.Count > 0)
+        {
+            await _database.FileMetadata.BatchUpsertAsync(filesToUpdate);
+        }
+
+        _logger.LogInformation("Revert operation completed for folder {FolderId}, reverted {Count} files",
+            folder.Id, revertedCount);
+
+        // 5. Инициируем pull чтобы загрузить правильные версии файлов
+        if (revertedCount > 0)
+        {
+            _logger.LogInformation("Revert: Scheduling pull to download correct file versions");
+            // Pull будет инициирован SyncEngine при следующем цикле синхронизации
+        }
+
+        return revertedCount > 0;
+    }
+
+    /// <summary>
+    /// Проверить эквивалентность файлов (с учетом настроек папки)
+    /// </summary>
+    private bool IsEquivalent(FileMetadata local, FileMetadata global, SyncFolder folder)
+    {
+        // Сравниваем размер
+        if (local.Size != global.Size)
+            return false;
+
+        // Сравниваем хэш если есть
+        if (local.Hash != null && global.Hash != null)
+        {
+            if (!local.Hash.SequenceEqual(global.Hash))
+                return false;
+        }
+
+        // Сравниваем время модификации с допуском (ModTimeWindow)
+        var timeDiff = Math.Abs((local.ModifiedTime - global.ModifiedTime).TotalSeconds);
+        if (timeDiff > folder.ModTimeWindowS)
+            return false;
+
+        return true;
     }
 
     public override bool CanApplyFileChange(SyncFolder folder, FileMetadata file, bool isIncoming)
