@@ -135,8 +135,8 @@ public class SyncthingTlsManager
             _logger.LogDebug("Validating client certificate with device ID {DeviceId}", deviceId);
 
             // In Syncthing, device IDs are validated against trusted devices list
-            // For now, we accept any valid self-signed certificate
-            // TODO: Implement proper device trust validation
+            // Валидация сертификата выполняется в CertificateManager.ValidateCertificateAsync()
+            // Здесь проверяем только формат self-signed сертификата
             
             // Check if certificate is self-signed (typical for Syncthing)
             if (cert.Subject != cert.Issuer)

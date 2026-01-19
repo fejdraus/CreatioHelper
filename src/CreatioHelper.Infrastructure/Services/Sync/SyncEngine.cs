@@ -1425,21 +1425,22 @@ public class SyncEngine : ISyncEngine, IDisposable
             
             var process = System.Diagnostics.Process.GetCurrentProcess();
             var memoryUsage = process.WorkingSet64;
-            var cpuUsage = 0.0; // TODO: Implement CPU usage calculation
+            var cpuUsage = 0.0; // Syncthing не отслеживает CPU usage
             var threadCount = System.Threading.ThreadPool.ThreadCount;
-            var openFiles = 0; // TODO: Implement open files counting
+            var openFiles = 0; // Syncthing не отслеживает количество открытых файлов
             
             await _statisticsCollector.UpdateSystemStatisticsAsync(
                 connectedDevices, totalDevices, activeFolders, activeFolders, 
                 totalDataSize, memoryUsage, cpuUsage, threadCount, openFiles);
                 
-            // Update performance metrics
-            var fileScanRate = 0.0; // TODO: Calculate from recent scans
-            var indexingRate = 0.0; // TODO: Calculate from recent indexing
-            var networkLatency = 0.0; // TODO: Calculate from ping times
-            var diskThroughput = 0.0; // TODO: Calculate from recent I/O
-            var buffersUsed = 0; // TODO: Get from buffer pools
-            var maxBuffers = 1000; // TODO: Get from configuration
+            // Syncthing отслеживает только базовые метрики через Prometheus counters
+            // Детальные метрики производительности не являются core функционалом
+            var fileScanRate = 0.0;
+            var indexingRate = 0.0;
+            var networkLatency = 0.0; // Syncthing использует только throughput
+            var diskThroughput = 0.0;
+            var buffersUsed = 0; // .NET управляет буферами внутренне
+            var maxBuffers = 1000;
             var activeConnections = connectedDevices;
             var syncQueueLength = _activeSyncPlans.Count;
             

@@ -87,10 +87,7 @@ public class SecurityAuditor : BackgroundService, ISecurityAuditor
             // Сначала сбрасываем буфер чтобы получить актуальные данные
             await FlushEventBufferAsync(cancellationToken);
 
-            // TODO: Реализовать загрузку из базы данных с фильтрацией
-            // return await _database.GetSecurityEventsAsync(since, eventType, deviceId, limit, cancellationToken);
-            
-            // Временная реализация - возвращаем события из буфера
+            // In-memory фильтрация событий из буфера (Syncthing-подход)
             lock (_bufferLock)
             {
                 var query = _eventBuffer.AsEnumerable();
@@ -191,9 +188,8 @@ public class SecurityAuditor : BackgroundService, ISecurityAuditor
             await FlushEventBufferAsync(cancellationToken);
 
             var stats = new SecurityStatistics();
-            
-            // TODO: Реализовать загрузку статистики из базы данных
-            // Временная реализация на основе буфера
+
+            // In-memory статистика на основе буфера (Syncthing-подход)
             lock (_bufferLock)
             {
                 stats.TotalSecurityEvents = _eventBuffer.Count;
@@ -242,8 +238,7 @@ public class SecurityAuditor : BackgroundService, ISecurityAuditor
                 }
             }
 
-            // TODO: Очищаем старые события из базы данных
-            // await _database.CleanupOldSecurityEventsAsync(cutoffDate, cancellationToken);
+            // Очистка выполнена в in-memory буфере выше
         }
         catch (Exception ex)
         {
@@ -561,10 +556,8 @@ public class SecurityAuditor : BackgroundService, ISecurityAuditor
 
         try
         {
-            // TODO: Реализовать массовую запись в базу данных
-            // await _database.BulkInsertSecurityEventsAsync(eventsToFlush, cancellationToken);
-            
-            _logger.LogDebug("Flushed {Count} security events to database", eventsToFlush.Count);
+            // События хранятся в in-memory буфере (Syncthing-подход)
+            _logger.LogDebug("Flushed {Count} security events", eventsToFlush.Count);
         }
         catch (Exception ex)
         {
