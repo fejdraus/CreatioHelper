@@ -291,6 +291,104 @@ public class FileMetadataRepository : IFileMetadataRepository
         command.Parameters.AddWithValue("@updatedAt", metadata.UpdatedAt.ToString("O"));
     }
     
+    public async Task<IEnumerable<FileMetadata>> GetByLocalFlagsAsync(string folderId, FileLocalFlags flags)
+    {
+        // Query files where local_flags has the specified flag bits set
+        const string sql = @"
+            SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
+                   is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
+                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+            FROM file_metadata
+            WHERE folder_id = @folderId AND (local_flags & @flags) = @flags";
+
+        using var command = _getConnection().CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@folderId", folderId);
+        command.Parameters.AddWithValue("@flags", (int)flags);
+
+        var results = new List<FileMetadata>();
+        using var reader = await command.ExecuteReaderAsync();
+        while (await reader.ReadAsync())
+        {
+            results.Add(MapFromReader(reader));
+        }
+
+        return results;
+    }
+
+    public async Task<FileMetadata?> GetGlobalFileAsync(string folderId, string fileName)
+    {
+        // Get the global (remote) version of a file - the one without local modifications
+        // In Syncthing, this would be from a separate global files table
+        // For now, we look for the file from any device other than local
+        const string sql = @"
+            SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
+                   is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
+                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+            FROM file_metadata
+            WHERE folder_id = @folderId AND file_name = @fileName AND locally_changed = 0
+            ORDER BY sequence DESC
+            LIMIT 1";
+
+        using var command = _getConnection().CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@folderId", folderId);
+        command.Parameters.AddWithValue("@fileName", fileName);
+
+        using var reader = await command.ExecuteReaderAsync();
+        if (await reader.ReadAsync())
+        {
+            return MapFromReader(reader);
+        }
+
+        return null;
+    }
+
+    public async Task BatchUpsertAsync(IEnumerable<FileMetadata> files)
+    {
+        var connection = _getConnection();
+        using var transaction = connection.BeginTransaction();
+
+        try
+        {
+            foreach (var metadata in files)
+            {
+                const string sql = @"
+                    INSERT INTO file_metadata (
+                        folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
+                        is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
+                        block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                    ) VALUES (
+                        @folderId, @fileName, @size, @modifiedTime, @permissions, @isDeleted, @isInvalid,
+                        @isNoPermissions, @isSymlink, @symlinkTarget, @sequence, @versionVector,
+                        @blockHashes, @blockSize, @hash, @modifiedBy, @locallyChanged, @platformData, @updatedAt
+                    )
+                    ON CONFLICT(folder_id, file_name) DO UPDATE SET
+                        size = @size, modified_time = @modifiedTime, permissions = @permissions,
+                        is_deleted = @isDeleted, is_invalid = @isInvalid, is_no_permissions = @isNoPermissions,
+                        is_symlink = @isSymlink, symlink_target = @symlinkTarget, sequence = @sequence,
+                        version_vector = @versionVector, block_hashes = @blockHashes, block_size = @blockSize,
+                        hash = @hash, modified_by = @modifiedBy, locally_changed = @locallyChanged,
+                        platform_data = @platformData, updated_at = @updatedAt";
+
+                using var command = connection.CreateCommand();
+                command.CommandText = sql;
+                command.Transaction = transaction;
+                AddParameters(command, metadata);
+                await command.ExecuteNonQueryAsync();
+            }
+
+            transaction.Commit();
+            _logger.LogDebug("Batch upserted {Count} file metadata entries", files.Count());
+        }
+        catch (Exception ex)
+        {
+            transaction.Rollback();
+            _logger.LogError(ex, "Failed to batch upsert file metadata");
+            throw;
+        }
+    }
+
     public void Dispose()
     {
         // No resources to dispose for this implementation

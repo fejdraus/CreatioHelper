@@ -870,13 +870,11 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
 
         // Check if device is allowed to share this folder
-        // TEMPORARILY DISABLED FOR TESTING - TODO: Fix device ID detection
-        // if (!folder.Devices.Any(d => d.DeviceId == deviceId))
-        // {
-        //     _logger.LogWarning("Device {DeviceId} is not authorized for folder {FolderId}", deviceId, folderId);
-        //     return;
-        // }
-        _logger.LogInformation("Device {DeviceId} accessing folder {FolderId} (auth check disabled for testing)", deviceId, folderId);
+        if (!folder.Devices.Contains(deviceId))
+        {
+            _logger.LogWarning("Device {DeviceId} is not authorized for folder {FolderId}", deviceId, folderId);
+            return;
+        }
 
         _logger.LogInformation("Processing {FileCount} files from remote index for folder {FolderId}", 
             remoteFiles.Count, folderId);

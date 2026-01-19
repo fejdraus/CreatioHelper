@@ -1,4 +1,3 @@
-#pragma warning disable CS1998 // Async method lacks await (for interface implementation stubs)
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
@@ -126,14 +125,130 @@ public class SendOnlyFolderHandler : SyncFolderHandlerBase
 
         _logger.LogInformation("Starting override operation for SendOnly folder {FolderId}", folder.Id);
 
-        // TODO: Реализация принудительной перезаписи глобального состояния локальным
-        // Аналог Override в Syncthing:
-        // 1. Для каждого файла в need (нужного глобально, но отличающегося от локального)
-        // 2. Если локально нет файла - помечаем как удаленный в глобальном индексе
-        // 3. Если локально есть файл - объединяем версии и обновляем глобальный индекс
+        var filesToUpdate = new List<FileMetadata>();
+        int overrideCount = 0;
 
-        await Task.CompletedTask;
-        return true;
+        // 1. Получить все файлы которые отличаются от локальных (needed globally)
+        var neededFiles = await _database.FileMetadata.GetNeededFilesAsync(folder.Id);
+
+        foreach (var neededFile in neededFiles)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            // Получаем локальную версию файла
+            var localFile = await _database.FileMetadata.GetAsync(folder.Id, neededFile.FileName);
+
+            // Пропускаем файлы в плохом состоянии (ignored, unsupported, etc.)
+            if (localFile != null && localFile.IsInvalid)
+            {
+                _logger.LogDebug("Override: Skipping invalid file {FileName}", neededFile.FileName);
+                continue;
+            }
+
+            if (localFile == null || localFile.FileName != neededFile.FileName)
+            {
+                // Файл отсутствует локально - помечаем как удаленный в глобальном индексе
+                _logger.LogDebug("Override: Marking {FileName} as deleted (not present locally)",
+                    neededFile.FileName);
+
+                neededFile.IsDeleted = true;
+                neededFile.ModifiedBy = GetLocalDeviceId();
+                neededFile.ModifiedTime = DateTime.UtcNow;
+                neededFile.Sequence = 0;
+                filesToUpdate.Add(neededFile);
+                overrideCount++;
+            }
+            else
+            {
+                // Файл существует локально - используем нашу версию
+                _logger.LogDebug("Override: Replacing global version of {FileName} with local",
+                    neededFile.FileName);
+
+                // Объединяем версии (merge) и обновляем
+                var mergedVersion = MergeVersionVectors(localFile.VersionVector, neededFile.VersionVector);
+                localFile.VersionVector = IncrementVersion(mergedVersion, GetLocalDeviceId());
+                localFile.Sequence = 0;
+                localFile.UpdatedAt = DateTime.UtcNow;
+                filesToUpdate.Add(localFile);
+                overrideCount++;
+            }
+        }
+
+        // 2. Batch обновление базы данных
+        if (filesToUpdate.Count > 0)
+        {
+            await _database.FileMetadata.BatchUpsertAsync(filesToUpdate);
+        }
+
+        _logger.LogInformation("Override operation completed for folder {FolderId}, overrode {Count} files",
+            folder.Id, overrideCount);
+
+        return overrideCount > 0;
+    }
+
+    /// <summary>
+    /// Получить локальный Device ID
+    /// </summary>
+    private string GetLocalDeviceId()
+    {
+        // TODO: Получить реальный локальный device ID из конфигурации
+        return "local";
+    }
+
+    /// <summary>
+    /// Объединить два вектора версий
+    /// </summary>
+    private string MergeVersionVectors(string v1, string v2)
+    {
+        // Простая реализация - берем максимальную версию
+        // В реальности нужно объединять компоненты вектора
+        if (string.IsNullOrEmpty(v1)) return v2;
+        if (string.IsNullOrEmpty(v2)) return v1;
+
+        // Парсим версии и объединяем
+        // Формат: "device1:seq1,device2:seq2,..."
+        var result = new Dictionary<string, long>();
+
+        foreach (var part in (v1 + "," + v2).Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var kv = part.Split(':');
+            if (kv.Length == 2 && long.TryParse(kv[1], out var seq))
+            {
+                var device = kv[0];
+                if (!result.ContainsKey(device) || result[device] < seq)
+                {
+                    result[device] = seq;
+                }
+            }
+        }
+
+        return string.Join(",", result.Select(kv => $"{kv.Key}:{kv.Value}"));
+    }
+
+    /// <summary>
+    /// Инкрементировать версию для устройства
+    /// </summary>
+    private string IncrementVersion(string version, string deviceId)
+    {
+        var parts = new Dictionary<string, long>();
+
+        if (!string.IsNullOrEmpty(version))
+        {
+            foreach (var part in version.Split(',', StringSplitOptions.RemoveEmptyEntries))
+            {
+                var kv = part.Split(':');
+                if (kv.Length == 2 && long.TryParse(kv[1], out var seq))
+                {
+                    parts[kv[0]] = seq;
+                }
+            }
+        }
+
+        // Инкрементируем версию для нашего устройства
+        parts[deviceId] = parts.GetValueOrDefault(deviceId, 0) + 1;
+
+        return string.Join(",", parts.Select(kv => $"{kv.Key}:{kv.Value}"));
     }
 
     public override bool CanApplyFileChange(SyncFolder folder, FileMetadata file, bool isIncoming)
