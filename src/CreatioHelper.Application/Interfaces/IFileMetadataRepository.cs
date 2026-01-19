@@ -61,4 +61,19 @@ public interface IFileMetadataRepository : IDisposable
     /// Mark file as locally changed with new sequence number
     /// </summary>
     Task MarkLocallyChangedAsync(string folderId, string fileName, long sequence);
+
+    /// <summary>
+    /// Get files with specific local flags (e.g., ReceiveOnly changed files)
+    /// </summary>
+    Task<IEnumerable<FileMetadata>> GetByLocalFlagsAsync(string folderId, FileLocalFlags flags);
+
+    /// <summary>
+    /// Get global file version (from remote devices)
+    /// </summary>
+    Task<FileMetadata?> GetGlobalFileAsync(string folderId, string fileName);
+
+    /// <summary>
+    /// Batch update multiple file metadata entries
+    /// </summary>
+    Task BatchUpsertAsync(IEnumerable<FileMetadata> files);
 }

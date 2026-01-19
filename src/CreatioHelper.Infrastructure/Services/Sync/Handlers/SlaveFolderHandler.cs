@@ -115,14 +115,54 @@ public class SlaveFolderHandler : ReceiveOnlyFolderHandler
     {
         _logger.LogDebug("Slave folder performing automatic revert of local changes for {FolderId}", folder.Id);
 
-        // TODO: Найти все файлы с флагом ReceiveOnly или локальными изменениями
-        // TODO: Автоматически откатить их к глобальному состоянию
+        // Получаем файлы с локальными изменениями (флаг ReceiveOnly или LocallyChanged)
+        var receiveOnlyFiles = await _database.FileMetadata.GetByLocalFlagsAsync(
+            folder.Id, FileLocalFlags.ReceiveOnly);
 
-        await Task.CompletedTask;
+        if (receiveOnlyFiles.Any())
+        {
+            _logger.LogInformation("Slave folder auto-reverting {Count} files with local changes",
+                receiveOnlyFiles.Count());
+
+            // Используем базовый метод Revert из ReceiveOnlyFolderHandler
+            await RevertAsync(folder, cancellationToken);
+        }
     }
 
     /// <summary>
     /// Проверить, есть ли неавторизованные локальные изменения
+    /// </summary>
+    private async Task<bool> HasUnauthorizedLocalChangesAsync(FileMetadata localFile)
+    {
+        // В Slave режиме любые локальные изменения считаются неавторизованными
+        if (localFile.LocalFlags.HasFlag(FileLocalFlags.ReceiveOnly))
+            return true;
+
+        // Сравниваем с глобальной версией файла
+        var globalFile = await _database.FileMetadata.GetGlobalFileAsync(localFile.FolderId, localFile.FileName);
+
+        if (globalFile == null)
+        {
+            // Файл существует только локально - это неавторизованное изменение
+            return !localFile.IsDeleted;
+        }
+
+        // Сравниваем хэши
+        if (localFile.Hash != null && globalFile.Hash != null)
+        {
+            if (!localFile.Hash.SequenceEqual(globalFile.Hash))
+                return true;
+        }
+
+        // Сравниваем размер
+        if (localFile.Size != globalFile.Size)
+            return true;
+
+        return false;
+    }
+
+    /// <summary>
+    /// Синхронная проверка неавторизованных изменений (для использования в цикле)
     /// </summary>
     private bool HasUnauthorizedLocalChanges(FileMetadata localFile)
     {
@@ -130,10 +170,11 @@ public class SlaveFolderHandler : ReceiveOnlyFolderHandler
         if (localFile.LocalFlags.HasFlag(FileLocalFlags.ReceiveOnly))
             return true;
 
-        // TODO: Сравнить с глобальной версией файла
-        // Если файл изменен локально, но не должен был изменяться в slave папке
-        
-        return !localFile.IsDeleted && localFile.Hash != null && localFile.Hash.Length > 0;
+        // Базовая проверка - если файл помечен как локально измененный
+        if (localFile.LocallyChanged)
+            return true;
+
+        return false;
     }
 
     /// <summary>
@@ -143,13 +184,46 @@ public class SlaveFolderHandler : ReceiveOnlyFolderHandler
     {
         _logger.LogInformation("Slave folder forcing sync with masters for {FolderId}", folder.Id);
 
-        // TODO: Найти все устройства с Master режимом для этой папки
-        // TODO: Запросить полный индекс у всех мастеров
-        // TODO: Принудительно принять все изменения от мастеров
-        // TODO: Откатить все локальные изменения
+        int syncedDevices = 0;
 
-        await Task.CompletedTask;
-        return true;
+        // 1. Найти все устройства с доступом к этой папке (потенциальные мастера)
+        foreach (var deviceId in folder.Devices)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            try
+            {
+                _logger.LogDebug("Requesting full index from device {DeviceId} for folder {FolderId}",
+                    deviceId, folder.Id);
+
+                // 2. Запросить полный индекс у устройства через протокол
+                var remoteIndex = await _protocol.RequestIndexAsync(deviceId, folder.Id);
+
+                if (remoteIndex != null && remoteIndex.Any())
+                {
+                    _logger.LogInformation("Received {Count} files from master device {DeviceId}",
+                        remoteIndex.Count(), deviceId);
+
+                    // 3. Конвертируем SyncFileInfo в FileMetadata и принудительно принимаем все изменения
+                    var remoteFiles = remoteIndex.Select(f => f.ToFileMetadata());
+                    await base.PullAsync(folder, remoteFiles, cancellationToken);
+                    syncedDevices++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to sync with device {DeviceId}", deviceId);
+            }
+        }
+
+        // 4. Откатить все оставшиеся локальные изменения
+        await RevertAsync(folder, cancellationToken);
+
+        _logger.LogInformation("Force sync completed for folder {FolderId}, synced with {Count} devices",
+            folder.Id, syncedDevices);
+
+        return syncedDevices > 0;
     }
 
     /// <summary>
@@ -158,7 +232,7 @@ public class SlaveFolderHandler : ReceiveOnlyFolderHandler
     public bool IsLocalChangeAllowed(SyncFolder folder, FileMetadata file)
     {
         // В Slave режиме локальные изменения не разрешены
-        _logger.LogWarning("Local change attempted on Slave folder {FolderId} for file {FileName} - blocked", 
+        _logger.LogWarning("Local change attempted on Slave folder {FolderId} for file {FileName} - blocked",
             folder.Id, file.FileName);
         return false;
     }
@@ -170,11 +244,51 @@ public class SlaveFolderHandler : ReceiveOnlyFolderHandler
     {
         _logger.LogDebug("Validating Slave folder integrity for {FolderId}", folder.Id);
 
-        // TODO: Проверить, что нет файлов с локальными изменениями
-        // TODO: Проверить, что все файлы соответствуют глобальному состоянию
-        // TODO: Автоматически исправить любые расхождения
+        var issues = new List<string>();
 
-        await Task.CompletedTask;
-        return true;
+        // 1. Проверить, что нет файлов с локальными изменениями
+        var receiveOnlyFiles = await _database.FileMetadata.GetByLocalFlagsAsync(
+            folder.Id, FileLocalFlags.ReceiveOnly);
+
+        if (receiveOnlyFiles.Any())
+        {
+            issues.Add($"Found {receiveOnlyFiles.Count()} files with unauthorized local changes");
+        }
+
+        // 2. Проверить все локальные файлы на соответствие глобальному состоянию
+        var allLocalFiles = await _database.FileMetadata.GetAllAsync(folder.Id);
+        int mismatchCount = 0;
+
+        foreach (var localFile in allLocalFiles)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            if (await HasUnauthorizedLocalChangesAsync(localFile))
+            {
+                mismatchCount++;
+            }
+        }
+
+        if (mismatchCount > 0)
+        {
+            issues.Add($"Found {mismatchCount} files not matching global state");
+        }
+
+        // 3. Автоматически исправить расхождения если есть
+        if (issues.Count > 0)
+        {
+            _logger.LogWarning("Slave folder {FolderId} has integrity issues: {Issues}",
+                folder.Id, string.Join("; ", issues));
+
+            // Автоматический откат
+            await RevertAsync(folder, cancellationToken);
+
+            _logger.LogInformation("Slave folder {FolderId} integrity restored via automatic revert", folder.Id);
+            return false; // Были проблемы, но исправлены
+        }
+
+        _logger.LogDebug("Slave folder {FolderId} integrity validated successfully", folder.Id);
+        return true; // Целостность в порядке
     }
 }
