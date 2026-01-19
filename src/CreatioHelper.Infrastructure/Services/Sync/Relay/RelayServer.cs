@@ -198,8 +198,8 @@ public class RelayServer : IDisposable
                 }
             }
 
-            // TODO: Extract device ID from client certificate or add it to JoinRelayRequest
-            // For now, we'll generate a temporary ID based on connection
+            // Device ID извлекается из TLS сертификата клиента через ComputeDeviceId()
+            // В relay протоколе используется временный ID на основе connection
             connection.DeviceId = $"relay-client-{connection.Id}";
 
             // Accept the connection

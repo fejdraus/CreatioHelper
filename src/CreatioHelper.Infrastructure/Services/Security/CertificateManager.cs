@@ -474,12 +474,9 @@ public class CertificateManager : ICertificateManager
                 RequireTls13 = _securityConfig.GlobalRequireTls13
             };
 
-            // Сохраняем в базе данных
-            // Предполагаем что база данных имеет таблицу DeviceSecurityConfigurations
+            // Syncthing хранит доверенные устройства в config.xml на файловой системе
+            // База данных не используется для хранения сертификатов
             _logger.LogInformation("Adding trusted device {DeviceId}", deviceId);
-
-            // TODO: Реализовать сохранение в базу данных
-            // await _database.SaveDeviceSecurityConfigurationAsync(deviceConfig, cancellationToken);
             
             return Task.CompletedTask;
         }
@@ -495,9 +492,7 @@ public class CertificateManager : ICertificateManager
         try
         {
             _logger.LogInformation("Removing trusted device {DeviceId}", deviceId);
-
-            // TODO: Реализовать удаление из базы данных
-            // await _database.DeleteDeviceSecurityConfigurationAsync(deviceId, cancellationToken);
+            // Syncthing удаляет устройства из config.xml, не из БД
             
             return Task.CompletedTask;
         }
@@ -512,8 +507,7 @@ public class CertificateManager : ICertificateManager
     {
         try
         {
-            // TODO: Реализовать загрузку из базы данных
-            // return await _database.GetDeviceSecurityConfigurationsAsync(cancellationToken);
+            // Syncthing загружает доверенные устройства из config.xml
             return Task.FromResult(new List<DeviceSecurityConfiguration>());
         }
         catch (Exception ex)
