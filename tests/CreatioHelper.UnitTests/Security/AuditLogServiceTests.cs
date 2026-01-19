@@ -24,9 +24,43 @@ public class AuditLogServiceTests : IDisposable
     public void Dispose()
     {
         _service?.Dispose();
-        if (Directory.Exists(_tempLogDir))
+        _service = null!;
+
+        // Allow time for file handles to be released
+        TryDeleteDirectory(_tempLogDir);
+    }
+
+    private static void TryDeleteDirectory(string directoryPath)
+    {
+        if (!Directory.Exists(directoryPath))
+            return;
+
+        for (int i = 0; i < 5; i++)
         {
-            Directory.Delete(_tempLogDir, recursive: true);
+            try
+            {
+                // Force garbage collection to release file handles
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+
+                Directory.Delete(directoryPath, recursive: true);
+                return;
+            }
+            catch (IOException) when (i < 4)
+            {
+                Thread.Sleep(100 * (i + 1));
+            }
+            catch (UnauthorizedAccessException) when (i < 4)
+            {
+                Thread.Sleep(100 * (i + 1));
+            }
+            catch
+            {
+                // On final attempt, silently ignore cleanup failures
+                // Test temp directories will be cleaned up by OS eventually
+                return;
+            }
         }
     }
 
