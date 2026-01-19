@@ -468,13 +468,12 @@ public class ReceivedFileEncryptionService : IReceivedFileEncryptionService
 
         // Derive key from password using PBKDF2
         var salt = System.Text.Encoding.UTF8.GetBytes(folderId); // Use folderId as salt
-        using var pbkdf2 = new Rfc2898DeriveBytes(
+        var key = Rfc2898DeriveBytes.Pbkdf2(
             password,
             salt,
             _config.KeyDerivationIterations,
-            HashAlgorithmName.SHA256);
-
-        var key = pbkdf2.GetBytes(_config.KeySizeBits / 8);
+            HashAlgorithmName.SHA256,
+            _config.KeySizeBits / 8);
         _folderKeys[folderId] = key;
 
         _logger.LogInformation("Set encryption password for folder {FolderId}", folderId);

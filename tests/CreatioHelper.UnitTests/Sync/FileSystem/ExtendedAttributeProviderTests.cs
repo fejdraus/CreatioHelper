@@ -6,6 +6,7 @@ using Moq;
 
 namespace CreatioHelper.UnitTests.Sync.FileSystem;
 
+[SupportedOSPlatform("windows")]
 public class ExtendedAttributeProviderTests : IDisposable
 {
     private readonly Mock<ILogger<WindowsExtendedAttributeProvider>> _loggerMock;
