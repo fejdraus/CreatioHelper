@@ -336,8 +336,7 @@ public class PauseCoordinationServiceTests
     public void RegisterPauseCallback_AddsCallback()
     {
         // Arrange
-        var callbackCalled = false;
-        Func<CancellationToken, Task> callback = ct => { callbackCalled = true; return Task.CompletedTask; };
+        Func<CancellationToken, Task> callback = _ => Task.CompletedTask;
 
         // Act
         _service.RegisterPauseCallback("test-callback", callback);
@@ -389,11 +388,9 @@ public class PauseCoordinationServiceTests
     public async Task PauseDeviceAsync_DoesNotWaitForCallbacksWhenNotGraceful()
     {
         // Arrange
-        var callbackExecuted = false;
         _service.RegisterPauseCallback("device-1-transfer", async ct =>
         {
             await Task.Delay(1000, ct); // Long delay
-            callbackExecuted = true;
         });
 
         var device = new SyncDevice("device-1", "Test") { Paused = false };
