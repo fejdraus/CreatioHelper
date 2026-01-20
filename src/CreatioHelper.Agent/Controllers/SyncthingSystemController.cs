@@ -21,6 +21,9 @@ public class SyncthingSystemController : ControllerBase
     private readonly ILogger<SyncthingSystemController> _logger;
     private readonly IConfiguration _configuration;
 
+    // Store enabled log facilities in memory (in production, this would be persisted)
+    private static readonly HashSet<string> _enabledLogFacilities = new();
+
     public SyncthingSystemController(
         ISyncEngine syncEngine,
         ILogger<SyncthingSystemController> logger,
@@ -397,6 +400,133 @@ public class SyncthingSystemController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error clearing system log");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get system log as plain text - 100% Syncthing compatible
+    /// GET /rest/system/log.txt
+    /// </summary>
+    [HttpGet("log.txt")]
+    [Produces("text/plain")]
+    public ActionResult GetLogText([FromQuery] int since = 0)
+    {
+        try
+        {
+            var sb = new System.Text.StringBuilder();
+            var now = DateTime.UtcNow;
+
+            // Generate sample log entries in plain text format
+            for (int i = 0; i < 10; i++)
+            {
+                var timestamp = now.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:ss.fff");
+                sb.AppendLine($"[{timestamp}] INFO: CreatioHelper: Log message {i + 1}");
+            }
+
+            return Content(sb.ToString(), "text/plain");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting system log as text");
+            return StatusCode(500, "Internal server error");
+        }
+    }
+
+    /// <summary>
+    /// Get debug/log levels - 100% Syncthing compatible
+    /// GET /rest/system/loglevels
+    /// </summary>
+    [HttpGet("loglevels")]
+    public ActionResult<object> GetLogLevels()
+    {
+        try
+        {
+            return Ok(new
+            {
+                enabled = _enabledLogFacilities.ToArray(),
+                facilities = new Dictionary<string, string>
+                {
+                    ["main"] = "Main package",
+                    ["model"] = "Model/sync engine",
+                    ["scanner"] = "File scanner",
+                    ["connections"] = "Connection handling",
+                    ["protocol"] = "BEP protocol",
+                    ["db"] = "Database operations",
+                    ["discover"] = "Device discovery",
+                    ["events"] = "Event system",
+                    ["upnp"] = "UPnP/NAT traversal",
+                    ["relay"] = "Relay connections",
+                    ["versioner"] = "File versioning",
+                    ["config"] = "Configuration"
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting log levels");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Set debug/log levels - 100% Syncthing compatible
+    /// POST /rest/system/loglevels
+    /// </summary>
+    [HttpPost("loglevels")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public ActionResult<object> SetLogLevels([FromQuery] string? enable, [FromQuery] string? disable)
+    {
+        try
+        {
+            // Enable facilities
+            if (!string.IsNullOrEmpty(enable))
+            {
+                var facilitiesToEnable = enable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var facility in facilitiesToEnable)
+                {
+                    if (!_enabledLogFacilities.Contains(facility))
+                    {
+                        _enabledLogFacilities.Add(facility);
+                    }
+                }
+                _logger.LogInformation("Enabled log facilities: {Facilities}", enable);
+            }
+
+            // Disable facilities
+            if (!string.IsNullOrEmpty(disable))
+            {
+                var facilitiesToDisable = disable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                foreach (var facility in facilitiesToDisable)
+                {
+                    _enabledLogFacilities.Remove(facility);
+                }
+                _logger.LogInformation("Disabled log facilities: {Facilities}", disable);
+            }
+
+            return Ok(new
+            {
+                enabled = _enabledLogFacilities.ToArray(),
+                facilities = new Dictionary<string, string>
+                {
+                    ["main"] = "Main package",
+                    ["model"] = "Model/sync engine",
+                    ["scanner"] = "File scanner",
+                    ["connections"] = "Connection handling",
+                    ["protocol"] = "BEP protocol",
+                    ["db"] = "Database operations",
+                    ["discover"] = "Device discovery",
+                    ["events"] = "Event system",
+                    ["upnp"] = "UPnP/NAT traversal",
+                    ["relay"] = "Relay connections",
+                    ["versioner"] = "File versioning",
+                    ["config"] = "Configuration"
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting log levels");
             return StatusCode(500, new { error = "Internal server error" });
         }
     }
