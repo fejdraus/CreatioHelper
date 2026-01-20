@@ -8,6 +8,7 @@ using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Network;
 using CreatioHelper.Infrastructure.Services.Network.UPnP;
+using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
@@ -99,7 +100,10 @@ public static class ServiceCollectionExtensions
             var pmpService = provider.GetService<IPmpService>();
             return new CombinedNatService(logger, config, upnpService, pmpService);
         });
-        
+
+        // Pending devices/folders service for Syncthing compatibility
+        services.AddSingleton<IPendingService, PendingService>();
+
         return services;
     }
 }
