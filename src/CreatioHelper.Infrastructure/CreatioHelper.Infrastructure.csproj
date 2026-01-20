@@ -33,6 +33,9 @@
 
     <!-- Prometheus metrics for monitoring -->
     <PackageReference Include="prometheus-net" Version="8.2.1" />
+
+    <!-- GeoIP for relay server selection optimization -->
+    <PackageReference Include="MaxMind.GeoIP2" Version="5.2.0" />
   </ItemGroup>
 
   <ItemGroup>
