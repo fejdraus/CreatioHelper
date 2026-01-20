@@ -25,6 +25,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Moq" Version="4.20.72" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.2" />
   </ItemGroup>
   <ItemGroup Condition="'$(OS)' != 'Windows_NT'">
     <Compile Remove="RemoteIisManagerTests.cs" />
