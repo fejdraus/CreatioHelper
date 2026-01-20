@@ -6,7 +6,7 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Versioning;
 
 /// <summary>
 /// Factory for creating versioner instances based on configuration.
-/// Supports Simple, Staggered, and Trashcan versioning strategies.
+/// Supports Simple, Staggered, Trashcan, and External versioning strategies.
 /// Compatible with Syncthing's versioning system.
 /// </summary>
 public class VersionerFactory : IVersionerFactory
@@ -17,7 +17,8 @@ public class VersionerFactory : IVersionerFactory
     {
         "simple",
         "staggered",
-        "trashcan"
+        "trashcan",
+        "external"
     };
 
     public VersionerFactory(ILoggerFactory loggerFactory)
@@ -50,6 +51,7 @@ public class VersionerFactory : IVersionerFactory
             "simple" => CreateSimpleVersioner(folderPath, config, versionsPath, cleanupIntervalS),
             "staggered" => CreateStaggeredVersioner(folderPath, config, versionsPath, cleanupIntervalS),
             "trashcan" => CreateTrashcanVersioner(folderPath, config, versionsPath, cleanupIntervalS),
+            "external" => CreateExternalVersioner(folderPath, config, versionsPath, cleanupIntervalS),
             _ => throw new ArgumentException($"Unsupported versioner type: {config.Type}", nameof(config))
         };
     }
@@ -75,6 +77,7 @@ public class VersionerFactory : IVersionerFactory
             "simple" => ValidateSimpleConfig(config),
             "staggered" => ValidateStaggeredConfig(config),
             "trashcan" => ValidateTrashcanConfig(config),
+            "external" => ValidateExternalConfig(config),
             _ => false
         };
     }
@@ -131,11 +134,37 @@ public class VersionerFactory : IVersionerFactory
         return cleanoutDays >= 0;
     }
 
+    private ExternalVersioner CreateExternalVersioner(string folderPath, VersioningConfiguration config, string? versionsPath, int cleanupIntervalS)
+    {
+        var command = GetStringParam(config.Params, "command", string.Empty);
+        if (string.IsNullOrEmpty(command))
+        {
+            throw new ArgumentException("External versioner requires 'command' parameter", nameof(config));
+        }
+
+        var logger = _loggerFactory.CreateLogger<ExternalVersioner>();
+        return new ExternalVersioner(logger, folderPath, command, versionsPath, cleanupIntervalS);
+    }
+
+    private static bool ValidateExternalConfig(VersioningConfiguration config)
+    {
+        var command = GetStringParam(config.Params, "command", string.Empty);
+        return !string.IsNullOrEmpty(command);
+    }
+
     private static int GetIntParam(Dictionary<string, string> @params, string key, int defaultValue)
     {
         if (@params == null || !@params.TryGetValue(key, out var value))
             return defaultValue;
 
         return int.TryParse(value, out var result) ? result : defaultValue;
+    }
+
+    private static string GetStringParam(Dictionary<string, string> @params, string key, string defaultValue)
+    {
+        if (@params == null || !@params.TryGetValue(key, out var value))
+            return defaultValue;
+
+        return value ?? defaultValue;
     }
 }
