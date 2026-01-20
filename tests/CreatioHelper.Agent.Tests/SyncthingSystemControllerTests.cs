@@ -306,6 +306,107 @@ public class SyncthingSystemControllerTests
 
     #endregion
 
+    #region Log Text Tests
+
+    [Fact]
+    public void GetLogText_ReturnsPlainTextContent()
+    {
+        var result = _controller.GetLogText();
+
+        var content = Assert.IsType<ContentResult>(result);
+        Assert.Equal("text/plain", content.ContentType);
+        Assert.NotNull(content.Content);
+        Assert.Contains("INFO:", content.Content);
+    }
+
+    [Fact]
+    public void GetLogText_ReturnsMultipleLogLines()
+    {
+        var result = _controller.GetLogText();
+
+        var content = Assert.IsType<ContentResult>(result);
+        var lines = content.Content!.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.True(lines.Length > 0);
+    }
+
+    [Fact]
+    public void GetLogText_IncludesTimestamps()
+    {
+        var result = _controller.GetLogText();
+
+        var content = Assert.IsType<ContentResult>(result);
+        Assert.Matches(@"\[\d{4}-\d{2}-\d{2}", content.Content!);
+    }
+
+    #endregion
+
+    #region Log Levels Tests
+
+    [Fact]
+    public void GetLogLevels_ReturnsLogLevelsObject()
+    {
+        var result = _controller.GetLogLevels();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void GetLogLevels_ContainsFacilities()
+    {
+        var result = _controller.GetLogLevels();
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var value = ok.Value;
+        Assert.NotNull(value);
+
+        // Check that the object has facilities property
+        var facilitiesProperty = value.GetType().GetProperty("facilities");
+        Assert.NotNull(facilitiesProperty);
+    }
+
+    [Fact]
+    public void SetLogLevels_ReturnsOk_WhenEnablingFacility()
+    {
+        var result = _controller.SetLogLevels("main,model", null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void SetLogLevels_ReturnsOk_WhenDisablingFacility()
+    {
+        // First enable some facilities
+        _controller.SetLogLevels("main,model", null);
+
+        // Then disable them
+        var result = _controller.SetLogLevels(null, "main");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void SetLogLevels_ReturnsOk_WhenBothEnableAndDisable()
+    {
+        var result = _controller.SetLogLevels("protocol", "model");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void SetLogLevels_ReturnsOk_WithNoParameters()
+    {
+        var result = _controller.SetLogLevels(null, null);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    #endregion
+
     private static SyncDevice CreateTestDevice(string id, string name, List<string>? addresses = null)
     {
         var device = new SyncDevice(id, name);
