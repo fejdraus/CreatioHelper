@@ -232,6 +232,8 @@ namespace CreatioHelper
                 server.PoolName = updated.PoolName;
                 server.SyncthingDeviceId = updated.SyncthingDeviceId;
                 server.SyncthingFolderIds = new List<string>(updated.SyncthingFolderIds);
+                // Clean up folder sync states that are no longer in the folder list
+                server.PruneStaleFolderStates();
             }
         }
 

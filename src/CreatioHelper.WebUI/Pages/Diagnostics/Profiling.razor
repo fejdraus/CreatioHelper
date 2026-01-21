@@ -235,21 +235,21 @@
     private int _goroutines;
     private TimeSpan _uptime;
 
-    // Heap stats
-    private long _heapAlloc;
-    private long _heapInUse;
-    private long _heapObjects;
-    private long _stackInUse;
-    private int _gcCollections;
-    private double _gcPauseTotal;
+    // Heap stats (initialized for CS0649)
+    private long _heapAlloc = 0;
+    private long _heapInUse = 0;
+    private long _heapObjects = 0;
+    private long _stackInUse = 0;
+    private int _gcCollections = 0;
+    private double _gcPauseTotal = 0;
 
-    // I/O stats
-    private int _filesOpen;
-    private int _networkConnections;
-    private long _totalRead;
-    private long _totalWritten;
-    private long _readRate;
-    private long _writeRate;
+    // I/O stats (initialized for CS0649)
+    private int _filesOpen = 0;
+    private int _networkConnections = 0;
+    private long _totalRead = 0;
+    private long _totalWritten = 0;
+    private long _readRate = 0;
+    private long _writeRate = 0;
 
     // History for charts
     private List<double> _cpuHistory = new();

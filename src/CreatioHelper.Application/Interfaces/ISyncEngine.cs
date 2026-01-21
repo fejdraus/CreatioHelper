@@ -70,17 +70,17 @@ public class SyncStatus
     public long GlobalBytes { get; set; }
     public long LocalBytes { get; set; }
     public long NeedBytes { get; set; }
-    public int GlobalFiles { get; set; }
-    public int LocalFiles { get; set; }
-    public int NeedFiles { get; set; }
-    public int NeedDeletes { get; set; }
+    public long GlobalFiles { get; set; }
+    public long LocalFiles { get; set; }
+    public long NeedFiles { get; set; }
+    public long NeedDeletes { get; set; }
     public DateTime LastScan { get; set; }
     public DateTime LastSync { get; set; }
     public List<string> Errors { get; set; } = new();
     
     // Additional properties for Syncthing compatibility
-    public int TotalFiles { get; set; }
-    public int TotalDirectories { get; set; }
+    public long TotalFiles { get; set; }
+    public long TotalDirectories { get; set; }
     public long TotalBytes { get; set; }
     public int LocalDirectories { get; set; }
     public int OutOfSyncFiles { get; set; }
@@ -200,17 +200,17 @@ public class FolderCompletionStatus
     /// <summary>
     /// Total global items (files + directories)
     /// </summary>
-    public int GlobalItems { get; set; }
+    public long GlobalItems { get; set; }
 
     /// <summary>
     /// Items needed to complete sync
     /// </summary>
-    public int NeedItems { get; set; }
+    public long NeedItems { get; set; }
 
     /// <summary>
     /// Deletes needed
     /// </summary>
-    public int NeedDeletes { get; set; }
+    public long NeedDeletes { get; set; }
 
     /// <summary>
     /// Current sequence number

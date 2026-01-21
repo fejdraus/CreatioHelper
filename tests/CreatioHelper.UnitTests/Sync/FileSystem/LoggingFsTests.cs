@@ -94,7 +94,7 @@ public class LoggingFsTests : IDisposable
         {
             Assert.NotNull(stream);
             var buffer = new byte[1024];
-            stream!.Read(buffer, 0, buffer.Length);
+            _ = stream!.Read(buffer, 0, buffer.Length);
         }
 
         // Assert

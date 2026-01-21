@@ -106,13 +106,13 @@ public class FolderCompletionEventData
     /// Total global items
     /// </summary>
     [JsonPropertyName("globalItems")]
-    public int GlobalItems { get; set; }
+    public long GlobalItems { get; set; }
 
     /// <summary>
     /// Items still needed to sync
     /// </summary>
     [JsonPropertyName("needItems")]
-    public int NeedItems { get; set; }
+    public long NeedItems { get; set; }
 }
 
 /// <summary>

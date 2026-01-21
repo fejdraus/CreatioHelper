@@ -236,7 +236,8 @@ public class ConfigXmlTests
         var versioning = config!.Folders[0].Versioning;
 
         // Assert
-        Assert.Equal(3600, versioning.CleanupIntervalS);
+        Assert.NotNull(versioning);
+        Assert.Equal(3600, versioning!.CleanupIntervalS);
         Assert.Equal("", versioning.FsPath);
         Assert.Equal("basic", versioning.FsType);
     }

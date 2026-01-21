@@ -23,7 +23,7 @@ public class FolderSyncState
     /// <summary>
     /// Items (files) remaining to sync
     /// </summary>
-    public int NeedItems { get; set; } = 0;
+    public long NeedItems { get; set; } = 0;
 
     /// <summary>
     /// Current folder state (idle, scanning, syncing, error)

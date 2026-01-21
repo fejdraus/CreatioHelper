@@ -81,7 +81,7 @@ public class ConfigXmlFolder
     public ConfigXmlMinDiskFree MinDiskFree { get; set; } = new();
 
     [XmlElement("versioning")]
-    public ConfigXmlVersioning Versioning { get; set; } = new();
+    public ConfigXmlVersioning? Versioning { get; set; }
 
     [XmlElement("copiers")]
     public int Copiers { get; set; } = 0;

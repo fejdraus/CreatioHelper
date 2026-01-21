@@ -14,9 +14,9 @@
         <MudItem xs="12" md="6">
             <MudText Typo="Typo.subtitle2" Class="mb-2">Theme</MudText>
             <MudToggleGroup T="string" @bind-Value="_selectedTheme" SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary">
-                <MudToggleItem Value="@("light")" Icon="@Icons.Material.Filled.LightMode" Text="Light" />
-                <MudToggleItem Value="@("dark")" Icon="@Icons.Material.Filled.DarkMode" Text="Dark" />
-                <MudToggleItem Value="@("system")" Icon="@Icons.Material.Filled.SettingsBrightness" Text="System" />
+                <MudToggleItem Value="@("light")" UnselectedIcon="@Icons.Material.Filled.LightMode" SelectedIcon="@Icons.Material.Filled.LightMode" Text="Light" />
+                <MudToggleItem Value="@("dark")" UnselectedIcon="@Icons.Material.Filled.DarkMode" SelectedIcon="@Icons.Material.Filled.DarkMode" Text="Dark" />
+                <MudToggleItem Value="@("system")" UnselectedIcon="@Icons.Material.Filled.SettingsBrightness" SelectedIcon="@Icons.Material.Filled.SettingsBrightness" Text="System" />
             </MudToggleGroup>
         </MudItem>
         <MudItem xs="12" md="6">

@@ -23,6 +23,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     private readonly HttpClient _httpClient;
     private readonly IOutputWriter _output;
     private readonly string _apiUrl;
+    private readonly string? _apiKey;
 
     public SyncthingMonitorService(
         IHttpClientFactory httpClientFactory,
@@ -32,13 +33,21 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         _httpClient = httpClientFactory.CreateClient("Syncthing");
         _output = output;
-        _apiUrl = apiUrl;
+        _apiUrl = apiUrl.TrimEnd('/');
+        _apiKey = apiKey;
+    }
 
-        _httpClient.BaseAddress = new Uri(_apiUrl);
-        if (!string.IsNullOrEmpty(apiKey))
+    /// <summary>
+    /// Create an HttpRequestMessage with the API key header
+    /// </summary>
+    private HttpRequestMessage CreateRequest(HttpMethod method, string relativeUrl)
+    {
+        var request = new HttpRequestMessage(method, $"{_apiUrl}{relativeUrl}");
+        if (!string.IsNullOrEmpty(_apiKey))
         {
-            _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
+            request.Headers.Add("X-API-Key", _apiKey);
         }
+        return request;
     }
 
     /// <summary>
@@ -99,6 +108,9 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                         allFoldersCompleted = false;
                     }
                 }
+
+                // Clean up any stale folder states (folders that were removed from config)
+                server.PruneStaleFolderStates();
 
                 // Check if ALL folders completed
                 if (allFoldersCompleted && server.AreAllFoldersSynced())
@@ -187,7 +199,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
 
             // Check all folders
             double totalCompletion = 0;
-            int totalNeedItems = 0;
+            long totalNeedItems = 0;
             long totalNeedBytes = 0;
             bool anyPaused = false;
             bool anyNotSharing = false;
@@ -258,16 +270,11 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         try
         {
-            var url = $"/rest/config/folders/{Uri.EscapeDataString(folderId)}";
-            var jsonContent = new StringContent(
+            using var request = CreateRequest(HttpMethod.Patch, $"/rest/config/folders/{Uri.EscapeDataString(folderId)}");
+            request.Content = new StringContent(
                 "{\"paused\":true}",
                 System.Text.Encoding.UTF8,
                 "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Patch, url)
-            {
-                Content = jsonContent
-            };
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -290,16 +297,11 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         try
         {
-            var url = $"/rest/config/folders/{Uri.EscapeDataString(folderId)}";
-            var jsonContent = new StringContent(
+            using var request = CreateRequest(HttpMethod.Patch, $"/rest/config/folders/{Uri.EscapeDataString(folderId)}");
+            request.Content = new StringContent(
                 "{\"paused\":false}",
                 System.Text.Encoding.UTF8,
                 "application/json");
-
-            var request = new HttpRequestMessage(HttpMethod.Patch, url)
-            {
-                Content = jsonContent
-            };
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
@@ -322,8 +324,8 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         try
         {
-            var url = "/rest/system/connections";
-            var response = await _httpClient.GetAsync(url, cancellationToken);
+            using var request = CreateRequest(HttpMethod.Get, "/rest/system/connections");
+            var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -398,8 +400,9 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         string remoteDeviceId,
         CancellationToken cancellationToken)
     {
-        var url = $"/rest/db/completion?folder={Uri.EscapeDataString(folderId)}&device={Uri.EscapeDataString(remoteDeviceId)}";
-        var response = await _httpClient.GetAsync(url, cancellationToken);
+        using var request = CreateRequest(HttpMethod.Get,
+            $"/rest/db/completion?folder={Uri.EscapeDataString(folderId)}&device={Uri.EscapeDataString(remoteDeviceId)}");
+        var response = await _httpClient.SendAsync(request, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             var errorText = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -434,13 +437,13 @@ internal class SyncthingCompletionDto
     public long NeedBytes { get; set; }
 
     [JsonPropertyName("globalItems")]
-    public int GlobalItems { get; set; }
+    public long GlobalItems { get; set; }
 
     [JsonPropertyName("needItems")]
-    public int NeedItems { get; set; }
+    public long NeedItems { get; set; }
 
     [JsonPropertyName("needDeletes")]
-    public int NeedDeletes { get; set; }
+    public long NeedDeletes { get; set; }
 
     [JsonPropertyName("sequence")]
     public long Sequence { get; set; }

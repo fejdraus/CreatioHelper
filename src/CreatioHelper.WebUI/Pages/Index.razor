@@ -45,7 +45,7 @@
                          Color="Color.Secondary"
                          Size="Size.Large"
                          Class="mb-2" />
-                <div class="value">@_connectedDevices / @(State.Devices.Length - 1)</div>
+                <div class="value">@_connectedDevices / @Math.Max(0, State.Devices.Length - 1)</div>
                 <div class="label">Connected Devices</div>
             </MudCardContent>
         </MudCard>
