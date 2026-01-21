@@ -21,17 +21,7 @@ public interface ISyncDatabase : IDisposable
     /// Block information repository
     /// </summary>
     IBlockInfoRepository BlockInfo { get; }
-    
-    /// <summary>
-    /// Device information repository
-    /// </summary>
-    IDeviceInfoRepository DeviceInfo { get; }
-    
-    /// <summary>
-    /// Folder configuration repository
-    /// </summary>
-    IFolderConfigRepository FolderConfig { get; }
-    
+
     /// <summary>
     /// Global state repository for sequence numbers and vector clocks
     /// </summary>

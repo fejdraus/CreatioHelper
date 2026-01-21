@@ -20,8 +20,7 @@ namespace CreatioHelper.Infrastructure.Services.DeviceManagement;
 public class IntroducerService : IIntroducerService
 {
     private readonly ILogger<IntroducerService> _logger;
-    private readonly IDeviceInfoRepository _deviceRepository;
-    private readonly IFolderConfigRepository _folderRepository;
+    private readonly IConfigurationManager _configManager;
     private readonly IEventLogger _eventLogger;
     private readonly object _statsLock = new();
 
@@ -31,13 +30,11 @@ public class IntroducerService : IIntroducerService
 
     public IntroducerService(
         ILogger<IntroducerService> logger,
-        IDeviceInfoRepository deviceRepository,
-        IFolderConfigRepository folderRepository,
+        IConfigurationManager configManager,
         IEventLogger eventLogger)
     {
         _logger = logger;
-        _deviceRepository = deviceRepository;
-        _folderRepository = folderRepository;
+        _configManager = configManager;
         _eventLogger = eventLogger;
     }
 
@@ -53,7 +50,7 @@ public class IntroducerService : IIntroducerService
         try
         {
             // Verify the introducer device exists and is marked as introducer
-            var introducer = await _deviceRepository.GetAsync(introducerDeviceId);
+            var introducer = await _configManager.GetDeviceAsync(introducerDeviceId);
             if (introducer == null)
             {
                 result.Errors.Add($"Introducer device {introducerDeviceId} not found");
@@ -133,7 +130,7 @@ public class IntroducerService : IIntroducerService
         IntroductionResult result,
         CancellationToken cancellationToken)
     {
-        var existingDevice = await _deviceRepository.GetAsync(introduced.DeviceId);
+        var existingDevice = await _configManager.GetDeviceAsync(introduced.DeviceId);
 
         if (existingDevice != null)
         {
@@ -152,7 +149,7 @@ public class IntroducerService : IIntroducerService
 
             if (needsUpdate)
             {
-                await _deviceRepository.UpsertAsync(existingDevice);
+                await _configManager.UpsertDeviceAsync(existingDevice);
                 result.UpdatedDevices.Add(introduced.DeviceId);
                 result.ChangesMade = true;
 
@@ -183,7 +180,7 @@ public class IntroducerService : IIntroducerService
                 newDevice.AddAddress(addr);
             }
 
-            await _deviceRepository.UpsertAsync(newDevice);
+            await _configManager.UpsertDeviceAsync(newDevice);
             result.AddedDevices.Add(introduced.DeviceId);
             result.ChangesMade = true;
 
@@ -207,7 +204,7 @@ public class IntroducerService : IIntroducerService
         CancellationToken cancellationToken)
     {
         // Check if we have this folder
-        var folder = await _folderRepository.GetAsync(share.FolderId);
+        var folder = await _configManager.GetFolderAsync(share.FolderId);
         if (folder == null)
         {
             _logger.LogDebug("Folder {FolderId} not found locally, skipping folder share processing", share.FolderId);
@@ -228,7 +225,7 @@ public class IntroducerService : IIntroducerService
             if (introducedDevices.Any(d => d.DeviceId == deviceId) && !folder.Devices.Contains(deviceId))
             {
                 folder.AddDevice(deviceId);
-                await _folderRepository.UpsertAsync(folder);
+                await _configManager.UpsertFolderAsync(folder);
 
                 result.FolderShareChanges.Add(new FolderShareChange
                 {
@@ -247,14 +244,14 @@ public class IntroducerService : IIntroducerService
     /// <inheritdoc />
     public async Task SetIntroducerAsync(string deviceId, bool isIntroducer, CancellationToken cancellationToken = default)
     {
-        var device = await _deviceRepository.GetAsync(deviceId);
+        var device = await _configManager.GetDeviceAsync(deviceId);
         if (device == null)
         {
             throw new InvalidOperationException($"Device {deviceId} not found");
         }
 
         device.SetIntroducer(isIntroducer);
-        await _deviceRepository.UpsertAsync(device);
+        await _configManager.UpsertDeviceAsync(device);
 
         _logger.LogInformation("Device {DeviceId} ({DeviceName}) introducer status set to {IsIntroducer}",
             deviceId, device.DeviceName, isIntroducer);
@@ -263,14 +260,14 @@ public class IntroducerService : IIntroducerService
     /// <inheritdoc />
     public async Task<IEnumerable<SyncDevice>> GetIntroducedDevicesAsync(string introducerDeviceId, CancellationToken cancellationToken = default)
     {
-        var allDevices = await _deviceRepository.GetAllAsync();
+        var allDevices = await _configManager.GetAllDevicesAsync();
         return allDevices.Where(d => d.IntroducedBy == introducerDeviceId);
     }
 
     /// <inheritdoc />
     public async Task<bool> IsIntroducedDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        var device = await _deviceRepository.GetAsync(deviceId);
+        var device = await _configManager.GetDeviceAsync(deviceId);
         return device != null && !string.IsNullOrEmpty(device.IntroducedBy);
     }
 
@@ -278,7 +275,7 @@ public class IntroducerService : IIntroducerService
     public async Task RemoveIntroducedDevicesAsync(string introducerDeviceId, CancellationToken cancellationToken = default)
     {
         // Check if the introducer has SkipIntroductionRemovals set
-        var introducer = await _deviceRepository.GetAsync(introducerDeviceId);
+        var introducer = await _configManager.GetDeviceAsync(introducerDeviceId);
         if (introducer != null && introducer.SkipIntroductionRemovals)
         {
             _logger.LogDebug("Introducer {DeviceId} has SkipIntroductionRemovals set, not removing introduced devices",
@@ -294,15 +291,15 @@ public class IntroducerService : IIntroducerService
             cancellationToken.ThrowIfCancellationRequested();
 
             // Remove device from all folders first
-            var folders = await _folderRepository.GetFoldersSharedWithDeviceAsync(device.DeviceId);
+            var folders = await _configManager.GetFoldersSharedWithDeviceAsync(device.DeviceId);
             foreach (var folder in folders)
             {
                 folder.RemoveDevice(device.DeviceId);
-                await _folderRepository.UpsertAsync(folder);
+                await _configManager.UpsertFolderAsync(folder);
             }
 
             // Delete the device
-            await _deviceRepository.DeleteAsync(device.DeviceId);
+            await _configManager.DeleteDeviceAsync(device.DeviceId);
 
             _logger.LogInformation("Removed introduced device {DeviceId} ({DeviceName}) because introducer {IntroducerDeviceId} was removed",
                 device.DeviceId, device.DeviceName, introducerDeviceId);
