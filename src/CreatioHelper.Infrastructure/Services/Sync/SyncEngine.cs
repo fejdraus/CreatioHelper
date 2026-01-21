@@ -24,6 +24,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly IDeviceDiscovery _discovery;
     private readonly SyncthingGlobalDiscovery _globalDiscovery;
     private readonly ISyncDatabase _database;
+    private readonly IConfigurationManager _configManager;
     private readonly IEventLogger _eventLogger;
     private readonly IStatisticsCollector _statisticsCollector;
     private readonly FileWatcher _fileWatcher;
@@ -73,6 +74,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         TransferOptimizer transferOptimizer,
         SyncConfiguration configuration,
         ISyncDatabase database,
+        IConfigurationManager configManager,
         IEventLogger eventLogger,
         IStatisticsCollector statisticsCollector,
         ICertificateManager certificateManager,
@@ -87,6 +89,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         _discovery = discovery;
         _globalDiscovery = globalDiscovery;
         _database = database;
+        _configManager = configManager;
         _eventLogger = eventLogger;
         _statisticsCollector = statisticsCollector;
         _fileWatcher = fileWatcher;
@@ -147,7 +150,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogInformation("Database initialized");
             
             // Load existing configuration from database
-            await LoadConfigurationFromDatabaseAsync();
+            await LoadConfigurationAsync();
             
             await _protocol.StartListeningAsync();
             await _discovery.StartAsync(cancellationToken);
@@ -256,15 +259,15 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         _devices[deviceId] = device;
         
-        // Save device to database
+        // Save device to config.xml
         try
         {
-            await _database.DeviceInfo.UpsertAsync(device);
-            _logger.LogInformation("Added and saved device {DeviceId} ({Name}) to database", deviceId, name);
+            await _configManager.UpsertDeviceAsync(device);
+            _logger.LogInformation("Added and saved device {DeviceId} ({Name}) to config", deviceId, name);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save device {DeviceId} to database", deviceId);
+            _logger.LogError(ex, "Failed to save device {DeviceId} to config", deviceId);
         }
 
         // Try to connect if we have addresses
@@ -297,15 +300,15 @@ public class SyncEngine : ISyncEngine, IDisposable
             State = SyncState.Idle
         };
 
-        // Save folder to database
+        // Save folder to config.xml
         try
         {
-            await _database.FolderConfig.UpsertAsync(folder);
-            _logger.LogInformation("Added and saved folder {FolderId} ({Label}) to database", folderId, label);
+            await _configManager.UpsertFolderAsync(folder);
+            _logger.LogInformation("Added and saved folder {FolderId} ({Label}) to config", folderId, label);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save folder {FolderId} to database", folderId);
+            _logger.LogError(ex, "Failed to save folder {FolderId} to config", folderId);
         }
 
         // Register folder for block serving
@@ -392,15 +395,15 @@ public class SyncEngine : ISyncEngine, IDisposable
             State = config.Paused ? SyncState.Paused : SyncState.Idle
         };
 
-        // Save folder to database
+        // Save folder to config.xml
         try
         {
-            await _database.FolderConfig.UpsertAsync(folder);
-            _logger.LogInformation("Added folder {FolderId} ({Label}) with full config to database", config.Id, config.Label);
+            await _configManager.UpsertFolderAsync(folder);
+            _logger.LogInformation("Added folder {FolderId} ({Label}) with full config to config.xml", config.Id, config.Label);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to save folder {FolderId} to database", config.Id);
+            _logger.LogError(ex, "Failed to save folder {FolderId} to config", config.Id);
         }
 
         // Register folder for block serving
@@ -503,15 +506,15 @@ public class SyncEngine : ISyncEngine, IDisposable
             existingFolder.AddDevice(deviceId);
         }
 
-        // Save to database
+        // Save to config.xml
         try
         {
-            await _database.FolderConfig.UpsertAsync(existingFolder);
-            _logger.LogInformation("Updated folder {FolderId} configuration in database", config.Id);
+            await _configManager.UpsertFolderAsync(existingFolder);
+            _logger.LogInformation("Updated folder {FolderId} configuration in config.xml", config.Id);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to update folder {FolderId} in database", config.Id);
+            _logger.LogError(ex, "Failed to update folder {FolderId} in config", config.Id);
         }
 
         // Restart file watcher with new settings if not paused and settings changed
@@ -1062,17 +1065,15 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             device.UpdateConnection(false);
             
-            // Update last seen in database
-            _ = Task.Run(async () => {
-                try
-                {
-                    await _database.DeviceInfo.UpdateLastSeenAsync(e.DeviceId, DateTime.UtcNow);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to update last seen for device {DeviceId}", e.DeviceId);
-                }
-            });
+            // Update last seen in configuration
+            try
+            {
+                _configManager.UpdateDeviceLastSeen(e.DeviceId, DateTime.UtcNow);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update last seen for device {DeviceId}", e.DeviceId);
+            }
             
             // Record device disconnection in statistics
             var connectionDuration = device.LastConnected.HasValue ? DateTime.UtcNow - device.LastConnected.Value : TimeSpan.Zero;
@@ -1911,20 +1912,20 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
     }
 
-    private async Task LoadConfigurationFromDatabaseAsync()
+    private async Task LoadConfigurationAsync()
     {
         try
         {
-            // Load devices from database
-            var devices = await _database.DeviceInfo.GetAllAsync();
+            // Load devices from config.xml via ConfigurationManager
+            var devices = await _configManager.GetAllDevicesAsync();
             foreach (var device in devices)
             {
                 _devices.TryAdd(device.DeviceId, device);
             }
-            _logger.LogInformation($"Loaded {devices.Count()} devices from database");
+            _logger.LogInformation("Loaded {DeviceCount} devices from config.xml", devices.Count);
 
-            // Load folders from database
-            var folders = await _database.FolderConfig.GetAllAsync();
+            // Load folders from config.xml via ConfigurationManager
+            var folders = await _configManager.GetAllFoldersAsync();
             foreach (var folder in folders)
             {
                 _folders.TryAdd(folder.Id, folder);
@@ -1944,7 +1945,7 @@ public class SyncEngine : ISyncEngine, IDisposable
                     _fileWatcher.WatchFolder(folder);
                 }
             }
-            _logger.LogInformation($"Loaded {folders.Count()} folders from database");
+            _logger.LogInformation("Loaded {FolderCount} folders from config.xml", folders.Count);
 
             // Trigger initial scan for all non-paused folders (background task)
             _ = Task.Run(async () =>

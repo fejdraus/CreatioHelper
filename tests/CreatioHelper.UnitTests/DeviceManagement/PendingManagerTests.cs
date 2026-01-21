@@ -10,22 +10,19 @@ namespace CreatioHelper.UnitTests.DeviceManagement;
 public class PendingManagerTests
 {
     private readonly Mock<ILogger<PendingManager>> _loggerMock;
-    private readonly Mock<IDeviceInfoRepository> _deviceRepoMock;
-    private readonly Mock<IFolderConfigRepository> _folderRepoMock;
+    private readonly Mock<IConfigurationManager> _configManagerMock;
     private readonly Mock<IEventLogger> _eventLoggerMock;
     private readonly PendingManager _manager;
 
     public PendingManagerTests()
     {
         _loggerMock = new Mock<ILogger<PendingManager>>();
-        _deviceRepoMock = new Mock<IDeviceInfoRepository>();
-        _folderRepoMock = new Mock<IFolderConfigRepository>();
+        _configManagerMock = new Mock<IConfigurationManager>();
         _eventLoggerMock = new Mock<IEventLogger>();
 
         _manager = new PendingManager(
             _loggerMock.Object,
-            _deviceRepoMock.Object,
-            _folderRepoMock.Object,
+            _configManagerMock.Object,
             _eventLoggerMock.Object);
     }
 
@@ -108,7 +105,7 @@ public class PendingManagerTests
             Address = "tcp://192.168.1.1:22000"
         };
         await _manager.AddPendingDeviceAsync(pendingDevice);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var device = await _manager.AcceptDeviceAsync("device-1");
@@ -116,7 +113,7 @@ public class PendingManagerTests
         // Assert
         Assert.Equal("device-1", device.DeviceId);
         Assert.Equal("Test Device", device.DeviceName);
-        _deviceRepoMock.Verify(r => r.UpsertAsync(It.Is<SyncDevice>(d => d.DeviceId == "device-1")), Times.Once);
+        _configManagerMock.Verify(r => r.UpsertDeviceAsync(It.Is<SyncDevice>(d => d.DeviceId == "device-1")), Times.Once);
     }
 
     [Fact]
@@ -129,7 +126,7 @@ public class PendingManagerTests
             DeviceName = "Original Name"
         };
         await _manager.AddPendingDeviceAsync(pendingDevice);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var device = await _manager.AcceptDeviceAsync("device-1", "Custom Name");
@@ -144,7 +141,7 @@ public class PendingManagerTests
         // Arrange
         var pendingDevice = new PendingDevice { DeviceId = "device-1", DeviceName = "Test" };
         await _manager.AddPendingDeviceAsync(pendingDevice);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         await _manager.AcceptDeviceAsync("device-1");
@@ -173,7 +170,7 @@ public class PendingManagerTests
             OfferedByDeviceId = "device-1"
         };
         await _manager.AddPendingFolderAsync(pendingFolder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var folder = await _manager.AcceptFolderAsync("folder-1", "/path/to/folder");
@@ -196,7 +193,7 @@ public class PendingManagerTests
             ReceiveEncrypted = true
         };
         await _manager.AddPendingFolderAsync(pendingFolder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var folder = await _manager.AcceptFolderAsync("folder-1", "/path");
@@ -230,8 +227,8 @@ public class PendingManagerTests
             OfferedByDeviceId = "device-1"
         };
         await _manager.AddPendingFolderAsync(pendingFolder);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(new SyncDevice("device-1", "Test"));
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(new SyncDevice("device-1", "Test"));
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         await _manager.RejectFolderAsync("folder-1", "device-1");

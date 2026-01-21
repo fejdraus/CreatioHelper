@@ -831,10 +831,10 @@ public class SyncthingSystemController : ControllerBase
             {
                 connections[device.DeviceId] = new
                 {
-                    at = device.LastSeen?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? string.Empty,
+                    at = device.LastSeen?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                     inBytesTotal = 0L,
                     outBytesTotal = 0L,
-                    startedAt = device.LastConnected?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ") ?? string.Empty,
+                    startedAt = device.LastConnected?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
                     connected = device.IsConnected,
                     paused = device.IsPaused,
                     clientVersion = "v1.27.0",

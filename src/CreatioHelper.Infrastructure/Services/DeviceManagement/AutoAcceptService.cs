@@ -20,8 +20,7 @@ namespace CreatioHelper.Infrastructure.Services.DeviceManagement;
 public class AutoAcceptService : IAutoAcceptService
 {
     private readonly ILogger<AutoAcceptService> _logger;
-    private readonly IDeviceInfoRepository _deviceRepository;
-    private readonly IFolderConfigRepository _folderRepository;
+    private readonly IConfigurationManager _configManager;
     private readonly IPendingManager _pendingManager;
     private readonly IEventLogger _eventLogger;
     private readonly object _statsLock = new();
@@ -31,15 +30,13 @@ public class AutoAcceptService : IAutoAcceptService
 
     public AutoAcceptService(
         ILogger<AutoAcceptService> logger,
-        IDeviceInfoRepository deviceRepository,
-        IFolderConfigRepository folderRepository,
+        IConfigurationManager configManager,
         IPendingManager pendingManager,
         IEventLogger eventLogger,
         string? defaultFolderPath = null)
     {
         _logger = logger;
-        _deviceRepository = deviceRepository;
-        _folderRepository = folderRepository;
+        _configManager = configManager;
         _pendingManager = pendingManager;
         _eventLogger = eventLogger;
         _defaultFolderPath = defaultFolderPath ?? GetSystemDefaultPath();
@@ -63,14 +60,14 @@ public class AutoAcceptService : IAutoAcceptService
             }
 
             // Check if folder already exists
-            var existingFolder = await _folderRepository.GetAsync(folderId);
+            var existingFolder = await _configManager.GetFolderAsync(folderId);
             if (existingFolder != null)
             {
                 // Folder exists - add device if not already shared
                 if (!existingFolder.Devices.Contains(deviceId))
                 {
                     existingFolder.AddDevice(deviceId);
-                    await _folderRepository.UpsertAsync(existingFolder);
+                    await _configManager.UpsertFolderAsync(existingFolder);
 
                     _logger.LogInformation("Added device {DeviceId} to existing folder {FolderId}",
                         deviceId, folderId);
@@ -82,7 +79,7 @@ public class AutoAcceptService : IAutoAcceptService
             }
 
             // Get device
-            var device = await _deviceRepository.GetAsync(deviceId);
+            var device = await _configManager.GetDeviceAsync(deviceId);
             if (device == null)
             {
                 result.Reason = "Device not found";
@@ -134,7 +131,7 @@ public class AutoAcceptService : IAutoAcceptService
             var newFolder = new SyncFolder(folderId, folderLabel, folderPath, folderType);
             newFolder.AddDevice(deviceId);
 
-            await _folderRepository.UpsertAsync(newFolder);
+            await _configManager.UpsertFolderAsync(newFolder);
 
             result.WasAutoAccepted = true;
             result.AcceptedFolder = newFolder;
@@ -176,14 +173,14 @@ public class AutoAcceptService : IAutoAcceptService
     /// <inheritdoc />
     public async Task SetAutoAcceptAsync(string deviceId, bool enabled, CancellationToken cancellationToken = default)
     {
-        var device = await _deviceRepository.GetAsync(deviceId);
+        var device = await _configManager.GetDeviceAsync(deviceId);
         if (device == null)
         {
             throw new InvalidOperationException($"Device {deviceId} not found");
         }
 
         device.SetAutoAcceptFolders(enabled);
-        await _deviceRepository.UpsertAsync(device);
+        await _configManager.UpsertDeviceAsync(device);
 
         _logger.LogInformation("Device {DeviceId} ({DeviceName}) auto-accept set to {Enabled}",
             deviceId, device.DeviceName, enabled);
@@ -192,14 +189,14 @@ public class AutoAcceptService : IAutoAcceptService
     /// <inheritdoc />
     public async Task<bool> IsAutoAcceptEnabledAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        var device = await _deviceRepository.GetAsync(deviceId);
+        var device = await _configManager.GetDeviceAsync(deviceId);
         return device?.AutoAcceptFolders ?? false;
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<SyncDevice>> GetAutoAcceptDevicesAsync(CancellationToken cancellationToken = default)
     {
-        var allDevices = await _deviceRepository.GetAllAsync();
+        var allDevices = await _configManager.GetAllDevicesAsync();
         return allDevices.Where(d => d.AutoAcceptFolders);
     }
 
