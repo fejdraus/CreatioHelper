@@ -24,9 +24,6 @@
 
     <!-- QR Code generation for device ID sharing -->
     <PackageReference Include="QRCoder" Version="1.7.0" />
-
-    <!-- JSON serialization -->
-    <PackageReference Include="System.Text.Json" Version="10.0.2" />
   </ItemGroup>
 
   <ItemGroup>

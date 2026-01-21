@@ -12,12 +12,18 @@ public class ServerInfo : DtoServerInfo
     // Extended Syncthing sync information (aggregated from all folders)
     private double _syncthingCompletionPercent = 0;
     private long _syncthingNeedBytes = 0;
-    private int _syncthingNeedItems = 0;
+    private long _syncthingNeedItems = 0;
     private string _syncthingCurrentState = "idle";
     private string? _syncthingLastSyncedFile;
 
     // Dictionary to track individual folder sync states
     private readonly Dictionary<string, FolderSyncState> _folderSyncStates = new();
+
+    /// <summary>
+    /// Event raised when invalid sync data is received (for diagnostics/logging)
+    /// Parameters: serverName, folderId, needBytes, needItems, completionPercent
+    /// </summary>
+    public static event Action<string, string, long, long, double>? OnInvalidSyncDataReceived;
 
     public string? ServiceName
     {
@@ -85,7 +91,7 @@ public class ServerInfo : DtoServerInfo
     /// <summary>
     /// Items (files) remaining to sync
     /// </summary>
-    public int SyncthingNeedItems
+    public long SyncthingNeedItems
     {
         get => _syncthingNeedItems;
         set => SetField(ref _syncthingNeedItems, value);
@@ -141,8 +147,20 @@ public class ServerInfo : DtoServerInfo
     /// <summary>
     /// Update sync state for a specific folder
     /// </summary>
-    public void UpdateFolderSyncState(string folderId, double completionPercent, long needBytes, int needItems, string currentState, string? lastSyncedFile = null)
+    public void UpdateFolderSyncState(string folderId, double completionPercent, long needBytes, long needItems, string currentState, string? lastSyncedFile = null)
     {
+        // Validate and sanitize input values to prevent overflow/corruption
+        // Negative values indicate API errors or data corruption
+        if (needBytes < 0 || needItems < 0)
+        {
+            System.Diagnostics.Debug.WriteLine($"[ServerInfo] WARNING: Invalid sync data for folder '{folderId}': NeedBytes={needBytes}, NeedItems={needItems}. Ignoring update.");
+            OnInvalidSyncDataReceived?.Invoke(Name ?? "Unknown", folderId, needBytes, needItems, completionPercent);
+            return;
+        }
+
+        // Sanity check: completion should be 0-100
+        completionPercent = Math.Clamp(completionPercent, 0, 100);
+
         if (!_folderSyncStates.ContainsKey(folderId))
         {
             _folderSyncStates[folderId] = new FolderSyncState { FolderId = folderId };
@@ -159,6 +177,53 @@ public class ServerInfo : DtoServerInfo
         }
 
         // Recalculate aggregated values
+        RecalculateAggregatedSyncState();
+    }
+
+    /// <summary>
+    /// Remove folder from sync state tracking (e.g., when folder is removed or server disconnected)
+    /// </summary>
+    public void RemoveFolderSyncState(string folderId)
+    {
+        if (_folderSyncStates.Remove(folderId))
+        {
+            RecalculateAggregatedSyncState();
+        }
+    }
+
+    /// <summary>
+    /// Clear all folder sync states (e.g., on disconnect or reset)
+    /// </summary>
+    public void ClearAllFolderSyncStates()
+    {
+        _folderSyncStates.Clear();
+        SyncthingCompletionPercent = 0;
+        SyncthingNeedBytes = 0;
+        SyncthingNeedItems = 0;
+        SyncthingCurrentState = "idle";
+        SyncthingLastSyncedFile = null;
+    }
+
+    /// <summary>
+    /// Remove folder states that are no longer in the current folder list.
+    /// Call this after SyncthingFolderIds is updated to clean up stale states.
+    /// </summary>
+    public void PruneStaleFolderStates()
+    {
+        var validFolderIds = SyncthingFolderIds ?? new List<string>();
+        var staleIds = _folderSyncStates.Keys
+            .Where(id => !validFolderIds.Contains(id))
+            .ToList();
+
+        if (staleIds.Count == 0)
+            return;
+
+        foreach (var id in staleIds)
+        {
+            _folderSyncStates.Remove(id);
+            System.Diagnostics.Debug.WriteLine($"[ServerInfo] Pruned stale folder state: {id}");
+        }
+
         RecalculateAggregatedSyncState();
     }
 

@@ -42,7 +42,7 @@
                                 <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                                Size="Size.Small"
                                                OnClick="CopyDeviceId"
-                                               Title="Copy Device ID" />
+                                               aria-label="Copy Device ID" />
                             }
                         </td>
                     </tr>
@@ -69,7 +69,7 @@
         <MudDivider Class="my-4" />
 
         <MudText Typo="Typo.h6" Class="mb-2">Features</MudText>
-        <MudList T="string" Dense="true">
+        <MudList T="string">
             <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
                 Syncthing-compatible file synchronization
             </MudListItem>

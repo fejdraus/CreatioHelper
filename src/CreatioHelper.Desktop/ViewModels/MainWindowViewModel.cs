@@ -77,6 +77,15 @@ public partial class MainWindowViewModel : ObservableObject
         StartAllIisCommand = new AsyncRelayCommand(StartAllIis);
         StopAllIisCommand = new AsyncRelayCommand(StopAllIis);
 
+        // Subscribe to invalid sync data events for diagnostics
+        ServerInfo.OnInvalidSyncDataReceived += (serverName, folderId, needBytes, needItems, completion) =>
+        {
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+            var message = $"[{timestamp}] WARNING: Invalid sync data received - Server: {serverName}, Folder: {folderId}, NeedBytes: {needBytes}, NeedItems: {needItems}, Completion: {completion:F2}%";
+            FileLogService.AppendLine(message);
+            _output.WriteLine(message);
+        };
+
         // Initialize asynchronously after construction
         _ = InitializeAsync();
 
@@ -1308,6 +1317,8 @@ public partial class MainWindowViewModel : ObservableObject
         {
             server.SyncthingStatus = "❌ Offline";
             server.SyncthingCurrentState = "offline";
+            // Clear stale folder sync states to prevent data accumulation
+            server.ClearAllFolderSyncStates();
         }
         else
         {

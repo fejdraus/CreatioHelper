@@ -33,8 +33,8 @@ public class SyncFolderDto
     public string State { get; set; } = string.Empty;
     public long GlobalBytes { get; set; }
     public long LocalBytes { get; set; }
-    public int GlobalFiles { get; set; }
-    public int LocalFiles { get; set; }
+    public long GlobalFiles { get; set; }
+    public long LocalFiles { get; set; }
     public DateTime LastScan { get; set; }
     public DateTime LastSync { get; set; }
     public List<string> DeviceIds { get; set; } = new();
