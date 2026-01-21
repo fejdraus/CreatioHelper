@@ -1982,12 +1982,19 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         try
         {
-            // Try to load existing certificate first  
+            // Get platform-specific config directory for certificate storage
+            var configDir = _configManager.GetConfigDirectory();
+            var certPath = Path.Combine(configDir, "cert.pem");
+            var keyPath = Path.Combine(configDir, "key.pem");
+
+            _logger.LogInformation("Loading certificate from {CertPath}", certPath);
+
+            // Try to load existing certificate first
             X509Certificate2? existingCert = null;
-            try 
+            try
             {
-                // Try to load from default location (similar to Syncthing's cert.pem/key.pem)
-                existingCert = await _certificateManager.LoadCertificateAsync("cert.pem", "key.pem", null, cancellationToken);
+                // Try to load from config directory (similar to Syncthing's cert.pem/key.pem)
+                existingCert = await _certificateManager.LoadCertificateAsync(certPath, keyPath, null, cancellationToken);
             }
             catch
             {
@@ -2024,8 +2031,8 @@ public class SyncEngine : ISyncEngine, IDisposable
                     
                     if (renewedCert != null && renewedCert != existingCert)
                     {
-                        // Save renewed certificate
-                        await _certificateManager.SaveCertificateAsync(renewedCert, "cert.pem", "key.pem", cancellationToken);
+                        // Save renewed certificate to config directory
+                        await _certificateManager.SaveCertificateAsync(renewedCert, certPath, keyPath, cancellationToken);
                         
                         // Update DeviceID with renewed certificate
                         deviceId = DeviceIdGenerator.GenerateFromCertificate(renewedCert);
@@ -2073,15 +2080,15 @@ public class SyncEngine : ISyncEngine, IDisposable
             
             if (newCert != null)
             {
-                // Save the generated certificate to files (like Syncthing cert.pem/key.pem)
-                await _certificateManager.SaveCertificateAsync(newCert, "cert.pem", "key.pem", cancellationToken);
-                
+                // Save the generated certificate to config directory (like Syncthing cert.pem/key.pem)
+                await _certificateManager.SaveCertificateAsync(newCert, certPath, keyPath, cancellationToken);
+
                 var deviceId = DeviceIdGenerator.GenerateFromCertificate(newCert);
-                _logger.LogInformation("Generated new device certificate with {Algorithm}", 
+                _logger.LogInformation("Generated new device certificate with {Algorithm}",
                     _certificateManager.GetCertificateInfo(newCert).SignatureAlgorithm);
-                _logger.LogInformation("Device ID: {DeviceId} (Short: {ShortDeviceId})", 
+                _logger.LogInformation("Device ID: {DeviceId} (Short: {ShortDeviceId})",
                     deviceId, DeviceIdGenerator.GetShortDeviceId(deviceId));
-                _logger.LogInformation("Certificate saved to cert.pem and key.pem");
+                _logger.LogInformation("Certificate saved to {CertPath}", certPath);
                 
                 // Update configuration with certificate-derived DeviceID
                 _configuration.DeviceId = deviceId;
