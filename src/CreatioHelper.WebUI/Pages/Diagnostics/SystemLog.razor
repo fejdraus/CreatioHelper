@@ -24,7 +24,7 @@
             <MudSelect @bind-Value="_selectedLogLevel"
                        Label="Log Level"
                        Variant="Variant.Outlined"
-                       Dense="true">
+                       Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">All Levels</MudSelectItem>
                 <MudSelectItem Value="@("error")">Error</MudSelectItem>
                 <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
@@ -36,7 +36,7 @@
             <MudSelect @bind-Value="_selectedFacility"
                        Label="Facility"
                        Variant="Variant.Outlined"
-                       Dense="true">
+                       Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">All Facilities</MudSelectItem>
                 <MudSelectItem Value="@("sync")">Sync</MudSelectItem>
                 <MudSelectItem Value="@("model")">Model</MudSelectItem>
@@ -54,7 +54,7 @@
                           AdornmentIcon="@Icons.Material.Filled.Search"
                           Immediate="true"
                           DebounceInterval="300"
-                          Dense="true" />
+                          Margin="Margin.Dense" />
         </MudItem>
     </MudGrid>
 </MudPaper>
@@ -68,15 +68,15 @@
         <MudIconButton Icon="@Icons.Material.Filled.Download"
                        Size="Size.Small"
                        OnClick="DownloadLogs"
-                       Title="Download logs" />
+                       aria-label="Download logs" />
         <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep"
                        Size="Size.Small"
                        OnClick="ClearLogs"
-                       Title="Clear display" />
+                       aria-label="Clear display" />
         <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                        Size="Size.Small"
                        OnClick="RefreshLogs"
-                       Title="Refresh" />
+                       aria-label="Refresh" />
     </div>
 
     <div class="log-viewer @(_autoScroll ? "auto-scroll" : "")" @ref="_logContainer">

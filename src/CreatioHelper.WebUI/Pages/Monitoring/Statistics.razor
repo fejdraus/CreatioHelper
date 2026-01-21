@@ -245,13 +245,13 @@
     private long _totalUploaded;
     private long _downloadRate;
     private long _uploadRate;
-    private long _filesSynced;
-    private long _bytesSynced;
+    private long _filesSynced = 0;
+    private long _bytesSynced = 0;
 
     // System stats
     private TimeSpan _uptime;
     private long _memoryUsage;
-    private long _databaseSize;
+    private long _databaseSize = 0;
     private int _goroutines;
     private string _version = "1.0.0";
     private DateTime _startedAt = DateTime.UtcNow;

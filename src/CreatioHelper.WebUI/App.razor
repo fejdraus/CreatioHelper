@@ -82,7 +82,7 @@
         if (firstRender)
         {
             _isDarkMode = await ThemeService.GetDarkModeAsync();
-            await _themeProvider.WatchSystemPreference(OnSystemPreferenceChanged);
+            await _themeProvider.WatchSystemDarkModeAsync(OnSystemPreferenceChanged);
             StateHasChanged();
         }
     }

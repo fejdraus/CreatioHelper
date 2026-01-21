@@ -18,6 +18,8 @@ public class SyncthingEventsListener : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly IOutputWriter _output;
+    private readonly string _apiUrl;
+    private readonly string? _apiKey;
     private long _lastEventId;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
@@ -40,14 +42,8 @@ public class SyncthingEventsListener : IDisposable
     {
         _httpClient = httpClientFactory.CreateClient("Syncthing");
         _output = output;
-
-        _httpClient.BaseAddress = new Uri(apiUrl);
-        _httpClient.Timeout = TimeSpan.FromSeconds(70); // Syncthing timeout is 60s + buffer
-
-        if (!string.IsNullOrEmpty(apiKey))
-        {
-            _httpClient.DefaultRequestHeaders.Add("X-API-Key", apiKey);
-        }
+        _apiUrl = apiUrl.TrimEnd('/');
+        _apiKey = apiKey;
     }
 
     /// <summary>
@@ -113,9 +109,18 @@ public class SyncthingEventsListener : IDisposable
                 // We're interested in: StateChanged, FolderCompletion, ItemStarted, ItemFinished, DeviceConnected, DeviceDisconnected
                 var eventTypes = string.Join(",", "StateChanged", "FolderCompletion", "ItemStarted", "ItemFinished", "DeviceConnected", "DeviceDisconnected");
 
-                var url = $"/rest/events?since={_lastEventId}&events={eventTypes}&timeout=60";
+                var url = $"{_apiUrl}/rest/events?since={_lastEventId}&events={eventTypes}&timeout=60";
 
-                var response = await _httpClient.GetAsync(url, cancellationToken);
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                if (!string.IsNullOrEmpty(_apiKey))
+                {
+                    request.Headers.Add("X-API-Key", _apiKey);
+                }
+
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                cts.CancelAfter(TimeSpan.FromSeconds(70)); // Syncthing timeout is 60s + buffer
+
+                var response = await _httpClient.SendAsync(request, cts.Token);
 
                 if (!response.IsSuccessStatusCode)
                 {
