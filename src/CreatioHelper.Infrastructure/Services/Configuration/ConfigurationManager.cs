@@ -96,6 +96,11 @@ public class ConfigurationManager : IConfigurationManager
         }
     }
 
+    public string GetConfigDirectory()
+    {
+        return _configXmlService.GetConfigDirectory();
+    }
+
     private void RebuildCaches()
     {
         _folders.Clear();
