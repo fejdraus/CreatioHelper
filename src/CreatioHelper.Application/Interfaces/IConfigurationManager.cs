@@ -31,6 +31,11 @@ public interface IConfigurationManager
     /// </summary>
     ConfigXml GetCurrentConfig();
 
+    /// <summary>
+    /// Get the configuration directory path (platform-specific)
+    /// </summary>
+    string GetConfigDirectory();
+
     #endregion
 
     #region Folder Operations
