@@ -37,13 +37,26 @@ public class SyncthingStatisticsController : ControllerBase
     /// <summary>
     /// GET /rest/stats/device - Get device statistics
     /// Exact match to Syncthing's getDeviceStats endpoint
+    /// Supports optional ?device= parameter to get single device stats
     /// </summary>
     [HttpGet("device")]
-    public async Task<IActionResult> GetDeviceStats()
+    public async Task<IActionResult> GetDeviceStats([FromQuery] string? device = null)
     {
         try
         {
             var deviceStatistics = await GetDeviceStatisticsAsync();
+
+            // If device parameter specified, return only that device's stats
+            if (!string.IsNullOrEmpty(device))
+            {
+                if (deviceStatistics.TryGetValue(device, out var stats))
+                {
+                    return Ok(stats);
+                }
+                // Return empty stats for unknown device
+                return Ok(new SyncthingDeviceStatistics());
+            }
+
             return Ok(deviceStatistics);
         }
         catch (Exception ex)

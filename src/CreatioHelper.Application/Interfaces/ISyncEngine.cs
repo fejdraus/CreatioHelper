@@ -1,3 +1,4 @@
+using CreatioHelper.Application.DTOs;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Application.Interfaces;
@@ -11,6 +12,17 @@ public interface ISyncEngine
     Task StopAsync();
     Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null);
     Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive");
+
+    /// <summary>
+    /// Add a folder with full configuration - Syncthing compatible
+    /// </summary>
+    Task<SyncFolder> AddFolderAsync(FolderConfiguration config);
+
+    /// <summary>
+    /// Update folder configuration - Syncthing compatible
+    /// </summary>
+    Task<SyncFolder> UpdateFolderAsync(FolderConfiguration config);
+
     Task ShareFolderWithDeviceAsync(string folderId, string deviceId);
     Task UnshareFolderFromDeviceAsync(string folderId, string deviceId);
     Task PauseFolderAsync(string folderId);

@@ -1,0 +1,108 @@
+@* Folder Summary Card for Dashboard *@
+
+<MudCard Elevation="2" Class="folder-card cursor-pointer" @onclick="OnClick">
+    <MudCardContent>
+        <div class="d-flex align-center mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Folder"
+                     Color="@GetStatusColor()"
+                     Class="mr-2" />
+            <MudText Typo="Typo.subtitle1" Class="flex-grow-1 text-truncate">
+                @Folder.DisplayName
+            </MudText>
+            <MudIcon Icon="@GetStatusIcon()"
+                     Color="@GetStatusColor()"
+                     Size="Size.Small" />
+        </div>
+
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="text-truncate mb-2">
+            @Folder.Path
+        </MudText>
+
+        @if (Status != null)
+        {
+            <div class="sync-progress-bar mb-2">
+                <div class="progress" style="width: @(Status.SyncPercentage)%"></div>
+            </div>
+
+            <div class="d-flex justify-space-between">
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    @GetSyncStatus()
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    @FormatBytes(Status.GlobalBytes)
+                </MudText>
+            </div>
+        }
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Default">Loading...</MudText>
+        }
+    </MudCardContent>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FolderConfig Folder { get; set; } = null!;
+
+    [Parameter]
+    public FolderStatus? Status { get; set; }
+
+    [Parameter]
+    public EventCallback OnClick { get; set; }
+
+    private Color GetStatusColor()
+    {
+        if (Folder.Paused) return Color.Warning;
+        if (Status == null) return Color.Default;
+
+        return Status.FolderState switch
+        {
+            FolderState.Idle => Color.Success,
+            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Info,
+            FolderState.Scanning => Color.Info,
+            FolderState.Error => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusIcon()
+    {
+        if (Folder.Paused) return Icons.Material.Filled.Pause;
+        if (Status == null) return Icons.Material.Filled.HourglassEmpty;
+
+        return Status.FolderState switch
+        {
+            FolderState.Idle => Icons.Material.Filled.CheckCircle,
+            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Icons.Material.Filled.Sync,
+            FolderState.Scanning => Icons.Material.Filled.Search,
+            FolderState.Error => Icons.Material.Filled.Error,
+            _ => Icons.Material.Filled.HelpOutline
+        };
+    }
+
+    private string GetSyncStatus()
+    {
+        if (Folder.Paused) return "Paused";
+        if (Status == null) return "Loading...";
+
+        return Status.FolderState switch
+        {
+            FolderState.Idle => Status.SyncPercentage >= 100 ? "Up to Date" : $"{Status.SyncPercentage:F0}% synced",
+            FolderState.Syncing => $"Syncing ({Status.SyncPercentage:F0}%)",
+            FolderState.SyncPreparing => "Preparing...",
+            FolderState.SyncWaiting => "Waiting...",
+            FolderState.Scanning => "Scanning...",
+            FolderState.Error => Status.Error ?? "Error",
+            _ => Status.State
+        };
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+    }
+}

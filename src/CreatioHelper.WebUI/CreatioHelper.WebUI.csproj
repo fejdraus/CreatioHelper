@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    <LangVersion>default</LangVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Blazor WebAssembly -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.2" />
+
+    <!-- SignalR for real-time updates -->
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.2" />
+
+    <!-- MudBlazor UI Components -->
+    <PackageReference Include="MudBlazor" Version="8.15.0" />
+
+    <!-- Local Storage for settings persistence -->
+    <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
+
+    <!-- QR Code generation for device ID sharing -->
+    <PackageReference Include="QRCoder" Version="1.7.0" />
+
+    <!-- JSON serialization -->
+    <PackageReference Include="System.Text.Json" Version="10.0.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Reference shared contracts for API models -->
+    <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
+  </ItemGroup>
+
+  <!-- PWA Service Worker -->
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
+
+</Project>

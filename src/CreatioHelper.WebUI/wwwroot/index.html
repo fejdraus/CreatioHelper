@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1976d2" />
+    <meta name="description" content="CreatioHelper - Syncthing-compatible file synchronization with Creatio management" />
+    <title>CreatioHelper</title>
+    <base href="/" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json" />
+    <link rel="apple-touch-icon" sizes="512x512" href="icon-512.png" />
+    <link rel="apple-touch-icon" sizes="192x192" href="icon-192.png" />
+
+    <!-- MudBlazor Styles -->
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" rel="stylesheet" />
+    <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
+
+    <!-- App Styles -->
+    <link href="css/app.css" rel="stylesheet" />
+    <link href="CreatioHelper.WebUI.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <div id="app">
+        <!-- Loading indicator -->
+        <div class="loading-container">
+            <div class="loading-spinner"></div>
+            <p>Loading CreatioHelper...</p>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="" class="reload">Reload</a>
+        <a class="dismiss">X</a>
+    </div>
+
+    <!-- MudBlazor Scripts -->
+    <script src="_content/MudBlazor/MudBlazor.min.js"></script>
+
+    <!-- Blazor WebAssembly -->
+    <script src="_framework/blazor.webassembly.js"></script>
+
+    <!-- PWA Service Worker Registration -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('service-worker.js')
+                .then(registration => {
+                    console.log('Service Worker registered:', registration.scope);
+                })
+                .catch(error => {
+                    console.log('Service Worker registration failed:', error);
+                });
+        }
+    </script>
+</body>
+
+</html>

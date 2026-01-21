@@ -89,6 +89,145 @@ public class SyncthingDebugController : ControllerBase
     }
 
     /// <summary>
+    /// Trigger garbage collection
+    /// POST /rest/debug/gc
+    /// </summary>
+    [HttpPost("gc")]
+    public ActionResult TriggerGarbageCollection()
+    {
+        try
+        {
+            _logger.LogInformation("Garbage collection triggered via API");
+
+            var beforeMemory = GC.GetTotalMemory(false);
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+            var afterMemory = GC.GetTotalMemory(true);
+
+            return Ok(new
+            {
+                success = true,
+                beforeBytes = beforeMemory,
+                afterBytes = afterMemory,
+                freedBytes = beforeMemory - afterMemory,
+                timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error triggering garbage collection");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Get heap dump - memory snapshot
+    /// GET /rest/debug/heapdump
+    /// </summary>
+    [HttpGet("heapdump")]
+    public ActionResult GetHeapDump()
+    {
+        try
+        {
+            _logger.LogInformation("Heap dump requested");
+
+            var currentProcess = Process.GetCurrentProcess();
+            var memoryInfo = GC.GetGCMemoryInfo();
+
+            var heapDump = new
+            {
+                timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                totalMemory = GC.GetTotalMemory(false),
+                heapSize = memoryInfo.HeapSizeBytes,
+                fragmentedBytes = memoryInfo.FragmentedBytes,
+                memoryLoad = memoryInfo.MemoryLoadBytes,
+                totalCommittedBytes = memoryInfo.TotalCommittedBytes,
+                totalAvailableMemory = memoryInfo.TotalAvailableMemoryBytes,
+                highMemoryLoadThreshold = memoryInfo.HighMemoryLoadThresholdBytes,
+                gcGeneration = new
+                {
+                    gen0Collections = GC.CollectionCount(0),
+                    gen1Collections = GC.CollectionCount(1),
+                    gen2Collections = GC.CollectionCount(2)
+                },
+                process = new
+                {
+                    workingSet = currentProcess.WorkingSet64,
+                    privateMemory = currentProcess.PrivateMemorySize64,
+                    virtualMemory = currentProcess.VirtualMemorySize64,
+                    peakWorkingSet = currentProcess.PeakWorkingSet64,
+                    pagedMemory = currentProcess.PagedMemorySize64,
+                    peakPagedMemory = currentProcess.PeakPagedMemorySize64
+                }
+            };
+
+            return Ok(heapDump);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting heap dump");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Preview support bundle (what will be included)
+    /// POST /rest/debug/support/preview
+    /// </summary>
+    [HttpPost("support/preview")]
+    public async Task<ActionResult<object>> PreviewSupportBundle([FromBody] SupportBundleOptions? options)
+    {
+        try
+        {
+            var items = new List<object>();
+
+            // System info
+            items.Add(new { type = "system", name = "system-info.json", size = 1024 });
+            items.Add(new { type = "config", name = "config.json", size = 2048 });
+
+            // Logs (if requested)
+            if (options?.IncludeLogs != false)
+            {
+                items.Add(new { type = "log", name = "syncthing.log", size = options?.LogLines * 100 ?? 10000 });
+            }
+
+            // Database (if requested)
+            if (options?.IncludeDatabase == true)
+            {
+                items.Add(new { type = "database", name = "index-v0.14.0.db", size = 1048576 });
+            }
+
+            // Statistics
+            items.Add(new { type = "stats", name = "statistics.json", size = 512 });
+
+            // Connections
+            items.Add(new { type = "connections", name = "connections.json", size = 256 });
+
+            var totalSize = items.Sum(i => (long)((dynamic)i).size);
+
+            return Ok(new
+            {
+                estimatedSize = totalSize,
+                files = items,
+                options = new
+                {
+                    includeLogs = options?.IncludeLogs ?? true,
+                    logLines = options?.LogLines ?? 100,
+                    includeDatabase = options?.IncludeDatabase ?? false,
+                    includeConfig = options?.IncludeConfig ?? true,
+                    redactSecrets = options?.RedactSecrets ?? true
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error previewing support bundle");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
     /// Get support bundle - 100% Syncthing compatible
     /// GET /rest/debug/support
     /// </summary>
@@ -304,4 +443,16 @@ public class SyncthingDebugController : ControllerBase
             return StatusCode(500, new { error = "Internal server error" });
         }
     }
+}
+
+/// <summary>
+/// Options for generating support bundle
+/// </summary>
+public class SupportBundleOptions
+{
+    public bool? IncludeLogs { get; set; }
+    public int? LogLines { get; set; }
+    public bool? IncludeDatabase { get; set; }
+    public bool? IncludeConfig { get; set; }
+    public bool? RedactSecrets { get; set; }
 }

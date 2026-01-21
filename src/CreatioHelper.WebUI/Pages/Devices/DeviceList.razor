@@ -1,0 +1,755 @@
+@page "/devices"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>Devices - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Devices</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@AddDevice">
+        Add Device
+    </MudButton>
+</div>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    @* This Device *@
+    @if (_thisDevice != null)
+    {
+        <MudText Typo="Typo.h6" Class="mb-2">This Device</MudText>
+        <MudPaper Elevation="2" Class="mb-4">
+            @* Header row - always visible *@
+            <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => _thisDeviceExpanded = !_thisDeviceExpanded)">
+                <MudIcon Icon="@Icons.Material.Filled.Computer" Color="Color.Primary" Class="mr-3" />
+                <div class="flex-grow-1">
+                    <MudText Typo="Typo.subtitle1">@_thisDevice.DisplayName</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Color="Color.Success" Class="mr-2">
+                    Running
+                </MudText>
+                @if (State.SystemStatus != null)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-2">
+                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="vertical-align: middle;" />
+                        @FormatUptime(State.SystemStatus.UptimeSpan)
+                    </MudText>
+                }
+                <MudIconButton Icon="@(_thisDeviceExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               Size="Size.Small" />
+            </div>
+
+            @* Expandable details *@
+            <MudCollapse Expanded="@_thisDeviceExpanded">
+                <MudDivider />
+                <div class="pa-3">
+                    <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
+                        <tbody>
+                            <tr>
+                                <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Device ID</MudText></td>
+                                <td>
+                                    <div class="d-flex align-center">
+                                        <MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.7rem;">@_thisDevice.DeviceId</MudText>
+                                        <MudTooltip Text="Copy Device ID">
+                                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => CopyDeviceId(_thisDevice.DeviceId))" />
+                                        </MudTooltip>
+                                        <MudTooltip Text="Show QR Code">
+                                            <MudIconButton Icon="@Icons.Material.Filled.QrCode"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => ShowQrCode(_thisDevice.DeviceId))" />
+                                        </MudTooltip>
+                                    </div>
+                                </td>
+                            </tr>
+                            @if (State.SystemStatus != null)
+                            {
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Uptime</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText></td>
+                                </tr>
+                                @if (State.SystemStatus.AppMemory.HasValue)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Memory Usage</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@FormatBytes(State.SystemStatus.AppMemory.Value)</MudText></td>
+                                    </tr>
+                                }
+                                @if (State.SystemStatus.CpuPercent.HasValue)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">CPU Usage</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@State.SystemStatus.CpuPercent.Value.ToString("F1")%</MudText></td>
+                                    </tr>
+                                }
+                            }
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">Global State</MudText></td>
+                                <td>
+                                    @{
+                                        var (globalFiles, globalDirs, globalBytes) = GetTotalGlobalState();
+                                    }
+                                    <MudText Typo="Typo.body2">
+                                        <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@globalFiles.ToString("N0")
+                                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@globalDirs.ToString("N0")
+                                        <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(globalBytes)
+                                    </MudText>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">Local State</MudText></td>
+                                <td>
+                                    @{
+                                        var (localFiles, localDirs, localBytes) = GetTotalLocalState();
+                                    }
+                                    <MudText Typo="Typo.body2">
+                                        <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@localFiles.ToString("N0")
+                                        <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@localDirs.ToString("N0")
+                                        <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(localBytes)
+                                    </MudText>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">Listeners</MudText></td>
+                                <td><MudText Typo="Typo.body2">@GetListenersDisplay()</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">Discovery</MudText></td>
+                                <td><MudText Typo="Typo.body2">@GetDiscoveryDisplay()</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">Connected Devices</MudText></td>
+                                <td><MudText Typo="Typo.body2">@GetConnectedDevicesCount() / @_remoteDevices.Length devices</MudText></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </div>
+            </MudCollapse>
+        </MudPaper>
+    }
+
+    @* Remote Devices *@
+    <MudText Typo="Typo.h6" Class="mb-2">Remote Devices</MudText>
+
+    @if (_remoteDevices.Length == 0)
+    {
+        <MudPaper Elevation="2" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.DevicesOther"
+                     Size="Size.Large"
+                     Color="Color.Default"
+                     Class="mb-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">No remote devices</MudText>
+            <MudText Color="Color.Default" Class="mb-4">
+                Add a device to start synchronizing files.
+            </MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="@AddDevice">
+                Add Device
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        @foreach (var device in _remoteDevices)
+        {
+            var connection = GetConnection(device.DeviceId);
+            var isExpanded = _expandedDevices.Contains(device.DeviceId);
+            <MudPaper Elevation="2" Class="mb-3">
+                @* Header row - always visible *@
+                <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => ToggleDeviceExpand(device.DeviceId))">
+                    <span class="connection-dot @(GetConnectionStatusClass(device, connection)) mr-3"></span>
+                    <div class="flex-grow-1">
+                        <MudText Typo="Typo.subtitle1">@device.DisplayName</MudText>
+                    </div>
+                    <MudText Typo="Typo.body2" Color="@GetStatusColor(device, connection)" Class="mr-2">
+                        @GetStatusText(device, connection)
+                    </MudText>
+                    @if (connection?.Connected == true)
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-2">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Style="vertical-align: middle;" />@FormatRate(connection.InBytesPerSec)
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Class="ml-1" Style="vertical-align: middle;" />@FormatRate(connection.OutBytesPerSec)
+                        </MudText>
+                    }
+                    <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                                   Size="Size.Small" />
+                </div>
+
+                @* Expandable details *@
+                <MudCollapse Expanded="@isExpanded">
+                    <MudDivider />
+                    <div class="pa-3">
+                        <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Device ID</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.75rem;">@device.DeviceId</MudText></td>
+                                </tr>
+                                @if (connection?.Connected == true)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Address</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@connection.Address (@GetConnectionTypeDisplay(connection.Type))</MudText></td>
+                                    </tr>
+                                    @if (!string.IsNullOrEmpty(connection.ClientVersion))
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.body2" Color="Color.Default">Version</MudText></td>
+                                            <td><MudText Typo="Typo.body2">@connection.ClientVersion</MudText></td>
+                                        </tr>
+                                    }
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Download Rate</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@FormatRate(connection.InBytesPerSec) (@FormatBytes(connection.InBytesTotal) total)</MudText></td>
+                                    </tr>
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Upload Rate</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@FormatRate(connection.OutBytesPerSec) (@FormatBytes(connection.OutBytesTotal) total)</MudText></td>
+                                    </tr>
+                                    @if (connection.ConnectedAt.HasValue)
+                                    {
+                                        <tr>
+                                            <td><MudText Typo="Typo.body2" Color="Color.Default">Connected Since</MudText></td>
+                                            <td><MudText Typo="Typo.body2">@connection.ConnectedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") (@FormatDuration(connection.ConnectionDuration))</MudText></td>
+                                        </tr>
+                                    }
+                                }
+                                else
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Addresses</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@string.Join(", ", device.Addresses)</MudText></td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Compression</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@GetCompressionDisplay(device.Compression)</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Sync Status</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@GetSyncStatus(device.DeviceId)</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Shared Folders</MudText></td>
+                                    <td>
+                                        @{
+                                            var sharedFolders = GetSharedFolders(device.DeviceId);
+                                        }
+                                        @if (sharedFolders.Any())
+                                        {
+                                            @foreach (var folder in sharedFolders)
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ma-0 mr-1">@folder</MudChip>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Default">None</MudText>
+                                        }
+                                    </td>
+                                </tr>
+                                @if (device.Introducer)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Introducer</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Info">Yes</MudText></td>
+                                    </tr>
+                                }
+                                @if (device.AutoAcceptFolders)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Auto Accept</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Warning">Enabled</MudText></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </MudSimpleTable>
+
+                        @* Action buttons *@
+                        <div class="d-flex gap-2 mt-3">
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Color="@(device.Paused ? Color.Success : Color.Warning)"
+                                       StartIcon="@(device.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                                       OnClick="@(() => TogglePause(device))">
+                                @(device.Paused ? "Resume" : "Pause")
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       StartIcon="@Icons.Material.Filled.Edit"
+                                       OnClick="@(() => EditDevice(device))">
+                                Edit
+                            </MudButton>
+                            <MudButton Variant="Variant.Outlined"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       StartIcon="@Icons.Material.Filled.Delete"
+                                       OnClick="@(() => DeleteDevice(device))">
+                                Remove
+                            </MudButton>
+                        </div>
+                    </div>
+                </MudCollapse>
+            </MudPaper>
+        }
+    }
+
+    @* Pending Devices *@
+    @if (_pendingDevices.Length > 0)
+    {
+        <MudText Typo="Typo.h6" Class="mt-6 mb-2">Pending Devices</MudText>
+        <MudPaper Elevation="2" Class="pa-4">
+            @foreach (var pending in _pendingDevices)
+            {
+                <div class="d-flex align-center pa-2">
+                    <MudIcon Icon="@Icons.Material.Filled.PersonAdd" Color="Color.Warning" Class="mr-3" />
+                    <div class="flex-grow-1">
+                        <MudText Typo="Typo.subtitle2">@pending.DisplayName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">@pending.Address</MudText>
+                    </div>
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Success"
+                               Size="Size.Small"
+                               Class="mr-2"
+                               OnClick="@(() => AcceptDevice(pending))">
+                        Accept
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               OnClick="@(() => RejectDevice(pending))">
+                        Reject
+                    </MudButton>
+                </div>
+                <MudDivider />
+            }
+        </MudPaper>
+    }
+}
+
+@code {
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
+    private bool _isLoading;
+    private DeviceConfig? _thisDevice;
+    private DeviceConfig[] _remoteDevices = [];
+    private PendingDevice[] _pendingDevices = [];
+    private HashSet<string> _expandedDevices = new();
+    private bool _thisDeviceExpanded;
+    private System.Threading.Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await LoadDevicesAsync();
+        StartAutoRefresh();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    var connections = await ApiClient.GetConnectionsAsync();
+                    foreach (var conn in connections)
+                    {
+                        State.UpdateConnection(conn);
+                    }
+                    StateHasChanged();
+                }
+                catch
+                {
+                    // Ignore errors during auto-refresh
+                }
+            });
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private void OnStateChanged()
+    {
+        UpdateDeviceLists();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadDevicesAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var connections = await ApiClient.GetConnectionsAsync();
+            foreach (var conn in connections)
+            {
+                State.UpdateConnection(conn);
+            }
+
+            _pendingDevices = await ApiClient.GetPendingDevicesAsync();
+            UpdateDeviceLists();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load devices: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateDeviceLists()
+    {
+        var myId = State.SystemStatus?.MyId;
+        _thisDevice = State.Devices.FirstOrDefault(d => d.DeviceId == myId);
+        _remoteDevices = State.Devices.Where(d => d.DeviceId != myId).ToArray();
+    }
+
+    private ConnectionInfo? GetConnection(string deviceId)
+    {
+        return State.Connections.TryGetValue(deviceId, out var conn) ? conn : null;
+    }
+
+    private async Task CopyDeviceId(string deviceId)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", deviceId);
+            Snackbar.Add("Device ID copied to clipboard", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private async Task ShowQrCode(string deviceId)
+    {
+        // Show QR code dialog
+        var parameters = new DialogParameters<QrCodeDialog>
+        {
+            { x => x.DeviceId, deviceId }
+        };
+        await DialogService.ShowAsync<QrCodeDialog>("Device ID QR Code", parameters);
+    }
+
+    private async Task TogglePause(DeviceConfig device)
+    {
+        try
+        {
+            device.Paused = !device.Paused;
+            await ApiClient.UpdateDeviceAsync(device);
+            Snackbar.Add(device.Paused ? "Device paused" : "Device resumed", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            device.Paused = !device.Paused; // Revert
+            Snackbar.Add($"Failed to toggle pause: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteDevice(DeviceConfig device)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Device",
+            $"Are you sure you want to remove '{device.DisplayName}'?",
+            yesText: "Remove",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await ApiClient.DeleteDeviceAsync(device.DeviceId);
+                State.Devices = State.Devices.Where(d => d.DeviceId != device.DeviceId).ToArray();
+                UpdateDeviceLists();
+                Snackbar.Add("Device removed", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to remove device: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task AcceptDevice(PendingDevice pending)
+    {
+        try
+        {
+            await ApiClient.AcceptDeviceAsync(pending.DeviceId);
+            _pendingDevices = _pendingDevices.Where(p => p.DeviceId != pending.DeviceId).ToArray();
+            Snackbar.Add("Device accepted", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to accept device: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RejectDevice(PendingDevice pending)
+    {
+        try
+        {
+            await ApiClient.RejectDeviceAsync(pending.DeviceId);
+            _pendingDevices = _pendingDevices.Where(p => p.DeviceId != pending.DeviceId).ToArray();
+            Snackbar.Add("Device rejected", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to reject device: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AddDevice()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Add Device", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: DeviceConfig newDevice })
+        {
+            State.Devices = [.. State.Devices, newDevice];
+            UpdateDeviceLists();
+            await LoadDevicesAsync();
+        }
+    }
+
+    private async Task EditDevice(DeviceConfig device)
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters<AddDeviceDialog>
+        {
+            { x => x.Device, device }
+        };
+
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Edit Device", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: DeviceConfig updatedDevice })
+        {
+            var devices = State.Devices.ToList();
+            var index = devices.FindIndex(d => d.DeviceId == updatedDevice.DeviceId);
+            if (index >= 0)
+            {
+                devices[index] = updatedDevice;
+                State.Devices = devices.ToArray();
+            }
+            UpdateDeviceLists();
+            await LoadDevicesAsync();
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+    }
+
+    private string FormatRate(long bytesPerSec)
+    {
+        if (bytesPerSec < 1024) return $"{bytesPerSec} B/s";
+        if (bytesPerSec < 1024 * 1024) return $"{bytesPerSec / 1024.0:F1} KB/s";
+        if (bytesPerSec < 1024 * 1024 * 1024) return $"{bytesPerSec / (1024.0 * 1024):F1} MB/s";
+        return $"{bytesPerSec / (1024.0 * 1024 * 1024):F2} GB/s";
+    }
+
+    private string FormatDuration(TimeSpan? duration)
+    {
+        if (!duration.HasValue) return "";
+        var d = duration.Value;
+        if (d.TotalDays >= 1) return $"{(int)d.TotalDays}d {d.Hours}h";
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+        return $"{(int)d.TotalMinutes}m";
+    }
+
+    private void ToggleDeviceExpand(string deviceId)
+    {
+        if (_expandedDevices.Contains(deviceId))
+            _expandedDevices.Remove(deviceId);
+        else
+            _expandedDevices.Add(deviceId);
+    }
+
+    private string GetConnectionStatusClass(DeviceConfig device, ConnectionInfo? connection)
+    {
+        if (device.Paused) return "paused";
+        if (connection?.Connected == true) return "connected";
+        return "disconnected";
+    }
+
+    private Color GetStatusColor(DeviceConfig device, ConnectionInfo? connection)
+    {
+        if (device.Paused) return Color.Warning;
+        if (connection?.Connected == true) return Color.Success;
+        return Color.Default;
+    }
+
+    private string GetStatusText(DeviceConfig device, ConnectionInfo? connection)
+    {
+        if (device.Paused) return "Paused";
+        if (connection?.Connected == true)
+        {
+            return connection.IsRelay ? "Connected (Relay)" : "Connected";
+        }
+        return "Disconnected";
+    }
+
+    private string GetConnectionTypeDisplay(string type)
+    {
+        return type switch
+        {
+            "tcp-client" => "TCP Client",
+            "tcp-server" => "TCP Server",
+            "quic-client" => "QUIC Client",
+            "quic-server" => "QUIC Server",
+            "relay-client" => "Relay Client",
+            "relay-server" => "Relay Server",
+            _ => type
+        };
+    }
+
+    private string GetCompressionDisplay(string compression)
+    {
+        return compression switch
+        {
+            "metadata" => "Metadata Only",
+            "always" => "Always",
+            "never" => "Never",
+            _ => compression
+        };
+    }
+
+    private string GetSyncStatus(string deviceId)
+    {
+        // Calculate sync status based on folder completions for this device
+        var sharedFolderIds = State.Folders
+            .Where(f => f.Devices?.Any(d => d.DeviceId == deviceId) == true)
+            .Select(f => f.Id)
+            .ToList();
+
+        if (!sharedFolderIds.Any()) return "No shared folders";
+
+        var allSynced = true;
+        var totalBytes = 0L;
+        var syncedBytes = 0L;
+
+        foreach (var folderId in sharedFolderIds)
+        {
+            if (State.FolderStatuses.TryGetValue(folderId, out var status))
+            {
+                totalBytes += status.GlobalBytes;
+                syncedBytes += status.InSyncBytes;
+                if (status.NeedBytes > 0) allSynced = false;
+            }
+        }
+
+        if (allSynced) return "Up to Date";
+        if (totalBytes > 0)
+        {
+            var percent = (syncedBytes * 100.0 / totalBytes);
+            return $"{percent:F0}% synced";
+        }
+        return "Syncing";
+    }
+
+    private IEnumerable<string> GetSharedFolders(string deviceId)
+    {
+        return State.Folders
+            .Where(f => f.Devices?.Any(d => d.DeviceId == deviceId) == true)
+            .Select(f => f.DisplayName);
+    }
+
+    private string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+        if (uptime.TotalHours >= 1)
+            return $"{(int)uptime.TotalHours}h {uptime.Minutes}m";
+        return $"{(int)uptime.TotalMinutes}m {uptime.Seconds}s";
+    }
+
+    private (long files, long dirs, long bytes) GetTotalGlobalState()
+    {
+        long files = 0, dirs = 0, bytes = 0;
+        foreach (var status in State.FolderStatuses.Values)
+        {
+            files += status.GlobalFiles;
+            dirs += status.GlobalDirectories;
+            bytes += status.GlobalBytes;
+        }
+        return (files, dirs, bytes);
+    }
+
+    private (long files, long dirs, long bytes) GetTotalLocalState()
+    {
+        long files = 0, dirs = 0, bytes = 0;
+        foreach (var status in State.FolderStatuses.Values)
+        {
+            files += status.LocalFiles;
+            dirs += status.LocalDirectories;
+            bytes += status.LocalBytes;
+        }
+        return (files, dirs, bytes);
+    }
+
+    private string GetListenersDisplay()
+    {
+        // This would need to come from the API - for now show placeholder
+        return "TCP, QUIC, Relay";
+    }
+
+    private string GetDiscoveryDisplay()
+    {
+        var parts = new List<string>();
+        if (State.SystemStatus?.DiscoveryEnabled == true)
+            parts.Add("Global");
+        parts.Add("Local"); // Local is typically always enabled
+        return parts.Count > 0 ? string.Join(", ", parts) : "Disabled";
+    }
+
+    private int GetConnectedDevicesCount()
+    {
+        return State.Connections.Values.Count(c => c.Connected);
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _refreshTimer?.Dispose();
+    }
+}

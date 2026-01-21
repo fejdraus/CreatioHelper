@@ -4,6 +4,7 @@ using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
 using System.Text.Json;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -39,6 +40,7 @@ public class SyncthingSystemController : ControllerBase
     /// GET /rest/system/status
     /// </summary>
     [HttpGet("status")]
+    [AllowAnonymous]
     public async Task<ActionResult<object>> GetStatus()
     {
         try
@@ -47,11 +49,36 @@ public class SyncthingSystemController : ControllerBase
             var devices = await _syncEngine.GetDevicesAsync();
             var folders = await _syncEngine.GetFoldersAsync();
 
+            // Get memory statistics
+            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+            var gcMemoryInfo = GC.GetGCMemoryInfo();
+
+            // Application memory (working set of this process)
+            var appMemory = currentProcess.WorkingSet64;
+
+            // Total physical memory on machine
+            var totalPhysicalMemory = gcMemoryInfo.TotalAvailableMemoryBytes;
+
+            // Memory used by OS (total - available)
+            // MemoryLoadBytes represents the memory load at the time of last GC
+            var memoryLoad = gcMemoryInfo.MemoryLoadBytes;
+
+            // For Syncthing compatibility, keep alloc/sys but also add new fields
+            var allocatedMemory = GC.GetTotalMemory(false);
+
             return Ok(new
             {
-                alloc = GC.GetTotalMemory(false),
+                // Syncthing-compatible fields
+                alloc = allocatedMemory,
+                sys = appMemory,
+
+                // New extended memory info
+                appMemory = appMemory,                      // Memory used by this application
+                osMemoryUsed = memoryLoad,                  // Memory used by OS/all processes
+                totalPhysicalMemory = totalPhysicalMemory,  // Total RAM on machine
+
                 connectionServiceStatus = new { },
-                cpuPercent = 0.0,
+                cpuPercent = GetCpuUsage(currentProcess),
                 discoveryEnabled = true,
                 discoveryErrors = new { },
                 discoveryMethods = 4,
@@ -62,7 +89,6 @@ public class SyncthingSystemController : ControllerBase
                 myID = _syncEngine.DeviceId,
                 pathSeparator = Path.DirectorySeparatorChar.ToString(),
                 startTime = statistics.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                sys = GC.GetTotalMemory(false),
                 tilde = "~",
                 uptime = (int)statistics.Uptime.TotalSeconds,
                 urVersionMax = 3,
@@ -78,28 +104,53 @@ public class SyncthingSystemController : ControllerBase
     }
 
     /// <summary>
+    /// Get approximate CPU usage for the process
+    /// </summary>
+    private static double GetCpuUsage(System.Diagnostics.Process process)
+    {
+        try
+        {
+            // Simple approximation based on total processor time
+            var cpuTime = process.TotalProcessorTime;
+            var uptime = DateTime.Now - process.StartTime;
+            var cpuUsage = (cpuTime.TotalMilliseconds / (uptime.TotalMilliseconds * Environment.ProcessorCount)) * 100;
+            return Math.Round(Math.Min(cpuUsage, 100), 1);
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    /// <summary>
     /// Get system version - 100% Syncthing compatible
     /// GET /rest/system/version
     /// </summary>
     [HttpGet("version")]
+    [AllowAnonymous]
     public ActionResult<object> GetVersion()
     {
+        var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+        var version = assembly.GetName().Version?.ToString(3) ?? "1.0.0";
+        var informationalVersion = assembly.GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? version;
+        var buildDate = System.IO.File.GetLastWriteTimeUtc(assembly.Location).ToString("yyyy-MM-ddTHH:mm:ssZ");
+
         return Ok(new
         {
             arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant(),
-            buildDate = "2024-01-15T10:30:00Z",
+            buildDate = buildDate,
             buildHost = Environment.MachineName,
-            buildUser = "creatio",
-            codename = "Copper Dragonfly", 
-            isBeta = false,
-            isCandidate = false,
-            isRelease = true,
-            longVersion = "syncthing v1.27.0 \"Copper Dragonfly\" (go1.21.5 linux-amd64) creatio@build 2024-01-15 10:30:00 UTC [noupgrade]",
+            buildUser = Environment.UserName,
+            codename = "CreatioHelper",
+            isBeta = informationalVersion.Contains("-beta", StringComparison.OrdinalIgnoreCase),
+            isCandidate = informationalVersion.Contains("-rc", StringComparison.OrdinalIgnoreCase),
+            isRelease = !informationalVersion.Contains("-"),
+            longVersion = $"CreatioHelper v{informationalVersion} ({System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription} {System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString().ToLowerInvariant()}) {Environment.UserName}@{Environment.MachineName} {buildDate}",
             os = System.Runtime.InteropServices.RuntimeInformation.OSDescription,
-            stamp = "2024-01-15T10:30:00Z",
-            tags = new[] { "noupgrade" },
-            user = "creatio",
-            version = "v1.27.0"
+            stamp = buildDate,
+            tags = Array.Empty<string>(),
+            user = Environment.UserName,
+            version = $"v{version}"
         });
     }
 
@@ -382,6 +433,171 @@ public class SyncthingSystemController : ControllerBase
             _logger.LogError(ex, "Error getting system log");
             return StatusCode(500, new { error = "Internal server error" });
         }
+    }
+
+    /// <summary>
+    /// Get system log entries as structured array
+    /// GET /rest/system/log/entries
+    /// Custom endpoint for WebUI - reads real logs from log files
+    /// </summary>
+    [HttpGet("log/entries")]
+    public ActionResult<LogEntry[]> GetLogEntries([FromQuery] int limit = 100)
+    {
+        try
+        {
+            var entries = new List<LogEntry>();
+            var logsDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+
+            if (!Directory.Exists(logsDirectory))
+            {
+                _logger.LogWarning("Logs directory not found: {LogsDirectory}", logsDirectory);
+                return Ok(Array.Empty<LogEntry>());
+            }
+
+            // Find log files sorted by modification time (most recent first)
+            var logFiles = Directory.GetFiles(logsDirectory, "agent-*.log")
+                .OrderByDescending(f => System.IO.File.GetLastWriteTimeUtc(f))
+                .ToList();
+
+            if (logFiles.Count == 0)
+            {
+                return Ok(Array.Empty<LogEntry>());
+            }
+
+            // Read lines from log files until we have enough entries
+            var maxLimit = Math.Min(limit, 1000);
+            foreach (var logFile in logFiles)
+            {
+                if (entries.Count >= maxLimit) break;
+
+                try
+                {
+                    // Read file with shared access (log file may be in use)
+                    using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var reader = new StreamReader(fileStream);
+
+                    var lines = new List<string>();
+                    string? line;
+                    while ((line = reader.ReadLine()) != null)
+                    {
+                        lines.Add(line);
+                    }
+
+                    // Process lines in reverse order (newest first)
+                    for (int i = lines.Count - 1; i >= 0 && entries.Count < maxLimit; i--)
+                    {
+                        var entry = ParseLogLine(lines[i]);
+                        if (entry != null)
+                        {
+                            entries.Add(entry);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error reading log file: {LogFile}", logFile);
+                }
+            }
+
+            return Ok(entries.ToArray());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting system log entries");
+            return StatusCode(500, Array.Empty<LogEntry>());
+        }
+    }
+
+    /// <summary>
+    /// Parse a Serilog log line
+    /// Format: {Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message}
+    /// Example: 2024-01-20 18:10:39.533 +03:00 [INF] Some log message
+    /// </summary>
+    private static LogEntry? ParseLogLine(string line)
+    {
+        if (string.IsNullOrWhiteSpace(line))
+            return null;
+
+        try
+        {
+            // Match pattern: date time timezone [LEVEL] message
+            // Example: 2024-01-20 18:10:39.533 +03:00 [INF] Some log message
+            var match = System.Text.RegularExpressions.Regex.Match(line,
+                @"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+([+-]\d{2}:\d{2})\s+\[(\w{3})\]\s+(.*)$");
+
+            if (!match.Success)
+            {
+                // Try simpler format without timezone
+                match = System.Text.RegularExpressions.Regex.Match(line,
+                    @"^(\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}:\d{2}\.\d{3})\s+\[(\w{3})\]\s+(.*)$");
+
+                if (!match.Success)
+                    return null;
+
+                return new LogEntry
+                {
+                    Timestamp = DateTime.Parse(match.Groups[1].Value),
+                    Level = ParseLogLevel(match.Groups[2].Value),
+                    Facility = ExtractFacility(match.Groups[3].Value),
+                    Message = match.Groups[3].Value
+                };
+            }
+
+            return new LogEntry
+            {
+                Timestamp = DateTime.Parse(match.Groups[1].Value),
+                Level = ParseLogLevel(match.Groups[3].Value),
+                Facility = ExtractFacility(match.Groups[4].Value),
+                Message = match.Groups[4].Value
+            };
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Parse Serilog level abbreviation to full level name
+    /// </summary>
+    private static string ParseLogLevel(string levelAbbr)
+    {
+        return levelAbbr.ToUpperInvariant() switch
+        {
+            "VRB" => "verbose",
+            "DBG" => "debug",
+            "INF" => "info",
+            "WRN" => "warning",
+            "ERR" => "error",
+            "FTL" => "fatal",
+            _ => "info"
+        };
+    }
+
+    /// <summary>
+    /// Extract facility/category from log message
+    /// </summary>
+    private static string ExtractFacility(string message)
+    {
+        // Try to extract namespace/class from common patterns
+        if (message.Contains("SyncEngine") || message.Contains("Sync:"))
+            return "sync";
+        if (message.Contains("Connection") || message.Contains("Device"))
+            return "connections";
+        if (message.Contains("Database") || message.Contains("DB") || message.Contains("Index"))
+            return "db";
+        if (message.Contains("API") || message.Contains("Controller") || message.Contains("Request"))
+            return "api";
+        if (message.Contains("Model") || message.Contains("Config"))
+            return "model";
+        if (message.Contains("Auth") || message.Contains("Login") || message.Contains("JWT"))
+            return "auth";
+        if (message.Contains("File") || message.Contains("Folder"))
+            return "fs";
+        if (message.Contains("Network") || message.Contains("NAT") || message.Contains("UPnP"))
+            return "network";
+
+        return "app";
     }
 
     /// <summary>
@@ -1024,4 +1240,22 @@ public class DebugRequest
 {
     public string[]? Enable { get; set; }
     public string[]? Disable { get; set; }
+}
+
+/// <summary>
+/// Log entry model for WebUI
+/// </summary>
+public class LogEntry
+{
+    [System.Text.Json.Serialization.JsonPropertyName("when")]
+    public DateTime Timestamp { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("level")]
+    public string Level { get; set; } = "info";
+
+    [System.Text.Json.Serialization.JsonPropertyName("facility")]
+    public string Facility { get; set; } = "app";
+
+    [System.Text.Json.Serialization.JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
 }

@@ -1,3 +1,4 @@
+using System.Buffers.Binary;
 using System.Collections.Concurrent;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -128,41 +129,205 @@ public class DeviceDiscovery : IDeviceDiscovery, IDisposable
         return Task.CompletedTask;
     }
 
+    // Syncthing local discovery protocol magic number (0x2EA7D90B)
+    private const uint LocalDiscoveryMagic = 0x2EA7D90B;
+
     private Task ProcessLocalDiscoveryMessage(byte[] data, IPEndPoint remoteEndPoint)
     {
         try
         {
-            var message = Encoding.UTF8.GetString(data);
-            var announcement = JsonSerializer.Deserialize<LocalDiscoveryAnnouncement>(message);
-            
-            if (announcement?.DeviceId == null) return Task.CompletedTask;
-            
-            var device = new DiscoveredDevice
+            if (data.Length < 4)
             {
-                DeviceId = announcement.DeviceId,
-                Addresses = announcement.Addresses,
-                LastSeen = DateTime.UtcNow,
-                Source = DiscoverySource.Local
-            };
-            
-            _discoveredDevices.AddOrUpdate(announcement.DeviceId, device, (key, existing) =>
+                _logger.LogDebug("Local discovery message too short ({Length} bytes) from {RemoteEndPoint}",
+                    data.Length, remoteEndPoint);
+                return Task.CompletedTask;
+            }
+
+            // Check for Syncthing binary protocol (magic header)
+            var magic = BinaryPrimitives.ReadUInt32BigEndian(data.AsSpan(0, 4));
+            if (magic == LocalDiscoveryMagic)
             {
-                existing.Addresses = announcement.Addresses;
-                existing.LastSeen = DateTime.UtcNow;
-                return existing;
-            });
-            
-            DeviceDiscovered?.Invoke(this, new DeviceDiscoveredEventArgs(device));
-            
-            _logger.LogDebug("Discovered device {DeviceId} locally at {Addresses}", 
-                announcement.DeviceId, string.Join(", ", announcement.Addresses));
+                return ProcessSyncthingLocalDiscovery(data, remoteEndPoint);
+            }
+
+            // Check for JSON format (our own format or fallback)
+            if (data[0] == (byte)'{')
+            {
+                return ProcessJsonLocalDiscovery(data, remoteEndPoint);
+            }
+
+            _logger.LogDebug("Unknown local discovery format from {RemoteEndPoint}, magic: 0x{Magic:X8}",
+                remoteEndPoint, magic);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing local discovery message from {RemoteEndPoint}", remoteEndPoint);
         }
-        
+
         return Task.CompletedTask;
+    }
+
+    private Task ProcessSyncthingLocalDiscovery(byte[] data, IPEndPoint remoteEndPoint)
+    {
+        // Syncthing local discovery v2 format:
+        // - Magic (4 bytes): 0x2EA7D90B
+        // - Announce message (protobuf encoded)
+        //
+        // Announce message structure:
+        // - DeviceID (32 bytes raw, displayed as base32)
+        // - Addresses (list of strings)
+        // - InstanceID (8 bytes)
+
+        if (data.Length < 44) // 4 magic + 32 deviceId + 8 instanceId minimum
+        {
+            _logger.LogDebug("Syncthing discovery message too short ({Length} bytes)", data.Length);
+            return Task.CompletedTask;
+        }
+
+        try
+        {
+            // Skip magic (4 bytes)
+            var offset = 4;
+
+            // Read device ID (32 bytes) - convert to Syncthing format (base32 with dashes)
+            var deviceIdBytes = data.AsSpan(offset, 32);
+            var deviceId = FormatDeviceId(deviceIdBytes.ToArray());
+            offset += 32;
+
+            // Read instance ID (8 bytes) - just skip it for now
+            offset += 8;
+
+            // Rest of the message contains addresses in a simple length-prefixed format
+            var addresses = new List<string>();
+
+            // Read number of addresses (4 bytes, big-endian)
+            if (offset + 4 <= data.Length)
+            {
+                var addressCount = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(offset, 4));
+                offset += 4;
+
+                for (int i = 0; i < addressCount && offset < data.Length; i++)
+                {
+                    // Read address length (4 bytes)
+                    if (offset + 4 > data.Length) break;
+                    var addrLen = BinaryPrimitives.ReadInt32BigEndian(data.AsSpan(offset, 4));
+                    offset += 4;
+
+                    // Read address string
+                    if (offset + addrLen > data.Length || addrLen <= 0 || addrLen > 256) break;
+                    var addr = Encoding.UTF8.GetString(data, offset, addrLen);
+                    addresses.Add(addr);
+                    offset += addrLen;
+                }
+            }
+
+            // If no addresses parsed, use the remote endpoint
+            if (addresses.Count == 0)
+            {
+                addresses.Add($"tcp://{remoteEndPoint.Address}:22000");
+            }
+
+            var device = new DiscoveredDevice
+            {
+                DeviceId = deviceId,
+                Addresses = addresses,
+                LastSeen = DateTime.UtcNow,
+                Source = DiscoverySource.Local
+            };
+
+            _discoveredDevices.AddOrUpdate(deviceId, device, (key, existing) =>
+            {
+                existing.Addresses = addresses;
+                existing.LastSeen = DateTime.UtcNow;
+                return existing;
+            });
+
+            DeviceDiscovered?.Invoke(this, new DeviceDiscoveredEventArgs(device));
+
+            _logger.LogDebug("Discovered Syncthing device {DeviceId} locally at {Addresses}",
+                deviceId, string.Join(", ", addresses));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to parse Syncthing local discovery from {RemoteEndPoint}", remoteEndPoint);
+        }
+
+        return Task.CompletedTask;
+    }
+
+    private Task ProcessJsonLocalDiscovery(byte[] data, IPEndPoint remoteEndPoint)
+    {
+        var message = Encoding.UTF8.GetString(data);
+        var announcement = JsonSerializer.Deserialize<LocalDiscoveryAnnouncement>(message);
+
+        if (announcement?.DeviceId == null) return Task.CompletedTask;
+
+        var device = new DiscoveredDevice
+        {
+            DeviceId = announcement.DeviceId,
+            Addresses = announcement.Addresses,
+            LastSeen = DateTime.UtcNow,
+            Source = DiscoverySource.Local
+        };
+
+        _discoveredDevices.AddOrUpdate(announcement.DeviceId, device, (key, existing) =>
+        {
+            existing.Addresses = announcement.Addresses;
+            existing.LastSeen = DateTime.UtcNow;
+            return existing;
+        });
+
+        DeviceDiscovered?.Invoke(this, new DeviceDiscoveredEventArgs(device));
+
+        _logger.LogDebug("Discovered device {DeviceId} locally (JSON) at {Addresses}",
+            announcement.DeviceId, string.Join(", ", announcement.Addresses));
+
+        return Task.CompletedTask;
+    }
+
+    private static string FormatDeviceId(byte[] deviceIdBytes)
+    {
+        // Convert 32 bytes to Syncthing device ID format (base32 with dashes)
+        // Syncthing uses Luhn mod N check characters, but for display we can use simple base32
+        var base32 = ToBase32(deviceIdBytes);
+
+        // Insert dashes every 7 characters (Syncthing format: XXXXXXX-XXXXXXX-...)
+        var parts = new List<string>();
+        for (int i = 0; i < base32.Length; i += 7)
+        {
+            var len = Math.Min(7, base32.Length - i);
+            parts.Add(base32.Substring(i, len));
+        }
+
+        return string.Join("-", parts);
+    }
+
+    private static string ToBase32(byte[] data)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        var result = new StringBuilder((data.Length * 8 + 4) / 5);
+
+        int buffer = 0;
+        int bitsInBuffer = 0;
+
+        foreach (var b in data)
+        {
+            buffer = (buffer << 8) | b;
+            bitsInBuffer += 8;
+
+            while (bitsInBuffer >= 5)
+            {
+                bitsInBuffer -= 5;
+                result.Append(alphabet[(buffer >> bitsInBuffer) & 0x1F]);
+            }
+        }
+
+        if (bitsInBuffer > 0)
+        {
+            result.Append(alphabet[(buffer << (5 - bitsInBuffer)) & 0x1F]);
+        }
+
+        return result.ToString();
     }
 
     private async Task AnnounceLocalAsync(SyncDevice localDevice, List<string> addresses)

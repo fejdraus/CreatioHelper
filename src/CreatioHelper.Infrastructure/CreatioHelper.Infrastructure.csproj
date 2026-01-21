@@ -9,11 +9,11 @@
 
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
-    <PackageReference Include="Google.Protobuf" Version="3.29.3" />
-    <PackageReference Include="Grpc.Tools" Version="2.69.0" PrivateAssets="All" />
+    <PackageReference Include="Google.Protobuf" Version="3.33.4" />
+    <PackageReference Include="Grpc.Tools" Version="2.76.0" PrivateAssets="All" />
 
     <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->
-    <PackageReference Include="BouncyCastle.Cryptography" Version="2.5.1" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
 
     <!-- Existing packages -->
     <PackageReference Include="K4os.Compression.LZ4" Version="1.3.8" />
@@ -35,7 +35,7 @@
     <PackageReference Include="prometheus-net" Version="8.2.1" />
 
     <!-- GeoIP for relay server selection optimization -->
-    <PackageReference Include="MaxMind.GeoIP2" Version="5.2.0" />
+    <PackageReference Include="MaxMind.GeoIP2" Version="5.4.1" />
   </ItemGroup>
 
   <ItemGroup>
