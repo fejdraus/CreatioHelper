@@ -19,6 +19,7 @@ public class SyncEngineTests : IDisposable
     private readonly Mock<ISyncProtocol> _mockProtocol;
     private readonly Mock<IDeviceDiscovery> _mockDiscovery;
     private readonly Mock<ISyncDatabase> _mockDatabase;
+    private readonly Mock<IConfigurationManager> _mockConfigManager;
     private readonly Mock<IEventLogger> _mockEventLogger;
     private readonly Mock<IStatisticsCollector> _mockStatisticsCollector;
     private readonly Mock<ICertificateManager> _mockCertificateManager;
@@ -32,6 +33,7 @@ public class SyncEngineTests : IDisposable
         _mockProtocol = new Mock<ISyncProtocol>();
         _mockDiscovery = new Mock<IDeviceDiscovery>();
         _mockDatabase = new Mock<ISyncDatabase>();
+        _mockConfigManager = new Mock<IConfigurationManager>();
         _mockEventLogger = new Mock<IEventLogger>();
         _mockStatisticsCollector = new Mock<IStatisticsCollector>();
         _mockCertificateManager = new Mock<ICertificateManager>();
@@ -110,6 +112,7 @@ public class SyncEngineTests : IDisposable
                 transferOptimizer,
                 syncConfig,
                 _mockDatabase.Object,
+                _mockConfigManager.Object,
                 _mockEventLogger.Object,
                 _mockStatisticsCollector.Object,
                 _mockCertificateManager.Object,

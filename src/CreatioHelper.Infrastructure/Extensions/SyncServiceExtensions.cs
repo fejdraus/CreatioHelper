@@ -21,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using ISyncConfigManager = CreatioHelper.Application.Interfaces.IConfigurationManager;
 
 namespace CreatioHelper.Infrastructure.Extensions;
 
@@ -276,6 +277,7 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<TransferOptimizer>(),
                 syncConfig,
                 provider.GetRequiredService<ISyncDatabase>(),
+                provider.GetRequiredService<ISyncConfigManager>(),
                 provider.GetRequiredService<IEventLogger>(),
                 provider.GetRequiredService<IStatisticsCollector>(),
                 provider.GetRequiredService<ICertificateManager>(),

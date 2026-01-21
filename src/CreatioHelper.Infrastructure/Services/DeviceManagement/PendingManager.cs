@@ -15,8 +15,7 @@ namespace CreatioHelper.Infrastructure.Services.DeviceManagement;
 public class PendingManager : IPendingManager
 {
     private readonly ILogger<PendingManager> _logger;
-    private readonly IDeviceInfoRepository _deviceRepository;
-    private readonly IFolderConfigRepository _folderRepository;
+    private readonly IConfigurationManager _configManager;
     private readonly IEventLogger _eventLogger;
 
     private readonly ConcurrentDictionary<string, PendingDevice> _pendingDevices = new();
@@ -28,13 +27,11 @@ public class PendingManager : IPendingManager
 
     public PendingManager(
         ILogger<PendingManager> logger,
-        IDeviceInfoRepository deviceRepository,
-        IFolderConfigRepository folderRepository,
+        IConfigurationManager configManager,
         IEventLogger eventLogger)
     {
         _logger = logger;
-        _deviceRepository = deviceRepository;
-        _folderRepository = folderRepository;
+        _configManager = configManager;
         _eventLogger = eventLogger;
     }
 
@@ -127,7 +124,7 @@ public class PendingManager : IPendingManager
             device.AddAddress(pending.Address);
         }
 
-        await _deviceRepository.UpsertAsync(device);
+        await _configManager.UpsertDeviceAsync(device);
 
         lock (_statsLock)
         {
@@ -172,7 +169,7 @@ public class PendingManager : IPendingManager
         // Add the device that offered the folder
         folder.AddDevice(pending.OfferedByDeviceId);
 
-        await _folderRepository.UpsertAsync(folder);
+        await _configManager.UpsertFolderAsync(folder);
 
         // Remove all pending entries for this folder
         var keysToRemove = _pendingFolders
@@ -241,11 +238,11 @@ public class PendingManager : IPendingManager
         // Also add to device's ignored folders list
         Task.Run(async () =>
         {
-            var device = await _deviceRepository.GetAsync(offeredByDeviceId);
+            var device = await _configManager.GetDeviceAsync(offeredByDeviceId);
             if (device != null && !device.IgnoredFolders.Contains(folderId))
             {
                 device.IgnoredFolders.Add(folderId);
-                await _deviceRepository.UpsertAsync(device);
+                await _configManager.UpsertDeviceAsync(device);
             }
         }, cancellationToken);
 

@@ -10,22 +10,19 @@ namespace CreatioHelper.UnitTests.DeviceManagement;
 public class PauseCoordinationServiceTests
 {
     private readonly Mock<ILogger<PauseCoordinationService>> _loggerMock;
-    private readonly Mock<IDeviceInfoRepository> _deviceRepoMock;
-    private readonly Mock<IFolderConfigRepository> _folderRepoMock;
+    private readonly Mock<IConfigurationManager> _configManagerMock;
     private readonly Mock<IEventLogger> _eventLoggerMock;
     private readonly PauseCoordinationService _service;
 
     public PauseCoordinationServiceTests()
     {
         _loggerMock = new Mock<ILogger<PauseCoordinationService>>();
-        _deviceRepoMock = new Mock<IDeviceInfoRepository>();
-        _folderRepoMock = new Mock<IFolderConfigRepository>();
+        _configManagerMock = new Mock<IConfigurationManager>();
         _eventLoggerMock = new Mock<IEventLogger>();
 
         _service = new PauseCoordinationService(
             _loggerMock.Object,
-            _deviceRepoMock.Object,
-            _folderRepoMock.Object,
+            _configManagerMock.Object,
             _eventLoggerMock.Object,
             TimeSpan.FromMilliseconds(100)); // Short timeout for tests
     }
@@ -34,7 +31,7 @@ public class PauseCoordinationServiceTests
     public async Task PauseDeviceAsync_ReturnsError_WhenDeviceNotFound()
     {
         // Arrange
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync((SyncDevice?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync((SyncDevice?)null);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1");
@@ -49,7 +46,7 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = true };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1");
@@ -65,8 +62,8 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1");
@@ -75,7 +72,7 @@ public class PauseCoordinationServiceTests
         Assert.True(result.Success);
         Assert.False(result.AlreadyInState);
         Assert.True(result.IsPaused);
-        _deviceRepoMock.Verify(r => r.UpsertAsync(It.Is<SyncDevice>(d => d.Paused)), Times.Once);
+        _configManagerMock.Verify(r => r.UpsertDeviceAsync(It.Is<SyncDevice>(d => d.Paused)), Times.Once);
     }
 
     [Fact]
@@ -83,8 +80,8 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1");
@@ -97,7 +94,7 @@ public class PauseCoordinationServiceTests
     public async Task ResumeDeviceAsync_ReturnsError_WhenDeviceNotFound()
     {
         // Arrange
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync((SyncDevice?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync((SyncDevice?)null);
 
         // Act
         var result = await _service.ResumeDeviceAsync("device-1");
@@ -112,7 +109,7 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.ResumeDeviceAsync("device-1");
@@ -128,8 +125,8 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = true };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ResumeDeviceAsync("device-1");
@@ -137,14 +134,14 @@ public class PauseCoordinationServiceTests
         // Assert
         Assert.True(result.Success);
         Assert.False(result.IsPaused);
-        _deviceRepoMock.Verify(r => r.UpsertAsync(It.Is<SyncDevice>(d => !d.Paused)), Times.Once);
+        _configManagerMock.Verify(r => r.UpsertDeviceAsync(It.Is<SyncDevice>(d => !d.Paused)), Times.Once);
     }
 
     [Fact]
     public async Task PauseFolderAsync_ReturnsError_WhenFolderNotFound()
     {
         // Arrange
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
 
         // Act
         var result = await _service.PauseFolderAsync("folder-1");
@@ -159,8 +156,8 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var folder = new SyncFolder("folder-1", "Test", "/path");
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync(folder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync(folder);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseFolderAsync("folder-1");
@@ -176,8 +173,8 @@ public class PauseCoordinationServiceTests
         // Arrange
         var folder = new SyncFolder("folder-1", "Test", "/path");
         folder.SetPaused(true);
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync(folder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync(folder);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ResumeFolderAsync("folder-1");
@@ -196,10 +193,10 @@ public class PauseCoordinationServiceTests
             new SyncDevice("device-1", "Device 1"),
             new SyncDevice("device-2", "Device 2")
         };
-        _deviceRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(devices);
-        _deviceRepoMock.Setup(r => r.GetAsync(It.IsAny<string>()))
+        _configManagerMock.Setup(r => r.GetAllDevicesAsync()).ReturnsAsync(devices);
+        _configManagerMock.Setup(r => r.GetDeviceAsync(It.IsAny<string>()))
             .Returns<string>(id => Task.FromResult(devices.FirstOrDefault(d => d.DeviceId == id)));
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseAllDevicesAsync();
@@ -218,9 +215,9 @@ public class PauseCoordinationServiceTests
             new SyncDevice("device-1", "Device 1") { Paused = true },
             new SyncDevice("device-2", "Device 2") { Paused = false }
         };
-        _deviceRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(devices);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(devices[0]);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetAllDevicesAsync()).ReturnsAsync(devices);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(devices[0]);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ResumeAllDevicesAsync();
@@ -238,10 +235,10 @@ public class PauseCoordinationServiceTests
             new SyncFolder("folder-1", "Folder 1", "/path1"),
             new SyncFolder("folder-2", "Folder 2", "/path2")
         };
-        _folderRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(folders);
-        _folderRepoMock.Setup(r => r.GetAsync(It.IsAny<string>()))
+        _configManagerMock.Setup(r => r.GetAllFoldersAsync()).ReturnsAsync(folders);
+        _configManagerMock.Setup(r => r.GetFolderAsync(It.IsAny<string>()))
             .Returns<string>(id => Task.FromResult(folders.FirstOrDefault(f => f.Id == id)));
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseAllFoldersAsync();
@@ -255,7 +252,7 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = true };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.IsDevicePausedAsync("device-1");
@@ -269,7 +266,7 @@ public class PauseCoordinationServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.IsDevicePausedAsync("device-1");
@@ -284,7 +281,7 @@ public class PauseCoordinationServiceTests
         // Arrange
         var folder = new SyncFolder("folder-1", "Test", "/path");
         folder.SetPaused(true);
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync(folder);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync(folder);
 
         // Act
         var result = await _service.IsFolderPausedAsync("folder-1");
@@ -303,7 +300,7 @@ public class PauseCoordinationServiceTests
             new SyncDevice("device-2", "Device 2") { Paused = false },
             new SyncDevice("device-3", "Device 3") { Paused = true }
         };
-        _deviceRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(devices);
+        _configManagerMock.Setup(r => r.GetAllDevicesAsync()).ReturnsAsync(devices);
 
         // Act
         var result = await _service.GetPausedDevicesAsync();
@@ -322,7 +319,7 @@ public class PauseCoordinationServiceTests
         folder1.SetPaused(true);
 
         var folders = new List<SyncFolder> { folder1, folder2 };
-        _folderRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(folders);
+        _configManagerMock.Setup(r => r.GetAllFoldersAsync()).ReturnsAsync(folders);
 
         // Act
         var result = await _service.GetPausedFoldersAsync();
@@ -372,8 +369,8 @@ public class PauseCoordinationServiceTests
         });
 
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1", graceful: true);
@@ -394,8 +391,8 @@ public class PauseCoordinationServiceTests
         });
 
         var device = new SyncDevice("device-1", "Test") { Paused = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.PauseDeviceAsync("device-1", graceful: false);

@@ -16,8 +16,7 @@ namespace CreatioHelper.Infrastructure.Services.DeviceManagement;
 public class PauseCoordinationService : IPauseCoordinationService
 {
     private readonly ILogger<PauseCoordinationService> _logger;
-    private readonly IDeviceInfoRepository _deviceRepository;
-    private readonly IFolderConfigRepository _folderRepository;
+    private readonly IConfigurationManager _configManager;
     private readonly IEventLogger _eventLogger;
 
     private readonly ConcurrentDictionary<string, Func<CancellationToken, Task>> _pauseCallbacks = new();
@@ -28,14 +27,12 @@ public class PauseCoordinationService : IPauseCoordinationService
 
     public PauseCoordinationService(
         ILogger<PauseCoordinationService> logger,
-        IDeviceInfoRepository deviceRepository,
-        IFolderConfigRepository folderRepository,
+        IConfigurationManager configManager,
         IEventLogger eventLogger,
         TimeSpan? gracefulPauseTimeout = null)
     {
         _logger = logger;
-        _deviceRepository = deviceRepository;
-        _folderRepository = folderRepository;
+        _configManager = configManager;
         _eventLogger = eventLogger;
         _gracefulPauseTimeout = gracefulPauseTimeout ?? TimeSpan.FromSeconds(30);
     }
@@ -48,7 +45,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var device = await _deviceRepository.GetAsync(deviceId);
+            var device = await _configManager.GetDeviceAsync(deviceId);
             if (device == null)
             {
                 result.Error = $"Device {deviceId} not found";
@@ -70,7 +67,7 @@ public class PauseCoordinationService : IPauseCoordinationService
             }
 
             device.SetPaused(true);
-            await _deviceRepository.UpsertAsync(device);
+            await _configManager.UpsertDeviceAsync(device);
 
             result.Success = true;
             result.IsPaused = true;
@@ -113,7 +110,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var device = await _deviceRepository.GetAsync(deviceId);
+            var device = await _configManager.GetDeviceAsync(deviceId);
             if (device == null)
             {
                 result.Error = $"Device {deviceId} not found";
@@ -129,7 +126,7 @@ public class PauseCoordinationService : IPauseCoordinationService
             }
 
             device.SetPaused(false);
-            await _deviceRepository.UpsertAsync(device);
+            await _configManager.UpsertDeviceAsync(device);
 
             result.Success = true;
             result.IsPaused = false;
@@ -170,7 +167,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var folder = await _folderRepository.GetAsync(folderId);
+            var folder = await _configManager.GetFolderAsync(folderId);
             if (folder == null)
             {
                 result.Error = $"Folder {folderId} not found";
@@ -192,7 +189,7 @@ public class PauseCoordinationService : IPauseCoordinationService
             }
 
             folder.SetPaused(true);
-            await _folderRepository.UpsertAsync(folder);
+            await _configManager.UpsertFolderAsync(folder);
 
             result.Success = true;
             result.IsPaused = true;
@@ -235,7 +232,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var folder = await _folderRepository.GetAsync(folderId);
+            var folder = await _configManager.GetFolderAsync(folderId);
             if (folder == null)
             {
                 result.Error = $"Folder {folderId} not found";
@@ -251,7 +248,7 @@ public class PauseCoordinationService : IPauseCoordinationService
             }
 
             folder.SetPaused(false);
-            await _folderRepository.UpsertAsync(folder);
+            await _configManager.UpsertFolderAsync(folder);
 
             result.Success = true;
             result.IsPaused = false;
@@ -292,7 +289,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var devices = await _deviceRepository.GetAllAsync();
+            var devices = await _configManager.GetAllDevicesAsync();
             foreach (var device in devices)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -338,7 +335,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var devices = await _deviceRepository.GetAllAsync();
+            var devices = await _configManager.GetAllDevicesAsync();
             foreach (var device in devices.Where(d => d.Paused))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -384,7 +381,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var folders = await _folderRepository.GetAllAsync();
+            var folders = await _configManager.GetAllFoldersAsync();
             foreach (var folder in folders)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -430,7 +427,7 @@ public class PauseCoordinationService : IPauseCoordinationService
 
         try
         {
-            var folders = await _folderRepository.GetAllAsync();
+            var folders = await _configManager.GetAllFoldersAsync();
             foreach (var folder in folders.Where(f => f.Paused))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -471,28 +468,28 @@ public class PauseCoordinationService : IPauseCoordinationService
     /// <inheritdoc />
     public async Task<bool> IsDevicePausedAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        var device = await _deviceRepository.GetAsync(deviceId);
+        var device = await _configManager.GetDeviceAsync(deviceId);
         return device?.Paused ?? false;
     }
 
     /// <inheritdoc />
     public async Task<bool> IsFolderPausedAsync(string folderId, CancellationToken cancellationToken = default)
     {
-        var folder = await _folderRepository.GetAsync(folderId);
+        var folder = await _configManager.GetFolderAsync(folderId);
         return folder?.Paused ?? false;
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<SyncDevice>> GetPausedDevicesAsync(CancellationToken cancellationToken = default)
     {
-        var allDevices = await _deviceRepository.GetAllAsync();
+        var allDevices = await _configManager.GetAllDevicesAsync();
         return allDevices.Where(d => d.Paused);
     }
 
     /// <inheritdoc />
     public async Task<IEnumerable<SyncFolder>> GetPausedFoldersAsync(CancellationToken cancellationToken = default)
     {
-        var allFolders = await _folderRepository.GetAllAsync();
+        var allFolders = await _configManager.GetAllFoldersAsync();
         return allFolders.Where(f => f.Paused);
     }
 

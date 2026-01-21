@@ -17,10 +17,9 @@ public class SyncDatabase : ISyncDatabase
     private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     
     // Repository instances (thread-safe lazy initialization with volatile for double-checked locking)
+    // Note: DeviceInfo and FolderConfig removed - now handled by ConfigurationManager using config.xml
     private volatile IFileMetadataRepository? _fileMetadata;
     private volatile IBlockInfoRepository? _blockInfo;
-    private volatile IDeviceInfoRepository? _deviceInfo;
-    private volatile IFolderConfigRepository? _folderConfig;
     private volatile IGlobalStateRepository? _globalState;
     private volatile IEventLogRepository? _eventLog;
     private readonly object _repoLock = new();
@@ -67,36 +66,6 @@ public class SyncDatabase : ISyncDatabase
                 }
             }
             return _blockInfo;
-        }
-    }
-
-    public IDeviceInfoRepository DeviceInfo
-    {
-        get
-        {
-            if (_deviceInfo == null)
-            {
-                lock (_repoLock)
-                {
-                    _deviceInfo ??= new DeviceInfoRepository(GetConnection, _logger);
-                }
-            }
-            return _deviceInfo;
-        }
-    }
-
-    public IFolderConfigRepository FolderConfig
-    {
-        get
-        {
-            if (_folderConfig == null)
-            {
-                lock (_repoLock)
-                {
-                    _folderConfig ??= new FolderConfigRepository(GetConnection, _logger);
-                }
-            }
-            return _folderConfig;
         }
     }
 
@@ -211,6 +180,7 @@ public class SyncDatabase : ISyncDatabase
                 hash TEXT NOT NULL,
                 modified_by TEXT NOT NULL,
                 locally_changed BOOLEAN NOT NULL,
+                local_flags INTEGER NOT NULL DEFAULT 0,
                 platform_data TEXT,
                 updated_at TEXT NOT NULL,
                 PRIMARY KEY (folder_id, file_name)

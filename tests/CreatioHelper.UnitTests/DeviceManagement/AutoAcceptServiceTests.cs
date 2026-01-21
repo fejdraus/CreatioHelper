@@ -10,8 +10,7 @@ namespace CreatioHelper.UnitTests.DeviceManagement;
 public class AutoAcceptServiceTests
 {
     private readonly Mock<ILogger<AutoAcceptService>> _loggerMock;
-    private readonly Mock<IDeviceInfoRepository> _deviceRepoMock;
-    private readonly Mock<IFolderConfigRepository> _folderRepoMock;
+    private readonly Mock<IConfigurationManager> _configManagerMock;
     private readonly Mock<IPendingManager> _pendingManagerMock;
     private readonly Mock<IEventLogger> _eventLoggerMock;
     private readonly AutoAcceptService _service;
@@ -19,15 +18,13 @@ public class AutoAcceptServiceTests
     public AutoAcceptServiceTests()
     {
         _loggerMock = new Mock<ILogger<AutoAcceptService>>();
-        _deviceRepoMock = new Mock<IDeviceInfoRepository>();
-        _folderRepoMock = new Mock<IFolderConfigRepository>();
+        _configManagerMock = new Mock<IConfigurationManager>();
         _pendingManagerMock = new Mock<IPendingManager>();
         _eventLoggerMock = new Mock<IEventLogger>();
 
         _service = new AutoAcceptService(
             _loggerMock.Object,
-            _deviceRepoMock.Object,
-            _folderRepoMock.Object,
+            _configManagerMock.Object,
             _pendingManagerMock.Object,
             _eventLoggerMock.Object,
             "/test/default/path");
@@ -38,8 +35,8 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var existingFolder = new SyncFolder("folder-1", "Existing", "/path");
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync(existingFolder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync(existingFolder);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test");
@@ -54,14 +51,14 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var existingFolder = new SyncFolder("folder-1", "Existing", "/path");
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync(existingFolder);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync(existingFolder);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test");
 
         // Assert
-        _folderRepoMock.Verify(r => r.UpsertAsync(It.Is<SyncFolder>(f => f.Devices.Contains("device-1"))), Times.Once);
+        _configManagerMock.Verify(r => r.UpsertFolderAsync(It.Is<SyncFolder>(f => f.Devices.Contains("device-1"))), Times.Once);
     }
 
     [Fact]
@@ -71,8 +68,8 @@ public class AutoAcceptServiceTests
         var device = new SyncDevice("device-1", "Test");
         device.IgnoredFolders.Add("folder-1");
 
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test");
@@ -87,8 +84,8 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = false };
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
         _pendingManagerMock.Setup(m => m.AddPendingFolderAsync(It.IsAny<PendingFolder>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -107,9 +104,9 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = true };
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test Folder");
@@ -126,9 +123,9 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = true };
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test", receiveEncrypted: true);
@@ -143,9 +140,9 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = true };
-        _folderRepoMock.Setup(r => r.GetAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _folderRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetFolderAsync("folder-1")).ReturnsAsync((SyncFolder?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertFolderAsync(It.IsAny<SyncFolder>())).Returns(Task.CompletedTask);
 
         // Act
         var result = await _service.ProcessFolderOfferAsync("device-1", "folder-1", "Test/Folder:Name");
@@ -160,21 +157,21 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
-        _deviceRepoMock.Setup(r => r.UpsertAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.UpsertDeviceAsync(It.IsAny<SyncDevice>())).Returns(Task.CompletedTask);
 
         // Act
         await _service.SetAutoAcceptAsync("device-1", true);
 
         // Assert
-        _deviceRepoMock.Verify(r => r.UpsertAsync(It.Is<SyncDevice>(d => d.AutoAcceptFolders)), Times.Once);
+        _configManagerMock.Verify(r => r.UpsertDeviceAsync(It.Is<SyncDevice>(d => d.AutoAcceptFolders)), Times.Once);
     }
 
     [Fact]
     public async Task SetAutoAcceptAsync_ThrowsWhenDeviceNotFound()
     {
         // Arrange
-        _deviceRepoMock.Setup(r => r.GetAsync("nonexistent")).ReturnsAsync((SyncDevice?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("nonexistent")).ReturnsAsync((SyncDevice?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
@@ -186,7 +183,7 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = true };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.IsAutoAcceptEnabledAsync("device-1");
@@ -200,7 +197,7 @@ public class AutoAcceptServiceTests
     {
         // Arrange
         var device = new SyncDevice("device-1", "Test") { AutoAcceptFolders = false };
-        _deviceRepoMock.Setup(r => r.GetAsync("device-1")).ReturnsAsync(device);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("device-1")).ReturnsAsync(device);
 
         // Act
         var result = await _service.IsAutoAcceptEnabledAsync("device-1");
@@ -213,7 +210,7 @@ public class AutoAcceptServiceTests
     public async Task IsAutoAcceptEnabledAsync_ReturnsFalseWhenDeviceNotFound()
     {
         // Arrange
-        _deviceRepoMock.Setup(r => r.GetAsync("nonexistent")).ReturnsAsync((SyncDevice?)null);
+        _configManagerMock.Setup(r => r.GetDeviceAsync("nonexistent")).ReturnsAsync((SyncDevice?)null);
 
         // Act
         var result = await _service.IsAutoAcceptEnabledAsync("nonexistent");
@@ -232,7 +229,7 @@ public class AutoAcceptServiceTests
             new SyncDevice("device-2", "Device 2") { AutoAcceptFolders = false },
             new SyncDevice("device-3", "Device 3") { AutoAcceptFolders = true }
         };
-        _deviceRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(devices);
+        _configManagerMock.Setup(r => r.GetAllDevicesAsync()).ReturnsAsync(devices);
 
         // Act
         var result = await _service.GetAutoAcceptDevicesAsync();

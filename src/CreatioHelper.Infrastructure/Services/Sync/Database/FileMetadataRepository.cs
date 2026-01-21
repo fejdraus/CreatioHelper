@@ -26,7 +26,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata 
             WHERE folder_id = @folderId AND file_name = @fileName";
 
@@ -49,7 +49,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata 
             WHERE folder_id = @folderId
             ORDER BY sequence";
@@ -74,11 +74,11 @@ public class FileMetadataRepository : IFileMetadataRepository
             INSERT OR REPLACE INTO file_metadata (
                 folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                 is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             ) VALUES (
                 @folderId, @fileName, @size, @modifiedTime, @permissions, @isDeleted, @isInvalid,
                 @isNoPermissions, @isSymlink, @symlinkTarget, @sequence, @versionVector,
-                @blockHashes, @blockSize, @hash, @modifiedBy, @locallyChanged, @platformData, @updatedAt
+                @blockHashes, @blockSize, @hash, @modifiedBy, @locallyChanged, @localFlags, @platformData, @updatedAt
             )";
 
         using var command = _getConnection().CreateCommand();
@@ -105,7 +105,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata 
             WHERE folder_id = @folderId AND sequence > @fromSequence
             ORDER BY sequence
@@ -151,7 +151,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata
             WHERE folder_id = @folderId AND locally_changed = 0 AND is_deleted = 0";
 
@@ -192,7 +192,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         var sql = $@"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata
             WHERE folder_id = @folderId AND locally_changed = 0 AND is_deleted = 0
             {orderClause} {limitClause} {offsetClause}";
@@ -246,6 +246,7 @@ public class FileMetadataRepository : IFileMetadataRepository
             Hash = System.Text.Encoding.UTF8.GetBytes(reader.GetString(reader.GetOrdinal("hash"))),
             ModifiedBy = reader.GetString(reader.GetOrdinal("modified_by")),
             LocallyChanged = reader.GetBoolean(reader.GetOrdinal("locally_changed")),
+            LocalFlags = (FileLocalFlags)reader.GetInt32(reader.GetOrdinal("local_flags")),
             UpdatedAt = DateTime.Parse(reader.GetString(reader.GetOrdinal("updated_at")))
         };
 
@@ -270,24 +271,25 @@ public class FileMetadataRepository : IFileMetadataRepository
 
     private static void AddParameters(SqliteCommand command, FileMetadata metadata)
     {
-        command.Parameters.AddWithValue("@folderId", metadata.FolderId);
-        command.Parameters.AddWithValue("@fileName", metadata.FileName);
+        command.Parameters.AddWithValue("@folderId", metadata.FolderId ?? string.Empty);
+        command.Parameters.AddWithValue("@fileName", metadata.FileName ?? string.Empty);
         command.Parameters.AddWithValue("@size", metadata.Size);
         command.Parameters.AddWithValue("@modifiedTime", metadata.ModifiedTime.ToString("O"));
-        command.Parameters.AddWithValue("@permissions", metadata.Permissions);
+        command.Parameters.AddWithValue("@permissions", (object?)metadata.Permissions ?? DBNull.Value);
         command.Parameters.AddWithValue("@isDeleted", metadata.IsDeleted);
         command.Parameters.AddWithValue("@isInvalid", metadata.IsInvalid);
         command.Parameters.AddWithValue("@isNoPermissions", metadata.IsNoPermissions);
         command.Parameters.AddWithValue("@isSymlink", metadata.IsSymlink);
-        command.Parameters.AddWithValue("@symlinkTarget", metadata.SymlinkTarget);
+        command.Parameters.AddWithValue("@symlinkTarget", (object?)metadata.SymlinkTarget ?? DBNull.Value);
         command.Parameters.AddWithValue("@sequence", metadata.Sequence);
-        command.Parameters.AddWithValue("@versionVector", metadata.VersionVector);
-        command.Parameters.AddWithValue("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes));
+        command.Parameters.AddWithValue("@versionVector", metadata.VersionVector ?? string.Empty);
+        command.Parameters.AddWithValue("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes ?? new List<string>()));
         command.Parameters.AddWithValue("@blockSize", metadata.BlockSize);
         command.Parameters.AddWithValue("@hash", metadata.Hash != null ? System.Text.Encoding.UTF8.GetString(metadata.Hash) : string.Empty);
-        command.Parameters.AddWithValue("@modifiedBy", metadata.ModifiedBy);
+        command.Parameters.AddWithValue("@modifiedBy", metadata.ModifiedBy ?? string.Empty);
         command.Parameters.AddWithValue("@locallyChanged", metadata.LocallyChanged);
-        command.Parameters.AddWithValue("@platformData", JsonSerializer.Serialize(metadata.PlatformData));
+        command.Parameters.AddWithValue("@localFlags", (int)metadata.LocalFlags);
+        command.Parameters.AddWithValue("@platformData", JsonSerializer.Serialize(metadata.PlatformData ?? new Dictionary<string, object>()));
         command.Parameters.AddWithValue("@updatedAt", metadata.UpdatedAt.ToString("O"));
     }
     
@@ -297,7 +299,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata
             WHERE folder_id = @folderId AND (local_flags & @flags) = @flags";
 
@@ -324,7 +326,7 @@ public class FileMetadataRepository : IFileMetadataRepository
         const string sql = @"
             SELECT folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                    is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                   block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                   block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
             FROM file_metadata
             WHERE folder_id = @folderId AND file_name = @fileName AND locally_changed = 0
             ORDER BY sequence DESC
@@ -357,11 +359,11 @@ public class FileMetadataRepository : IFileMetadataRepository
                     INSERT INTO file_metadata (
                         folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
                         is_no_permissions, is_symlink, symlink_target, sequence, version_vector,
-                        block_hashes, block_size, hash, modified_by, locally_changed, platform_data, updated_at
+                        block_hashes, block_size, hash, modified_by, locally_changed, local_flags, platform_data, updated_at
                     ) VALUES (
                         @folderId, @fileName, @size, @modifiedTime, @permissions, @isDeleted, @isInvalid,
                         @isNoPermissions, @isSymlink, @symlinkTarget, @sequence, @versionVector,
-                        @blockHashes, @blockSize, @hash, @modifiedBy, @locallyChanged, @platformData, @updatedAt
+                        @blockHashes, @blockSize, @hash, @modifiedBy, @locallyChanged, @localFlags, @platformData, @updatedAt
                     )
                     ON CONFLICT(folder_id, file_name) DO UPDATE SET
                         size = @size, modified_time = @modifiedTime, permissions = @permissions,
@@ -369,7 +371,7 @@ public class FileMetadataRepository : IFileMetadataRepository
                         is_symlink = @isSymlink, symlink_target = @symlinkTarget, sequence = @sequence,
                         version_vector = @versionVector, block_hashes = @blockHashes, block_size = @blockSize,
                         hash = @hash, modified_by = @modifiedBy, locally_changed = @locallyChanged,
-                        platform_data = @platformData, updated_at = @updatedAt";
+                        local_flags = @localFlags, platform_data = @platformData, updated_at = @updatedAt";
 
                 using var command = connection.CreateCommand();
                 command.CommandText = sql;

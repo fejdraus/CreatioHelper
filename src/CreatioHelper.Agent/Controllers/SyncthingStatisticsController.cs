@@ -4,6 +4,11 @@ using CreatioHelper.Domain.Entities.Statistics;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Concurrent;
+using DeviceStatistics = CreatioHelper.Domain.Entities.Statistics.DeviceStatistics;
+using FolderStatistics = CreatioHelper.Domain.Entities.Statistics.FolderStatistics;
+using SyncthingDeviceStatistics = CreatioHelper.Domain.Entities.Statistics.SyncthingDeviceStatistics;
+using SyncthingFolderStatistics = CreatioHelper.Domain.Entities.Statistics.SyncthingFolderStatistics;
+using DeviceConnectionStatus = CreatioHelper.Domain.Entities.Statistics.DeviceConnectionStatus;
 
 namespace CreatioHelper.Agent.Controllers;
 

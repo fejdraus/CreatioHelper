@@ -4,6 +4,8 @@ using CreatioHelper.Infrastructure.Services.Sync.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using SyncConfigManager = CreatioHelper.Infrastructure.Services.Configuration.ConfigurationManager;
+using ISyncConfigManager = CreatioHelper.Application.Interfaces.IConfigurationManager;
 
 namespace CreatioHelper.Infrastructure.DependencyInjection;
 
@@ -39,11 +41,15 @@ public static class SyncDatabaseServiceExtensions
             return new SqliteBlockInfoRepository(logger, connectionString);
         });
         
-        // Repository services - delegate to ISyncDatabase which manages SQLite repositories
-        services.AddSingleton<IDeviceInfoRepository>(provider =>
-            provider.GetRequiredService<ISyncDatabase>().DeviceInfo);
-        services.AddSingleton<IFolderConfigRepository>(provider =>
-            provider.GetRequiredService<ISyncDatabase>().FolderConfig);
+        // ConfigurationManager - uses config.xml for folders/devices (like Syncthing)
+        services.AddSingleton<ISyncConfigManager>(provider =>
+        {
+            var configXmlService = provider.GetRequiredService<IConfigXmlService>();
+            var logger = provider.GetRequiredService<ILogger<SyncConfigManager>>();
+            return new SyncConfigManager(configXmlService, logger);
+        });
+
+        // File metadata repository - still uses SQLite for file index
         services.AddSingleton<IFileMetadataRepository>(provider =>
             provider.GetRequiredService<ISyncDatabase>().FileMetadata);
         services.AddSingleton<IGlobalStateRepository>(provider =>

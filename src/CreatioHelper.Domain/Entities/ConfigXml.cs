@@ -113,6 +113,12 @@ public class ConfigXmlFolder
     [XmlElement("disableSparseFiles")]
     public bool DisableSparseFiles { get; set; } = false;
 
+    [XmlElement("disableTempIndexes")]
+    public bool DisableTempIndexes { get; set; } = false;
+
+    [XmlElement("weakHashThresholdPct")]
+    public int WeakHashThresholdPct { get; set; } = 25;
+
     [XmlElement("paused")]
     public bool Paused { get; set; } = false;
 
@@ -277,6 +283,9 @@ public class ConfigXmlDevice
 
     [XmlElement("remoteGUIPort")]
     public int RemoteGUIPort { get; set; } = 0;
+
+    [XmlElement("certificateName")]
+    public string CertificateName { get; set; } = string.Empty;
 
     [XmlElement("numConnections")]
     public int NumConnections { get; set; } = 0;

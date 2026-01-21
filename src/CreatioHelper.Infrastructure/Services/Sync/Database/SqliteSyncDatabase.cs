@@ -21,10 +21,9 @@ public class SqliteSyncDatabase : ISyncDatabase
     private bool _disposed = false;
 
     // Repository implementations
+    // Note: DeviceInfo and FolderConfig removed - now handled by ConfigurationManager using config.xml
     private IFileMetadataRepository? _fileMetadata;
     private IBlockInfoRepository? _blockInfo;
-    private IDeviceInfoRepository? _deviceInfo;
-    private IFolderConfigRepository? _folderConfig;
     private IGlobalStateRepository? _globalState;
     private IEventLogRepository? _eventLog;
 
@@ -41,14 +40,8 @@ public class SqliteSyncDatabase : ISyncDatabase
     public IFileMetadataRepository FileMetadata => 
         _fileMetadata ??= new FileMetadataRepository(() => CreateConnection(), _logger);
 
-    public IBlockInfoRepository BlockInfo => 
+    public IBlockInfoRepository BlockInfo =>
         _blockInfo ??= new SqliteBlockInfoRepository(_loggerFactory.CreateLogger<SqliteBlockInfoRepository>(), _connectionString);
-
-    public IDeviceInfoRepository DeviceInfo => 
-        _deviceInfo ??= new DeviceInfoRepository(() => CreateConnection(), _logger);
-
-    public IFolderConfigRepository FolderConfig => 
-        _folderConfig ??= new FolderConfigRepository(() => CreateConnection(), _logger);
 
     public IGlobalStateRepository GlobalState =>
         _globalState ??= new GlobalStateRepository(() => CreateConnection(), _logger);
@@ -249,6 +242,7 @@ public class SqliteSyncDatabase : ISyncDatabase
                 hash TEXT, -- File hash
                 modified_by TEXT NOT NULL DEFAULT '',
                 locally_changed BOOLEAN NOT NULL DEFAULT 0,
+                local_flags INTEGER NOT NULL DEFAULT 0, -- Syncthing LocalFlags bitfield
                 platform_data TEXT, -- JSON platform-specific data
                 updated_at TEXT NOT NULL DEFAULT (datetime('now')),
                 PRIMARY KEY (folder_id, file_name)
@@ -562,8 +556,6 @@ public class SqliteSyncDatabase : ISyncDatabase
             {
                 _fileMetadata?.Dispose();
                 _blockInfo?.Dispose();
-                _deviceInfo?.Dispose();
-                _folderConfig?.Dispose();
                 _globalState?.Dispose();
                 _eventLog?.Dispose();
 
