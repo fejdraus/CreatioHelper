@@ -148,8 +148,12 @@ public class SyncEngine : ISyncEngine, IDisposable
             // Initialize database
             await _database.InitializeAsync();
             _logger.LogInformation("Database initialized");
-            
-            // Load existing configuration from database
+
+            // Initialize configuration manager (loads config.xml)
+            await _configManager.InitializeAsync(cancellationToken);
+            _logger.LogInformation("Configuration manager initialized");
+
+            // Load existing configuration from config.xml
             await LoadConfigurationAsync();
             
             await _protocol.StartListeningAsync();
