@@ -150,10 +150,18 @@ public class FileWatcher : IDisposable
             null, folderId);
     }
 
-    public async Task<List<SyncFileInfo>> ScanFolderAsync(SyncFolder folder)
+    /// <summary>
+    /// Scan folder with progress reporting callback.
+    /// </summary>
+    public Task<List<SyncFileInfo>> ScanFolderAsync(SyncFolder folder, Action<string, long>? onFileScanned = null, Action<long, long>? onEstimatesReady = null)
+    {
+        return ScanFolderInternalAsync(folder, onFileScanned, onEstimatesReady);
+    }
+
+    private async Task<List<SyncFileInfo>> ScanFolderInternalAsync(SyncFolder folder, Action<string, long>? onFileScanned, Action<long, long>? onEstimatesReady)
     {
         var files = new List<SyncFileInfo>();
-        
+
         try
         {
             _logger.LogDebug("Starting scan of folder {FolderId}", folder.Id);
@@ -165,7 +173,29 @@ public class FileWatcher : IDisposable
                 return files;
             }
 
-            var currentFiles = await ScanDirectoryRecursiveAsync(folder.Id, folder.Path, folder.Path, new List<string>());
+            // First pass: quick enumeration to get file count for progress estimation
+            var fileCount = 0L;
+            var totalBytes = 0L;
+            try
+            {
+                foreach (var file in Directory.EnumerateFiles(folder.Path, "*", SearchOption.AllDirectories))
+                {
+                    try
+                    {
+                        var fi = new FileInfo(file);
+                        fileCount++;
+                        totalBytes += fi.Length;
+                    }
+                    catch { /* Ignore inaccessible files */ }
+                }
+                onEstimatesReady?.Invoke(fileCount, totalBytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not pre-enumerate files for progress estimation");
+            }
+
+            var currentFiles = await ScanDirectoryRecursiveAsync(folder.Id, folder.Path, folder.Path, new List<string>(), onFileScanned);
             
             // Get or create file tracking for this folder
             var folderFileMap = _folderFiles.GetOrAdd(folder.Id, _ => new ConcurrentDictionary<string, SyncFileInfo>());
@@ -228,10 +258,11 @@ public class FileWatcher : IDisposable
     }
 
     private async Task<List<SyncFileInfo>> ScanDirectoryRecursiveAsync(
-        string folderId, 
-        string directoryPath, 
-        string basePath, 
-        List<string> ignorePatterns)
+        string folderId,
+        string directoryPath,
+        string basePath,
+        List<string> ignorePatterns,
+        Action<string, long>? onFileScanned = null)
     {
         var files = new List<SyncFileInfo>();
 
@@ -247,6 +278,8 @@ public class FileWatcher : IDisposable
                 if (fileInfo != null)
                 {
                     files.Add(fileInfo);
+                    // Report progress for this file
+                    onFileScanned?.Invoke(fileInfo.RelativePath, fileInfo.Size);
                 }
             }
 
@@ -256,7 +289,7 @@ public class FileWatcher : IDisposable
                 if (ShouldIgnoreFile(subdirectoryPath, basePath, ignorePatterns))
                     continue;
 
-                var subdirectoryFiles = await ScanDirectoryRecursiveAsync(folderId, subdirectoryPath, basePath, ignorePatterns);
+                var subdirectoryFiles = await ScanDirectoryRecursiveAsync(folderId, subdirectoryPath, basePath, ignorePatterns, onFileScanned);
                 files.AddRange(subdirectoryFiles);
             }
         }

@@ -1,6 +1,7 @@
 using CreatioHelper.Agent.Controllers;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -11,13 +12,15 @@ public class DatabaseControllerTests
 {
     private readonly Mock<ISyncEngine> _syncEngineMock;
     private readonly Mock<ILogger<DatabaseController>> _loggerMock;
+    private readonly Mock<IScanProgressService> _scanProgressServiceMock;
     private readonly DatabaseController _controller;
 
     public DatabaseControllerTests()
     {
         _syncEngineMock = new Mock<ISyncEngine>();
         _loggerMock = new Mock<ILogger<DatabaseController>>();
-        _controller = new DatabaseController(_syncEngineMock.Object, _loggerMock.Object);
+        _scanProgressServiceMock = new Mock<IScanProgressService>();
+        _controller = new DatabaseController(_syncEngineMock.Object, _scanProgressServiceMock.Object, _loggerMock.Object);
     }
 
     #region GetIgnores Tests

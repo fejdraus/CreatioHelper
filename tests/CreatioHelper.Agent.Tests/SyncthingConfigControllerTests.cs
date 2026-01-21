@@ -13,6 +13,7 @@ public class SyncthingConfigControllerTests
 {
     private readonly Mock<ISyncEngine> _syncEngineMock;
     private readonly Mock<ILogger<SyncthingConfigController>> _loggerMock;
+    private readonly Mock<IConfigXmlService> _configXmlServiceMock;
     private readonly IConfiguration _configuration;
     private readonly SyncthingConfigController _controller;
 
@@ -20,6 +21,7 @@ public class SyncthingConfigControllerTests
     {
         _syncEngineMock = new Mock<ISyncEngine>();
         _loggerMock = new Mock<ILogger<SyncthingConfigController>>();
+        _configXmlServiceMock = new Mock<IConfigXmlService>();
         _configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
         _syncEngineMock.Setup(s => s.DeviceId).Returns("TEST-DEVICE-ID");
@@ -31,7 +33,8 @@ public class SyncthingConfigControllerTests
         _controller = new SyncthingConfigController(
             _syncEngineMock.Object,
             _loggerMock.Object,
-            _configuration);
+            _configuration,
+            _configXmlServiceMock.Object);
     }
 
     #region LDAP Tests

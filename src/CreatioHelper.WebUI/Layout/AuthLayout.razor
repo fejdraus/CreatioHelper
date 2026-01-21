@@ -1,0 +1,19 @@
+@inherits LayoutComponentBase
+@inject IThemeService ThemeService
+
+@* Simple layout for authentication pages without auth check *@
+
+<MudLayout>
+    <MudMainContent>
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _isDarkMode = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _isDarkMode = await ThemeService.GetDarkModeAsync();
+    }
+}

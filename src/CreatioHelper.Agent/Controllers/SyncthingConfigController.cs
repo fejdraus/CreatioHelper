@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Application.DTOs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -19,15 +20,18 @@ public class SyncthingConfigController : ControllerBase
     private readonly ISyncEngine _syncEngine;
     private readonly ILogger<SyncthingConfigController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IConfigXmlService _configXmlService;
 
     public SyncthingConfigController(
         ISyncEngine syncEngine,
         ILogger<SyncthingConfigController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IConfigXmlService configXmlService)
     {
         _syncEngine = syncEngine;
         _logger = logger;
         _configuration = configuration;
+        _configXmlService = configXmlService;
     }
 
     /// <summary>
@@ -119,30 +123,18 @@ public class SyncthingConfigController : ControllerBase
     {
         try
         {
-            var id = folderConfig.GetProperty("id").GetString() ?? throw new ArgumentException("Folder id is required");
-            var label = folderConfig.TryGetProperty("label", out var labelProp) ? labelProp.GetString() ?? id : id;
-            var path = folderConfig.GetProperty("path").GetString() ?? throw new ArgumentException("Folder path is required");
-            var type = folderConfig.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? "sendreceive" : "sendreceive";
+            var config = ParseFolderConfiguration(folderConfig);
+            var folder = await _syncEngine.AddFolderAsync(config);
 
-            var folder = await _syncEngine.AddFolderAsync(id, label, path, type);
-
-            // Share with devices if specified
-            if (folderConfig.TryGetProperty("devices", out var devicesProp) && devicesProp.ValueKind == JsonValueKind.Array)
-            {
-                foreach (var device in devicesProp.EnumerateArray())
-                {
-                    if (device.TryGetProperty("deviceID", out var deviceIdProp))
-                    {
-                        var deviceId = deviceIdProp.GetString();
-                        if (!string.IsNullOrEmpty(deviceId))
-                        {
-                            await _syncEngine.ShareFolderWithDeviceAsync(folder.Id, deviceId);
-                        }
-                    }
-                }
-            }
+            // Save configuration to config.xml for persistence
+            await SaveConfigurationToXmlAsync();
 
             return CreatedAtAction(nameof(GetFolder), new { id = folder.Id }, BuildFolderConfig(folder));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid folder configuration");
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -183,23 +175,30 @@ public class SyncthingConfigController : ControllerBase
     {
         try
         {
-            var folder = await _syncEngine.GetFolderAsync(id);
-            if (folder == null)
+            var existingFolder = await _syncEngine.GetFolderAsync(id);
+            if (existingFolder == null)
                 return NotFound(new { error = $"Folder {id} not found" });
 
-            // Update paused state if specified
-            if (folderConfig.TryGetProperty("paused", out var pausedProp))
+            var config = ParseFolderConfiguration(folderConfig);
+
+            // Ensure the ID matches the URL parameter
+            if (config.Id != id)
             {
-                var isPaused = pausedProp.GetBoolean();
-                if (isPaused)
-                    await _syncEngine.PauseFolderAsync(id);
-                else
-                    await _syncEngine.ResumeFolderAsync(id);
+                _logger.LogWarning("Folder ID in body ({BodyId}) doesn't match URL ({UrlId}), using URL ID", config.Id, id);
+                config.Id = id;
             }
 
-            // Refresh folder data after update
-            folder = await _syncEngine.GetFolderAsync(id);
-            return Ok(BuildFolderConfig(folder!));
+            var folder = await _syncEngine.UpdateFolderAsync(config);
+
+            // Save configuration to config.xml for persistence
+            await SaveConfigurationToXmlAsync();
+
+            return Ok(BuildFolderConfig(folder));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Invalid folder configuration for {FolderId}", id);
+            return BadRequest(new { error = ex.Message });
         }
         catch (Exception ex)
         {
@@ -655,7 +654,356 @@ public class SyncthingConfigController : ControllerBase
 
     #endregion
 
+    #region Config.xml File Management
+
+    /// <summary>
+    /// Get configuration as XML file - Syncthing config.xml format
+    /// GET /rest/config.xml
+    /// </summary>
+    [HttpGet("/rest/config.xml")]
+    [Produces("application/xml")]
+    public async Task<IActionResult> GetConfigXml()
+    {
+        try
+        {
+            var devices = await _syncEngine.GetDevicesAsync();
+            var folders = await _syncEngine.GetFoldersAsync();
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+
+            var configXml = _configXmlService.FromSyncConfiguration(syncConfig, devices, folders);
+
+            // Serialize to XML
+            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ConfigXml));
+            using var stringWriter = new StringWriter();
+            var settings = new System.Xml.XmlWriterSettings
+            {
+                Indent = true,
+                IndentChars = "    ",
+                Encoding = System.Text.Encoding.UTF8,
+                OmitXmlDeclaration = false
+            };
+            using (var xmlWriter = System.Xml.XmlWriter.Create(stringWriter, settings))
+            {
+                var namespaces = new System.Xml.Serialization.XmlSerializerNamespaces();
+                namespaces.Add("", "");
+                serializer.Serialize(xmlWriter, configXml, namespaces);
+            }
+
+            return Content(stringWriter.ToString(), "application/xml", System.Text.Encoding.UTF8);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating config.xml");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Save current configuration to config.xml file
+    /// POST /rest/config/save
+    /// </summary>
+    [HttpPost("save")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<IActionResult> SaveConfigToFile()
+    {
+        try
+        {
+            var devices = await _syncEngine.GetDevicesAsync();
+            var folders = await _syncEngine.GetFoldersAsync();
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+
+            var configXml = _configXmlService.FromSyncConfiguration(syncConfig, devices, folders);
+
+            // Validate before saving
+            var validation = _configXmlService.Validate(configXml);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { error = "Configuration validation failed", errors = validation.Errors });
+            }
+
+            await _configXmlService.SaveAsync(configXml);
+
+            _logger.LogInformation("Configuration saved to {Path}", _configXmlService.ConfigPath);
+
+            return Ok(new
+            {
+                success = true,
+                path = _configXmlService.ConfigPath,
+                warnings = validation.Warnings
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error saving configuration to file");
+            return StatusCode(500, new { error = "Failed to save configuration", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Load configuration from config.xml file
+    /// POST /rest/config/load
+    /// </summary>
+    [HttpPost("load")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<IActionResult> LoadConfigFromFile()
+    {
+        try
+        {
+            if (!_configXmlService.ConfigExists())
+            {
+                return NotFound(new { error = "Configuration file not found", path = _configXmlService.ConfigPath });
+            }
+
+            var configXml = await _configXmlService.LoadAsync();
+
+            // Validate loaded configuration
+            var validation = _configXmlService.Validate(configXml);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { error = "Configuration validation failed", errors = validation.Errors });
+            }
+
+            // TODO: Apply configuration to sync engine
+            // This would require additional methods in ISyncEngine to apply the loaded configuration
+            _logger.LogInformation("Configuration loaded from {Path}", _configXmlService.ConfigPath);
+
+            return Ok(new
+            {
+                success = true,
+                path = _configXmlService.ConfigPath,
+                foldersCount = configXml.Folders.Count,
+                devicesCount = configXml.Devices.Count,
+                warnings = validation.Warnings
+            });
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound(new { error = "Configuration file not found", path = _configXmlService.ConfigPath });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading configuration from file");
+            return StatusCode(500, new { error = "Failed to load configuration", message = ex.Message });
+        }
+    }
+
+    /// <summary>
+    /// Get configuration file path and status
+    /// GET /rest/config/file
+    /// </summary>
+    [HttpGet("file")]
+    public IActionResult GetConfigFileStatus()
+    {
+        return Ok(new
+        {
+            path = _configXmlService.ConfigPath,
+            directory = _configXmlService.GetConfigDirectory(),
+            exists = _configXmlService.ConfigExists()
+        });
+    }
+
+    /// <summary>
+    /// Upload and apply config.xml file
+    /// PUT /rest/config.xml
+    /// </summary>
+    [HttpPut("/rest/config.xml")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    [Consumes("application/xml", "text/xml")]
+    public async Task<IActionResult> UploadConfigXml()
+    {
+        try
+        {
+            using var reader = new StreamReader(Request.Body, System.Text.Encoding.UTF8);
+            var xmlContent = await reader.ReadToEndAsync();
+
+            // Deserialize
+            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ConfigXml));
+            using var stringReader = new StringReader(xmlContent);
+            var configXml = (ConfigXml?)serializer.Deserialize(stringReader);
+
+            if (configXml == null)
+            {
+                return BadRequest(new { error = "Failed to parse XML configuration" });
+            }
+
+            // Validate
+            var validation = _configXmlService.Validate(configXml);
+            if (!validation.IsValid)
+            {
+                return BadRequest(new { error = "Configuration validation failed", errors = validation.Errors });
+            }
+
+            // Save to file
+            await _configXmlService.SaveAsync(configXml);
+
+            // TODO: Apply configuration to sync engine
+            _logger.LogInformation("Configuration uploaded and saved to {Path}", _configXmlService.ConfigPath);
+
+            return Ok(new
+            {
+                success = true,
+                path = _configXmlService.ConfigPath,
+                foldersCount = configXml.Folders.Count,
+                devicesCount = configXml.Devices.Count,
+                warnings = validation.Warnings
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error uploading config.xml");
+            return StatusCode(500, new { error = "Failed to upload configuration", message = ex.Message });
+        }
+    }
+
+    #endregion
+
     #region Helper Methods
+
+    /// <summary>
+    /// Parse folder configuration from JSON - supports all Syncthing folder settings
+    /// </summary>
+    private static FolderConfiguration ParseFolderConfiguration(JsonElement json)
+    {
+        var config = new FolderConfiguration
+        {
+            Id = json.GetProperty("id").GetString() ?? throw new ArgumentException("Folder id is required"),
+            Path = json.GetProperty("path").GetString() ?? throw new ArgumentException("Folder path is required")
+        };
+
+        // Basic settings
+        if (json.TryGetProperty("label", out var label))
+            config.Label = label.GetString() ?? config.Id;
+        else
+            config.Label = config.Id;
+
+        if (json.TryGetProperty("type", out var type))
+            config.Type = type.GetString() ?? "sendreceive";
+
+        // Devices
+        if (json.TryGetProperty("devices", out var devices) && devices.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var device in devices.EnumerateArray())
+            {
+                if (device.ValueKind != JsonValueKind.Object) continue;
+
+                var deviceConfig = new FolderDeviceConfiguration();
+                if (device.TryGetProperty("deviceID", out var deviceId))
+                    deviceConfig.DeviceId = deviceId.GetString() ?? string.Empty;
+                if (device.TryGetProperty("introducedBy", out var introducedBy))
+                    deviceConfig.IntroducedBy = introducedBy.GetString() ?? string.Empty;
+                if (device.TryGetProperty("encryptionPassword", out var encPwd))
+                    deviceConfig.EncryptionPassword = encPwd.GetString() ?? string.Empty;
+
+                if (!string.IsNullOrEmpty(deviceConfig.DeviceId))
+                    config.Devices.Add(deviceConfig);
+            }
+        }
+
+        // Scanning
+        if (json.TryGetProperty("rescanIntervalS", out var rescanInterval))
+            config.RescanIntervalS = rescanInterval.GetInt32();
+        if (json.TryGetProperty("fsWatcherEnabled", out var fsWatcher))
+            config.FsWatcherEnabled = fsWatcher.GetBoolean();
+        if (json.TryGetProperty("fsWatcherDelayS", out var fsWatcherDelay))
+            config.FsWatcherDelayS = fsWatcherDelay.GetDouble();
+
+        // Permissions & behavior
+        if (json.TryGetProperty("ignorePerms", out var ignorePerms))
+            config.IgnorePerms = ignorePerms.GetBoolean();
+        if (json.TryGetProperty("ignoreDelete", out var ignoreDelete))
+            config.IgnoreDelete = ignoreDelete.GetBoolean();
+        if (json.TryGetProperty("autoNormalize", out var autoNormalize))
+            config.AutoNormalize = autoNormalize.GetBoolean();
+
+        // Disk space
+        if (json.TryGetProperty("minDiskFree", out var minDiskFree) && minDiskFree.ValueKind == JsonValueKind.Object)
+        {
+            if (minDiskFree.TryGetProperty("value", out var diskValue))
+                config.MinDiskFree.Value = diskValue.GetDouble();
+            if (minDiskFree.TryGetProperty("unit", out var diskUnit))
+                config.MinDiskFree.Unit = diskUnit.GetString() ?? "%";
+        }
+
+        // Versioning
+        if (json.TryGetProperty("versioning", out var versioning) && versioning.ValueKind == JsonValueKind.Object)
+        {
+            var versioningConfig = new FolderVersioningConfiguration();
+            if (versioning.TryGetProperty("type", out var versionType))
+                versioningConfig.Type = versionType.GetString() ?? string.Empty;
+            if (versioning.TryGetProperty("cleanupIntervalS", out var cleanupInterval))
+                versioningConfig.CleanupIntervalS = cleanupInterval.GetInt32();
+            if (versioning.TryGetProperty("fsPath", out var fsPath))
+                versioningConfig.FsPath = fsPath.GetString() ?? string.Empty;
+            if (versioning.TryGetProperty("fsType", out var fsType))
+                versioningConfig.FsType = fsType.GetString() ?? "basic";
+
+            // Versioning params
+            if (versioning.TryGetProperty("params", out var vParams) && vParams.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var prop in vParams.EnumerateObject())
+                {
+                    versioningConfig.Params[prop.Name] = prop.Value.ToString();
+                }
+            }
+
+            if (versioningConfig.IsEnabled)
+                config.Versioning = versioningConfig;
+        }
+
+        // Pull order
+        if (json.TryGetProperty("order", out var order))
+            config.Order = order.GetString() ?? "random";
+
+        // Conflicts
+        if (json.TryGetProperty("maxConflicts", out var maxConflicts))
+            config.MaxConflicts = maxConflicts.GetInt32();
+
+        // Advanced settings
+        if (json.TryGetProperty("copiers", out var copiers))
+            config.Copiers = copiers.GetInt32();
+        if (json.TryGetProperty("pullerMaxPendingKiB", out var pullerMax))
+            config.PullerMaxPendingKiB = pullerMax.GetInt32();
+        if (json.TryGetProperty("hashers", out var hashers))
+            config.Hashers = hashers.GetInt32();
+        if (json.TryGetProperty("disableSparseFiles", out var disableSparse))
+            config.DisableSparseFiles = disableSparse.GetBoolean();
+        if (json.TryGetProperty("disableTempIndexes", out var disableTemp))
+            config.DisableTempIndexes = disableTemp.GetBoolean();
+        if (json.TryGetProperty("disableFsync", out var disableFsync))
+            config.DisableFsync = disableFsync.GetBoolean();
+        if (json.TryGetProperty("maxConcurrentWrites", out var maxWrites))
+            config.MaxConcurrentWrites = maxWrites.GetInt32();
+        if (json.TryGetProperty("caseSensitiveFS", out var caseSensitive))
+            config.CaseSensitiveFS = caseSensitive.GetBoolean();
+        if (json.TryGetProperty("junctionsAsDirs", out var junctions))
+            config.JunctionsAsDirs = junctions.GetBoolean();
+
+        // Ownership & extended attributes
+        if (json.TryGetProperty("syncOwnership", out var syncOwnership))
+            config.SyncOwnership = syncOwnership.GetBoolean();
+        if (json.TryGetProperty("sendOwnership", out var sendOwnership))
+            config.SendOwnership = sendOwnership.GetBoolean();
+        if (json.TryGetProperty("syncXattrs", out var syncXattrs))
+            config.SyncXattrs = syncXattrs.GetBoolean();
+        if (json.TryGetProperty("sendXattrs", out var sendXattrs))
+            config.SendXattrs = sendXattrs.GetBoolean();
+        if (json.TryGetProperty("copyOwnershipFromParent", out var copyOwnership))
+            config.CopyOwnershipFromParent = copyOwnership.GetBoolean();
+
+        // Other
+        if (json.TryGetProperty("markerName", out var marker))
+            config.MarkerName = marker.GetString() ?? ".stfolder";
+        if (json.TryGetProperty("modTimeWindowS", out var modTimeWindow))
+            config.ModTimeWindowS = modTimeWindow.GetInt32();
+        if (json.TryGetProperty("copyRangeMethod", out var copyRange))
+            config.CopyRangeMethod = copyRange.GetString() ?? "standard";
+        if (json.TryGetProperty("weakHashThresholdPct", out var weakHash))
+            config.WeakHashThresholdPct = weakHash.GetInt32();
+        if (json.TryGetProperty("paused", out var paused))
+            config.Paused = paused.GetBoolean();
+
+        return config;
+    }
 
     private object BuildSyncthingConfig(List<SyncDevice> devices, List<SyncFolder> folders)
     {
@@ -835,6 +1183,29 @@ public class SyncthingConfigController : ControllerBase
             searchBaseDN = string.Empty,
             searchFilter = string.Empty
         };
+    }
+
+    /// <summary>
+    /// Helper method to save current configuration to config.xml
+    /// </summary>
+    private async Task SaveConfigurationToXmlAsync()
+    {
+        try
+        {
+            var devices = await _syncEngine.GetDevicesAsync();
+            var folders = await _syncEngine.GetFoldersAsync();
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+
+            var configXml = _configXmlService.FromSyncConfiguration(syncConfig, devices, folders);
+            await _configXmlService.SaveAsync(configXml);
+
+            _logger.LogDebug("Configuration saved to {Path}", _configXmlService.ConfigPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save configuration to config.xml");
+            // Don't throw - this is a secondary operation, the main operation succeeded
+        }
     }
 
     #endregion

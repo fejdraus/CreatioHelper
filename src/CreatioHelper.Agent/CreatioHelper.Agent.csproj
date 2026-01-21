@@ -5,7 +5,14 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <OutputType>Exe</OutputType>
-    
+
+    <!-- Version info -->
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion>1.0.0.0</FileVersion>
+    <Product>CreatioHelper</Product>
+    <Description>Syncthing-compatible file synchronization with Creatio management</Description>
+
     <!-- Define compilation symbols for different platforms -->
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Linux'))">$(DefineConstants);LINUX</DefineConstants>
@@ -25,6 +32,9 @@
     <!-- JWT Authentication -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.2" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.15.0" />
+
+    <!-- Blazor WebAssembly Server-side hosting -->
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.2" />
   </ItemGroup>
 
   <!-- OpenAPI packages - for Development or when Swagger is enabled -->
@@ -49,6 +59,7 @@
     <ProjectReference Include="..\CreatioHelper.Infrastructure\CreatioHelper.Infrastructure.csproj" />
     <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
     <ProjectReference Include="..\CreatioHelper.Shared\CreatioHelper.Shared.csproj" />
+    <ProjectReference Include="..\CreatioHelper.WebUI\CreatioHelper.WebUI.csproj" />
   </ItemGroup>
 
 </Project>

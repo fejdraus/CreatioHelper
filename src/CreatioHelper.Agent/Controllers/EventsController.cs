@@ -11,10 +11,11 @@ using SyncEvent = CreatioHelper.Domain.Entities.Events.SyncEvent;
 namespace CreatioHelper.Agent.Controllers;
 
 /// <summary>
-/// REST API контроллер для событий синхронизации (на основе Syncthing events API)
+/// Extended events API controller with additional features beyond Syncthing compatibility
+/// Use /rest/events for Syncthing-compatible API (SyncthingEventsController)
 /// </summary>
 [ApiController]
-[Route("rest/events")]
+[Route("api/events")]
 [Authorize(Roles = Roles.ReadRoles)]
 public class EventsController : ControllerBase
 {

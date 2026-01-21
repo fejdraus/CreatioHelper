@@ -1,0 +1,439 @@
+@page "/monitoring/statistics"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Statistics - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Statistics</MudText>
+
+<MudGrid>
+    @* Overview Cards *@
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Total Folders</MudText>
+                    <MudText Typo="Typo.h4">@_totalFolders</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Total Files</MudText>
+                    <MudText Typo="Typo.h4">@_totalFiles.ToString("N0")</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Tertiary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Total Size</MudText>
+                    <MudText Typo="Typo.h4">@FormatBytes(_totalBytes)</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Devices" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Connected Devices</MudText>
+                    <MudText Typo="Typo.h4">@_connectedDevices / @_totalDevices</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudGrid Class="mt-4">
+    @* Transfer Statistics *@
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">Transfer Statistics</MudText>
+            <MudSimpleTable Dense="true" Bordered="true">
+                <tbody>
+                    <tr>
+                        <td>Total Downloaded</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_totalDownloaded)</td>
+                    </tr>
+                    <tr>
+                        <td>Total Uploaded</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_totalUploaded)</td>
+                    </tr>
+                    <tr>
+                        <td>Current Download Rate</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_downloadRate)/s</td>
+                    </tr>
+                    <tr>
+                        <td>Current Upload Rate</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_uploadRate)/s</td>
+                    </tr>
+                    <tr>
+                        <td>Files Synced (Session)</td>
+                        <td class="text-right font-weight-bold">@_filesSynced.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Bytes Synced (Session)</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_bytesSynced)</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+
+    @* System Statistics *@
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">System Statistics</MudText>
+            <MudSimpleTable Dense="true" Bordered="true">
+                <tbody>
+                    <tr>
+                        <td>Uptime</td>
+                        <td class="text-right font-weight-bold">@FormatUptime(_uptime)</td>
+                    </tr>
+                    <tr>
+                        <td>Memory Usage</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_memoryUsage)</td>
+                    </tr>
+                    <tr>
+                        <td>Database Size</td>
+                        <td class="text-right font-weight-bold">@FormatBytes(_databaseSize)</td>
+                    </tr>
+                    <tr>
+                        <td>Active Goroutines</td>
+                        <td class="text-right font-weight-bold">@_goroutines</td>
+                    </tr>
+                    <tr>
+                        <td>Version</td>
+                        <td class="text-right font-weight-bold">@_version</td>
+                    </tr>
+                    <tr>
+                        <td>Started</td>
+                        <td class="text-right font-weight-bold">@_startedAt.ToString("g")</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+@* Folder Statistics *@
+<MudPaper Elevation="2" Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Folder Statistics</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="@_folderStats" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Folder</MudTh>
+                <MudTh Style="text-align: right;">Files</MudTh>
+                <MudTh Style="text-align: right;">Directories</MudTh>
+                <MudTh Style="text-align: right;">Size</MudTh>
+                <MudTh Style="text-align: right;">Sync %</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Folder">
+                    <MudLink Href="/folders">@context.Name</MudLink>
+                </MudTd>
+                <MudTd DataLabel="Files" Style="text-align: right;">@context.Files.ToString("N0")</MudTd>
+                <MudTd DataLabel="Directories" Style="text-align: right;">@context.Directories.ToString("N0")</MudTd>
+                <MudTd DataLabel="Size" Style="text-align: right;">@FormatBytes(context.Bytes)</MudTd>
+                <MudTd DataLabel="Sync %" Style="text-align: right;">
+                    <div class="d-flex align-center justify-end">
+                        <MudProgressLinear Value="@context.SyncPercent"
+                                           Color="@(context.SyncPercent >= 100 ? Color.Success : Color.Primary)"
+                                           Style="width: 60px; margin-right: 8px;" />
+                        <span>@context.SyncPercent.ToString("F0")%</span>
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@GetStatusColor(context.State)"
+                             Variant="Variant.Outlined">
+                        @context.State
+                    </MudChip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@* Device Statistics *@
+<MudPaper Elevation="2" Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Device Statistics</MudText>
+
+    @if (_isLoading)
+    {
+        <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="@_deviceStats" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>Device</MudTh>
+                <MudTh Style="text-align: right;">Downloaded</MudTh>
+                <MudTh Style="text-align: right;">Uploaded</MudTh>
+                <MudTh Style="text-align: right;">Last Seen</MudTh>
+                <MudTh>Status</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Device">
+                    <MudLink Href="@($"/devices/{context.DeviceId}")">@context.Name</MudLink>
+                </MudTd>
+                <MudTd DataLabel="Downloaded" Style="text-align: right;">@FormatBytes(context.Downloaded)</MudTd>
+                <MudTd DataLabel="Uploaded" Style="text-align: right;">@FormatBytes(context.Uploaded)</MudTd>
+                <MudTd DataLabel="Last Seen" Style="text-align: right;">
+                    @if (context.LastSeen.HasValue)
+                    {
+                        <MudTooltip Text="@context.LastSeen.Value.ToString("g")">
+                            @FormatTimeAgo(context.LastSeen.Value)
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>Never</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.Connected)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Connected</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disconnected</MudChip>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private System.Threading.Timer? _refreshTimer;
+    private bool _isLoading;
+
+    // Overview
+    private int _totalFolders;
+    private long _totalFiles;
+    private long _totalBytes;
+    private int _totalDevices;
+    private int _connectedDevices;
+
+    // Transfer stats
+    private long _totalDownloaded;
+    private long _totalUploaded;
+    private long _downloadRate;
+    private long _uploadRate;
+    private long _filesSynced;
+    private long _bytesSynced;
+
+    // System stats
+    private TimeSpan _uptime;
+    private long _memoryUsage;
+    private long _databaseSize;
+    private int _goroutines;
+    private string _version = "1.0.0";
+    private DateTime _startedAt = DateTime.UtcNow;
+
+    private List<FolderStat> _folderStats = new();
+    private List<DeviceStat> _deviceStats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await RefreshStatistics();
+
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshStatistics();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private void OnStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshStatistics()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var status = await ApiClient.GetSystemStatusAsync();
+            var folders = await ApiClient.GetFoldersAsync();
+            var devices = await ApiClient.GetDevicesAsync();
+            var connections = await ApiClient.GetConnectionsAsync();
+
+            var myId = status?.MyId;
+
+            // Overview
+            _totalFolders = folders.Length;
+            _totalDevices = devices.Count(d => d.DeviceId != myId);
+            _connectedDevices = connections.Count(c => c.Connected);
+
+            // System stats
+            _uptime = TimeSpan.FromSeconds(status?.Uptime ?? 0);
+            _memoryUsage = status?.Sys ?? 0;
+            _goroutines = status?.Goroutines ?? 0;
+
+            // Folder stats
+            _folderStats.Clear();
+            _totalFiles = 0;
+            _totalBytes = 0;
+
+            foreach (var folder in folders)
+            {
+                var folderStatus = await ApiClient.GetFolderStatusAsync(folder.Id);
+                if (folderStatus != null)
+                {
+                    _totalFiles += folderStatus.GlobalFiles;
+                    _totalBytes += folderStatus.GlobalBytes;
+
+                    _folderStats.Add(new FolderStat
+                    {
+                        Id = folder.Id,
+                        Name = folder.DisplayName,
+                        Files = folderStatus.GlobalFiles,
+                        Directories = folderStatus.GlobalDirectories,
+                        Bytes = folderStatus.GlobalBytes,
+                        SyncPercent = folderStatus.SyncPercentage,
+                        State = folderStatus.State
+                    });
+                }
+            }
+
+            // Device stats
+            _deviceStats.Clear();
+            _totalDownloaded = 0;
+            _totalUploaded = 0;
+            _downloadRate = 0;
+            _uploadRate = 0;
+
+            foreach (var device in devices.Where(d => d.DeviceId != myId))
+            {
+                var conn = connections.FirstOrDefault(c => c.DeviceId == device.DeviceId);
+                var stats = await ApiClient.GetDeviceStatsAsync(device.DeviceId);
+
+                _totalDownloaded += conn?.InBytesTotal ?? 0;
+                _totalUploaded += conn?.OutBytesTotal ?? 0;
+                _downloadRate += conn?.InBytesPerSec ?? 0;
+                _uploadRate += conn?.OutBytesPerSec ?? 0;
+
+                _deviceStats.Add(new DeviceStat
+                {
+                    DeviceId = device.DeviceId,
+                    Name = device.DisplayName,
+                    Downloaded = conn?.InBytesTotal ?? 0,
+                    Uploaded = conn?.OutBytesTotal ?? 0,
+                    LastSeen = stats?.LastSeen,
+                    Connected = conn?.Connected ?? false
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to refresh statistics: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+    }
+
+    private string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m";
+        if (uptime.TotalHours >= 1)
+            return $"{uptime.Hours}h {uptime.Minutes}m";
+        return $"{uptime.Minutes}m {uptime.Seconds}s";
+    }
+
+    private string FormatTimeAgo(DateTime time)
+    {
+        var diff = DateTime.UtcNow - time;
+        if (diff.TotalSeconds < 60) return "Just now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        return time.ToString("MMM d");
+    }
+
+    private Color GetStatusColor(string state)
+    {
+        return state.ToLower() switch
+        {
+            "idle" => Color.Success,
+            "syncing" => Color.Info,
+            "scanning" => Color.Info,
+            "error" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _refreshTimer?.Dispose();
+    }
+}
+
+@code {
+    private class FolderStat
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public long Files { get; set; }
+        public long Directories { get; set; }
+        public long Bytes { get; set; }
+        public double SyncPercent { get; set; }
+        public string State { get; set; } = string.Empty;
+    }
+
+    private class DeviceStat
+    {
+        public string DeviceId { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public long Downloaded { get; set; }
+        public long Uploaded { get; set; }
+        public DateTime? LastSeen { get; set; }
+        public bool Connected { get; set; }
+    }
+}

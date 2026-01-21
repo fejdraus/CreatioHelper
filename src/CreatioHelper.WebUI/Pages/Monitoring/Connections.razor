@@ -1,0 +1,369 @@
+@page "/monitoring/connections"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Connections - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Connections</MudText>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="@(() => RefreshConnections(showLoading: true))">
+        Refresh
+    </MudButton>
+</div>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else
+{
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Summary</MudText>
+                <MudSimpleTable Dense="true">
+                    <tbody>
+                        <tr>
+                            <td>Total Devices</td>
+                            <td class="text-right font-weight-bold">@_totalDevices</td>
+                        </tr>
+                        <tr>
+                            <td>Connected</td>
+                            <td class="text-right font-weight-bold" style="color: var(--mud-palette-success);">@_connectedDevices</td>
+                        </tr>
+                        <tr>
+                            <td>Disconnected</td>
+                            <td class="text-right font-weight-bold" style="color: var(--mud-palette-error);">@_disconnectedDevices</td>
+                        </tr>
+                        <tr>
+                            <td>Direct Connections</td>
+                            <td class="text-right font-weight-bold">@_directConnections</td>
+                        </tr>
+                        <tr>
+                            <td>Relay Connections</td>
+                            <td class="text-right font-weight-bold">@_relayConnections</td>
+                        </tr>
+                    </tbody>
+                </MudSimpleTable>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="8">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-2">Bandwidth</MudText>
+                <MudGrid>
+                    <MudItem xs="6">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Color="Color.Success" Class="mr-2" />
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Default">Download Rate</MudText>
+                                <MudText Typo="Typo.h5">@FormatBytes(_totalInBytesPerSec)/s</MudText>
+                            </div>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <div class="d-flex align-center">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Color="Color.Info" Class="mr-2" />
+                            <div>
+                                <MudText Typo="Typo.caption" Color="Color.Default">Upload Rate</MudText>
+                                <MudText Typo="Typo.h5">@FormatBytes(_totalOutBytesPerSec)/s</MudText>
+                            </div>
+                        </div>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Default">Total Downloaded</MudText>
+                        <MudText Typo="Typo.body1">@FormatBytes(_totalInBytesTotal)</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Default">Total Uploaded</MudText>
+                        <MudText Typo="Typo.body1">@FormatBytes(_totalOutBytesTotal)</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+
+    <MudPaper Elevation="2" Class="mt-4">
+        <MudTable Items="@_connectionDetails"
+                  Dense="true"
+                  Hover="true"
+                  FixedHeader="true">
+            <HeaderContent>
+                <MudTh>Device</MudTh>
+                <MudTh>Status</MudTh>
+                <MudTh>Type</MudTh>
+                <MudTh>Address</MudTh>
+                <MudTh>Download</MudTh>
+                <MudTh>Upload</MudTh>
+                <MudTh>Connected</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Device">
+                    <MudLink Href="@($"/devices/{context.DeviceId}")">@context.DeviceName</MudLink>
+                </MudTd>
+                <MudTd DataLabel="Status">
+                    @if (context.Connected)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Connected</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disconnected</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Type">
+                    @if (context.Connected)
+                    {
+                        @if (context.IsRelay)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">Relay</MudChip>
+                        }
+                        else
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">Direct</MudChip>
+                        }
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Address">
+                    @if (context.Connected)
+                    {
+                        <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 200px;">
+                            @context.Address
+                        </MudText>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Download">
+                    @if (context.Connected)
+                    {
+                        <div>
+                            <MudText Typo="Typo.body2">@FormatBytes(context.InBytesPerSec)/s</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">@FormatBytes(context.InBytesTotal) total</MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Upload">
+                    @if (context.Connected)
+                    {
+                        <div>
+                            <MudText Typo="Typo.body2">@FormatBytes(context.OutBytesPerSec)/s</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Default">@FormatBytes(context.OutBytesTotal) total</MudText>
+                        </div>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+                <MudTd DataLabel="Connected">
+                    @if (context.Connected && context.ConnectedAt.HasValue)
+                    {
+                        <MudTooltip Text="@context.ConnectedAt.Value.ToString("g")">
+                            <MudText Typo="Typo.body2">@FormatDuration(DateTime.UtcNow - context.ConnectedAt.Value)</MudText>
+                        </MudTooltip>
+                    }
+                    else
+                    {
+                        <span>-</span>
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Discovery Status</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Local Discovery</MudText>
+                @if (_discoveryStatus?.LocalAnnounceEnabled == true)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Enabled</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disabled</MudChip>
+                }
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Global Discovery</MudText>
+                @if (_discoveryStatus?.GlobalAnnounceEnabled == true)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
+                        Enabled (@_discoveryStatus.GlobalAnnounceServers?.Length servers)
+                    </MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disabled</MudChip>
+                }
+            </MudItem>
+        </MudGrid>
+
+        @if (_discoveryStatus?.ExternalAddresses?.Length > 0)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">External Addresses</MudText>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var addr in _discoveryStatus.ExternalAddresses)
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined">@addr</MudChip>
+                }
+            </div>
+        }
+    </MudPaper>
+}
+
+@code {
+    private System.Threading.Timer? _refreshTimer;
+    private bool _isLoading;
+
+    // Summary
+    private int _totalDevices;
+    private int _connectedDevices;
+    private int _disconnectedDevices;
+    private int _directConnections;
+    private int _relayConnections;
+
+    // Bandwidth
+    private long _totalInBytesPerSec;
+    private long _totalOutBytesPerSec;
+    private long _totalInBytesTotal;
+    private long _totalOutBytesTotal;
+
+    private List<ConnectionDetail> _connectionDetails = new();
+    private DiscoveryStatus? _discoveryStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await RefreshConnections(showLoading: true);
+
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshConnections(showLoading: false);
+            });
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task RefreshConnections(bool showLoading = true)
+    {
+        if (showLoading)
+        {
+            _isLoading = true;
+            StateHasChanged();
+        }
+
+        try
+        {
+            var connections = await ApiClient.GetConnectionsAsync();
+            var devices = await ApiClient.GetDevicesAsync();
+            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync();
+
+            var myId = State.SystemStatus?.MyId;
+            var remoteDevices = devices.Where(d => d.DeviceId != myId).ToList();
+
+            _totalDevices = remoteDevices.Count;
+            _connectedDevices = connections.Count(c => c.Connected);
+            _disconnectedDevices = _totalDevices - _connectedDevices;
+            _directConnections = connections.Count(c => c.Connected && !c.IsRelay);
+            _relayConnections = connections.Count(c => c.Connected && c.IsRelay);
+
+            _totalInBytesPerSec = connections.Sum(c => c.InBytesPerSec);
+            _totalOutBytesPerSec = connections.Sum(c => c.OutBytesPerSec);
+            _totalInBytesTotal = connections.Sum(c => c.InBytesTotal);
+            _totalOutBytesTotal = connections.Sum(c => c.OutBytesTotal);
+
+            _connectionDetails = remoteDevices.Select(d =>
+            {
+                var conn = connections.FirstOrDefault(c => c.DeviceId == d.DeviceId);
+                return new ConnectionDetail
+                {
+                    DeviceId = d.DeviceId,
+                    DeviceName = d.DisplayName,
+                    Connected = conn?.Connected ?? false,
+                    IsRelay = conn?.IsRelay ?? false,
+                    Address = conn?.Address ?? string.Empty,
+                    InBytesPerSec = conn?.InBytesPerSec ?? 0,
+                    OutBytesPerSec = conn?.OutBytesPerSec ?? 0,
+                    InBytesTotal = conn?.InBytesTotal ?? 0,
+                    OutBytesTotal = conn?.OutBytesTotal ?? 0,
+                    ConnectedAt = conn?.ConnectedAt
+                };
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to refresh connections: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1)
+            return $"{duration.Days}d {duration.Hours}h";
+        if (duration.TotalHours >= 1)
+            return $"{duration.Hours}h {duration.Minutes}m";
+        if (duration.TotalMinutes >= 1)
+            return $"{duration.Minutes}m";
+        return $"{duration.Seconds}s";
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _refreshTimer?.Dispose();
+    }
+}
+
+@code {
+    private class ConnectionDetail
+    {
+        public string DeviceId { get; set; } = string.Empty;
+        public string DeviceName { get; set; } = string.Empty;
+        public bool Connected { get; set; }
+        public bool IsRelay { get; set; }
+        public string Address { get; set; } = string.Empty;
+        public long InBytesPerSec { get; set; }
+        public long OutBytesPerSec { get; set; }
+        public long InBytesTotal { get; set; }
+        public long OutBytesTotal { get; set; }
+        public DateTime? ConnectedAt { get; set; }
+    }
+}

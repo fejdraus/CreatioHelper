@@ -1,0 +1,537 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject StateContainer State
+
+<MudDialog Style="max-height: 90vh;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.CreateNewFolder)" Class="mr-2" />
+            @(IsEditMode ? "Edit Folder" : "Add Folder")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            @* ===== GENERAL TAB ===== *@
+            <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Info">
+                <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                    <MudTextField @bind-Value="_folderId"
+                                  Label="Folder ID"
+                                  HelperText="@(IsEditMode ? "Folder ID cannot be changed" : "Auto-generated unique ID. Must match exactly on all devices.")"
+                                  Required="true"
+                                  RequiredError="Folder ID is required"
+                                  Immediate="true"
+                                  ReadOnly="@IsEditMode"
+                                  Validation="@(new Func<string, string?>(ValidateFolderId))"
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_label"
+                                  Label="Folder Label"
+                                  HelperText="Optional descriptive name (can differ per device)"
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_path"
+                                  Label="Folder Path"
+                                  HelperText="Path to the folder on local disk"
+                                  Required="true"
+                                  RequiredError="Folder path is required"
+                                  Immediate="true"
+                                  Class="mb-4" />
+                </MudForm>
+            </MudTabPanel>
+
+            @* ===== SHARING TAB ===== *@
+            <MudTabPanel Text="Sharing" Icon="@Icons.Material.Filled.Share">
+                <MudText Typo="Typo.body2" Class="mb-4">
+                    Select devices to share this folder with:
+                </MudText>
+
+                @if (State.Devices.Length == 0)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        No remote devices configured. Add devices first to share folders.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var device in State.Devices.Where(d => d.DeviceId != State.MyDeviceId))
+                        {
+                            <MudListItem>
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedDevices.Contains(device.DeviceId)"
+                                             ValueChanged="@(v => ToggleDevice(device.DeviceId, v))"
+                                             Label="@device.DisplayName"
+                                             Color="Color.Primary" />
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudTabPanel>
+
+            @* ===== FILE VERSIONING TAB ===== *@
+            <MudTabPanel Text="File Versioning" Icon="@Icons.Material.Filled.History">
+                <MudSelect @bind-Value="_versioningType"
+                           Label="Versioning Type"
+                           HelperText="How to handle replaced/deleted files"
+                           Class="mb-4">
+                    <MudSelectItem Value="@("none")">No File Versioning</MudSelectItem>
+                    <MudSelectItem Value="@("trashcan")">Trash Can File Versioning</MudSelectItem>
+                    <MudSelectItem Value="@("simple")">Simple File Versioning</MudSelectItem>
+                    <MudSelectItem Value="@("staggered")">Staggered File Versioning</MudSelectItem>
+                    <MudSelectItem Value="@("external")">External File Versioning</MudSelectItem>
+                </MudSelect>
+
+                @if (_versioningType != "none")
+                {
+                    <MudTextField @bind-Value="_versioningPath"
+                                  Label="Versions Path"
+                                  HelperText="Where to store versions (empty = .stversions in folder)"
+                                  Class="mb-4" />
+
+                    <MudNumericField @bind-Value="_cleanupIntervalS"
+                                     Label="Cleanup Interval (seconds)"
+                                     HelperText="How often to clean up old versions (0 = disabled)"
+                                     Min="0"
+                                     Class="mb-4" />
+                }
+
+                @if (_versioningType == "trashcan")
+                {
+                    <MudNumericField @bind-Value="_cleanoutDays"
+                                     Label="Clean Out After (days)"
+                                     HelperText="Days to keep files in trash (0 = forever)"
+                                     Min="0"
+                                     Class="mb-4" />
+                }
+                else if (_versioningType == "simple")
+                {
+                    <MudNumericField @bind-Value="_keepVersions"
+                                     Label="Keep Versions"
+                                     HelperText="Number of old versions to keep per file"
+                                     Min="1"
+                                     Class="mb-4" />
+
+                    <MudNumericField @bind-Value="_cleanoutDays"
+                                     Label="Clean Out After (days)"
+                                     HelperText="Days to keep versions (0 = forever)"
+                                     Min="0"
+                                     Class="mb-4" />
+                }
+                else if (_versioningType == "staggered")
+                {
+                    <MudNumericField @bind-Value="_maxAgeDays"
+                                     Label="Maximum Age (days)"
+                                     HelperText="Maximum time to keep a version"
+                                     Min="0"
+                                     Class="mb-4" />
+                }
+                else if (_versioningType == "external")
+                {
+                    <MudTextField @bind-Value="_externalCommand"
+                                  Label="Command"
+                                  HelperText="External command to run for versioning"
+                                  Class="mb-4" />
+                }
+            </MudTabPanel>
+
+            @* ===== ADVANCED TAB ===== *@
+            <MudTabPanel Text="Advanced" Icon="@Icons.Material.Filled.Settings">
+                @* Folder Type *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Folder Type</MudText>
+                <MudSelect @bind-Value="_folderType"
+                           Label="Folder Type"
+                           HelperText="How this folder synchronizes"
+                           Class="mb-4">
+                    <MudSelectItem Value="@("sendreceive")">Send & Receive</MudSelectItem>
+                    <MudSelectItem Value="@("sendonly")">Send Only</MudSelectItem>
+                    <MudSelectItem Value="@("receiveonly")">Receive Only</MudSelectItem>
+                    <MudSelectItem Value="@("receiveencrypted")">Receive Encrypted</MudSelectItem>
+                </MudSelect>
+
+                <MudSelect @bind-Value="_pullOrder"
+                           Label="File Pull Order"
+                           HelperText="Order in which files are downloaded"
+                           Disabled="@(_folderType == "sendonly")"
+                           Class="mb-4">
+                    <MudSelectItem Value="@("random")">Random</MudSelectItem>
+                    <MudSelectItem Value="@("alphabetic")">Alphabetic</MudSelectItem>
+                    <MudSelectItem Value="@("smallestFirst")">Smallest First</MudSelectItem>
+                    <MudSelectItem Value="@("largestFirst")">Largest First</MudSelectItem>
+                    <MudSelectItem Value="@("oldestFirst")">Oldest First</MudSelectItem>
+                    <MudSelectItem Value="@("newestFirst")">Newest First</MudSelectItem>
+                </MudSelect>
+
+                <MudDivider Class="my-4" />
+
+                @* Scanning *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Scanning</MudText>
+
+                <MudSwitch @bind-Value="_fsWatcherEnabled"
+                           Label="Watch for Changes"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    Use filesystem notifications to detect changes
+                </MudText>
+
+                @if (_fsWatcherEnabled)
+                {
+                    <MudNumericField @bind-Value="_fsWatcherDelayS"
+                                     Label="FS Watcher Delay (seconds)"
+                                     HelperText="Delay before reacting to changes"
+                                     Min="0.01"
+                                     Step="0.1"
+                                     Class="mb-4" />
+                }
+
+                <MudNumericField @bind-Value="_rescanIntervalS"
+                                 Label="Full Rescan Interval (seconds)"
+                                 HelperText="Periodic full folder scan (0 = disabled)"
+                                 Min="0"
+                                 Class="mb-4" />
+
+                <MudDivider Class="my-4" />
+
+                @* Disk & Permissions *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Disk Space & Permissions</MudText>
+
+                <MudGrid>
+                    <MudItem xs="8">
+                        <MudNumericField @bind-Value="_minDiskFreeValue"
+                                         Label="Minimum Free Disk Space"
+                                         Min="0"
+                                         Class="mb-4" />
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudSelect @bind-Value="_minDiskFreeUnit" Label="Unit" Class="mb-4">
+                            <MudSelectItem Value="@("%")">%</MudSelectItem>
+                            <MudSelectItem Value="@("kB")">kB</MudSelectItem>
+                            <MudSelectItem Value="@("MB")">MB</MudSelectItem>
+                            <MudSelectItem Value="@("GB")">GB</MudSelectItem>
+                            <MudSelectItem Value="@("TB")">TB</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                <MudSwitch @bind-Value="_ignorePerms"
+                           Label="Ignore Permissions"
+                           Color="Color.Primary"
+                           Disabled="@(_folderType == "receiveencrypted")"
+                           Class="mb-2" />
+
+                <MudSwitch @bind-Value="_ignoreDelete"
+                           Label="Ignore Deletes"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    Don't delete files that are deleted on other devices
+                </MudText>
+
+                <MudDivider Class="my-4" />
+
+                @* Other Options *@
+                <MudText Typo="Typo.subtitle2" Class="mb-2">Other Options</MudText>
+
+                <MudSwitch @bind-Value="_autoNormalize"
+                           Label="Auto Normalize"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    Automatically normalize filename encoding
+                </MudText>
+
+                <MudNumericField @bind-Value="_maxConflicts"
+                                 Label="Max Conflicts"
+                                 HelperText="Maximum conflicting files to keep (-1 = unlimited)"
+                                 Min="-1"
+                                 Class="mb-4" />
+
+                <MudNumericField @bind-Value="_maxConcurrentWrites"
+                                 Label="Max Concurrent Writes"
+                                 HelperText="Maximum concurrent file write operations"
+                                 Min="1"
+                                 Max="256"
+                                 Class="mb-4" />
+
+                <MudSwitch @bind-Value="_caseSensitiveFS"
+                           Label="Case Sensitive FS"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+
+                <MudSwitch @bind-Value="_junctionsAsDirs"
+                           Label="Junctions as Dirs"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    Treat junctions/reparse points as directories (Windows)
+                </MudText>
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!_isValid || _isSubmitting)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsEditMode ? "Save" : "Add Folder")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    /// <summary>
+    /// Existing folder for edit mode. If null, dialog is in add mode.
+    /// </summary>
+    [Parameter]
+    public FolderConfig? Folder { get; set; }
+
+    private bool IsEditMode => Folder != null;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _isSubmitting;
+
+    // General
+    private string _folderId = string.Empty;
+    private string _label = string.Empty;
+    private string _path = string.Empty;
+
+    // Sharing
+    private HashSet<string> _selectedDevices = new();
+
+    // File Versioning
+    private string _versioningType = "none";
+    private string _versioningPath = string.Empty;
+    private int _cleanupIntervalS = 3600;
+    private int _cleanoutDays = 0;
+    private int _keepVersions = 5;
+    private int _maxAgeDays = 365;
+    private string _externalCommand = string.Empty;
+
+    // Advanced - Folder Type
+    private string _folderType = "sendreceive";
+    private string _pullOrder = "random";
+
+    // Advanced - Scanning
+    private bool _fsWatcherEnabled = true;
+    private double _fsWatcherDelayS = 10;
+    private int _rescanIntervalS = 3600;
+
+    // Advanced - Disk & Permissions
+    private double _minDiskFreeValue = 1;
+    private string _minDiskFreeUnit = "%";
+    private bool _ignorePerms = false;
+    private bool _ignoreDelete = false;
+
+    // Advanced - Other
+    private bool _autoNormalize = true;
+    private int _maxConflicts = 10;
+    private int _maxConcurrentWrites = 16;
+    private bool _caseSensitiveFS = false;
+    private bool _junctionsAsDirs = false;
+
+    protected override void OnInitialized()
+    {
+        if (IsEditMode)
+        {
+            LoadFromFolder(Folder!);
+        }
+        else
+        {
+            _folderId = GenerateFolderId();
+        }
+    }
+
+    private void LoadFromFolder(FolderConfig folder)
+    {
+        // General
+        _folderId = folder.Id;
+        _label = folder.Label ?? string.Empty;
+        _path = folder.Path;
+
+        // Sharing
+        _selectedDevices = folder.Devices?.Select(d => d.DeviceId).ToHashSet() ?? new();
+
+        // Folder Type
+        _folderType = folder.Type ?? "sendreceive";
+        _pullOrder = folder.Order ?? "random";
+
+        // Scanning
+        _fsWatcherEnabled = folder.FsWatcherEnabled;
+        _fsWatcherDelayS = folder.FsWatcherDelayS;
+        _rescanIntervalS = folder.RescanIntervalS;
+
+        // Disk & Permissions
+        _minDiskFreeValue = folder.MinDiskFree?.Value ?? 1;
+        _minDiskFreeUnit = folder.MinDiskFree?.Unit ?? "%";
+        _ignorePerms = folder.IgnorePerms;
+        _ignoreDelete = folder.IgnoreDelete;
+
+        // Other
+        _autoNormalize = folder.AutoNormalize;
+        _maxConflicts = folder.MaxConflicts;
+        _maxConcurrentWrites = folder.MaxConcurrentWrites;
+        _caseSensitiveFS = folder.CaseSensitiveFs;
+        _junctionsAsDirs = folder.JunctionsAsDirs;
+
+        // Versioning
+        if (folder.Versioning != null && !string.IsNullOrEmpty(folder.Versioning.Type))
+        {
+            _versioningType = folder.Versioning.Type;
+            var p = folder.Versioning.Params;
+            if (p != null)
+            {
+                if (p.TryGetValue("cleanoutDays", out var cleanoutDays))
+                    int.TryParse(cleanoutDays, out _cleanoutDays);
+                if (p.TryGetValue("keep", out var keep))
+                    int.TryParse(keep, out _keepVersions);
+                if (p.TryGetValue("maxAge", out var maxAge) && int.TryParse(maxAge, out var maxAgeSec))
+                    _maxAgeDays = maxAgeSec / 86400;
+                if (p.TryGetValue("command", out var command))
+                    _externalCommand = command;
+                if (p.TryGetValue("fsPath", out var fsPath))
+                    _versioningPath = fsPath;
+            }
+        }
+    }
+
+    private static string GenerateFolderId()
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        var random = new Random();
+        var part1 = new string(Enumerable.Range(0, 5).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+        var part2 = new string(Enumerable.Range(0, 5).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+        return $"{part1}-{part2}";
+    }
+
+    private string? ValidateFolderId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Folder ID is required";
+
+        if (value.Contains(' '))
+            return "Folder ID cannot contain spaces";
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(value, @"^[a-zA-Z0-9_\-\.]+$"))
+            return "Folder ID can only contain letters, numbers, underscores, hyphens, and dots";
+
+        return null;
+    }
+
+    private void ToggleDevice(string deviceId, bool selected)
+    {
+        if (selected)
+            _selectedDevices.Add(deviceId);
+        else
+            _selectedDevices.Remove(deviceId);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var folder = new FolderConfig
+            {
+                Id = _folderId,
+                Label = _label,
+                Path = _path,
+                Type = _folderType,
+                Order = _pullOrder,
+                RescanIntervalS = _rescanIntervalS,
+                FsWatcherEnabled = _fsWatcherEnabled,
+                FsWatcherDelayS = _fsWatcherDelayS,
+                IgnorePerms = _ignorePerms,
+                IgnoreDelete = _ignoreDelete,
+                AutoNormalize = _autoNormalize,
+                MaxConflicts = _maxConflicts,
+                MaxConcurrentWrites = _maxConcurrentWrites,
+                CaseSensitiveFs = _caseSensitiveFS,
+                JunctionsAsDirs = _junctionsAsDirs,
+                MinDiskFree = new MinDiskFree
+                {
+                    Value = _minDiskFreeValue,
+                    Unit = _minDiskFreeUnit
+                },
+                Devices = _selectedDevices.Select(id => new FolderDevice { DeviceId = id }).ToArray()
+            };
+
+            // Preserve paused state when editing
+            if (IsEditMode)
+            {
+                folder.Paused = Folder!.Paused;
+            }
+
+            // Add versioning config if enabled
+            if (_versioningType != "none")
+            {
+                folder.Versioning = new VersioningConfig
+                {
+                    Type = _versioningType,
+                    Params = GetVersioningParams()
+                };
+            }
+
+            if (IsEditMode)
+            {
+                await ApiClient.UpdateFolderAsync(folder);
+                Snackbar.Add($"Folder '{folder.DisplayName}' saved", Severity.Success);
+            }
+            else
+            {
+                await ApiClient.AddFolderAsync(folder);
+                Snackbar.Add($"Folder '{folder.DisplayName}' added", Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(folder));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to {(IsEditMode ? "save" : "add")} folder: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private Dictionary<string, string>? GetVersioningParams()
+    {
+        return _versioningType switch
+        {
+            "trashcan" => new Dictionary<string, string>
+            {
+                ["cleanoutDays"] = _cleanoutDays.ToString()
+            },
+            "simple" => new Dictionary<string, string>
+            {
+                ["keep"] = _keepVersions.ToString(),
+                ["cleanoutDays"] = _cleanoutDays.ToString()
+            },
+            "staggered" => new Dictionary<string, string>
+            {
+                ["maxAge"] = (_maxAgeDays * 86400).ToString() // Convert days to seconds
+            },
+            "external" => new Dictionary<string, string>
+            {
+                ["command"] = _externalCommand
+            },
+            _ => null
+        };
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

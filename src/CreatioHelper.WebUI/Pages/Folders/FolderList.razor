@@ -1,0 +1,561 @@
+@page "/folders"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@implements IDisposable
+
+<PageTitle>Folders - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Folders</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="@AddFolder">
+        Add Folder
+    </MudButton>
+</div>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (State.Folders.Length == 0)
+{
+    <MudPaper Elevation="2" Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.FolderOff"
+                 Size="Size.Large"
+                 Color="Color.Default"
+                 Class="mb-4" />
+        <MudText Typo="Typo.h6" Class="mb-2">No folders configured</MudText>
+        <MudText Color="Color.Default" Class="mb-4">
+            Add a folder to start synchronizing files between devices.
+        </MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="@AddFolder">
+            Add Your First Folder
+        </MudButton>
+    </MudPaper>
+}
+else
+{
+    @foreach (var folder in State.Folders)
+    {
+        var status = GetFolderStatus(folder.Id);
+        var isExpanded = _expandedFolders.Contains(folder.Id);
+        <MudPaper Elevation="2" Class="mb-3">
+            @* Header row - always visible *@
+            <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => ToggleFolderExpand(folder.Id))">
+                <MudIcon Icon="@Icons.Material.Filled.Folder"
+                         Color="@GetStatusColor(folder, status)"
+                         Class="mr-3" />
+                <div class="flex-grow-1">
+                    <MudText Typo="Typo.subtitle1">@folder.DisplayName</MudText>
+                </div>
+                <MudText Typo="Typo.body2" Color="@GetStatusColor(folder, status)" Class="mr-2">
+                    @GetStatusText(folder, status)
+                </MudText>
+                <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               Size="Size.Small" />
+            </div>
+
+            @* Expandable details *@
+            <MudCollapse Expanded="@isExpanded">
+                <MudDivider />
+                <div class="pa-3">
+                    @if (status != null)
+                    {
+                        @* Progress bar when scanning/syncing *@
+                        @if (status.FolderState == FolderState.Scanning && status.ScanProgress != null)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-space-between mb-1">
+                                    <MudText Typo="Typo.caption" Color="Color.Info">
+                                        @GetScanPhaseText(status.ScanProgress.ScanPhase) - @status.ScanProgress.FilesScanned.ToString("N0") / @status.ScanProgress.FilesTotal.ToString("N0") files
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Info">@status.ScanProgress.PercentComplete.ToString("F0")%</MudText>
+                                </div>
+                                <MudProgressLinear Color="Color.Info" Value="@status.ScanProgress.PercentComplete" Max="100" Size="Size.Small" />
+                            </div>
+                        }
+                        else if (status.FolderState == FolderState.Scanning)
+                        {
+                            <MudProgressLinear Color="Color.Info" Indeterminate="true" Size="Size.Small" Class="mb-3" />
+                        }
+                        else if (status.FolderState == FolderState.Syncing || status.FolderState == FolderState.SyncPreparing)
+                        {
+                            <div class="mb-3">
+                                <div class="d-flex justify-space-between mb-1">
+                                    <MudText Typo="Typo.caption" Color="Color.Primary">Syncing</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Primary">@status.SyncPercentage.ToString("F0")%</MudText>
+                                </div>
+                                <MudProgressLinear Color="Color.Primary" Value="@status.SyncPercentage" Max="100" Size="Size.Small" />
+                            </div>
+                        }
+
+                        @* Details table *@
+                        <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
+                            <tbody>
+                                <tr>
+                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Folder ID</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@folder.Id</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Folder Path</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 300px;">@folder.Path</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Global State</MudText></td>
+                                    <td>
+                                        <MudText Typo="Typo.body2">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.GlobalFiles.ToString("N0")
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@status.GlobalDirectories.ToString("N0")
+                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(status.GlobalBytes)
+                                        </MudText>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Local State</MudText></td>
+                                    <td>
+                                        <MudText Typo="Typo.body2">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.LocalFiles.ToString("N0")
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@status.LocalDirectories.ToString("N0")
+                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(status.LocalBytes)
+                                        </MudText>
+                                    </td>
+                                </tr>
+                                @if (status.NeedFiles > 0 || status.NeedBytes > 0)
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Out of Sync</MudText></td>
+                                        <td>
+                                            <MudText Typo="Typo.body2" Color="Color.Warning">
+                                                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.NeedFiles.ToString("N0")
+                                                <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(status.NeedBytes)
+                                            </MudText>
+                                        </td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Folder Type</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@GetFolderTypeDisplay(folder.Type)</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Rescan Interval</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@FormatInterval(folder.RescanIntervalS), @(folder.FsWatcherEnabled ? "Watch enabled" : "Watch disabled")</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">File Pull Order</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@GetPullOrderDisplay(folder.Order)</MudText></td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Shared With</MudText></td>
+                                    <td>
+                                        @if (folder.Devices?.Length > 0)
+                                        {
+                                            @foreach (var device in folder.Devices)
+                                            {
+                                                var deviceName = GetDeviceName(device.DeviceId);
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="ma-0 mr-1">@deviceName</MudChip>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Default">Not shared</MudText>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Last State Change</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@(status.StateChanged != default ? status.StateChanged.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "Never")</MudText></td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+
+                        @if (status.Errors > 0)
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">
+                                @status.Errors error(s)
+                                <MudLink Href="@($"/folders/{folder.Id}/errors")" Class="ml-2">View</MudLink>
+                            </MudAlert>
+                        }
+                    }
+                    else
+                    {
+                        <MudSkeleton Animation="Animation.Wave" Height="150px" />
+                    }
+
+                    @* Action buttons *@
+                    <div class="d-flex gap-2 mt-3">
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="@(folder.Paused ? Color.Success : Color.Warning)"
+                                   StartIcon="@(folder.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                                   OnClick="@(() => TogglePause(folder))">
+                            @(folder.Paused ? "Resume" : "Pause")
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="@(() => ScanFolder(folder.Id))">
+                            Rescan
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.Edit"
+                                   OnClick="@(() => EditFolder(folder))">
+                            Edit
+                        </MudButton>
+                    </div>
+                </div>
+            </MudCollapse>
+        </MudPaper>
+    }
+}
+
+@code {
+    private bool _isLoading;
+    private System.Threading.Timer? _refreshTimer;
+    private HashSet<string> _expandedFolders = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        State.OnChange += OnStateChanged;
+        await LoadFolderStatusesAsync();
+        StartAutoRefresh();
+    }
+
+    private void OnStateChanged()
+    {
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void StartAutoRefresh()
+    {
+        // Auto-refresh every 1 second while page is open
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    // Refresh all folders to catch state changes
+                    foreach (var folder in State.Folders)
+                    {
+                        var status = await ApiClient.GetFolderStatusAsync(folder.Id);
+                        if (status != null)
+                        {
+                            State.UpdateFolderStatus(status);
+                        }
+                    }
+                    StateHasChanged();
+                }
+                catch
+                {
+                    // Ignore errors during auto-refresh
+                }
+            });
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private async Task LoadFolderStatusesAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            foreach (var folder in State.Folders)
+            {
+                var status = await ApiClient.GetFolderStatusAsync(folder.Id);
+                if (status != null)
+                {
+                    State.UpdateFolderStatus(status);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load folder statuses: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private FolderStatus? GetFolderStatus(string folderId)
+    {
+        return State.FolderStatuses.TryGetValue(folderId, out var status) ? status : null;
+    }
+
+    private Color GetStatusColor(FolderConfig folder, FolderStatus? status)
+    {
+        if (folder.Paused) return Color.Warning;
+        if (status == null) return Color.Default;
+
+        return status.FolderState switch
+        {
+            FolderState.Idle => Color.Success,
+            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Info,
+            FolderState.Scanning => Color.Info,
+            FolderState.Error => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressBarColor(FolderConfig folder, FolderStatus? status)
+    {
+        if (folder.Paused) return Color.Warning;
+        if (status == null) return Color.Default;
+
+        return status.FolderState switch
+        {
+            FolderState.Idle when status.SyncPercentage >= 100 => Color.Success,
+            FolderState.Idle => Color.Default,
+            FolderState.Scanning => Color.Info,
+            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Primary,
+            FolderState.Error => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressTextColor(FolderConfig folder, FolderStatus? status)
+    {
+        if (folder.Paused) return Color.Warning;
+        if (status == null) return Color.Default;
+
+        return status.FolderState switch
+        {
+            FolderState.Idle when status.SyncPercentage >= 100 => Color.Success,
+            FolderState.Idle => Color.Default,
+            FolderState.Scanning => Color.Info,
+            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Primary,
+            FolderState.Error => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusText(FolderConfig folder, FolderStatus? status)
+    {
+        if (folder.Paused) return "Paused";
+        if (status == null) return "Loading...";
+
+        return status.FolderState switch
+        {
+            FolderState.Idle => status.SyncPercentage >= 100 ? "Up to Date" : $"{status.SyncPercentage:F0}% synced",
+            FolderState.Syncing => $"Syncing ({status.SyncPercentage:F0}%)",
+            FolderState.SyncPreparing => "Preparing...",
+            FolderState.SyncWaiting => "Waiting...",
+            FolderState.Scanning => status.ScanProgress != null
+                ? $"Scanning ({status.ScanProgress.PercentComplete:F0}%)"
+                : "Scanning...",
+            FolderState.Error => status.Error ?? "Error",
+            _ => status.State
+        };
+    }
+
+    private string GetScanPhaseText(ScanPhase phase)
+    {
+        return phase switch
+        {
+            ScanPhase.Enumerating => "Enumerating...",
+            ScanPhase.Scanning => "Scanning...",
+            ScanPhase.Updating => "Updating...",
+            ScanPhase.Completed => "Completed",
+            ScanPhase.Cancelled => "Cancelled",
+            ScanPhase.Failed => "Failed",
+            _ => "..."
+        };
+    }
+
+    private async Task ScanFolder(string folderId)
+    {
+        try
+        {
+            await ApiClient.ScanFolderAsync(folderId);
+            Snackbar.Add("Scan initiated", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to scan folder: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task TogglePause(FolderConfig folder)
+    {
+        try
+        {
+            folder.Paused = !folder.Paused;
+            await ApiClient.UpdateFolderAsync(folder);
+            Snackbar.Add(folder.Paused ? "Folder paused" : "Folder resumed", Severity.Success);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            folder.Paused = !folder.Paused; // Revert
+            Snackbar.Add($"Failed to toggle pause: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteFolder(FolderConfig folder)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Remove Folder",
+            $"Are you sure you want to remove '{folder.DisplayName}'? This will not delete any files on disk.",
+            yesText: "Remove",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await ApiClient.DeleteFolderAsync(folder.Id);
+                State.Folders = State.Folders.Where(f => f.Id != folder.Id).ToArray();
+                Snackbar.Add("Folder removed", Severity.Success);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to remove folder: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task AddFolder()
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<AddFolderDialog>("Add Folder", options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: FolderConfig newFolder })
+        {
+            // Add to state and refresh
+            State.Folders = [.. State.Folders, newFolder];
+            await LoadFolderStatusesAsync();
+        }
+    }
+
+    private async Task EditFolder(FolderConfig folder)
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters<AddFolderDialog>
+        {
+            { x => x.Folder, folder }
+        };
+
+        var dialog = await DialogService.ShowAsync<AddFolderDialog>("Edit Folder", parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: FolderConfig updatedFolder })
+        {
+            // Update in state
+            var folders = State.Folders.ToList();
+            var index = folders.FindIndex(f => f.Id == updatedFolder.Id);
+            if (index >= 0)
+            {
+                folders[index] = updatedFolder;
+                State.Folders = folders.ToArray();
+            }
+            await LoadFolderStatusesAsync();
+        }
+    }
+
+    private async Task EditIgnores(FolderConfig folder)
+    {
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Medium,
+            FullWidth = true
+        };
+
+        var parameters = new DialogParameters<IgnoresDialog>
+        {
+            { x => x.FolderId, folder.Id },
+            { x => x.FolderName, folder.DisplayName }
+        };
+
+        await DialogService.ShowAsync<IgnoresDialog>("Ignore Patterns", parameters, options);
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+    }
+
+    private void ToggleFolderExpand(string folderId)
+    {
+        if (_expandedFolders.Contains(folderId))
+            _expandedFolders.Remove(folderId);
+        else
+            _expandedFolders.Add(folderId);
+    }
+
+    private string GetFolderTypeDisplay(string? type)
+    {
+        return type?.ToLowerInvariant() switch
+        {
+            "sendreceive" or null => "Send & Receive",
+            "sendonly" => "Send Only",
+            "receiveonly" => "Receive Only",
+            "receiveencrypted" => "Receive Encrypted",
+            _ => type ?? "Send & Receive"
+        };
+    }
+
+    private string FormatInterval(int seconds)
+    {
+        if (seconds < 60) return $"{seconds}s";
+        if (seconds < 3600) return $"{seconds / 60}m";
+        if (seconds < 86400) return $"{seconds / 3600}h";
+        return $"{seconds / 86400}d";
+    }
+
+    private string GetPullOrderDisplay(string? order)
+    {
+        return order?.ToLowerInvariant() switch
+        {
+            "random" => "Random",
+            "alphabetic" => "Alphabetic",
+            "smallestfirst" => "Smallest First",
+            "largestfirst" => "Largest First",
+            "oldestfirst" => "Oldest First",
+            "newestfirst" => "Newest First",
+            _ => "Random"
+        };
+    }
+
+    private string GetDeviceName(string deviceId)
+    {
+        var device = State.Devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        return device?.DisplayName ?? deviceId[..Math.Min(7, deviceId.Length)];
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _refreshTimer?.Dispose();
+    }
+}

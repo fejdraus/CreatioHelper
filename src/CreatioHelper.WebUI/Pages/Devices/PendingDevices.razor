@@ -1,0 +1,176 @@
+@page "/pending"
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Pending Devices - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Pending Devices</MudText>
+    <MudButton Variant="Variant.Outlined"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="LoadPendingDevicesAsync">
+        Refresh
+    </MudButton>
+</div>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_pendingDevices.Length == 0)
+{
+    <MudPaper Elevation="2" Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                 Size="Size.Large"
+                 Color="Color.Success"
+                 Class="mb-4" />
+        <MudText Typo="Typo.h6" Class="mb-2">No pending devices</MudText>
+        <MudText Color="Color.Secondary">
+            All device connection requests have been processed.
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudGrid>
+        @foreach (var device in _pendingDevices)
+        {
+            <MudItem xs="12" md="6" lg="4">
+                <MudCard Elevation="2">
+                    <MudCardHeader>
+                        <CardHeaderAvatar>
+                            <MudAvatar Color="Color.Warning">
+                                <MudIcon Icon="@Icons.Material.Filled.DeviceUnknown" />
+                            </MudAvatar>
+                        </CardHeaderAvatar>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6">@(device.Name ?? "Unknown Device")</MudText>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                @device.DeviceId[..Math.Min(12, device.DeviceId.Length)]...
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        <MudSimpleTable Dense="true" Hover="false" Bordered="false">
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Device ID</MudText></td>
+                                    <td>
+                                        <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">
+                                            @device.DeviceId
+                                        </MudText>
+                                    </td>
+                                </tr>
+                                @if (!string.IsNullOrEmpty(device.Address))
+                                {
+                                    <tr>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Address</MudText></td>
+                                        <td><MudText Typo="Typo.body2">@device.Address</MudText></td>
+                                    </tr>
+                                }
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Discovered</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@device.Time.ToLocalTime().ToString("g")</MudText></td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudCardContent>
+                    <MudCardActions>
+                        <MudButton Variant="Variant.Filled"
+                                   Color="Color.Success"
+                                   StartIcon="@Icons.Material.Filled.Check"
+                                   OnClick="@(() => AcceptDeviceAsync(device))"
+                                   Disabled="@_processingDevices.Contains(device.DeviceId)">
+                            Accept
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Close"
+                                   OnClick="@(() => RejectDeviceAsync(device))"
+                                   Disabled="@_processingDevices.Contains(device.DeviceId)"
+                                   Class="ml-2">
+                            Reject
+                        </MudButton>
+                    </MudCardActions>
+                </MudCard>
+            </MudItem>
+        }
+    </MudGrid>
+}
+
+@code {
+    private PendingDevice[] _pendingDevices = [];
+    private bool _isLoading = true;
+    private HashSet<string> _processingDevices = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPendingDevicesAsync();
+    }
+
+    private async Task LoadPendingDevicesAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _pendingDevices = await ApiClient.GetPendingDevicesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load pending devices: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task AcceptDeviceAsync(PendingDevice device)
+    {
+        _processingDevices.Add(device.DeviceId);
+        StateHasChanged();
+
+        try
+        {
+            await ApiClient.AcceptDeviceAsync(device.DeviceId);
+            Snackbar.Add($"Device '{device.Name ?? device.DeviceId}' accepted", Severity.Success);
+            await LoadPendingDevicesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to accept device: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processingDevices.Remove(device.DeviceId);
+            StateHasChanged();
+        }
+    }
+
+    private async Task RejectDeviceAsync(PendingDevice device)
+    {
+        _processingDevices.Add(device.DeviceId);
+        StateHasChanged();
+
+        try
+        {
+            await ApiClient.RejectDeviceAsync(device.DeviceId);
+            Snackbar.Add($"Device '{device.Name ?? device.DeviceId}' rejected", Severity.Info);
+            await LoadPendingDevicesAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to reject device: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _processingDevices.Remove(device.DeviceId);
+            StateHasChanged();
+        }
+    }
+}

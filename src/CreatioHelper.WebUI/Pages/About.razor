@@ -1,0 +1,201 @@
+@page "/about"
+@inject IApiClient ApiClient
+
+<PageTitle>About - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium">
+    <MudPaper Elevation="2" Class="pa-6">
+        <div class="text-center mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.Sync" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h4" Class="mt-2">CreatioHelper</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                Syncthing-compatible file synchronization with Creatio management
+            </MudText>
+        </div>
+
+        <MudDivider Class="my-4" />
+
+        @if (_isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (!string.IsNullOrEmpty(_errorMessage))
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">@_errorMessage</MudAlert>
+        }
+        else
+        {
+            <MudSimpleTable Dense="true" Hover="true">
+                <tbody>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Version</MudText></td>
+                        <td><MudText Typo="Typo.body2">@(_version ?? "Unknown")</MudText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Device ID</MudText></td>
+                        <td>
+                            <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">
+                                @(_deviceId ?? "Unknown")
+                            </MudText>
+                            @if (!string.IsNullOrEmpty(_deviceId))
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                               Size="Size.Small"
+                                               OnClick="CopyDeviceId"
+                                               Title="Copy Device ID" />
+                            }
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Uptime</MudText></td>
+                        <td><MudText Typo="Typo.body2">@FormatUptime(_uptime)</MudText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Platform</MudText></td>
+                        <td><MudText Typo="Typo.body2">@(_os ?? "Unknown")</MudText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Architecture</MudText></td>
+                        <td><MudText Typo="Typo.body2">@(_arch ?? "Unknown")</MudText></td>
+                    </tr>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Memory Usage</MudText></td>
+                        <td><MudText Typo="Typo.body2">@FormatBytes(_memoryUsage)</MudText></td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        }
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Class="mb-2">Features</MudText>
+        <MudList T="string" Dense="true">
+            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                Syncthing-compatible file synchronization
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                End-to-end encryption
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                NAT traversal (UPnP, NAT-PMP, STUN)
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                Creatio CRM integration
+            </MudListItem>
+            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                Web-based management interface
+            </MudListItem>
+        </MudList>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Class="mb-2">Links</MudText>
+        <MudStack Row="true" Spacing="2">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Code"
+                       Href="https://github.com/anthropics/creatio-helper"
+                       Target="_blank">
+                GitHub
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Description"
+                       Href="https://docs.syncthing.net/"
+                       Target="_blank">
+                Syncthing Docs
+            </MudButton>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _isLoading = true;
+    private string? _version;
+    private string? _deviceId;
+    private int _uptime;
+    private string? _os;
+    private string? _arch;
+    private long _memoryUsage;
+    private string? _errorMessage;
+
+    [Inject]
+    private IJSRuntime JS { get; set; } = null!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSystemInfoAsync();
+    }
+
+    private async Task LoadSystemInfoAsync()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var status = await ApiClient.GetSystemStatusAsync();
+            if (status != null)
+            {
+                _deviceId = status.MyId;
+                _uptime = (int)(status.Uptime ?? 0);
+                _memoryUsage = status.AppMemory ?? status.Alloc ?? 0;
+            }
+
+            var versionInfo = await ApiClient.GetVersionInfoAsync();
+            if (versionInfo != null)
+            {
+                _version = versionInfo.Version;
+                _os = versionInfo.Os;
+                _arch = versionInfo.Arch;
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            _errorMessage = $"Failed to connect to the server: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Error loading system info: {ex.Message}";
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyDeviceId()
+    {
+        if (!string.IsNullOrEmpty(_deviceId))
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", _deviceId);
+        }
+    }
+
+    private static string FormatUptime(int seconds)
+    {
+        var ts = TimeSpan.FromSeconds(seconds);
+        if (ts.TotalDays >= 1)
+            return $"{(int)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m";
+        if (ts.TotalHours >= 1)
+            return $"{ts.Hours}h {ts.Minutes}m {ts.Seconds}s";
+        if (ts.TotalMinutes >= 1)
+            return $"{ts.Minutes}m {ts.Seconds}s";
+        return $"{ts.Seconds}s";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        int order = 0;
+        double size = bytes;
+        while (size >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            size /= 1024;
+        }
+        return $"{size:0.##} {sizes[order]}";
+    }
+}

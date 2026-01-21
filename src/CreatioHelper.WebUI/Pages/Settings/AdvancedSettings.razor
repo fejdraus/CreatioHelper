@@ -1,0 +1,343 @@
+@page "/settings/advanced"
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Advanced Settings - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Advanced Settings</MudText>
+
+<MudAlert Severity="Severity.Warning" Class="mb-4">
+    These settings are for advanced users. Incorrect configuration may affect performance or cause sync issues.
+</MudAlert>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_config != null)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">File Handling</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_hashers"
+                                 Label="Concurrent Hashers"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="64"
+                                 HelperText="Number of parallel hashing threads" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_maxFolderConcurrency"
+                                 Label="Max Folder Concurrency"
+                                 Variant="Variant.Outlined"
+                                 Min="1"
+                                 Max="64"
+                                 HelperText="Max folders syncing simultaneously" />
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <MudSwitch @bind-Value="_setLowPriority"
+                   Color="Color.Primary"
+                   Label="Low Priority Process" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Run with lower CPU priority (reduces system impact)
+        </MudText>
+
+        <MudSwitch @bind-Value="_progressUpdateInterval"
+                   Color="Color.Primary"
+                   Label="Reduce Progress Updates" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            Less frequent UI updates (saves bandwidth on slow connections)
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Database</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_databaseTuning"
+                                 Label="Database Block Size (bytes)"
+                                 Variant="Variant.Outlined"
+                                 Min="4096"
+                                 Max="131072"
+                                 Step="4096" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="_compressionLevel"
+                           Label="Compression Level"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@("none")">None (Fastest)</MudSelectItem>
+                    <MudSelectItem Value="@("lz4")">LZ4 (Fast)</MudSelectItem>
+                    <MudSelectItem Value="@("zstd")">Zstandard (Balanced)</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Protocol Options</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_pingTimeout"
+                                 Label="Ping Timeout (seconds)"
+                                 Variant="Variant.Outlined"
+                                 Min="10"
+                                 Max="300" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_maxPendingKiB"
+                                 Label="Max Pending Data (KiB)"
+                                 Variant="Variant.Outlined"
+                                 Min="1024"
+                                 Max="1048576" />
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <MudSwitch @bind-Value="_keepTemporaries"
+                   Color="Color.Primary"
+                   Label="Keep Temporary Files" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Don't delete temp files on error (for debugging)
+        </MudText>
+
+        <MudSwitch @bind-Value="_copyOwnershipFromParent"
+                   Color="Color.Primary"
+                   Label="Copy Ownership from Parent" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            New files inherit ownership from parent directory
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Debugging</MudText>
+
+        <MudSwitch @bind-Value="_crashReporting"
+                   Color="Color.Primary"
+                   Label="Enable Crash Reporting" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Send anonymous crash reports to help improve the software
+        </MudText>
+
+        <MudSelect @bind-Value="_logLevel"
+                   Label="Log Level"
+                   Variant="Variant.Outlined"
+                   Class="mt-3">
+            <MudSelectItem Value="@("error")">Error</MudSelectItem>
+            <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
+            <MudSelectItem Value="@("info")">Info</MudSelectItem>
+            <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
+            <MudSelectItem Value="@("verbose")">Verbose</MudSelectItem>
+        </MudSelect>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Danger Zone</MudText>
+
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            These actions cannot be undone.
+        </MudAlert>
+
+        <div class="d-flex flex-wrap gap-3">
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Warning"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="ResetDatabase">
+                Reset Database
+            </MudButton>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       StartIcon="@Icons.Material.Filled.DeleteForever"
+                       OnClick="FactoryReset">
+                Factory Reset
+            </MudButton>
+        </div>
+    </MudPaper>
+
+    <div class="d-flex justify-end gap-2">
+        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+            Reset to Defaults
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveSettingsAsync"
+                   Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save Changes
+        </MudButton>
+    </div>
+}
+
+@code {
+    private bool _isLoading;
+    private bool _isSaving;
+    private SystemConfig? _config;
+
+    // File handling
+    private int _hashers = 2;
+    private int _maxFolderConcurrency = 4;
+    private bool _setLowPriority;
+    private bool _progressUpdateInterval;
+
+    // Database
+    private int _databaseTuning = 16384;
+    private string _compressionLevel = "lz4";
+
+    // Protocol
+    private int _pingTimeout = 90;
+    private int _maxPendingKiB = 131072;
+    private bool _keepTemporaries;
+    private bool _copyOwnershipFromParent;
+
+    // Debugging
+    private bool _crashReporting = true;
+    private string _logLevel = "info";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _config = await ApiClient.GetConfigAsync();
+            if (_config?.Options != null)
+            {
+                _hashers = _config.Options.Hashers ?? 2;
+                _maxFolderConcurrency = _config.Options.MaxFolderConcurrency ?? 4;
+                _setLowPriority = _config.Options.SetLowPriority ?? false;
+                _progressUpdateInterval = _config.Options.ProgressUpdateIntervalS > 5;
+                _crashReporting = _config.Options.CrashReportingEnabled ?? true;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (_config == null) return;
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_config.Options != null)
+            {
+                _config.Options.Hashers = _hashers;
+                _config.Options.MaxFolderConcurrency = _maxFolderConcurrency;
+                _config.Options.SetLowPriority = _setLowPriority;
+                _config.Options.ProgressUpdateIntervalS = _progressUpdateInterval ? 10 : 2;
+                _config.Options.CrashReportingEnabled = _crashReporting;
+            }
+
+            await ApiClient.UpdateConfigAsync(_config);
+            Snackbar.Add("Advanced settings saved. Some changes require a restart.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetDatabase()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Reset Database",
+            "This will reset the sync database. All folders will need to rescan. Continue?",
+            yesText: "Reset",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                await ApiClient.ResetDatabaseAsync();
+                Snackbar.Add("Database reset initiated. Folders will rescan.", Severity.Warning);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to reset database: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task FactoryReset()
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Factory Reset",
+            "This will delete ALL settings and data. This action cannot be undone. Are you absolutely sure?",
+            yesText: "Yes, Reset Everything",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            // Double confirmation for destructive action
+            var doubleConfirmed = await DialogService.ShowMessageBox(
+                "Confirm Factory Reset",
+                "Type 'RESET' to confirm you want to delete all data.",
+                yesText: "RESET",
+                cancelText: "Cancel");
+
+            if (doubleConfirmed == true)
+            {
+                try
+                {
+                    await ApiClient.FactoryResetAsync();
+                    Snackbar.Add("Factory reset complete. Application will restart.", Severity.Warning);
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Failed to perform factory reset: {ex.Message}", Severity.Error);
+                }
+            }
+        }
+    }
+
+    private void ResetToDefaults()
+    {
+        _hashers = 2;
+        _maxFolderConcurrency = 4;
+        _setLowPriority = false;
+        _progressUpdateInterval = false;
+        _databaseTuning = 16384;
+        _compressionLevel = "lz4";
+        _pingTimeout = 90;
+        _maxPendingKiB = 131072;
+        _keepTemporaries = false;
+        _copyOwnershipFromParent = false;
+        _crashReporting = true;
+        _logLevel = "info";
+
+        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+    }
+}

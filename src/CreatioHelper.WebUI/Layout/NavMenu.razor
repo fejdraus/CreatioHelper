@@ -1,0 +1,134 @@
+@inject StateContainer State
+
+<MudNavMenu>
+    <MudNavLink Href="/"
+                Match="NavLinkMatch.All"
+                Icon="@Icons.Material.Filled.Dashboard">
+        Dashboard
+    </MudNavLink>
+
+    <MudNavGroup Title="Sync"
+                 Icon="@Icons.Material.Filled.Sync"
+                 Expanded="true">
+        <MudNavLink Href="/folders"
+                    Icon="@Icons.Material.Filled.Folder">
+            Folders
+            @if (State.Folders.Length > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">
+                    @State.Folders.Length
+                </MudChip>
+            }
+        </MudNavLink>
+        <MudNavLink Href="/devices"
+                    Icon="@Icons.Material.Filled.Devices">
+            Devices
+            @if (_connectedDevices > 0)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-2">
+                    @_connectedDevices
+                </MudChip>
+            }
+        </MudNavLink>
+        <MudNavLink Href="/pending"
+                    Icon="@Icons.Material.Filled.Pending">
+            Pending
+            @if (_pendingCount > 0)
+            {
+                <MudBadge Content="@_pendingCount" Color="Color.Warning" Overlap="true">
+                    <span></span>
+                </MudBadge>
+            }
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Monitor"
+                 Icon="@Icons.Material.Filled.MonitorHeart"
+                 Expanded="false">
+        <MudNavLink Href="/monitoring/events"
+                    Icon="@Icons.Material.Filled.History">
+            Events
+        </MudNavLink>
+        <MudNavLink Href="/monitoring/connections"
+                    Icon="@Icons.Material.Filled.Cable">
+            Connections
+        </MudNavLink>
+        <MudNavLink Href="/monitoring/statistics"
+                    Icon="@Icons.Material.Filled.BarChart">
+            Statistics
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Settings"
+                 Icon="@Icons.Material.Filled.Settings"
+                 Expanded="false">
+        <MudNavLink Href="/settings/general"
+                    Icon="@Icons.Material.Filled.Tune">
+            General
+        </MudNavLink>
+        <MudNavLink Href="/settings/network"
+                    Icon="@Icons.Material.Filled.Wifi">
+            Network
+        </MudNavLink>
+        <MudNavLink Href="/settings/gui"
+                    Icon="@Icons.Material.Filled.Palette">
+            Interface
+        </MudNavLink>
+        <MudNavLink Href="/settings/advanced"
+                    Icon="@Icons.Material.Filled.SettingsApplications">
+            Advanced
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Diagnostics"
+                 Icon="@Icons.Material.Filled.BugReport"
+                 Expanded="false">
+        <MudNavLink Href="/diagnostics/logs"
+                    Icon="@Icons.Material.Filled.Article">
+            System Logs
+        </MudNavLink>
+        <MudNavLink Href="/diagnostics/profiling"
+                    Icon="@Icons.Material.Filled.Speed">
+            Profiling
+        </MudNavLink>
+        <MudNavLink Href="/diagnostics/support"
+                    Icon="@Icons.Material.Filled.SupportAgent">
+            Support Bundle
+        </MudNavLink>
+    </MudNavGroup>
+
+    <MudDivider Class="my-2" />
+
+    <MudNavLink Href="/about"
+                Icon="@Icons.Material.Filled.Info">
+        About
+    </MudNavLink>
+</MudNavMenu>
+
+@code {
+    private int _connectedDevices;
+    private int _pendingCount;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+        UpdateCounts();
+    }
+
+    private void OnStateChanged()
+    {
+        UpdateCounts();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateCounts()
+    {
+        _connectedDevices = State.Connections.Values.Count(c => c.Connected);
+        // Pending count would come from API - keeping at 0 for now
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

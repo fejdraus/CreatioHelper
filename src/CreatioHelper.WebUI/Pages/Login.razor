@@ -1,0 +1,195 @@
+@page "/login"
+@layout Layout.AuthLayout
+@inject IAuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Login - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="d-flex align-center" Style="height: 100vh;">
+    <MudPaper Elevation="4" Class="pa-8 mx-auto" Style="width: 100%; max-width: 400px;">
+        <div class="text-center mb-6">
+            <MudIcon Icon="@Icons.Material.Filled.Sync" Size="Size.Large" Color="Color.Primary" />
+            <MudText Typo="Typo.h4" Class="mt-2">CreatioHelper</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Sign in to continue</MudText>
+        </div>
+
+        <EditForm Model="@_loginModel" OnValidSubmit="HandleLogin">
+            <DataAnnotationsValidator />
+
+            @if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error" Class="mb-4" Dense="true">
+                    @_errorMessage
+                </MudAlert>
+            }
+
+            <MudTextField @bind-Value="_loginModel.Username"
+                          Label="Username"
+                          Variant="Variant.Outlined"
+                          InputType="InputType.Text"
+                          Adornment="Adornment.Start"
+                          AdornmentIcon="@Icons.Material.Filled.Person"
+                          Class="mb-4"
+                          Required="true"
+                          RequiredError="Username is required"
+                          Disabled="@_isLoading" />
+
+            <MudTextField @bind-Value="_loginModel.Password"
+                          Label="Password"
+                          Variant="Variant.Outlined"
+                          InputType="@(_showPassword ? InputType.Text : InputType.Password)"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@(_showPassword ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                          OnAdornmentClick="TogglePasswordVisibility"
+                          Class="mb-6"
+                          Required="true"
+                          RequiredError="Password is required"
+                          Disabled="@_isLoading" />
+
+            <MudButton ButtonType="ButtonType.Submit"
+                       Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       FullWidth="true"
+                       Size="Size.Large"
+                       Disabled="@_isLoading">
+                @if (_isLoading)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                    <span>Signing in...</span>
+                }
+                else
+                {
+                    <span>Sign In</span>
+                }
+            </MudButton>
+        </EditForm>
+
+        <MudDivider Class="my-6" />
+
+        <MudExpansionPanels Elevation="0">
+            <MudExpansionPanel Text="Login with API Key" Dense="true">
+                <MudTextField @bind-Value="_apiKey"
+                              Label="API Key"
+                              Variant="Variant.Outlined"
+                              InputType="InputType.Password"
+                              Class="mb-4"
+                              Disabled="@_isLoading" />
+
+                <MudButton OnClick="HandleApiKeyLogin"
+                           Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           FullWidth="true"
+                           Disabled="@(_isLoading || string.IsNullOrWhiteSpace(_apiKey))">
+                    Login with API Key
+                </MudButton>
+            </MudExpansionPanel>
+        </MudExpansionPanels>
+
+        <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-4 text-center">
+            Default credentials: admin / admin123
+        </MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private LoginModel _loginModel = new();
+    private string? _apiKey;
+    private bool _isLoading;
+    private bool _showPassword;
+    private string? _errorMessage;
+
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string? ReturnUrl { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check if already authenticated
+        if (AuthService.IsAuthenticated)
+        {
+            NavigateToReturnUrl();
+            return;
+        }
+
+        // Try to restore session
+        if (await AuthService.ValidateSessionAsync())
+        {
+            NavigateToReturnUrl();
+        }
+    }
+
+    private async Task HandleLogin()
+    {
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var success = await AuthService.LoginAsync(_loginModel.Username, _loginModel.Password);
+
+            if (success)
+            {
+                Snackbar.Add($"Welcome, {_loginModel.Username}!", Severity.Success);
+                NavigateToReturnUrl();
+            }
+            else
+            {
+                _errorMessage = AuthService.ErrorMessage ?? "Login failed";
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleApiKeyLogin()
+    {
+        if (string.IsNullOrWhiteSpace(_apiKey))
+            return;
+
+        _isLoading = true;
+        _errorMessage = null;
+        StateHasChanged();
+
+        try
+        {
+            var success = await AuthService.LoginWithApiKeyAsync(_apiKey);
+
+            if (success)
+            {
+                Snackbar.Add("Authenticated with API key", Severity.Success);
+                NavigateToReturnUrl();
+            }
+            else
+            {
+                _errorMessage = AuthService.ErrorMessage ?? "API key authentication failed";
+            }
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void TogglePasswordVisibility()
+    {
+        _showPassword = !_showPassword;
+    }
+
+    private void NavigateToReturnUrl()
+    {
+        var url = string.IsNullOrEmpty(ReturnUrl) ? "/" : ReturnUrl;
+        Navigation.NavigateTo(url);
+    }
+
+    private class LoginModel
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Password { get; set; } = string.Empty;
+    }
+}

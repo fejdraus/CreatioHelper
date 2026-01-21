@@ -1,0 +1,58 @@
+@using QRCoder
+
+<MudDialog>
+    <DialogContent>
+        <div class="text-center">
+            @if (!string.IsNullOrEmpty(_qrCodeBase64))
+            {
+                <div class="qr-code-container">
+                    <img src="@_qrCodeBase64" alt="QR Code" style="width: 256px; height: 256px;" />
+                </div>
+            }
+            else
+            {
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            }
+
+            <MudText Typo="Typo.caption" Class="mt-4 device-id">
+                @DeviceId
+            </MudText>
+        </div>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Close">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string DeviceId { get; set; } = string.Empty;
+
+    private string _qrCodeBase64 = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        GenerateQrCode();
+    }
+
+    private void GenerateQrCode()
+    {
+        try
+        {
+            using var qrGenerator = new QRCodeGenerator();
+            var qrCodeData = qrGenerator.CreateQrCode(DeviceId, QRCodeGenerator.ECCLevel.M);
+            using var qrCode = new PngByteQRCode(qrCodeData);
+            var qrCodeBytes = qrCode.GetGraphic(8);
+            _qrCodeBase64 = $"data:image/png;base64,{Convert.ToBase64String(qrCodeBytes)}";
+        }
+        catch
+        {
+            // QR code generation failed
+        }
+    }
+
+    private void Close() => MudDialog.Close(DialogResult.Ok(true));
+}

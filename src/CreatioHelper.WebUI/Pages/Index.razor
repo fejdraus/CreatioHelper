@@ -1,0 +1,259 @@
+@page "/"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+
+<PageTitle>Dashboard - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+
+@* System Status Cards *@
+<MudGrid>
+    @* Status Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle"
+                         Color="@GetStatusColor()"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@GetStatusText()</div>
+                <div class="label">System Status</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Folders Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="cursor-pointer" @onclick="@(() => NavigateTo("/folders"))">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.Folder"
+                         Color="Color.Primary"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@State.Folders.Length</div>
+                <div class="label">Synced Folders</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Devices Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="cursor-pointer" @onclick="@(() => NavigateTo("/devices"))">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.Devices"
+                         Color="Color.Secondary"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@_connectedDevices / @(State.Devices.Length - 1)</div>
+                <div class="label">Connected Devices</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Transfer Rate Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.SwapVert"
+                         Color="Color.Info"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value transfer-rate">
+                    <span class="up">@FormatRate(State.TransferStats.CurrentRateOut)</span>
+                    /
+                    <span class="down">@FormatRate(State.TransferStats.CurrentRateIn)</span>
+                </div>
+                <div class="label">Upload / Download</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+@* Folders Summary *@
+<MudText Typo="Typo.h5" Class="mt-6 mb-3">Folders</MudText>
+<MudGrid>
+    @if (State.Folders.Length == 0)
+    {
+        <MudItem xs="12">
+            <MudAlert Severity="Severity.Info">
+                No folders configured. <MudLink Href="/folders">Add a folder</MudLink> to get started.
+            </MudAlert>
+        </MudItem>
+    }
+    else
+    {
+        @foreach (var folder in State.Folders.Take(6))
+        {
+            <MudItem xs="12" sm="6" md="4">
+                <FolderSummaryCard Folder="@folder"
+                                   Status="@GetFolderStatus(folder.Id)"
+                                   OnClick="@(() => NavigateTo("/folders"))" />
+            </MudItem>
+        }
+        @if (State.Folders.Length > 6)
+        {
+            <MudItem xs="12">
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/folders">
+                    View all @State.Folders.Length folders
+                </MudButton>
+            </MudItem>
+        }
+    }
+</MudGrid>
+
+@* Recent Activity *@
+<MudText Typo="Typo.h5" Class="mt-6 mb-3">Recent Activity</MudText>
+<MudPaper Elevation="2" Class="pa-4">
+    @if (State.RecentEvents.Count == 0)
+    {
+        <MudText Color="Color.Default" Typo="Typo.body2">No recent activity</MudText>
+    }
+    else
+    {
+        <MudList T="SyncEvent" Dense="true">
+            @foreach (var evt in State.RecentEvents.Take(10))
+            {
+                <MudListItem>
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@GetEventIcon(evt)"
+                                 Color="@GetEventColor(evt)"
+                                 Size="Size.Small"
+                                 Class="mr-3" />
+                        <div class="flex-grow-1">
+                            <MudText Typo="Typo.body2">@evt.Summary</MudText>
+                        </div>
+                        <MudText Typo="Typo.caption" Color="Color.Default">
+                            @evt.Time.ToLocalTime().ToString("HH:mm:ss")
+                        </MudText>
+                    </div>
+                </MudListItem>
+            }
+        </MudList>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/events" Class="mt-2">
+            View all events
+        </MudButton>
+    }
+</MudPaper>
+
+@* System Info *@
+@if (State.SystemStatus != null)
+{
+    <MudText Typo="Typo.h5" Class="mt-6 mb-3">System Information</MudText>
+    <MudPaper Elevation="2" Class="pa-4">
+        <MudGrid>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Default">Device ID</MudText>
+                <MudText Typo="Typo.body2" Class="device-id">@(State.SystemStatus.MyId?.Length > 20 ? State.SystemStatus.MyId[..20] + "..." : State.SystemStatus.MyId)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Default">Uptime</MudText>
+                <MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Default">Memory Usage</MudText>
+                <MudText Typo="Typo.body2">@FormatBytes(State.SystemStatus.Alloc ?? 0)</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudText Typo="Typo.caption" Color="Color.Default">CPU Usage</MudText>
+                <MudText Typo="Typo.body2">@((State.SystemStatus.CpuPercent ?? 0).ToString("F1"))%</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+}
+
+@code {
+    [Inject]
+    private NavigationManager NavigationManager { get; set; } = null!;
+
+    private int _connectedDevices;
+
+    protected override void OnInitialized()
+    {
+        State.OnChange += OnStateChanged;
+        UpdateCounts();
+    }
+
+    private void OnStateChanged()
+    {
+        UpdateCounts();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateCounts()
+    {
+        _connectedDevices = State.Connections.Values.Count(c => c.Connected);
+    }
+
+    private FolderStatus? GetFolderStatus(string folderId)
+    {
+        return State.FolderStatuses.TryGetValue(folderId, out var status) ? status : null;
+    }
+
+    private Color GetStatusColor()
+    {
+        if (!State.IsConnected) return Color.Error;
+        if (State.FolderStatuses.Values.Any(s => s.State == "error")) return Color.Error;
+        if (State.FolderStatuses.Values.Any(s => s.State == "syncing")) return Color.Info;
+        return Color.Success;
+    }
+
+    private string GetStatusText()
+    {
+        if (!State.IsConnected) return "Offline";
+        if (State.FolderStatuses.Values.Any(s => s.State == "error")) return "Error";
+        if (State.FolderStatuses.Values.Any(s => s.State == "syncing")) return "Syncing";
+        return "Online";
+    }
+
+    private string GetEventIcon(SyncEvent evt) => evt.Severity switch
+    {
+        EventSeverity.Error => Icons.Material.Filled.Error,
+        EventSeverity.Warning => Icons.Material.Filled.Warning,
+        EventSeverity.Success => Icons.Material.Filled.CheckCircle,
+        _ => Icons.Material.Filled.Info
+    };
+
+    private Color GetEventColor(SyncEvent evt) => evt.Severity switch
+    {
+        EventSeverity.Error => Color.Error,
+        EventSeverity.Warning => Color.Warning,
+        EventSeverity.Success => Color.Success,
+        _ => Color.Info
+    };
+
+    private void NavigateTo(string url)
+    {
+        NavigationManager.NavigateTo(url);
+    }
+
+    private string FormatRate(double bytesPerSecond)
+    {
+        if (bytesPerSecond < 1024) return $"{bytesPerSecond:F0} B/s";
+        if (bytesPerSecond < 1024 * 1024) return $"{bytesPerSecond / 1024:F1} KB/s";
+        if (bytesPerSecond < 1024 * 1024 * 1024) return $"{bytesPerSecond / (1024 * 1024):F1} MB/s";
+        return $"{bytesPerSecond / (1024 * 1024 * 1024):F2} GB/s";
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+        if (uptime.TotalHours >= 1)
+            return $"{uptime.Hours}h {uptime.Minutes}m";
+        return $"{uptime.Minutes}m {uptime.Seconds}s";
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+    }
+}

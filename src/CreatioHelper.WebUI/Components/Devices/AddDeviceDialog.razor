@@ -1,0 +1,314 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject StateContainer State
+
+<MudDialog Style="max-height: 90vh;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.DevicesOther)" Class="mr-2" />
+            @(IsEditMode ? "Edit Device" : "Add Device")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            @* ===== GENERAL TAB ===== *@
+            <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Info">
+                <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                    <MudTextField @bind-Value="_deviceId"
+                                  Label="Device ID"
+                                  HelperText="@(IsEditMode ? "Device ID cannot be changed" : "The device ID of the remote device (e.g., XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX)")"
+                                  Required="true"
+                                  RequiredError="Device ID is required"
+                                  Immediate="true"
+                                  ReadOnly="@IsEditMode"
+                                  Validation="@(new Func<string, string?>(ValidateDeviceId))"
+                                  Class="mb-4"
+                                  Style="font-family: monospace;" />
+
+                    <MudTextField @bind-Value="_name"
+                                  Label="Device Name"
+                                  HelperText="A friendly name for this device"
+                                  Class="mb-4" />
+
+                    <MudTextField @bind-Value="_addressesText"
+                                  Label="Addresses"
+                                  HelperText="Comma-separated addresses (e.g., tcp://192.168.1.100:22000, dynamic)"
+                                  Placeholder="dynamic"
+                                  Class="mb-4" />
+                </MudForm>
+            </MudTabPanel>
+
+            @* ===== SHARING TAB ===== *@
+            <MudTabPanel Text="Sharing" Icon="@Icons.Material.Filled.Folder">
+                <MudText Typo="Typo.body2" Class="mb-4">
+                    Select folders to share with this device:
+                </MudText>
+
+                @if (State.Folders.Length == 0)
+                {
+                    <MudAlert Severity="Severity.Info">
+                        No folders configured. Add folders first to share them with devices.
+                    </MudAlert>
+                }
+                else
+                {
+                    <MudList T="string" Dense="true">
+                        @foreach (var folder in State.Folders)
+                        {
+                            <MudListItem>
+                                <MudCheckBox T="bool"
+                                             Value="@_selectedFolders.Contains(folder.Id)"
+                                             ValueChanged="@(v => ToggleFolder(folder.Id, v))"
+                                             Label="@folder.DisplayName"
+                                             Color="Color.Primary" />
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudTabPanel>
+
+            @* ===== ADVANCED TAB ===== *@
+            <MudTabPanel Text="Advanced" Icon="@Icons.Material.Filled.Settings">
+                <MudSelect @bind-Value="_compression"
+                           Label="Compression"
+                           HelperText="Data compression for transfers"
+                           Class="mb-4">
+                    <MudSelectItem Value="@("metadata")">Metadata Only (Recommended)</MudSelectItem>
+                    <MudSelectItem Value="@("always")">Always</MudSelectItem>
+                    <MudSelectItem Value="@("never")">Never</MudSelectItem>
+                </MudSelect>
+
+                <MudDivider Class="my-4" />
+
+                <MudSwitch @bind-Value="_introducer"
+                           Label="Introducer"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    This device will introduce other devices to us
+                </MudText>
+
+                @if (_introducer)
+                {
+                    <MudSwitch @bind-Value="_skipIntroductionRemovals"
+                               Label="Skip Introduction Removals"
+                               Color="Color.Primary"
+                               Class="mb-2" />
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                        Don't remove devices introduced by this device
+                    </MudText>
+                }
+
+                <MudDivider Class="my-4" />
+
+                <MudSwitch @bind-Value="_autoAcceptFolders"
+                           Label="Auto Accept Folders"
+                           Color="Color.Primary"
+                           Class="mb-2" />
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
+                    Automatically accept folder share requests from this device
+                </MudText>
+
+                <MudDivider Class="my-4" />
+
+                <MudTextField @bind-Value="_allowedNetworksText"
+                              Label="Allowed Networks"
+                              HelperText="Comma-separated networks (empty = all networks allowed)"
+                              Placeholder="192.168.0.0/16, 10.0.0.0/8"
+                              Class="mb-4" />
+            </MudTabPanel>
+        </MudTabs>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(!_isValid || _isSubmitting)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsEditMode ? "Save" : "Add Device")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public DeviceConfig? Device { get; set; }
+
+    private bool IsEditMode => Device != null;
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _isSubmitting;
+
+    // General
+    private string _deviceId = string.Empty;
+    private string _name = string.Empty;
+    private string _addressesText = "dynamic";
+
+    // Sharing
+    private HashSet<string> _selectedFolders = new();
+
+    // Advanced
+    private string _compression = "metadata";
+    private bool _introducer;
+    private bool _skipIntroductionRemovals;
+    private bool _autoAcceptFolders;
+    private string _allowedNetworksText = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (IsEditMode)
+        {
+            LoadFromDevice(Device!);
+        }
+    }
+
+    private void LoadFromDevice(DeviceConfig device)
+    {
+        _deviceId = device.DeviceId;
+        _name = device.Name;
+        _addressesText = string.Join(", ", device.Addresses);
+        _compression = device.Compression;
+        _introducer = device.Introducer;
+        _skipIntroductionRemovals = device.SkipIntroductionRemovals;
+        _allowedNetworksText = string.Join(", ", device.AllowedNetworks);
+
+        // Find folders that include this device
+        _selectedFolders = State.Folders
+            .Where(f => f.Devices?.Any(d => d.DeviceId == device.DeviceId) == true)
+            .Select(f => f.Id)
+            .ToHashSet();
+    }
+
+    private string? ValidateDeviceId(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "Device ID is required";
+
+        // Basic validation - should be like XXXXXXX-XXXXXXX-... format
+        var trimmed = value.Trim().ToUpperInvariant();
+        if (trimmed.Length < 7)
+            return "Device ID is too short";
+
+        // Check for valid characters (A-Z, 0-9, -)
+        if (!System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^[A-Z0-9\-]+$"))
+            return "Device ID contains invalid characters";
+
+        return null;
+    }
+
+    private void ToggleFolder(string folderId, bool selected)
+    {
+        if (selected)
+            _selectedFolders.Add(folderId);
+        else
+            _selectedFolders.Remove(folderId);
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+        if (!_isValid) return;
+
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            var addresses = _addressesText
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(a => a.Trim())
+                .Where(a => !string.IsNullOrEmpty(a))
+                .ToArray();
+
+            if (addresses.Length == 0)
+                addresses = ["dynamic"];
+
+            var allowedNetworks = _allowedNetworksText
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(n => n.Trim())
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToArray();
+
+            var device = new DeviceConfig
+            {
+                DeviceId = _deviceId.Trim().ToUpperInvariant(),
+                Name = _name,
+                Addresses = addresses,
+                Compression = _compression,
+                Introducer = _introducer,
+                SkipIntroductionRemovals = _skipIntroductionRemovals,
+                AllowedNetworks = allowedNetworks,
+                Paused = IsEditMode ? Device!.Paused : false
+            };
+
+            if (IsEditMode)
+            {
+                await ApiClient.UpdateDeviceAsync(device);
+                Snackbar.Add($"Device '{device.DisplayName}' saved", Severity.Success);
+            }
+            else
+            {
+                await ApiClient.AddDeviceAsync(device);
+                Snackbar.Add($"Device '{device.DisplayName}' added", Severity.Success);
+            }
+
+            // Update folder sharing
+            await UpdateFolderSharingAsync(device.DeviceId);
+
+            MudDialog.Close(DialogResult.Ok(device));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to {(IsEditMode ? "save" : "add")} device: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSubmitting = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task UpdateFolderSharingAsync(string deviceId)
+    {
+        // Update each folder's device list based on selection
+        foreach (var folder in State.Folders)
+        {
+            var currentDevices = folder.Devices?.ToList() ?? new List<FolderDevice>();
+            var hasDevice = currentDevices.Any(d => d.DeviceId == deviceId);
+            var shouldHaveDevice = _selectedFolders.Contains(folder.Id);
+
+            if (hasDevice != shouldHaveDevice)
+            {
+                if (shouldHaveDevice)
+                {
+                    currentDevices.Add(new FolderDevice { DeviceId = deviceId });
+                }
+                else
+                {
+                    currentDevices.RemoveAll(d => d.DeviceId == deviceId);
+                }
+
+                folder.Devices = currentDevices.ToArray();
+
+                try
+                {
+                    await ApiClient.UpdateFolderAsync(folder);
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Failed to update folder '{folder.DisplayName}': {ex.Message}", Severity.Warning);
+                }
+            }
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

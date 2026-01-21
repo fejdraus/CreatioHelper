@@ -1,0 +1,234 @@
+@page "/settings/gui"
+@inject IThemeService ThemeService
+@inject ISnackbar Snackbar
+@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+
+<PageTitle>GUI Settings - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">GUI Settings</MudText>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Appearance</MudText>
+
+    <MudGrid>
+        <MudItem xs="12" md="6">
+            <MudText Typo="Typo.subtitle2" Class="mb-2">Theme</MudText>
+            <MudToggleGroup T="string" @bind-Value="_selectedTheme" SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary">
+                <MudToggleItem Value="@("light")" Icon="@Icons.Material.Filled.LightMode" Text="Light" />
+                <MudToggleItem Value="@("dark")" Icon="@Icons.Material.Filled.DarkMode" Text="Dark" />
+                <MudToggleItem Value="@("system")" Icon="@Icons.Material.Filled.SettingsBrightness" Text="System" />
+            </MudToggleGroup>
+        </MudItem>
+        <MudItem xs="12" md="6">
+            <MudSelect @bind-Value="_language"
+                       Label="Language"
+                       Variant="Variant.Outlined">
+                <MudSelectItem Value="@("en")">English</MudSelectItem>
+                <MudSelectItem Value="@("ru")">Russian</MudSelectItem>
+                <MudSelectItem Value="@("de")">German</MudSelectItem>
+                <MudSelectItem Value="@("fr")">French</MudSelectItem>
+                <MudSelectItem Value="@("es")">Spanish</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Dashboard</MudText>
+
+    <MudSwitch @bind-Value="_showTransferChart"
+               Color="Color.Primary"
+               Label="Show Transfer Rate Chart" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Display network throughput graph on dashboard
+    </MudText>
+
+    <MudSwitch @bind-Value="_showRecentEvents"
+               Color="Color.Primary"
+               Label="Show Recent Events" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Display recent sync events on dashboard
+    </MudText>
+
+    <MudNumericField @bind-Value="_maxRecentEvents"
+                     Label="Maximum Recent Events"
+                     Variant="Variant.Outlined"
+                     Min="5"
+                     Max="50"
+                     Class="mt-3"
+                     Style="max-width: 200px;" />
+</MudPaper>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Notifications</MudText>
+
+    <MudSwitch @bind-Value="_notifyOnSyncComplete"
+               Color="Color.Primary"
+               Label="Sync Completion" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Notify when folder sync completes
+    </MudText>
+
+    <MudSwitch @bind-Value="_notifyOnDeviceConnect"
+               Color="Color.Primary"
+               Label="Device Connection" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Notify when device connects or disconnects
+    </MudText>
+
+    <MudSwitch @bind-Value="_notifyOnError"
+               Color="Color.Primary"
+               Label="Sync Errors" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Notify on sync errors
+    </MudText>
+
+    <MudSwitch @bind-Value="_notifyOnPendingDevice"
+               Color="Color.Primary"
+               Label="Pending Device Requests" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        Notify when a new device wants to connect
+    </MudText>
+</MudPaper>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Display Options</MudText>
+
+    <MudSelect @bind-Value="_dateFormat"
+               Label="Date Format"
+               Variant="Variant.Outlined"
+               Class="mb-3">
+        <MudSelectItem Value="@("short")">Short (01/20/26)</MudSelectItem>
+        <MudSelectItem Value="@("medium")">Medium (Jan 20, 2026)</MudSelectItem>
+        <MudSelectItem Value="@("long")">Long (January 20, 2026)</MudSelectItem>
+        <MudSelectItem Value="@("iso")">ISO (2026-01-20)</MudSelectItem>
+    </MudSelect>
+
+    <MudSelect @bind-Value="_sizeFormat"
+               Label="Size Format"
+               Variant="Variant.Outlined">
+        <MudSelectItem Value="@("binary")">Binary (KiB, MiB, GiB)</MudSelectItem>
+        <MudSelectItem Value="@("decimal")">Decimal (KB, MB, GB)</MudSelectItem>
+    </MudSelect>
+</MudPaper>
+
+<div class="d-flex justify-end gap-2">
+    <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+        Reset to Defaults
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               OnClick="SaveSettingsAsync"
+               Disabled="@_isSaving">
+        @if (_isSaving)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+        }
+        Save Changes
+    </MudButton>
+</div>
+
+@code {
+    private bool _isSaving;
+
+    // Appearance
+    private string _selectedTheme = "system";
+    private string _language = "en";
+
+    // Dashboard
+    private bool _showTransferChart = true;
+    private bool _showRecentEvents = true;
+    private int _maxRecentEvents = 10;
+
+    // Notifications
+    private bool _notifyOnSyncComplete = true;
+    private bool _notifyOnDeviceConnect = true;
+    private bool _notifyOnError = true;
+    private bool _notifyOnPendingDevice = true;
+
+    // Display
+    private string _dateFormat = "medium";
+    private string _sizeFormat = "binary";
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _selectedTheme = await LocalStorage.GetItemAsync<string>("gui_theme") ?? "system";
+        _language = await LocalStorage.GetItemAsync<string>("gui_language") ?? "en";
+        _showTransferChart = await LocalStorage.GetItemAsync<bool?>("gui_showTransferChart") ?? true;
+        _showRecentEvents = await LocalStorage.GetItemAsync<bool?>("gui_showRecentEvents") ?? true;
+        _maxRecentEvents = await LocalStorage.GetItemAsync<int?>("gui_maxRecentEvents") ?? 10;
+        _notifyOnSyncComplete = await LocalStorage.GetItemAsync<bool?>("gui_notifyOnSyncComplete") ?? true;
+        _notifyOnDeviceConnect = await LocalStorage.GetItemAsync<bool?>("gui_notifyOnDeviceConnect") ?? true;
+        _notifyOnError = await LocalStorage.GetItemAsync<bool?>("gui_notifyOnError") ?? true;
+        _notifyOnPendingDevice = await LocalStorage.GetItemAsync<bool?>("gui_notifyOnPendingDevice") ?? true;
+        _dateFormat = await LocalStorage.GetItemAsync<string>("gui_dateFormat") ?? "medium";
+        _sizeFormat = await LocalStorage.GetItemAsync<string>("gui_sizeFormat") ?? "binary";
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            await LocalStorage.SetItemAsync("gui_theme", _selectedTheme);
+            await LocalStorage.SetItemAsync("gui_language", _language);
+            await LocalStorage.SetItemAsync("gui_showTransferChart", _showTransferChart);
+            await LocalStorage.SetItemAsync("gui_showRecentEvents", _showRecentEvents);
+            await LocalStorage.SetItemAsync("gui_maxRecentEvents", _maxRecentEvents);
+            await LocalStorage.SetItemAsync("gui_notifyOnSyncComplete", _notifyOnSyncComplete);
+            await LocalStorage.SetItemAsync("gui_notifyOnDeviceConnect", _notifyOnDeviceConnect);
+            await LocalStorage.SetItemAsync("gui_notifyOnError", _notifyOnError);
+            await LocalStorage.SetItemAsync("gui_notifyOnPendingDevice", _notifyOnPendingDevice);
+            await LocalStorage.SetItemAsync("gui_dateFormat", _dateFormat);
+            await LocalStorage.SetItemAsync("gui_sizeFormat", _sizeFormat);
+
+            // Apply theme immediately
+            switch (_selectedTheme)
+            {
+                case "dark":
+                    await ThemeService.SetDarkModeAsync(true);
+                    break;
+                case "light":
+                    await ThemeService.SetDarkModeAsync(false);
+                    break;
+                // "system" would need to check system preference
+            }
+
+            Snackbar.Add("GUI settings saved", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task ResetToDefaults()
+    {
+        _selectedTheme = "system";
+        _language = "en";
+        _showTransferChart = true;
+        _showRecentEvents = true;
+        _maxRecentEvents = 10;
+        _notifyOnSyncComplete = true;
+        _notifyOnDeviceConnect = true;
+        _notifyOnError = true;
+        _notifyOnPendingDevice = true;
+        _dateFormat = "medium";
+        _sizeFormat = "binary";
+
+        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

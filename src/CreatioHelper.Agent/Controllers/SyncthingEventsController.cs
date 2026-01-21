@@ -85,19 +85,12 @@ public class SyncthingEventsController : ControllerBase
         }
     }
     
-    private async Task<IActionResult> GetEvents(SyncthingEventSubscription subscription, int since, int limit, int timeoutSeconds)
+    private Task<IActionResult> GetEvents(SyncthingEventSubscription subscription, int since, int limit, int timeoutSeconds)
     {
         var timeout = timeoutSeconds >= 0 ? TimeSpan.FromSeconds(timeoutSeconds) : DefaultEventTimeout;
-        
-        // Set response headers like Syncthing does
-        Response.ContentType = "application/json; charset=utf-8";
-        Response.Headers.Append("Cache-Control", "no-cache");
-        
-        // Flush to indicate we've received the request
-        await Response.Body.FlushAsync();
-        
+
         var events = subscription.GetEventsSince(since, limit, timeout);
-        return Ok(events);
+        return Task.FromResult<IActionResult>(Ok(events));
     }
     
     private long GetEventMask(string? eventsParam)

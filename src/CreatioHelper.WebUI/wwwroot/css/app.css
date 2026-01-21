@@ -1,0 +1,257 @@
+/* CreatioHelper WebUI Styles */
+
+/* Loading indicator */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    background-color: #121212;
+    color: #fff;
+}
+
+.loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #1976d2;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Error UI */
+#blazor-error-ui {
+    background: #8b0000;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+    color: white;
+}
+
+#blazor-error-ui .dismiss {
+    cursor: pointer;
+    position: absolute;
+    right: 0.75rem;
+    top: 0.5rem;
+}
+
+/* Global Styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Roboto', sans-serif;
+}
+
+/* Custom scrollbar for dark theme */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #1e1e1e;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #424242;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #616161;
+}
+
+/* Sync status indicators */
+.sync-status-idle {
+    color: #4caf50;
+}
+
+.sync-status-syncing {
+    color: #2196f3;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+.sync-status-error {
+    color: #f44336;
+}
+
+.sync-status-paused {
+    color: #ff9800;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+/* Device ID display */
+.device-id {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.875rem;
+    word-break: break-all;
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 0.5rem;
+    border-radius: 4px;
+}
+
+/* Progress bars */
+.sync-progress-bar {
+    height: 4px;
+    background-color: rgba(33, 150, 243, 0.3);
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.sync-progress-bar .progress {
+    height: 100%;
+    background-color: #2196f3;
+    transition: width 0.3s ease;
+}
+
+/* Folder cards */
+.folder-card {
+    transition: box-shadow 0.2s ease;
+}
+
+.folder-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Device cards */
+.device-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Connection status dot */
+.connection-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.connection-dot.connected {
+    background-color: #4caf50;
+    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+}
+
+.connection-dot.disconnected {
+    background-color: #9e9e9e;
+}
+
+.connection-dot.connecting {
+    background-color: #ff9800;
+    animation: blink 1s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+}
+
+/* Log viewer */
+.log-viewer {
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    background-color: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1rem;
+    border-radius: 4px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.log-entry {
+    margin-bottom: 0.25rem;
+}
+
+.log-entry.log-error {
+    color: #f44336;
+}
+
+.log-entry.log-warning {
+    color: #ff9800;
+}
+
+.log-entry.log-info {
+    color: #2196f3;
+}
+
+.log-entry.log-debug {
+    color: #9e9e9e;
+}
+
+/* QR Code container */
+.qr-code-container {
+    background-color: white;
+    padding: 1rem;
+    border-radius: 8px;
+    display: inline-block;
+}
+
+/* Stats cards */
+.stats-card {
+    text-align: center;
+    padding: 1rem;
+}
+
+.stats-card .value {
+    font-size: 2rem;
+    font-weight: 500;
+}
+
+.stats-card .label {
+    font-size: 0.875rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+/* Transfer rate display */
+.transfer-rate {
+    font-family: 'Roboto Mono', monospace;
+}
+
+.transfer-rate .up {
+    color: #4caf50;
+}
+
+.transfer-rate .down {
+    color: #2196f3;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+    .stats-card .value {
+        font-size: 1.5rem;
+    }
+
+    .device-id {
+        font-size: 0.75rem;
+    }
+}

@@ -1,0 +1,55 @@
+@* Sync Status Indicator Chip *@
+
+<MudTooltip Text="@GetTooltip()">
+    <MudChip T="string"
+             Color="@GetColor()"
+             Size="Size.Small"
+             Icon="@GetIcon()"
+             Variant="Variant.Filled">
+        @GetLabel()
+    </MudChip>
+</MudTooltip>
+
+@code {
+    [Parameter]
+    public string Status { get; set; } = "idle";
+
+    private Color GetColor() => Status switch
+    {
+        "idle" => Color.Success,
+        "syncing" or "scanning" => Color.Info,
+        "error" => Color.Error,
+        "paused" => Color.Warning,
+        _ => Color.Default
+    };
+
+    private string GetIcon() => Status switch
+    {
+        "idle" => Icons.Material.Filled.CheckCircle,
+        "syncing" => Icons.Material.Filled.Sync,
+        "scanning" => Icons.Material.Filled.Search,
+        "error" => Icons.Material.Filled.Error,
+        "paused" => Icons.Material.Filled.Pause,
+        _ => Icons.Material.Filled.HelpOutline
+    };
+
+    private string GetLabel() => Status switch
+    {
+        "idle" => "Up to Date",
+        "syncing" => "Syncing",
+        "scanning" => "Scanning",
+        "error" => "Error",
+        "paused" => "Paused",
+        _ => "Unknown"
+    };
+
+    private string GetTooltip() => Status switch
+    {
+        "idle" => "All folders are synchronized",
+        "syncing" => "Synchronizing files with remote devices",
+        "scanning" => "Scanning local folders for changes",
+        "error" => "One or more folders have errors",
+        "paused" => "Synchronization is paused",
+        _ => "Status unknown"
+    };
+}

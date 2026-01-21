@@ -1,6 +1,7 @@
 using System.Security.Cryptography.X509Certificates;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync;
+using CreatioHelper.Infrastructure.Services.Sync.Configuration;
 using CreatioHelper.Infrastructure.Services.Sync.Database;
 using CreatioHelper.Infrastructure.Services.Sync.Handlers;
 using CreatioHelper.Infrastructure.Services.Sync.Encryption;
@@ -14,6 +15,7 @@ using CreatioHelper.Infrastructure.Services.Sync.Diagnostics;
 using CreatioHelper.Infrastructure.Services.Sync.FileSystem;
 using CreatioHelper.Infrastructure.Services.Sync.Security;
 using CreatioHelper.Infrastructure.Services.Sync.Transfer;
+using ScanningNs = CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -251,6 +253,13 @@ public static class SyncServiceExtensions
             return new BepConnectionAdapter(logger, connectionPool, bandwidthManager);
         });
 
+        // Scan Progress Service (tracks folder scanning progress) - registered before SyncEngine
+        services.AddSingleton<ScanningNs.IScanProgressService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ScanningNs.ScanProgressService>>();
+            return new ScanningNs.ScanProgressService(logger, progressIntervalSeconds: 1);
+        });
+
         services.AddSingleton<ISyncEngine>(provider =>
             new SyncEngine(
                 provider.GetRequiredService<ILogger<SyncEngine>>(),
@@ -273,7 +282,15 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<SyncFolderHandlerFactory>(),
                 provider.GetRequiredService<SyncthingGlobalDiscovery>(),
                 provider.GetService<ICombinedNatService>(),
-                certificate));
+                certificate,
+                provider.GetService<ScanningNs.IScanProgressService>()));
+
+        // Configuration XML Service (Syncthing-compatible config.xml)
+        services.AddSingleton<IConfigXmlService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<ConfigXmlService>>();
+            return new ConfigXmlService(logger);
+        });
 
         // Register event broadcaster
         services.AddSingleton<SyncEventBroadcaster>();
@@ -427,17 +444,20 @@ public class SyncEngineHostedService : BackgroundService
     private readonly ISyncEngine _syncEngine;
     private readonly SyncEventBroadcaster _eventBroadcaster;
     private readonly IConfiguration _configuration;
+    private readonly IConfigXmlService _configXmlService;
     private readonly ILogger<SyncEngineHostedService> _logger;
 
     public SyncEngineHostedService(
         ISyncEngine syncEngine,
         SyncEventBroadcaster eventBroadcaster,
         IConfiguration configuration,
+        IConfigXmlService configXmlService,
         ILogger<SyncEngineHostedService> logger)
     {
         _syncEngine = syncEngine;
         _eventBroadcaster = eventBroadcaster;
         _configuration = configuration;
+        _configXmlService = configXmlService;
         _logger = logger;
     }
 
@@ -496,7 +516,17 @@ public class SyncEngineHostedService : BackgroundService
         {
             _logger.LogInformation("Initializing sync engine from configuration");
 
-            // Load sync configuration from appsettings
+            // First, try to load from config.xml (Syncthing-compatible format)
+            if (_configXmlService.ConfigExists())
+            {
+                _logger.LogInformation("Loading configuration from config.xml at {Path}", _configXmlService.ConfigPath);
+                await LoadFromConfigXmlAsync();
+                return;
+            }
+
+            _logger.LogInformation("No config.xml found, falling back to appsettings.json");
+
+            // Fallback: Load sync configuration from appsettings
             var syncConfig = _configuration.GetSection("Sync").Get<SyncConfigurationFromFile>();
             if (syncConfig == null || syncConfig.Folders.Count == 0)
             {
@@ -513,12 +543,12 @@ public class SyncEngineHostedService : BackgroundService
                 // Add devices for this folder
                 foreach (var deviceConfig in folderConfig.Devices)
                 {
-                    _logger.LogInformation("Adding device {DeviceId} with addresses {Addresses}", 
+                    _logger.LogInformation("Adding device {DeviceId} with addresses {Addresses}",
                         deviceConfig.DeviceId, string.Join(", ", deviceConfig.Addresses));
-                    
-                    await _syncEngine.AddDeviceAsync(deviceConfig.DeviceId, deviceConfig.Name, 
+
+                    await _syncEngine.AddDeviceAsync(deviceConfig.DeviceId, deviceConfig.Name,
                         deviceConfig.CertificateFingerprint, deviceConfig.Addresses);
-                    
+
                     await _syncEngine.ShareFolderWithDeviceAsync(folderConfig.Id, deviceConfig.DeviceId);
                 }
             }
@@ -528,6 +558,64 @@ public class SyncEngineHostedService : BackgroundService
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initializing sync engine from configuration");
+            throw;
+        }
+    }
+
+    private async Task LoadFromConfigXmlAsync()
+    {
+        try
+        {
+            var configXml = await _configXmlService.LoadAsync();
+
+            // Validate configuration
+            var validation = _configXmlService.Validate(configXml);
+            if (!validation.IsValid)
+            {
+                _logger.LogWarning("Configuration validation failed: {Errors}", string.Join(", ", validation.Errors));
+            }
+
+            // Add devices (skip local device)
+            var localDeviceId = (await _syncEngine.GetConfigurationAsync()).DeviceId;
+            foreach (var device in configXml.Devices.Where(d => d.Id != localDeviceId))
+            {
+                _logger.LogInformation("Adding device {DeviceId} ({DeviceName}) from config.xml", device.Id, device.Name);
+                await _syncEngine.AddDeviceAsync(device.Id, device.Name, null, device.Addresses);
+            }
+
+            // Add folders
+            foreach (var folder in configXml.Folders)
+            {
+                // Skip if folder already exists (loaded from database)
+                var existingFolder = await _syncEngine.GetFolderAsync(folder.Id);
+                if (existingFolder != null)
+                {
+                    _logger.LogDebug("Folder {FolderId} already exists, skipping", folder.Id);
+                    continue;
+                }
+
+                _logger.LogInformation("Adding folder {FolderId} ({FolderLabel}) at {Path} from config.xml",
+                    folder.Id, folder.Label, folder.Path);
+
+                await _syncEngine.AddFolderAsync(folder.Id, folder.Label ?? folder.Id, folder.Path, folder.Type ?? "sendreceive");
+
+                // Share folder with devices
+                foreach (var device in folder.Devices)
+                {
+                    await _syncEngine.ShareFolderWithDeviceAsync(folder.Id, device.Id);
+                }
+            }
+
+            _logger.LogInformation("Loaded {FolderCount} folders and {DeviceCount} devices from config.xml",
+                configXml.Folders.Count, configXml.Devices.Count);
+        }
+        catch (FileNotFoundException)
+        {
+            _logger.LogWarning("Config.xml not found at {Path}", _configXmlService.ConfigPath);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error loading configuration from config.xml");
             throw;
         }
     }

@@ -1,0 +1,284 @@
+@inherits LayoutComponentBase
+@inject IThemeService ThemeService
+@inject IApiClient ApiClient
+@inject ISignalRService SignalRService
+@inject IAuthService AuthService
+@inject StateContainer State
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<MudLayout>
+    <MudAppBar Elevation="1">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                       Color="Color.Inherit"
+                       Edge="Edge.Start"
+                       OnClick="@ToggleDrawer" />
+
+        <MudText Typo="Typo.h6" Class="ml-3">CreatioHelper</MudText>
+
+        <MudSpacer />
+
+        @* Sync Status *@
+        <SyncStatusChip Status="@_syncStatus" />
+
+        @* Connection Status *@
+        <MudTooltip Text="@(_isConnected ? "Connected to agent" : "Disconnected from agent")">
+            <MudIconButton Icon="@(_isConnected ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)"
+                           Color="@(_isConnected ? Color.Success : Color.Error)"
+                           Size="Size.Small" />
+        </MudTooltip>
+
+        @* Theme Toggle *@
+        <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                           Color="Color.Inherit"
+                           OnClick="@ToggleTheme" />
+        </MudTooltip>
+
+        @* Settings *@
+        <MudTooltip Text="Settings">
+            <MudIconButton Icon="@Icons.Material.Filled.Settings"
+                           Color="Color.Inherit"
+                           Href="/settings" />
+        </MudTooltip>
+
+        @* User Menu *@
+        <MudMenu Icon="@Icons.Material.Filled.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+            <MudMenuItem Disabled="true">
+                <MudText Typo="Typo.body2">@AuthService.Username</MudText>
+            </MudMenuItem>
+            <MudDivider />
+            <MudMenuItem OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout">
+                Logout
+            </MudMenuItem>
+        </MudMenu>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="@_drawerOpen"
+               ClipMode="DrawerClipMode.Always"
+               Elevation="2"
+               Variant="DrawerVariant.Mini"
+               MiniWidth="56px"
+               Width="240px">
+        <NavMenu />
+    </MudDrawer>
+
+    <MudMainContent>
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="pa-4">
+            @if (_isLoading)
+            {
+                <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+            }
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = true;
+    private bool _isConnected;
+    private bool _isLoading;
+    private string _syncStatus = "idle";
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Check authentication first
+        if (!AuthService.IsAuthenticated)
+        {
+            // Try to restore session from localStorage
+            var isValid = await AuthService.ValidateSessionAsync();
+            if (!isValid)
+            {
+                // Get current URL for redirect after login
+                var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
+                Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
+                return;
+            }
+        }
+
+        // Subscribe to auth changes
+        AuthService.OnAuthStateChanged += OnAuthStateChanged;
+
+        // Subscribe to state changes
+        State.OnChange += OnStateChanged;
+
+        // Load theme preference
+        _isDarkMode = await ThemeService.GetDarkModeAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
+
+        // Connect to SignalR
+        await ConnectToSignalRAsync();
+
+        // Load initial data
+        await LoadInitialDataAsync();
+    }
+
+    private void OnAuthStateChanged(bool isAuthenticated)
+    {
+        if (!isAuthenticated)
+        {
+            Navigation.NavigateTo("/login");
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async Task HandleLogout()
+    {
+        await AuthService.LogoutAsync();
+        Snackbar.Add("You have been logged out", Severity.Info);
+        Navigation.NavigateTo("/login");
+    }
+
+    private async Task ConnectToSignalRAsync()
+    {
+        try
+        {
+            SignalRService.OnSystemStatusChanged += OnSystemStatusChanged;
+            SignalRService.OnFolderStatusChanged += OnFolderStatusChanged;
+            SignalRService.OnSyncEvent += OnSyncEvent;
+            SignalRService.OnConnectionChanged += OnConnectionChanged;
+            SignalRService.OnConnectionStateChanged += OnConnectionStateChanged;
+
+            await SignalRService.ConnectAsync();
+            _isConnected = SignalRService.IsConnected;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to connect to agent: {ex.Message}", Severity.Error);
+            _isConnected = false;
+        }
+    }
+
+    private async Task LoadInitialDataAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var status = await ApiClient.GetSystemStatusAsync();
+            if (status != null)
+            {
+                State.SystemStatus = status;
+                _isConnected = true;
+            }
+
+            var folders = await ApiClient.GetFoldersAsync();
+            State.Folders = folders;
+
+            var devices = await ApiClient.GetDevicesAsync();
+            State.Devices = devices;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load data: {ex.Message}", Severity.Warning);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ToggleDrawer()
+    {
+        _drawerOpen = !_drawerOpen;
+    }
+
+    private async Task ToggleTheme()
+    {
+        await ThemeService.ToggleThemeAsync();
+    }
+
+    private void OnThemeChanged(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnStateChanged()
+    {
+        _isLoading = State.IsLoading;
+        _isConnected = State.IsConnected;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSystemStatusChanged(SystemStatus status)
+    {
+        State.SystemStatus = status;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFolderStatusChanged(FolderStatus status)
+    {
+        State.UpdateFolderStatus(status);
+        UpdateSyncStatus();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSyncEvent(SyncEvent evt)
+    {
+        State.AddEvent(evt);
+        UpdateSyncStatus();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionChanged(ConnectionInfo info)
+    {
+        State.UpdateConnection(info);
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionStateChanged(bool connected)
+    {
+        _isConnected = connected;
+        State.IsConnected = connected;
+
+        if (!connected)
+        {
+            Snackbar.Add("Lost connection to agent", Severity.Warning);
+        }
+        else
+        {
+            Snackbar.Add("Reconnected to agent", Severity.Success);
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void UpdateSyncStatus()
+    {
+        // Determine overall sync status from folder statuses
+        var statuses = State.FolderStatuses.Values;
+
+        if (statuses.Any(s => s.State == "error"))
+        {
+            _syncStatus = "error";
+        }
+        else if (statuses.Any(s => s.State == "syncing" || s.State == "sync-preparing"))
+        {
+            _syncStatus = "syncing";
+        }
+        else if (statuses.Any(s => s.State == "scanning"))
+        {
+            _syncStatus = "scanning";
+        }
+        else
+        {
+            _syncStatus = "idle";
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        ThemeService.OnThemeChanged -= OnThemeChanged;
+        AuthService.OnAuthStateChanged -= OnAuthStateChanged;
+        SignalRService.OnSystemStatusChanged -= OnSystemStatusChanged;
+        SignalRService.OnFolderStatusChanged -= OnFolderStatusChanged;
+        SignalRService.OnSyncEvent -= OnSyncEvent;
+        SignalRService.OnConnectionChanged -= OnConnectionChanged;
+        SignalRService.OnConnectionStateChanged -= OnConnectionStateChanged;
+    }
+}

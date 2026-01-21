@@ -1,0 +1,165 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<MudDialog Style="max-height: 90vh;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" />
+            Ignore Patterns - @FolderName
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_isLoading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" Class="mb-4" />
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                Enter patterns to exclude files and folders from synchronization.
+                One pattern per line. Patterns use Syncthing ignore syntax.
+            </MudText>
+
+            <MudTextField @bind-Value="_ignoreText"
+                          Label="Ignore Patterns"
+                          Variant="Variant.Outlined"
+                          Lines="15"
+                          FullWidth="true"
+                          Placeholder="*.tmp&#10;~*&#10;.git&#10;**/node_modules"
+                          Class="mb-4"
+                          Style="font-family: monospace;" />
+
+            <MudExpansionPanels Elevation="0">
+                <MudExpansionPanel Text="Pattern Syntax Help" IsInitiallyExpanded="false">
+                    <MudText Typo="Typo.body2">
+                        <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
+                            <thead>
+                                <tr>
+                                    <th>Pattern</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>*.tmp</code></td>
+                                    <td>Ignore all .tmp files</td>
+                                </tr>
+                                <tr>
+                                    <td><code>~*</code></td>
+                                    <td>Ignore files starting with ~</td>
+                                </tr>
+                                <tr>
+                                    <td><code>.git</code></td>
+                                    <td>Ignore .git folder anywhere</td>
+                                </tr>
+                                <tr>
+                                    <td><code>/Build</code></td>
+                                    <td>Ignore Build folder in root only</td>
+                                </tr>
+                                <tr>
+                                    <td><code>**/node_modules</code></td>
+                                    <td>Ignore node_modules at any depth</td>
+                                </tr>
+                                <tr>
+                                    <td><code>(?i)*.TMP</code></td>
+                                    <td>Case-insensitive match</td>
+                                </tr>
+                                <tr>
+                                    <td><code>// comment</code></td>
+                                    <td>Comment line (ignored)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>!important.txt</code></td>
+                                    <td>Do NOT ignore (override previous)</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudText>
+                </MudExpansionPanel>
+            </MudExpansionPanels>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Save"
+                   Disabled="@(_isLoading || _isSaving)">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public string FolderId { get; set; } = string.Empty;
+
+    [Parameter]
+    public string FolderName { get; set; } = string.Empty;
+
+    private bool _isLoading = true;
+    private bool _isSaving;
+    private string _ignoreText = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadIgnoresAsync();
+    }
+
+    private async Task LoadIgnoresAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var ignores = await ApiClient.GetIgnoresInfoAsync(FolderId);
+            _ignoreText = string.Join("\n", ignores.Lines ?? ignores.Ignore ?? Array.Empty<string>());
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load ignores: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task Save()
+    {
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            var lines = _ignoreText
+                .Split('\n', StringSplitOptions.None)
+                .Select(l => l.TrimEnd('\r'))
+                .ToArray();
+
+            await ApiClient.SetIgnoresAsync(FolderId, lines);
+            Snackbar.Add("Ignore patterns saved", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save ignores: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

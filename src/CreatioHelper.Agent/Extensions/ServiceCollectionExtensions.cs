@@ -1,6 +1,8 @@
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Services.SyncEvents;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Configuration;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Performance;
 using Microsoft.Extensions.Options;
@@ -79,7 +81,7 @@ public static class ServiceCollectionExtensions
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        // Register HttpClient for Syncthing API
+        // Register HttpClient for Syncthing API (for external Syncthing mode)
         services.AddHttpClient("Syncthing", (provider, client) =>
         {
             var settings = provider.GetRequiredService<IOptions<SyncthingAutoStopSettings>>().Value;
@@ -112,11 +114,38 @@ public static class ServiceCollectionExtensions
                 settings);
         });
 
-        // Register background service
+        // Read settings to determine which service to register
         var settings = configuration.GetSection("SyncthingAutoStop").Get<SyncthingAutoStopSettings>();
         if (settings?.Enabled == true)
         {
-            services.AddHostedService<SyncthingAutoStopService>();
+            // Register ISyncEventSource based on configuration
+            services.AddSingleton<ISyncEventSource>(provider =>
+            {
+                var currentSettings = provider.GetRequiredService<IOptions<SyncthingAutoStopSettings>>().Value;
+
+                if (currentSettings.SyncSource == SyncSourceType.BuiltIn)
+                {
+                    // Use built-in sync engine
+                    var syncEngine = provider.GetRequiredService<ISyncEngine>();
+                    var eventLogger = provider.GetRequiredService<IEventLogger>();
+                    var logger = provider.GetRequiredService<ILogger<BuiltInSyncEventSource>>();
+                    return new BuiltInSyncEventSource(syncEngine, eventLogger, logger);
+                }
+                else
+                {
+                    // Use external Syncthing via HTTP API
+                    var httpClientFactory = provider.GetRequiredService<IHttpClientFactory>();
+                    var logger = provider.GetRequiredService<ILogger<ExternalSyncthingEventSource>>();
+                    return new ExternalSyncthingEventSource(httpClientFactory, logger, "Syncthing");
+                }
+            });
+
+            // Register the new unified SyncAutoStopService
+            services.AddHostedService<SyncAutoStopService>();
+
+            // Also keep the legacy service for backward compatibility
+            // It will only be used if explicitly configured via code
+            // services.AddHostedService<SyncthingAutoStopService>();
         }
 
         return services;
