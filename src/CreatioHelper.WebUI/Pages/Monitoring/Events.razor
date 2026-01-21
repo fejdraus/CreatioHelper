@@ -1,0 +1,333 @@
+@page "/monitoring/events"
+@inject IApiClient ApiClient
+@inject ISignalRService SignalR
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@implements IDisposable
+
+<PageTitle>Events - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">Events</MudText>
+    <MudSwitch @bind-Value="_liveUpdates"
+               Color="Color.Primary"
+               Label="Live Updates" />
+</div>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string"
+                       Value="_selectedEventType"
+                       ValueChanged="OnEventTypeChanged"
+                       Label="Event Type"
+                       Variant="Variant.Outlined"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All Events</MudSelectItem>
+                <MudSelectItem Value="@("StateChanged")">State Changed</MudSelectItem>
+                <MudSelectItem Value="@("ItemStarted")">Item Started</MudSelectItem>
+                <MudSelectItem Value="@("ItemFinished")">Item Finished</MudSelectItem>
+                <MudSelectItem Value="@("FolderCompletion")">Folder Completion</MudSelectItem>
+                <MudSelectItem Value="@("DeviceConnected")">Device Connected</MudSelectItem>
+                <MudSelectItem Value="@("DeviceDisconnected")">Device Disconnected</MudSelectItem>
+                <MudSelectItem Value="@("FolderErrors")">Folder Errors</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string"
+                       Value="_selectedFolder"
+                       ValueChanged="OnFolderChanged"
+                       Label="Folder"
+                       Variant="Variant.Outlined"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All Folders</MudSelectItem>
+                @foreach (var folder in _folders)
+                {
+                    <MudSelectItem Value="@folder.Id">@folder.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect T="string"
+                       Value="_selectedDevice"
+                       ValueChanged="OnDeviceChanged"
+                       Label="Device"
+                       Variant="Variant.Outlined"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All Devices</MudSelectItem>
+                @foreach (var device in _devices)
+                {
+                    <MudSelectItem Value="@device.DeviceId">@device.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_filteredEvents.Count == 0)
+{
+    <MudPaper Elevation="2" Class="pa-8 text-center">
+        <MudIcon Icon="@Icons.Material.Filled.EventNote"
+                 Size="Size.Large"
+                 Color="Color.Default"
+                 Class="mb-4" />
+        <MudText Typo="Typo.h6" Class="mb-2">No events</MudText>
+        <MudText Color="Color.Default">
+            No events match the current filter criteria
+        </MudText>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudTable Items="@_filteredEvents"
+                  Dense="true"
+                  Hover="true"
+                  FixedHeader="true"
+                  Height="calc(100vh - 350px)">
+            <HeaderContent>
+                <MudTh Style="width: 160px;">Time</MudTh>
+                <MudTh Style="width: 140px;">Type</MudTh>
+                <MudTh>Details</MudTh>
+                <MudTh Style="width: 50px;"></MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Time">
+                    <MudText Typo="Typo.body2">@context.Timestamp.ToString("HH:mm:ss")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@context.Timestamp.ToString("yyyy-MM-dd")</MudText>
+                </MudTd>
+                <MudTd DataLabel="Type">
+                    <MudChip T="string"
+                             Size="Size.Small"
+                             Color="@GetEventColor(context)"
+                             Variant="Variant.Outlined">
+                        @GetEventTypeDisplay(context.Type)
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Details">
+                    @GetEventDescription(context)
+                </MudTd>
+                <MudTd>
+                    @if (CanNavigate(context))
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
+                                       Size="Size.Small"
+                                       OnClick="@(() => NavigateToRelated(context))" />
+                    }
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+
+    <div class="d-flex justify-center mt-4">
+        <MudButton Variant="Variant.Text"
+                   OnClick="LoadMoreEvents"
+                   Disabled="@(!_hasMore || _isLoadingMore)">
+            @if (_isLoadingMore)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Load More
+        </MudButton>
+    </div>
+}
+
+@code {
+    private bool _isLoading;
+    private bool _isLoadingMore;
+    private bool _liveUpdates = true;
+    private bool _hasMore = true;
+    private int _lastEventId;
+
+    private string _selectedEventType = "all";
+    private string _selectedFolder = "all";
+    private string _selectedDevice = "all";
+
+    private List<SyncEvent> _events = new();
+    private List<SyncEvent> _filteredEvents = new();
+    private FolderConfig[] _folders = [];
+    private DeviceConfig[] _devices = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        SignalR.OnSyncEvent += OnSyncEvent;
+        await LoadInitialData();
+    }
+
+    private async Task LoadInitialData()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _folders = await ApiClient.GetFoldersAsync();
+            _devices = await ApiClient.GetDevicesAsync();
+            var events = await ApiClient.GetEventsAsync(0, 100);
+            _events = events.ToList();
+            _lastEventId = _events.LastOrDefault()?.Id ?? 0;
+            FilterEvents();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load events: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void OnSyncEvent(SyncEvent evt)
+    {
+        if (!_liveUpdates) return;
+
+        _events.Insert(0, evt);
+        if (_events.Count > 1000)
+        {
+            _events.RemoveRange(1000, _events.Count - 1000);
+        }
+
+        FilterEvents();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void FilterEvents()
+    {
+        _filteredEvents = _events.Where(e =>
+        {
+            if (_selectedEventType != "all" && e.Type.ToString() != _selectedEventType)
+                return false;
+
+            if (_selectedFolder != "all" && e.FolderId != _selectedFolder)
+                return false;
+
+            if (_selectedDevice != "all" && e.DeviceId != _selectedDevice)
+                return false;
+
+            return true;
+        }).ToList();
+    }
+
+    private void OnEventTypeChanged(string value)
+    {
+        _selectedEventType = value;
+        FilterEvents();
+    }
+
+    private void OnFolderChanged(string value)
+    {
+        _selectedFolder = value;
+        FilterEvents();
+    }
+
+    private void OnDeviceChanged(string value)
+    {
+        _selectedDevice = value;
+        FilterEvents();
+    }
+
+    private async Task LoadMoreEvents()
+    {
+        _isLoadingMore = true;
+        StateHasChanged();
+
+        try
+        {
+            var moreEvents = await ApiClient.GetEventsAsync(_lastEventId, 100);
+            if (moreEvents.Length == 0)
+            {
+                _hasMore = false;
+            }
+            else
+            {
+                _events.AddRange(moreEvents);
+                _lastEventId = moreEvents.Last().Id;
+                FilterEvents();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load more events: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoadingMore = false;
+            StateHasChanged();
+        }
+    }
+
+    private Color GetEventColor(SyncEvent evt)
+    {
+        return evt.Type switch
+        {
+            EventType.FolderCompletion => Color.Success,
+            EventType.ItemFinished => Color.Success,
+            EventType.DeviceConnected => Color.Info,
+            EventType.DeviceDisconnected => Color.Warning,
+            EventType.FolderErrors => Color.Error,
+            EventType.StateChanged => Color.Default,
+            _ => Color.Default
+        };
+    }
+
+    private string GetEventTypeDisplay(EventType type)
+    {
+        return type switch
+        {
+            EventType.StateChanged => "State",
+            EventType.ItemStarted => "Started",
+            EventType.ItemFinished => "Finished",
+            EventType.FolderCompletion => "Complete",
+            EventType.DeviceConnected => "Connected",
+            EventType.DeviceDisconnected => "Disconnected",
+            EventType.FolderErrors => "Error",
+            _ => type.ToString()
+        };
+    }
+
+    private string GetEventDescription(SyncEvent evt)
+    {
+        var folder = _folders.FirstOrDefault(f => f.Id == evt.FolderId)?.DisplayName ?? evt.FolderId;
+        var device = _devices.FirstOrDefault(d => d.DeviceId == evt.DeviceId)?.DisplayName ?? evt.DeviceId;
+
+        return evt.Type switch
+        {
+            EventType.FolderCompletion => $"Folder '{folder}' completed with device '{device}'",
+            EventType.ItemFinished => $"File '{evt.FileName}' synced in '{folder}'",
+            EventType.ItemStarted => $"Started syncing '{evt.FileName}' in '{folder}'",
+            EventType.DeviceConnected => $"Device '{device}' connected",
+            EventType.DeviceDisconnected => $"Device '{device}' disconnected",
+            EventType.FolderErrors => $"Error in folder '{folder}': {evt.Error}",
+            EventType.StateChanged => $"State changed: {evt.From} -> {evt.To}",
+            _ => evt.Message ?? evt.Type.ToString()
+        };
+    }
+
+    private bool CanNavigate(SyncEvent evt)
+    {
+        return !string.IsNullOrEmpty(evt.FolderId) || !string.IsNullOrEmpty(evt.DeviceId);
+    }
+
+    private void NavigateToRelated(SyncEvent evt)
+    {
+        if (!string.IsNullOrEmpty(evt.FolderId))
+        {
+            Navigation.NavigateTo("/folders");
+        }
+        else if (!string.IsNullOrEmpty(evt.DeviceId))
+        {
+            Navigation.NavigateTo($"/devices/{evt.DeviceId}");
+        }
+    }
+
+    public void Dispose()
+    {
+        SignalR.OnSyncEvent -= OnSyncEvent;
+    }
+}

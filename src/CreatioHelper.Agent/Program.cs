@@ -247,6 +247,10 @@ app.Use(async (context, next) =>
 // Expose health checks endpoint
 app.MapHealthChecks("/health");
 
+// Blazor WebAssembly hosting
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
+
 app.UseCors("AllowAll");
 app.UseRouting();
 app.UseAuthentication();
@@ -263,6 +267,9 @@ app.MapGet("/metrics", async (IMetricsService metricsService) =>
     var prometheusFormat = ConvertToPrometheusFormat(metrics);
     return Results.Text(prometheusFormat, "text/plain");
 }).RequireAuthorization();
+
+// SPA fallback for Blazor WebAssembly
+app.MapFallbackToFile("index.html");
 
 // SignalR test page - only enabled in development
 if (app.Environment.IsDevelopment())

@@ -1,0 +1,329 @@
+@page "/diagnostics/support"
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Support Bundle - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Support Bundle</MudText>
+
+<MudAlert Severity="Severity.Info" Class="mb-4">
+    A support bundle contains diagnostic information that helps troubleshoot issues.
+    It includes configuration, logs, and system information but excludes sensitive data like API keys and passwords.
+</MudAlert>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Bundle Contents</MudText>
+
+    <MudList T="string" Dense="true">
+        <MudListItem Icon="@Icons.Material.Filled.Settings">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeConfig" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>Configuration</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        Sanitized configuration without sensitive data
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Description">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeLogs" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>System Logs</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        Recent log entries (last @_logDays days)
+                    </MudText>
+                </div>
+                <MudSpacer />
+                <MudNumericField @bind-Value="_logDays"
+                                 Min="1"
+                                 Max="30"
+                                 Style="width: 80px;"
+                                 Variant="Variant.Outlined"
+                                 Dense="true"
+                                 Disabled="@(!_includeLogs)" />
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Computer">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeSystem" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>System Information</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        OS version, architecture, environment
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Analytics">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeMetrics" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>Performance Metrics</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        CPU, memory, and I/O statistics
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Folder">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeFolderStatus" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>Folder Status</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        Sync status of all folders (paths redacted)
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Devices">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeDeviceStatus" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>Device Status</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        Connection status of all devices
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+
+        <MudListItem Icon="@Icons.Material.Filled.Lan">
+            <div class="d-flex align-center">
+                <MudCheckBox @bind-Value="_includeNetwork" Color="Color.Primary" Dense="true" />
+                <div>
+                    <MudText>Network Diagnostics</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">
+                        NAT type, discovery status, connections
+                    </MudText>
+                </div>
+            </div>
+        </MudListItem>
+    </MudList>
+</MudPaper>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Privacy Options</MudText>
+
+    <MudSwitch @bind-Value="_redactPaths"
+               Color="Color.Primary"
+               Label="Redact File Paths" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Replace full paths with placeholders (e.g., /home/user/Sync -> [SYNC_FOLDER])
+    </MudText>
+
+    <MudSwitch @bind-Value="_redactDeviceIds"
+               Color="Color.Primary"
+               Label="Redact Device IDs" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        Replace device IDs with anonymized identifiers
+    </MudText>
+
+    <MudSwitch @bind-Value="_redactIPs"
+               Color="Color.Primary"
+               Label="Redact IP Addresses" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        Replace IP addresses with placeholders
+    </MudText>
+</MudPaper>
+
+@if (_isGenerating)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <div class="d-flex align-center mb-2">
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" Class="mr-3" />
+            <MudText>Generating support bundle...</MudText>
+        </div>
+        <MudProgressLinear Value="@_progress" Color="Color.Primary" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-1">@_currentStep</MudText>
+    </MudPaper>
+}
+
+<div class="d-flex justify-end gap-2">
+    <MudButton Variant="Variant.Outlined"
+               StartIcon="@Icons.Material.Filled.Preview"
+               OnClick="PreviewBundle"
+               Disabled="@_isGenerating">
+        Preview
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Download"
+               OnClick="GenerateAndDownload"
+               Disabled="@_isGenerating">
+        Generate & Download
+    </MudButton>
+</div>
+
+@if (_previewContent != null)
+{
+    <MudPaper Elevation="2" Class="pa-4 mt-4">
+        <div class="d-flex align-center mb-2">
+            <MudText Typo="Typo.h6" Class="flex-grow-1">Preview</MudText>
+            <MudIconButton Icon="@Icons.Material.Filled.Close"
+                           Size="Size.Small"
+                           OnClick="@(() => _previewContent = null)" />
+        </div>
+        <pre class="bundle-preview">@_previewContent</pre>
+    </MudPaper>
+}
+
+<style>
+    .bundle-preview {
+        background: var(--mud-palette-background);
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+        padding: 16px;
+        max-height: 400px;
+        overflow: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+</style>
+
+@code {
+    // Bundle contents
+    private bool _includeConfig = true;
+    private bool _includeLogs = true;
+    private bool _includeSystem = true;
+    private bool _includeMetrics = true;
+    private bool _includeFolderStatus = true;
+    private bool _includeDeviceStatus = true;
+    private bool _includeNetwork = true;
+    private int _logDays = 3;
+
+    // Privacy options
+    private bool _redactPaths = true;
+    private bool _redactDeviceIds = false;
+    private bool _redactIPs = false;
+
+    // Generation state
+    private bool _isGenerating;
+    private int _progress;
+    private string _currentStep = string.Empty;
+    private string? _previewContent;
+
+    private async Task PreviewBundle()
+    {
+        _isGenerating = true;
+        _progress = 0;
+        _currentStep = "Collecting data...";
+        StateHasChanged();
+
+        try
+        {
+            var options = CreateBundleOptions();
+            var bundle = await ApiClient.GenerateSupportBundlePreviewAsync(options);
+            _previewContent = bundle;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to generate preview: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GenerateAndDownload()
+    {
+        _isGenerating = true;
+        _progress = 0;
+        StateHasChanged();
+
+        try
+        {
+            // Simulate progress for better UX
+            var steps = new[]
+            {
+                "Collecting configuration...",
+                "Gathering logs...",
+                "Reading system information...",
+                "Fetching metrics...",
+                "Analyzing folder status...",
+                "Checking device connections...",
+                "Running network diagnostics...",
+                "Compressing bundle..."
+            };
+
+            foreach (var (step, index) in steps.Select((s, i) => (s, i)))
+            {
+                _currentStep = step;
+                _progress = (index + 1) * 100 / steps.Length;
+                StateHasChanged();
+                await Task.Delay(200);
+            }
+
+            var options = CreateBundleOptions();
+            var bundleData = await ApiClient.GenerateSupportBundleAsync(options);
+
+            // Trigger download
+            var fileName = $"creatiohelper-support-{DateTime.Now:yyyyMMdd-HHmmss}.zip";
+            var base64 = Convert.ToBase64String(bundleData);
+
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"const link = document.createElement('a'); " +
+                $"link.href = 'data:application/zip;base64,{base64}'; " +
+                $"link.download = '{fileName}'; " +
+                $"link.click();");
+
+            Snackbar.Add("Support bundle downloaded successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to generate support bundle: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isGenerating = false;
+            StateHasChanged();
+        }
+    }
+
+    private SupportBundleOptions CreateBundleOptions()
+    {
+        return new SupportBundleOptions
+        {
+            IncludeConfig = _includeConfig,
+            IncludeLogs = _includeLogs,
+            IncludeSystem = _includeSystem,
+            IncludeMetrics = _includeMetrics,
+            IncludeFolderStatus = _includeFolderStatus,
+            IncludeDeviceStatus = _includeDeviceStatus,
+            IncludeNetwork = _includeNetwork,
+            LogDays = _logDays,
+            RedactPaths = _redactPaths,
+            RedactDeviceIds = _redactDeviceIds,
+            RedactIPs = _redactIPs
+        };
+    }
+}
+
+@code {
+    public class SupportBundleOptions
+    {
+        public bool IncludeConfig { get; set; }
+        public bool IncludeLogs { get; set; }
+        public bool IncludeSystem { get; set; }
+        public bool IncludeMetrics { get; set; }
+        public bool IncludeFolderStatus { get; set; }
+        public bool IncludeDeviceStatus { get; set; }
+        public bool IncludeNetwork { get; set; }
+        public int LogDays { get; set; }
+        public bool RedactPaths { get; set; }
+        public bool RedactDeviceIds { get; set; }
+        public bool RedactIPs { get; set; }
+    }
+}

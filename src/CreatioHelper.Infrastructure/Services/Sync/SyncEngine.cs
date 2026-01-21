@@ -1,10 +1,12 @@
 using System.Collections.Concurrent;
 using System.Security.Cryptography.X509Certificates;
+using CreatioHelper.Application.DTOs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Entities.Events;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Infrastructure.Services.Sync.Relay;
+using CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using CreatioHelper.Infrastructure.Services.Network;
 using CreatioHelper.Infrastructure.Services.Metrics;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
@@ -37,6 +39,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly ICombinedNatService? _natService;
     private readonly ICertificateManager _certificateManager;
     private readonly SyncFolderHandlerFactory _syncFolderHandlerFactory;
+    private readonly IScanProgressService? _scanProgressService;
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
     private readonly ConcurrentDictionary<string, SyncStatus> _folderStatuses = new();
@@ -76,7 +79,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         SyncFolderHandlerFactory syncFolderHandlerFactory,
         SyncthingGlobalDiscovery globalDiscovery,
         ICombinedNatService? natService = null,
-        X509Certificate2? clientCertificate = null)
+        X509Certificate2? clientCertificate = null,
+        IScanProgressService? scanProgressService = null)
     {
         _logger = logger;
         _protocol = protocol;
@@ -98,6 +102,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         _certificateManager = certificateManager;
         _syncFolderHandlerFactory = syncFolderHandlerFactory;
         _natService = natService;
+        _scanProgressService = scanProgressService;
         
         // Initialize relay manager if certificate is provided and relays are enabled
         if (clientCertificate != null && _configuration.RelaysEnabled)
@@ -321,6 +326,219 @@ public class SyncEngine : ISyncEngine, IDisposable
         return folder;
     }
 
+    public async Task<SyncFolder> AddFolderAsync(FolderConfiguration config)
+    {
+        if (!Directory.Exists(config.Path))
+        {
+            Directory.CreateDirectory(config.Path);
+        }
+
+        // Create folder with all configuration settings
+        var folder = new SyncFolder(
+            config.Id,
+            config.Label,
+            config.Path,
+            config.Type,
+            config.RescanIntervalS,
+            config.FsWatcherEnabled,
+            (int)config.FsWatcherDelayS,
+            config.IgnorePerms,
+            config.AutoNormalize,
+            config.MinDiskFree.ToString(),
+            config.CopyOwnershipFromParent,
+            config.ModTimeWindowS,
+            config.MaxConflicts,
+            config.DisableSparseFiles,
+            config.DisableTempIndexes,
+            config.Paused,
+            config.WeakHashThresholdPct,
+            config.MarkerName,
+            config.CopyRangeMethod,
+            config.CaseSensitiveFS,
+            config.JunctionsAsDirs,
+            config.SyncOwnership,
+            config.SendOwnership,
+            config.SyncXattrs,
+            config.SendXattrs);
+
+        // Set versioning if configured
+        if (config.Versioning?.IsEnabled == true)
+        {
+            folder.SetVersioning(new VersioningConfiguration
+            {
+                Type = config.Versioning.Type,
+                Params = config.Versioning.Params,
+                CleanupIntervalS = config.Versioning.CleanupIntervalS,
+                FSPath = config.Versioning.FsPath,
+                FSType = config.Versioning.FsType
+            });
+        }
+
+        // Set pull order
+        if (!string.IsNullOrEmpty(config.Order))
+        {
+            folder.SetPullOrder(ParsePullOrder(config.Order));
+        }
+
+        // Set ignore delete
+        folder.IgnoreDelete = config.IgnoreDelete;
+
+        _folders[config.Id] = folder;
+
+        // Initialize folder status
+        _folderStatuses[config.Id] = new SyncStatus
+        {
+            FolderId = config.Id,
+            State = config.Paused ? SyncState.Paused : SyncState.Idle
+        };
+
+        // Save folder to database
+        try
+        {
+            await _database.FolderConfig.UpsertAsync(folder);
+            _logger.LogInformation("Added folder {FolderId} ({Label}) with full config to database", config.Id, config.Label);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to save folder {FolderId} to database", config.Id);
+        }
+
+        // Register folder for block serving
+        _blockRequestHandler.RegisterFolder(folder);
+
+        // Add devices to folder
+        foreach (var device in config.Devices)
+        {
+            folder.AddDevice(device.DeviceId);
+        }
+
+        // Start watching the folder if not paused
+        if (!config.Paused)
+        {
+            _fileWatcher.WatchFolder(folder);
+
+            // Perform initial scan
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000);
+                await ScanFolderAsync(config.Id, deep: true);
+            });
+        }
+
+        _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path} with full configuration", config.Id, config.Label, config.Path);
+
+        return folder;
+    }
+
+    public async Task<SyncFolder> UpdateFolderAsync(FolderConfiguration config)
+    {
+        if (!_folders.TryGetValue(config.Id, out var existingFolder))
+        {
+            throw new ArgumentException($"Folder {config.Id} not found");
+        }
+
+        // Update folder settings
+        existingFolder.RescanIntervalS = config.RescanIntervalS;
+        existingFolder.FsWatcherEnabled = config.FsWatcherEnabled;
+        existingFolder.FSWatcherDelayS = (int)config.FsWatcherDelayS;
+        existingFolder.IgnorePerms = config.IgnorePerms;
+        existingFolder.AutoNormalize = config.AutoNormalize;
+        existingFolder.SetMinDiskFree(config.MinDiskFree.ToString());
+        existingFolder.MaxConflicts = config.MaxConflicts;
+        existingFolder.DisableSparseFiles = config.DisableSparseFiles;
+        existingFolder.DisableTempIndexes = config.DisableTempIndexes;
+        existingFolder.MarkerName = config.MarkerName;
+        existingFolder.IgnoreDelete = config.IgnoreDelete;
+
+        // Update versioning
+        if (config.Versioning?.IsEnabled == true)
+        {
+            existingFolder.SetVersioning(new VersioningConfiguration
+            {
+                Type = config.Versioning.Type,
+                Params = config.Versioning.Params,
+                CleanupIntervalS = config.Versioning.CleanupIntervalS,
+                FSPath = config.Versioning.FsPath,
+                FSType = config.Versioning.FsType
+            });
+        }
+        else
+        {
+            existingFolder.SetVersioning(new VersioningConfiguration { Type = string.Empty });
+        }
+
+        // Update pull order
+        if (!string.IsNullOrEmpty(config.Order))
+        {
+            existingFolder.SetPullOrder(ParsePullOrder(config.Order));
+        }
+
+        // Handle paused state change
+        var wasPaused = existingFolder.IsPaused;
+        if (config.Paused != wasPaused)
+        {
+            existingFolder.SetPaused(config.Paused);
+            if (config.Paused)
+            {
+                _fileWatcher.StopWatchingFolder(config.Id);
+                _folderStatuses[config.Id].State = SyncState.Paused;
+            }
+            else
+            {
+                _fileWatcher.WatchFolder(existingFolder);
+                _folderStatuses[config.Id].State = SyncState.Idle;
+            }
+        }
+
+        // Update devices
+        var existingDevices = existingFolder.Devices.ToHashSet();
+        var newDevices = config.Devices.Select(d => d.DeviceId).ToHashSet();
+
+        foreach (var deviceId in existingDevices.Except(newDevices))
+        {
+            existingFolder.RemoveDevice(deviceId);
+        }
+        foreach (var deviceId in newDevices.Except(existingDevices))
+        {
+            existingFolder.AddDevice(deviceId);
+        }
+
+        // Save to database
+        try
+        {
+            await _database.FolderConfig.UpsertAsync(existingFolder);
+            _logger.LogInformation("Updated folder {FolderId} configuration in database", config.Id);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to update folder {FolderId} in database", config.Id);
+        }
+
+        // Restart file watcher with new settings if not paused and settings changed
+        if (!config.Paused && !wasPaused)
+        {
+            _fileWatcher.StopWatchingFolder(config.Id);
+            _fileWatcher.WatchFolder(existingFolder);
+        }
+
+        _logger.LogInformation("Updated folder {FolderId} ({Label}) configuration", config.Id, config.Label);
+
+        return existingFolder;
+    }
+
+    private static Domain.Enums.SyncPullOrder ParsePullOrder(string order)
+    {
+        return order.ToLowerInvariant() switch
+        {
+            "alphabetic" => Domain.Enums.SyncPullOrder.Alphabetic,
+            "smallestfirst" => Domain.Enums.SyncPullOrder.SmallestFirst,
+            "largestfirst" => Domain.Enums.SyncPullOrder.LargestFirst,
+            "oldestfirst" => Domain.Enums.SyncPullOrder.OldestFirst,
+            "newestfirst" => Domain.Enums.SyncPullOrder.NewestFirst,
+            _ => Domain.Enums.SyncPullOrder.Random
+        };
+    }
+
     public async Task ShareFolderWithDeviceAsync(string folderId, string deviceId)
     {
         if (!_folders.TryGetValue(folderId, out var folder))
@@ -453,12 +671,42 @@ public class SyncEngine : ISyncEngine, IDisposable
             status.State = SyncState.Scanning;
         }
 
+        // Start scan progress tracking
+        ScanProgressTracker? progressTracker = null;
         try
         {
-            var files = await _fileWatcher.ScanFolderAsync(folder);
+            progressTracker = _scanProgressService?.StartScan(folderId);
+            progressTracker?.SetPhase(ScanPhase.Enumerating);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to start scan progress tracker for folder {FolderId}", folderId);
+        }
+
+        try
+        {
+            // Phase 1: Enumerate and scan files with progress reporting
+            progressTracker?.SetPhase(ScanPhase.Enumerating);
+
+            // Callback for when file estimates are ready (after quick enumeration)
+            Action<long, long>? onEstimatesReady = progressTracker != null
+                ? (fileCount, totalBytes) =>
+                {
+                    progressTracker.SetEstimates(fileCount, totalBytes);
+                    progressTracker.SetPhase(ScanPhase.Scanning);
+                }
+                : null;
+
+            // Callback for when each file is scanned
+            Action<string, long>? onFileScanned = progressTracker != null
+                ? (filePath, fileSize) => progressTracker.ReportFile(filePath, fileSize)
+                : null;
+
+            var files = await _fileWatcher.ScanFolderAsync(folder, onFileScanned, onEstimatesReady);
             folder.UpdateLastScan();
 
-            // Store file metadata in database
+            // Phase 2: Store file metadata in database
+            progressTracker?.SetPhase(ScanPhase.Updating);
             try
             {
                 foreach (var file in files)
@@ -475,10 +723,10 @@ public class SyncEngine : ISyncEngine, IDisposable
                         VersionVector = file.Hash ?? string.Empty,
                         LocalFlags = file.IsSymlink ? (FileLocalFlags)4 : FileLocalFlags.None
                     };
-                    
+
                     await _database.FileMetadata.UpsertAsync(fileMetadata);
                 }
-                
+
                 _logger.LogDebug("Stored {FileCount} file metadata entries for folder {FolderId}", files.Count, folderId);
             }
             catch (Exception ex)
@@ -502,11 +750,16 @@ public class SyncEngine : ISyncEngine, IDisposable
                 status.LocalFiles = files.Count;
                 status.LocalBytes = files.Sum(f => f.Size);
             }
+
+            // Complete progress tracking
+            progressTracker?.Complete();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error scanning folder {FolderId}", folderId);
-            
+
+            progressTracker?.Fail(ex.Message);
+
             if (status != null)
             {
                 status.State = SyncState.Error;
@@ -1676,9 +1929,40 @@ public class SyncEngine : ISyncEngine, IDisposable
             {
                 _folders.TryAdd(folder.Id, folder);
                 _folderSyncSemaphores.TryAdd(folder.Id, new SemaphoreSlim(1, 1));
-                _folderStatuses.TryAdd(folder.Id, new SyncStatus { FolderId = folder.Id });
+                _folderStatuses.TryAdd(folder.Id, new SyncStatus
+                {
+                    FolderId = folder.Id,
+                    State = folder.Paused ? SyncState.Paused : SyncState.Idle
+                });
+
+                // Register folder for block serving
+                _blockRequestHandler.RegisterFolder(folder);
+
+                // Start watching the folder if not paused
+                if (!folder.Paused)
+                {
+                    _fileWatcher.WatchFolder(folder);
+                }
             }
             _logger.LogInformation($"Loaded {folders.Count()} folders from database");
+
+            // Trigger initial scan for all non-paused folders (background task)
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(2000); // Allow services to initialize
+                foreach (var folder in folders.Where(f => !f.Paused))
+                {
+                    try
+                    {
+                        _logger.LogInformation("Starting initial scan for folder {FolderId}", folder.Id);
+                        await ScanFolderAsync(folder.Id, deep: true);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error during initial scan of folder {FolderId}", folder.Id);
+                    }
+                }
+            });
         }
         catch (Exception ex)
         {

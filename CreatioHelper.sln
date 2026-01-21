@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper.Shared", "src
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper.Contracts", "src\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj", "{2DE93B26-4305-48DD-88F4-727448EBED66}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CreatioHelper.WebUI", "src\CreatioHelper.WebUI\CreatioHelper.WebUI.csproj", "{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -67,6 +69,10 @@ Global
 		{2DE93B26-4305-48DD-88F4-727448EBED66}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{2DE93B26-4305-48DD-88F4-727448EBED66}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{2DE93B26-4305-48DD-88F4-727448EBED66}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -84,5 +90,6 @@ Global
 		{553D36FB-FE7A-4D54-9C11-B2C4E35D8EFB} = {00831F23-7E63-4B37-82B0-02F61F30A24C}
 		{65A7776D-9298-47CD-9FAE-0A17081E3D11} = {00831F23-7E63-4B37-82B0-02F61F30A24C}
 		{2DE93B26-4305-48DD-88F4-727448EBED66} = {00831F23-7E63-4B37-82B0-02F61F30A24C}
+		{E8F5C1D2-7B3A-4F9E-A2D6-8C4E1F3B5A6D} = {00831F23-7E63-4B37-82B0-02F61F30A24C}
 	EndGlobalSection
 EndGlobal

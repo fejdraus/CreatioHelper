@@ -1,0 +1,311 @@
+@page "/diagnostics/logs"
+@inject IApiClient ApiClient
+@inject ISignalRService SignalR
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>System Logs - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">System Logs</MudText>
+    <div class="d-flex gap-2">
+        <MudSwitch @bind-Value="_autoScroll"
+                   Color="Color.Primary"
+                   Label="Auto-scroll" />
+        <MudSwitch @bind-Value="_liveTail"
+                   Color="Color.Primary"
+                   Label="Live Tail" />
+    </div>
+</div>
+
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <MudGrid>
+        <MudItem xs="12" md="4">
+            <MudSelect @bind-Value="_selectedLogLevel"
+                       Label="Log Level"
+                       Variant="Variant.Outlined"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All Levels</MudSelectItem>
+                <MudSelectItem Value="@("error")">Error</MudSelectItem>
+                <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
+                <MudSelectItem Value="@("info")">Info</MudSelectItem>
+                <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudSelect @bind-Value="_selectedFacility"
+                       Label="Facility"
+                       Variant="Variant.Outlined"
+                       Dense="true">
+                <MudSelectItem Value="@("all")">All Facilities</MudSelectItem>
+                <MudSelectItem Value="@("sync")">Sync</MudSelectItem>
+                <MudSelectItem Value="@("model")">Model</MudSelectItem>
+                <MudSelectItem Value="@("scanner")">Scanner</MudSelectItem>
+                <MudSelectItem Value="@("connections")">Connections</MudSelectItem>
+                <MudSelectItem Value="@("discover")">Discovery</MudSelectItem>
+                <MudSelectItem Value="@("upnp")">UPnP/NAT</MudSelectItem>
+            </MudSelect>
+        </MudItem>
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="_searchText"
+                          Label="Search"
+                          Variant="Variant.Outlined"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true"
+                          DebounceInterval="300"
+                          Dense="true" />
+        </MudItem>
+    </MudGrid>
+</MudPaper>
+
+<MudPaper Elevation="2" Class="log-viewer-container">
+    <div class="log-viewer-toolbar pa-2 d-flex align-center">
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            @_filteredLogs.Count of @_logs.Count entries
+        </MudText>
+        <MudSpacer />
+        <MudIconButton Icon="@Icons.Material.Filled.Download"
+                       Size="Size.Small"
+                       OnClick="DownloadLogs"
+                       Title="Download logs" />
+        <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep"
+                       Size="Size.Small"
+                       OnClick="ClearLogs"
+                       Title="Clear display" />
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                       Size="Size.Small"
+                       OnClick="RefreshLogs"
+                       Title="Refresh" />
+    </div>
+
+    <div class="log-viewer @(_autoScroll ? "auto-scroll" : "")" @ref="_logContainer">
+        @if (_isLoading)
+        {
+            <div class="pa-4 text-center">
+                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            </div>
+        }
+        else if (_filteredLogs.Count == 0)
+        {
+            <div class="pa-4 text-center">
+                <MudText Color="Color.Default">No log entries match the filter</MudText>
+            </div>
+        }
+        else
+        {
+            @foreach (var log in _filteredLogs)
+            {
+                <div class="log-entry @GetLogLevelClass(log.Level)">
+                    <span class="log-timestamp">@log.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <span class="log-level">@log.Level.ToUpper()</span>
+                    <span class="log-facility">[@log.Facility]</span>
+                    <span class="log-message">@log.Message</span>
+                </div>
+            }
+        }
+    </div>
+</MudPaper>
+
+<style>
+    .log-viewer-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 300px);
+        min-height: 400px;
+    }
+
+    .log-viewer-toolbar {
+        border-bottom: 1px solid var(--mud-palette-divider);
+        background: var(--mud-palette-surface);
+    }
+
+    .log-viewer {
+        flex: 1;
+        overflow-y: auto;
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 12px;
+        background: var(--mud-palette-background);
+    }
+
+    .log-viewer.auto-scroll {
+        scroll-behavior: smooth;
+    }
+
+    .log-entry {
+        padding: 2px 8px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+        white-space: nowrap;
+    }
+
+    .log-entry:hover {
+        background: var(--mud-palette-action-default-hover);
+    }
+
+    .log-timestamp {
+        color: var(--mud-palette-text-secondary);
+        margin-right: 8px;
+    }
+
+    .log-level {
+        font-weight: bold;
+        margin-right: 8px;
+        min-width: 60px;
+        display: inline-block;
+    }
+
+    .log-facility {
+        color: var(--mud-palette-primary);
+        margin-right: 8px;
+    }
+
+    .log-entry.error .log-level { color: var(--mud-palette-error); }
+    .log-entry.warning .log-level { color: var(--mud-palette-warning); }
+    .log-entry.info .log-level { color: var(--mud-palette-info); }
+    .log-entry.debug .log-level { color: var(--mud-palette-text-secondary); }
+</style>
+
+@code {
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
+    private ElementReference _logContainer;
+    private bool _isLoading;
+    private bool _autoScroll = true;
+    private bool _liveTail = true;
+    private string _selectedLogLevel = "all";
+    private string _selectedFacility = "all";
+    private string _searchText = string.Empty;
+
+    private List<LogEntry> _logs = new();
+    private List<LogEntry> _filteredLogs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        SignalR.OnLogEntry += OnLogEntry;
+        await RefreshLogs();
+    }
+
+    private void OnLogEntry(LogEntry entry)
+    {
+        _logs.Add(entry);
+        if (_logs.Count > 10000)
+        {
+            _logs.RemoveRange(0, 1000);
+        }
+
+        UpdateFilteredLogs();
+
+        if (_liveTail && _autoScroll)
+        {
+            InvokeAsync(async () =>
+            {
+                StateHasChanged();
+                await ScrollToBottom();
+            });
+        }
+        else
+        {
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private async Task RefreshLogs()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            var logs = await ApiClient.GetSystemLogsAsync(1000);
+            _logs = logs.ToList();
+            UpdateFilteredLogs();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load logs: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void UpdateFilteredLogs()
+    {
+        _filteredLogs = _logs.Where(log =>
+        {
+            if (_selectedLogLevel != "all" && log.Level.ToLower() != _selectedLogLevel)
+                return false;
+
+            if (_selectedFacility != "all" && !log.Facility.Contains(_selectedFacility, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            if (!string.IsNullOrWhiteSpace(_searchText) &&
+                !log.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
+        }).ToList();
+    }
+
+    private string GetLogLevelClass(string level)
+    {
+        return level.ToLower() switch
+        {
+            "error" or "fatal" => "error",
+            "warning" or "warn" => "warning",
+            "info" or "information" => "info",
+            "debug" or "verbose" => "debug",
+            _ => ""
+        };
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"document.querySelector('.log-viewer')?.scrollTo(0, document.querySelector('.log-viewer')?.scrollHeight)");
+        }
+        catch { }
+    }
+
+    private void ClearLogs()
+    {
+        _logs.Clear();
+        _filteredLogs.Clear();
+        StateHasChanged();
+    }
+
+    private async Task DownloadLogs()
+    {
+        try
+        {
+            var content = string.Join("\n", _filteredLogs.Select(l =>
+                $"{l.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{l.Level}] [{l.Facility}] {l.Message}"));
+
+            var bytes = System.Text.Encoding.UTF8.GetBytes(content);
+            var base64 = Convert.ToBase64String(bytes);
+            var fileName = $"creatiohelper-logs-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"const link = document.createElement('a'); " +
+                $"link.href = 'data:text/plain;base64,{base64}'; " +
+                $"link.download = '{fileName}'; " +
+                $"link.click();");
+
+            Snackbar.Add("Logs downloaded", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to download logs: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        SignalR.OnLogEntry -= OnLogEntry;
+    }
+}

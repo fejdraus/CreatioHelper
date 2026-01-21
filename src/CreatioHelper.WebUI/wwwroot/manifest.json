@@ -1,0 +1,49 @@
+{
+  "name": "CreatioHelper",
+  "short_name": "CreatioHelper",
+  "description": "Syncthing-compatible file synchronization with Creatio management",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#121212",
+  "theme_color": "#1976d2",
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Folders",
+      "short_name": "Folders",
+      "url": "/folders",
+      "description": "View synced folders"
+    },
+    {
+      "name": "Devices",
+      "short_name": "Devices",
+      "url": "/devices",
+      "description": "Manage connected devices"
+    },
+    {
+      "name": "Settings",
+      "short_name": "Settings",
+      "url": "/settings",
+      "description": "Configure application settings"
+    }
+  ]
+}

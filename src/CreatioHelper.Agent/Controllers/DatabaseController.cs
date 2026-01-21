@@ -1,5 +1,6 @@
 using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
@@ -15,11 +16,16 @@ namespace CreatioHelper.Agent.Controllers;
 public class DatabaseController : ControllerBase
 {
     private readonly ISyncEngine _syncEngine;
+    private readonly IScanProgressService _scanProgressService;
     private readonly ILogger<DatabaseController> _logger;
 
-    public DatabaseController(ISyncEngine syncEngine, ILogger<DatabaseController> logger)
+    public DatabaseController(
+        ISyncEngine syncEngine,
+        IScanProgressService scanProgressService,
+        ILogger<DatabaseController> logger)
     {
         _syncEngine = syncEngine;
+        _scanProgressService = scanProgressService;
         _logger = logger;
     }
 
@@ -42,44 +48,71 @@ public class DatabaseController : ControllerBase
             if (folderInfo == null)
                 return NotFound(new { error = "folder not found" });
 
+            // Get scan progress if scanning is in progress
+            var scanProgress = _scanProgressService.GetProgress(folder);
+
             return Ok(new
             {
-                globalFiles = folderStatus.TotalFiles,
-                globalDirectories = folderStatus.TotalDirectories,
+                folder = folder,
+                // Use LocalFiles/LocalBytes as global since we're the source of truth
+                globalFiles = folderStatus.LocalFiles,
+                globalDirectories = folderStatus.LocalDirectories,
                 globalSymlinks = 0,
                 globalDeleted = 0,
-                globalBytes = folderStatus.TotalBytes,
-                globalTotalItems = folderStatus.TotalFiles + folderStatus.TotalDirectories,
-                
+                globalBytes = folderStatus.LocalBytes,
+                globalTotalItems = folderStatus.LocalFiles + folderStatus.LocalDirectories,
+
                 localFiles = folderStatus.LocalFiles,
                 localDirectories = folderStatus.LocalDirectories,
                 localSymlinks = 0,
                 localDeleted = 0,
                 localBytes = folderStatus.LocalBytes,
                 localTotalItems = folderStatus.LocalFiles + folderStatus.LocalDirectories,
-                
+
                 needFiles = folderStatus.OutOfSyncFiles,
                 needDirectories = 0,
                 needSymlinks = 0,
                 needDeletes = 0,
                 needBytes = folderStatus.OutOfSyncBytes,
                 needTotalItems = folderStatus.OutOfSyncFiles,
-                
+
                 receiveOnlyChangedFiles = 0,
                 receiveOnlyChangedDirectories = 0,
                 receiveOnlyChangedSymlinks = 0,
                 receiveOnlyChangedDeletes = 0,
                 receiveOnlyChangedBytes = 0,
                 receiveOnlyTotalItems = 0,
-                
+
                 pullErrors = 0,
                 state = folderStatus.State.ToString().ToLowerInvariant(),
                 stateChanged = folderStatus.LastSync.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                error = string.Empty,
+                error = folderStatus.Errors.Count > 0 ? folderStatus.Errors[0] : string.Empty,
+                errors = folderStatus.Errors.Count,
                 version = folderStatus.Version,
                 sequence = folderStatus.Sequence,
                 ignorePatterns = false,
-                watchError = string.Empty
+                watchError = string.Empty,
+
+                // In sync fields for calculating sync percentage
+                inSyncFiles = folderStatus.LocalFiles,
+                inSyncBytes = folderStatus.LocalBytes,
+
+                // Scan progress fields (extended, not in original Syncthing API)
+                scanProgress = scanProgress != null ? new
+                {
+                    phase = scanProgress.Phase.ToString().ToLowerInvariant(),
+                    filesScanned = scanProgress.FilesScanned,
+                    filesTotal = scanProgress.FilesTotal,
+                    bytesScanned = scanProgress.BytesScanned,
+                    bytesTotal = scanProgress.BytesTotal,
+                    currentFile = scanProgress.CurrentFile,
+                    percentComplete = scanProgress.PercentComplete,
+                    bytesPercentComplete = scanProgress.BytesPercentComplete,
+                    filesPerSecond = scanProgress.FilesPerSecond,
+                    bytesPerSecond = scanProgress.BytesPerSecond,
+                    elapsedSeconds = (int)scanProgress.Elapsed.TotalSeconds,
+                    estimatedSecondsRemaining = scanProgress.EstimatedTimeRemaining?.TotalSeconds
+                } : null
             });
         }
         catch (Exception ex)

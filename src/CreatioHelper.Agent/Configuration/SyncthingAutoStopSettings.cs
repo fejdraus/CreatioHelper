@@ -13,13 +13,20 @@ public class SyncthingAutoStopSettings
     public bool Enabled { get; set; }
 
     /// <summary>
-    /// Local Syncthing API URL
+    /// Sync event source type: "BuiltIn" for built-in sync engine (direct programmatic access),
+    /// "External" for external Syncthing (long-polling via HTTP API)
+    /// Default: "BuiltIn" for better performance with built-in sync engine
+    /// </summary>
+    public SyncSourceType SyncSource { get; set; } = SyncSourceType.BuiltIn;
+
+    /// <summary>
+    /// Local Syncthing API URL (only used when SyncSource is "External")
     /// </summary>
     [Url]
     public string SyncthingApiUrl { get; set; } = "http://127.0.0.1:8384";
 
     /// <summary>
-    /// Syncthing API key
+    /// Syncthing API key (only used when SyncSource is "External")
     /// </summary>
     public string? SyncthingApiKey { get; set; }
 
@@ -122,4 +129,20 @@ public class MacOsServiceSettings
     /// launchd service name (e.g., "com.creatio.app")
     /// </summary>
     public string? ServiceName { get; set; }
+}
+
+/// <summary>
+/// Type of sync event source
+/// </summary>
+public enum SyncSourceType
+{
+    /// <summary>
+    /// Use built-in sync engine (ISyncEngine)
+    /// </summary>
+    BuiltIn,
+
+    /// <summary>
+    /// Use external Syncthing via HTTP API
+    /// </summary>
+    External
 }

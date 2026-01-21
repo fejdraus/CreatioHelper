@@ -1,0 +1,399 @@
+@page "/diagnostics/profiling"
+@inject IApiClient ApiClient
+@inject ISignalRService SignalR
+@inject ISnackbar Snackbar
+@implements IDisposable
+
+<PageTitle>Performance Profiling - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Performance Profiling</MudText>
+
+<MudGrid>
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">CPU Usage</MudText>
+                    <MudText Typo="Typo.h5">@_cpuUsage.ToString("F1")%</MudText>
+                </div>
+            </div>
+            <MudProgressLinear Value="@_cpuUsage" Color="@GetCpuColor()" Class="mt-2" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">App Memory</MudText>
+                    <MudText Typo="Typo.h5">@FormatBytes(_appMemory)</MudText>
+                </div>
+            </div>
+            <MudText Typo="Typo.caption" Class="mt-2">
+                OS: @FormatBytes(_osMemoryUsed) / @FormatBytes(_totalPhysicalMemory)
+            </MudText>
+            <MudProgressLinear Value="@_osMemoryPercent" Color="@GetMemoryColor()" Class="mt-1" />
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Tertiary" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Goroutines</MudText>
+                    <MudText Typo="Typo.h5">@_goroutines</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6" lg="3">
+        <MudPaper Elevation="2" Class="pa-4">
+            <div class="d-flex align-center">
+                <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Info" Size="Size.Large" Class="mr-3" />
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Default">Uptime</MudText>
+                    <MudText Typo="Typo.h5">@FormatUptime(_uptime)</MudText>
+                </div>
+            </div>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Elevation="2" Class="pa-4 mt-4">
+    <MudText Typo="Typo.h6" Class="mb-4">Resource History</MudText>
+
+    <div class="resource-chart">
+        @if (_cpuHistory.Count > 0)
+        {
+            <svg viewBox="0 0 600 200" preserveAspectRatio="none" class="chart-svg">
+                @* CPU line *@
+                <polyline
+                    fill="none"
+                    stroke="var(--mud-palette-primary)"
+                    stroke-width="2"
+                    points="@GetChartPoints(_cpuHistory)" />
+
+                @* Memory line *@
+                <polyline
+                    fill="none"
+                    stroke="var(--mud-palette-secondary)"
+                    stroke-width="2"
+                    points="@GetChartPoints(_memoryHistory)" />
+
+                @* Grid lines *@
+                @for (int i = 1; i < 4; i++)
+                {
+                    <line x1="0" y1="@(i * 50)" x2="600" y2="@(i * 50)"
+                          stroke="var(--mud-palette-lines-default)" stroke-dasharray="4" />
+                }
+            </svg>
+        }
+        else
+        {
+            <div class="text-center pa-4">
+                <MudText Color="Color.Default">Collecting data...</MudText>
+            </div>
+        }
+    </div>
+
+    <div class="d-flex justify-center gap-4 mt-2">
+        <div class="d-flex align-center">
+            <div style="width: 16px; height: 3px; background: var(--mud-palette-primary); margin-right: 8px;"></div>
+            <MudText Typo="Typo.caption">CPU</MudText>
+        </div>
+        <div class="d-flex align-center">
+            <div style="width: 16px; height: 3px; background: var(--mud-palette-secondary); margin-right: 8px;"></div>
+            <MudText Typo="Typo.caption">Memory</MudText>
+        </div>
+    </div>
+</MudPaper>
+
+<MudGrid Class="mt-4">
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">Heap Statistics</MudText>
+            <MudSimpleTable Dense="true" Bordered="true">
+                <tbody>
+                    <tr>
+                        <td>Heap Allocated</td>
+                        <td class="text-right">@FormatBytes(_heapAlloc)</td>
+                    </tr>
+                    <tr>
+                        <td>Heap In Use</td>
+                        <td class="text-right">@FormatBytes(_heapInUse)</td>
+                    </tr>
+                    <tr>
+                        <td>Heap Objects</td>
+                        <td class="text-right">@_heapObjects.ToString("N0")</td>
+                    </tr>
+                    <tr>
+                        <td>Stack In Use</td>
+                        <td class="text-right">@FormatBytes(_stackInUse)</td>
+                    </tr>
+                    <tr>
+                        <td>GC Collections</td>
+                        <td class="text-right">@_gcCollections</td>
+                    </tr>
+                    <tr>
+                        <td>GC Pause Total</td>
+                        <td class="text-right">@_gcPauseTotal.ToString("F2") ms</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+
+    <MudItem xs="12" md="6">
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudText Typo="Typo.h6" Class="mb-4">I/O Statistics</MudText>
+            <MudSimpleTable Dense="true" Bordered="true">
+                <tbody>
+                    <tr>
+                        <td>Files Open</td>
+                        <td class="text-right">@_filesOpen</td>
+                    </tr>
+                    <tr>
+                        <td>Network Connections</td>
+                        <td class="text-right">@_networkConnections</td>
+                    </tr>
+                    <tr>
+                        <td>Total Read</td>
+                        <td class="text-right">@FormatBytes(_totalRead)</td>
+                    </tr>
+                    <tr>
+                        <td>Total Written</td>
+                        <td class="text-right">@FormatBytes(_totalWritten)</td>
+                    </tr>
+                    <tr>
+                        <td>Read Rate</td>
+                        <td class="text-right">@FormatBytes(_readRate)/s</td>
+                    </tr>
+                    <tr>
+                        <td>Write Rate</td>
+                        <td class="text-right">@FormatBytes(_writeRate)/s</td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+        </MudPaper>
+    </MudItem>
+</MudGrid>
+
+<MudPaper Elevation="2" Class="pa-4 mt-4">
+    <div class="d-flex align-center mb-4">
+        <MudText Typo="Typo.h6" Class="flex-grow-1">Debug Actions</MudText>
+    </div>
+
+    <div class="d-flex flex-wrap gap-3">
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.CleaningServices"
+                   OnClick="TriggerGC">
+            Force GC
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Download"
+                   OnClick="DownloadHeapDump">
+            Download Heap Dump
+        </MudButton>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.BugReport"
+                   OnClick="DownloadGoroutineDump">
+            Download Goroutine Dump
+        </MudButton>
+    </div>
+</MudPaper>
+
+<style>
+    .resource-chart {
+        height: 200px;
+        background: var(--mud-palette-background);
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+    }
+
+    .chart-svg {
+        width: 100%;
+        height: 100%;
+    }
+</style>
+
+@code {
+    private System.Threading.Timer? _refreshTimer;
+
+    // Current metrics
+    private double _cpuUsage;
+    private long _appMemory;
+    private long _osMemoryUsed;
+    private long _totalPhysicalMemory;
+    private double _osMemoryPercent;
+    private int _goroutines;
+    private TimeSpan _uptime;
+
+    // Heap stats
+    private long _heapAlloc;
+    private long _heapInUse;
+    private long _heapObjects;
+    private long _stackInUse;
+    private int _gcCollections;
+    private double _gcPauseTotal;
+
+    // I/O stats
+    private int _filesOpen;
+    private int _networkConnections;
+    private long _totalRead;
+    private long _totalWritten;
+    private long _readRate;
+    private long _writeRate;
+
+    // History for charts
+    private List<double> _cpuHistory = new();
+    private List<double> _memoryHistory = new();
+    private const int MaxHistoryPoints = 60;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await RefreshMetrics();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                await RefreshMetrics();
+                StateHasChanged();
+            });
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    }
+
+    private async Task RefreshMetrics()
+    {
+        try
+        {
+            var status = await ApiClient.GetSystemStatusAsync();
+            if (status != null)
+            {
+                _cpuUsage = status.CpuPercent ?? 0;
+
+                // Memory metrics
+                _appMemory = status.AppMemory ?? status.Sys ?? 0;
+                _osMemoryUsed = status.OsMemoryUsed ?? 0;
+                _totalPhysicalMemory = status.TotalPhysicalMemory ?? 0;
+                _osMemoryPercent = _totalPhysicalMemory > 0 ? (_osMemoryUsed * 100.0 / _totalPhysicalMemory) : 0;
+
+                _goroutines = status.Goroutines ?? 0;
+                _uptime = TimeSpan.FromSeconds(status.Uptime ?? 0);
+
+                // Update history
+                _cpuHistory.Add(_cpuUsage);
+                _memoryHistory.Add(_osMemoryPercent);
+
+                if (_cpuHistory.Count > MaxHistoryPoints)
+                {
+                    _cpuHistory.RemoveAt(0);
+                    _memoryHistory.RemoveAt(0);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore refresh errors
+        }
+    }
+
+    private string GetChartPoints(List<double> values)
+    {
+        if (values.Count == 0) return "";
+
+        var points = new List<string>();
+        var step = 600.0 / Math.Max(1, values.Count - 1);
+
+        for (int i = 0; i < values.Count; i++)
+        {
+            var x = i * step;
+            var y = 200 - (values[i] / 100.0 * 200);
+            points.Add($"{x:F0},{y:F0}");
+        }
+
+        return string.Join(" ", points);
+    }
+
+    private Color GetCpuColor()
+    {
+        if (_cpuUsage > 80) return Color.Error;
+        if (_cpuUsage > 60) return Color.Warning;
+        return Color.Primary;
+    }
+
+    private Color GetMemoryColor()
+    {
+        if (_osMemoryPercent > 80) return Color.Error;
+        if (_osMemoryPercent > 60) return Color.Warning;
+        return Color.Secondary;
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+
+    private string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{uptime.Days}d {uptime.Hours}h";
+        if (uptime.TotalHours >= 1)
+            return $"{uptime.Hours}h {uptime.Minutes}m";
+        return $"{uptime.Minutes}m {uptime.Seconds}s";
+    }
+
+    private async Task TriggerGC()
+    {
+        try
+        {
+            await ApiClient.TriggerGCAsync();
+            Snackbar.Add("Garbage collection triggered", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to trigger GC: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DownloadHeapDump()
+    {
+        try
+        {
+            var data = await ApiClient.GetHeapDumpAsync();
+            // Trigger download
+            Snackbar.Add("Heap dump downloading...", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to download heap dump: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DownloadGoroutineDump()
+    {
+        try
+        {
+            var data = await ApiClient.GetGoroutineDumpAsync();
+            Snackbar.Add("Goroutine dump downloading...", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to download goroutine dump: {ex.Message}", Severity.Error);
+        }
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}

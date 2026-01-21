@@ -1,0 +1,267 @@
+@page "/settings"
+@page "/settings/general"
+@inject IApiClient ApiClient
+@inject StateContainer State
+@inject ISnackbar Snackbar
+
+<PageTitle>General Settings - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">General Settings</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_config != null)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Device Information</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_deviceName"
+                              Label="Device Name"
+                              Variant="Variant.Outlined"
+                              HelperText="Friendly name for this device" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField Value="@State.SystemStatus?.MyId"
+                              Label="Device ID"
+                              Variant="Variant.Outlined"
+                              ReadOnly="true"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                              OnAdornmentClick="CopyDeviceId" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Sync Defaults</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_defaultFolderPath"
+                              Label="Default Folder Path"
+                              Variant="Variant.Outlined"
+                              HelperText="Default path for new folders" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSelect @bind-Value="_folderType"
+                           Label="Default Folder Type"
+                           Variant="Variant.Outlined">
+                    <MudSelectItem Value="@FolderType.SendReceive">Send & Receive</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.SendOnly">Send Only</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.ReceiveOnly">Receive Only</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.ReceiveEncrypted">Receive Encrypted</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-4" />
+
+        <MudSwitch @bind-Value="_ignorePerms"
+                   Color="Color.Primary"
+                   Label="Ignore Permissions" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+            File permission changes will not be synced
+        </MudText>
+
+        <MudSwitch @bind-Value="_autoNormalize"
+                   Color="Color.Primary"
+                   Label="Auto Normalize Unicode" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            Automatically normalize unicode filenames (recommended)
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">API</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_apiKey"
+                              Label="API Key"
+                              Variant="Variant.Outlined"
+                              InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                              Adornment="Adornment.End"
+                              AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                              OnAdornmentClick="ToggleApiKeyVisibility" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudButton Variant="Variant.Outlined"
+                           Color="Color.Primary"
+                           OnClick="GenerateNewApiKey"
+                           Class="mt-2">
+                    Generate New API Key
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Startup</MudText>
+
+        <MudSwitch @bind-Value="_startMinimized"
+                   Color="Color.Primary"
+                   Label="Start Minimized" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+            Start in system tray
+        </MudText>
+
+        <MudSwitch @bind-Value="_startAtLogin"
+                   Color="Color.Primary"
+                   Label="Start at Login" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            Automatically start when you log in
+        </MudText>
+    </MudPaper>
+
+    <div class="d-flex justify-end gap-2">
+        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+            Reset to Defaults
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveSettingsAsync"
+                   Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save Changes
+        </MudButton>
+    </div>
+}
+
+@code {
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
+    private bool _isLoading;
+    private bool _isSaving;
+    private SystemConfig? _config;
+
+    // Settings values
+    private string _deviceName = string.Empty;
+    private string _defaultFolderPath = string.Empty;
+    private FolderType _folderType = FolderType.SendReceive;
+    private bool _ignorePerms;
+    private bool _autoNormalize = true;
+    private string _apiKey = string.Empty;
+    private bool _showApiKey;
+    private bool _startMinimized;
+    private bool _startAtLogin;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _config = await ApiClient.GetConfigAsync();
+            if (_config != null)
+            {
+                _deviceName = _config.Options?.DeviceName ?? string.Empty;
+                _defaultFolderPath = _config.Options?.DefaultFolderPath ?? string.Empty;
+                _ignorePerms = _config.Options?.IgnorePerms ?? false;
+                _autoNormalize = _config.Options?.AutoNormalizeFilenames ?? true;
+                _apiKey = _config.Gui?.ApiKey ?? string.Empty;
+                _startMinimized = _config.Options?.StartBrowser ?? false;
+                _startAtLogin = _config.Options?.CrashReportingEnabled ?? false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (_config == null) return;
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Update config with new values
+            if (_config.Options != null)
+            {
+                _config.Options.DeviceName = _deviceName;
+                _config.Options.DefaultFolderPath = _defaultFolderPath;
+                _config.Options.IgnorePerms = _ignorePerms;
+                _config.Options.AutoNormalizeFilenames = _autoNormalize;
+            }
+
+            if (_config.Gui != null)
+            {
+                _config.Gui.ApiKey = _apiKey;
+            }
+
+            await ApiClient.UpdateConfigAsync(_config);
+            Snackbar.Add("Settings saved successfully", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyDeviceId()
+    {
+        if (State.SystemStatus?.MyId == null) return;
+
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", State.SystemStatus.MyId);
+            Snackbar.Add("Device ID copied to clipboard", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private void ToggleApiKeyVisibility()
+    {
+        _showApiKey = !_showApiKey;
+    }
+
+    private void GenerateNewApiKey()
+    {
+        _apiKey = Guid.NewGuid().ToString("N");
+        Snackbar.Add("New API key generated. Remember to save changes.", Severity.Info);
+    }
+
+    private async Task ResetToDefaults()
+    {
+        _deviceName = Environment.MachineName;
+        _defaultFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Sync");
+        _folderType = FolderType.SendReceive;
+        _ignorePerms = false;
+        _autoNormalize = true;
+        _startMinimized = false;
+        _startAtLogin = false;
+
+        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+        await Task.CompletedTask;
+    }
+}

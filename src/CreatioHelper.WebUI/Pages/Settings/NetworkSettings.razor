@@ -1,0 +1,278 @@
+@page "/settings/network"
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+
+<PageTitle>Network Settings - CreatioHelper</PageTitle>
+
+<MudText Typo="Typo.h4" Class="mb-4">Network Settings</MudText>
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_config != null)
+{
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Listening Addresses</MudText>
+
+        <MudTextField @bind-Value="_syncProtocolListen"
+                      Label="Sync Protocol Listen Address"
+                      Variant="Variant.Outlined"
+                      HelperText="Format: tcp://0.0.0.0:22000 or dynamic" />
+
+        <MudTextField @bind-Value="_guiAddress"
+                      Label="GUI Listen Address"
+                      Variant="Variant.Outlined"
+                      Class="mt-3"
+                      HelperText="Format: 127.0.0.1:8384" />
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">NAT Traversal</MudText>
+
+        <MudSwitch @bind-Value="_natEnabled"
+                   Color="Color.Primary"
+                   Label="Enable NAT Traversal" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Automatically configure UPnP/NAT-PMP port forwarding
+        </MudText>
+
+        <MudDivider Class="my-3" />
+
+        <MudSwitch @bind-Value="_relaysEnabled"
+                   Color="Color.Primary"
+                   Label="Enable Relaying" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Use relay servers when direct connection is not possible
+        </MudText>
+
+        <MudSwitch @bind-Value="_globalAnnounceEnabled"
+                   Color="Color.Primary"
+                   Label="Global Discovery" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            Announce to global discovery servers
+        </MudText>
+
+        <MudSwitch @bind-Value="_localAnnounceEnabled"
+                   Color="Color.Primary"
+                   Label="Local Discovery" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            Discover devices on local network
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Bandwidth Limits</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_maxSendKbps"
+                                 Label="Upload Limit (KB/s)"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 HelperText="0 = unlimited" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudNumericField @bind-Value="_maxRecvKbps"
+                                 Label="Download Limit (KB/s)"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 HelperText="0 = unlimited" />
+            </MudItem>
+        </MudGrid>
+
+        <MudSwitch @bind-Value="_limitBandwidthInLan"
+                   Color="Color.Primary"
+                   Label="Apply Limits to LAN"
+                   Class="mt-3" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            Also apply bandwidth limits on local network
+        </MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Discovery Servers</MudText>
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2">Global Discovery Servers</MudText>
+        <MudTextField @bind-Value="_globalAnnounceServers"
+                      Lines="3"
+                      Variant="Variant.Outlined"
+                      HelperText="One server URL per line" />
+
+        <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Relay Servers</MudText>
+        <MudTextField @bind-Value="_relayServers"
+                      Lines="3"
+                      Variant="Variant.Outlined"
+                      HelperText="One server URL per line (default = use default pool)" />
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">Connection Limits</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="_maxConcurrentIncoming"
+                                 Label="Max Incoming Requests"
+                                 Variant="Variant.Outlined"
+                                 Min="0" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="_maxConcurrentOutgoing"
+                                 Label="Max Outgoing Requests"
+                                 Variant="Variant.Outlined"
+                                 Min="0" />
+            </MudItem>
+            <MudItem xs="12" md="4">
+                <MudNumericField @bind-Value="_reconnectionIntervalS"
+                                 Label="Reconnect Interval (s)"
+                                 Variant="Variant.Outlined"
+                                 Min="10" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <div class="d-flex justify-end gap-2">
+        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+            Reset to Defaults
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="SaveSettingsAsync"
+                   Disabled="@_isSaving">
+            @if (_isSaving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            Save Changes
+        </MudButton>
+    </div>
+}
+
+@code {
+    private bool _isLoading;
+    private bool _isSaving;
+    private SystemConfig? _config;
+
+    // Network settings
+    private string _syncProtocolListen = "tcp://0.0.0.0:22000";
+    private string _guiAddress = "127.0.0.1:8384";
+    private bool _natEnabled = true;
+    private bool _relaysEnabled = true;
+    private bool _globalAnnounceEnabled = true;
+    private bool _localAnnounceEnabled = true;
+    private int _maxSendKbps;
+    private int _maxRecvKbps;
+    private bool _limitBandwidthInLan;
+    private string _globalAnnounceServers = "default";
+    private string _relayServers = "default";
+    private int _maxConcurrentIncoming = 10;
+    private int _maxConcurrentOutgoing = 10;
+    private int _reconnectionIntervalS = 60;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSettingsAsync();
+    }
+
+    private async Task LoadSettingsAsync()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _config = await ApiClient.GetConfigAsync();
+            if (_config?.Options != null)
+            {
+                _syncProtocolListen = _config.Options.ListenAddresses?.FirstOrDefault() ?? "tcp://0.0.0.0:22000";
+                _natEnabled = _config.Options.NatEnabled ?? true;
+                _relaysEnabled = _config.Options.RelaysEnabled ?? true;
+                _globalAnnounceEnabled = _config.Options.GlobalAnnounceEnabled ?? true;
+                _localAnnounceEnabled = _config.Options.LocalAnnounceEnabled ?? true;
+                _maxSendKbps = _config.Options.MaxSendKbps ?? 0;
+                _maxRecvKbps = _config.Options.MaxRecvKbps ?? 0;
+                _limitBandwidthInLan = _config.Options.LimitBandwidthInLan ?? false;
+                _globalAnnounceServers = string.Join("\n", _config.Options.GlobalAnnounceServers ?? ["default"]);
+                _relayServers = string.Join("\n", _config.Options.RelayServers ?? ["default"]);
+                _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
+            }
+
+            if (_config?.Gui != null)
+            {
+                _guiAddress = _config.Gui.Address ?? "127.0.0.1:8384";
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SaveSettingsAsync()
+    {
+        if (_config == null) return;
+
+        _isSaving = true;
+        StateHasChanged();
+
+        try
+        {
+            if (_config.Options != null)
+            {
+                _config.Options.ListenAddresses = [_syncProtocolListen];
+                _config.Options.NatEnabled = _natEnabled;
+                _config.Options.RelaysEnabled = _relaysEnabled;
+                _config.Options.GlobalAnnounceEnabled = _globalAnnounceEnabled;
+                _config.Options.LocalAnnounceEnabled = _localAnnounceEnabled;
+                _config.Options.MaxSendKbps = _maxSendKbps;
+                _config.Options.MaxRecvKbps = _maxRecvKbps;
+                _config.Options.LimitBandwidthInLan = _limitBandwidthInLan;
+                _config.Options.GlobalAnnounceServers = _globalAnnounceServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                _config.Options.RelayServers = _relayServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
+            }
+
+            if (_config.Gui != null)
+            {
+                _config.Gui.Address = _guiAddress;
+            }
+
+            await ApiClient.UpdateConfigAsync(_config);
+            Snackbar.Add("Network settings saved. Some changes may require a restart.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _isSaving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ResetToDefaults()
+    {
+        _syncProtocolListen = "tcp://0.0.0.0:22000";
+        _guiAddress = "127.0.0.1:8384";
+        _natEnabled = true;
+        _relaysEnabled = true;
+        _globalAnnounceEnabled = true;
+        _localAnnounceEnabled = true;
+        _maxSendKbps = 0;
+        _maxRecvKbps = 0;
+        _limitBandwidthInLan = false;
+        _globalAnnounceServers = "default";
+        _relayServers = "default";
+        _maxConcurrentIncoming = 10;
+        _maxConcurrentOutgoing = 10;
+        _reconnectionIntervalS = 60;
+
+        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+    }
+}
