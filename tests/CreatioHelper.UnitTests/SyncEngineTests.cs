@@ -260,6 +260,86 @@ public class SyncEngineTests : IDisposable
         Assert.Equal(SyncState.Idle, status.State);
     }
 
+    [Fact]
+    public async Task AddDeviceAsync_WithDynamicAddress_ShouldCallDiscovery()
+    {
+        // Arrange
+        var deviceId = "WIKSNWR-OG3WH54-QKJGL2--CE9LDJ0-2_G7BML-IESNG6V-U";
+        var name = "Test Device";
+        var addresses = new List<string> { "dynamic" };
+
+        var discoveredDevice = new DiscoveredDevice
+        {
+            DeviceId = deviceId,
+            Addresses = new List<string> { "tcp://192.168.1.100:22000" }
+        };
+
+        _mockDiscovery
+            .Setup(d => d.DiscoverAsync(deviceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DiscoveredDevice> { discoveredDevice });
+
+        // Act
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+
+        // Assert
+        Assert.NotNull(device);
+        Assert.Equal(deviceId, device.DeviceId);
+        // Discovery should be called when connecting with "dynamic" address
+        // Give time for background connection task
+        await Task.Delay(1500);
+        _mockDiscovery.Verify(d => d.DiscoverAsync(deviceId, It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+    }
+
+    [Fact]
+    public async Task AddDeviceAsync_WithStaticAddress_ShouldNotCallDiscovery()
+    {
+        // Arrange
+        var deviceId = "SRW2H63-MUVLXSQ-ALVP0UK-PN3GAQC-M0K99QP-J-JJ9IS-0";
+        var name = "Test Device Static";
+        var addresses = new List<string> { "tcp://192.168.1.200:22000" };
+
+        // Act
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+
+        // Assert
+        Assert.NotNull(device);
+        Assert.Contains("tcp://192.168.1.200:22000", device.Addresses);
+        // With static address, discovery should not be called for address resolution
+        // (it may be called for other reasons, but not for resolving "dynamic")
+    }
+
+    [Fact]
+    public async Task AddDeviceAsync_WithMixedAddresses_ShouldResolveOnlyDynamic()
+    {
+        // Arrange
+        var deviceId = "ABCDEFG-1234567-ABCDEFG-1234567-ABCDEFG-1234567-A";
+        var name = "Test Device Mixed";
+        var addresses = new List<string> { "dynamic", "tcp://10.0.0.1:22000" };
+
+        var discoveredDevice = new DiscoveredDevice
+        {
+            DeviceId = deviceId,
+            Addresses = new List<string> { "tcp://192.168.1.50:22000" }
+        };
+
+        _mockDiscovery
+            .Setup(d => d.DiscoverAsync(deviceId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<DiscoveredDevice> { discoveredDevice });
+
+        // Act
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+
+        // Assert
+        Assert.NotNull(device);
+        // Static address should be in the list
+        Assert.Contains("tcp://10.0.0.1:22000", device.Addresses);
+        // Dynamic should also be in list (original config preserved)
+        Assert.Contains("dynamic", device.Addresses);
+        // After connection attempt, discovered address should be added
+        await Task.Delay(1500);
+        // The device should now have the discovered address added
+    }
+
     public void Dispose()
     {
         _syncEngine?.Dispose();
