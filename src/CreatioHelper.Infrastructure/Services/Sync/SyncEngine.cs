@@ -274,13 +274,13 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogError(ex, "Failed to save device {DeviceId} to config", deviceId);
         }
 
-        // Try to connect if we have addresses
+        // Try to connect if we have addresses (resolve "dynamic" first like Syncthing)
         if (device.Addresses.Any())
         {
             _ = Task.Run(async () =>
             {
                 await Task.Delay(1000); // Small delay to allow for setup
-                await _protocol.ConnectAsync(device, _cancellationTokenSource.Token);
+                await ConnectToDeviceAsync(device, _cancellationTokenSource.Token);
             });
         }
 
@@ -646,11 +646,11 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
 
         device.SetPaused(false);
-        
+
         _logger.LogInformation("Resumed device {DeviceId}", deviceId);
 
-        // Try to reconnect
-        await _protocol.ConnectAsync(device, _cancellationTokenSource.Token);
+        // Try to reconnect (resolve "dynamic" addresses first like Syncthing)
+        await ConnectToDeviceAsync(device, _cancellationTokenSource.Token);
     }
 
     public async Task ScanFolderAsync(string folderId, bool deep = false)
@@ -1537,9 +1537,84 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
     }
 
+    /// <summary>
+    /// Resolves device addresses, replacing "dynamic" with actual addresses from discovery.
+    /// Based on Syncthing's resolveDeviceAddrs in lib/connections/service.go
+    /// </summary>
+    private async Task<List<string>> ResolveDeviceAddressesAsync(SyncDevice device, CancellationToken cancellationToken)
+    {
+        var resolvedAddresses = new List<string>();
+
+        foreach (var addr in device.Addresses)
+        {
+            if (addr == "dynamic")
+            {
+                // Lookup addresses via discovery (like Syncthing's discoverer.Lookup)
+                try
+                {
+                    var discovered = await _discovery.DiscoverAsync(device.DeviceId, cancellationToken);
+                    foreach (var d in discovered)
+                    {
+                        resolvedAddresses.AddRange(d.Addresses);
+                    }
+
+                    // Also try global discovery
+                    if (_globalDiscovery != null)
+                    {
+                        var globalAddresses = await _globalDiscovery.LookupAsync(device.DeviceId, cancellationToken);
+                        resolvedAddresses.AddRange(globalAddresses);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Discovery lookup failed for device {DeviceId}", device.DeviceId);
+                }
+            }
+            else
+            {
+                // Static address - use directly
+                resolvedAddresses.Add(addr);
+            }
+        }
+
+        // Remove duplicates and empty entries
+        return resolvedAddresses
+            .Where(a => !string.IsNullOrWhiteSpace(a))
+            .Distinct()
+            .ToList();
+    }
+
+    /// <summary>
+    /// Connects to a device after resolving "dynamic" addresses.
+    /// Based on Syncthing's connection flow in lib/connections/service.go
+    /// </summary>
+    private async Task<bool> ConnectToDeviceAsync(SyncDevice device, CancellationToken cancellationToken)
+    {
+        // Resolve "dynamic" addresses first (like Syncthing's resolveDeviceAddrs)
+        var resolvedAddresses = await ResolveDeviceAddressesAsync(device, cancellationToken);
+
+        if (resolvedAddresses.Count == 0)
+        {
+            _logger.LogDebug("No addresses resolved for device {DeviceId}", device.DeviceId);
+            return false;
+        }
+
+        _logger.LogDebug("Resolved {Count} addresses for device {DeviceId}: {Addresses}",
+            resolvedAddresses.Count, device.DeviceId, string.Join(", ", resolvedAddresses));
+
+        // Update device with resolved addresses (add to existing, don't replace "dynamic")
+        foreach (var addr in resolvedAddresses)
+        {
+            device.AddAddress(addr);
+        }
+
+        // Now connect using resolved addresses
+        return await _protocol.ConnectAsync(device, cancellationToken);
+    }
+
     private void OnDeviceDiscovered(object? sender, DeviceDiscoveredEventArgs e)
     {
-        _logger.LogDebug("Discovered device {DeviceId} at {Addresses}", 
+        _logger.LogDebug("Discovered device {DeviceId} at {Addresses}",
             e.Device.DeviceId, string.Join(", ", e.Device.Addresses));
 
         if (_devices.TryGetValue(e.Device.DeviceId, out var device))
