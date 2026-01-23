@@ -94,7 +94,17 @@ public class BepProtocol : ISyncProtocol, IDisposable
             return true; // Already connected
         }
 
-        foreach (var address in device.Addresses)
+        // Filter out "dynamic" - it should be resolved before calling ConnectAsync
+        // (like Syncthing's resolveDeviceAddrs in lib/connections/service.go)
+        var addresses = device.Addresses.Where(a => a != "dynamic").ToList();
+
+        if (addresses.Count == 0)
+        {
+            _logger.LogDebug("No resolved addresses for device {DeviceId} (only 'dynamic')", device.DeviceId);
+            return false;
+        }
+
+        foreach (var address in addresses)
         {
             try
             {
