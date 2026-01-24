@@ -41,6 +41,9 @@ public class GlobalDiscovery : IAsyncDisposable
     // Announce interval can be adjusted by server via Reannounce-After header
     private int _announceIntervalSeconds;
 
+    // Per Syncthing: noLookup option disables lookups (announce-only mode)
+    private readonly bool _noLookup;
+
     // Error tracking for status reporting
     private string? _lastError;
     private readonly object _errorLock = new();
@@ -83,6 +86,7 @@ public class GlobalDiscovery : IAsyncDisposable
     /// <param name="announceIntervalSeconds">Initial announce interval (server may override via Reannounce-After)</param>
     /// <param name="lookupCacheSeconds">Lookup result cache duration</param>
     /// <param name="insecureSkipVerify">Skip server certificate verification (for testing only)</param>
+    /// <param name="noLookup">Disable lookups (announce-only mode per Syncthing ?nolookup option)</param>
     public GlobalDiscovery(
         ILogger<GlobalDiscovery> logger,
         string deviceId,
@@ -90,7 +94,8 @@ public class GlobalDiscovery : IAsyncDisposable
         IEnumerable<string>? discoveryServers = null,
         int announceIntervalSeconds = DefaultReannounceIntervalSeconds,
         int lookupCacheSeconds = 300,
-        bool insecureSkipVerify = false)
+        bool insecureSkipVerify = false,
+        bool noLookup = false)
     {
         _logger = logger;
         _deviceId = deviceId;
@@ -98,6 +103,7 @@ public class GlobalDiscovery : IAsyncDisposable
         _discoveryServers = discoveryServers?.ToList() ?? DefaultDiscoveryServers.ToList();
         _announceIntervalSeconds = announceIntervalSeconds;
         _lookupCacheSeconds = lookupCacheSeconds;
+        _noLookup = noLookup;
 
         // Create the HTTP client for announcements - requires TLS client certificate for auth
         // Per Syncthing global.go: "The http.Client used for announcements. It needs to have our
@@ -323,14 +329,36 @@ public class GlobalDiscovery : IAsyncDisposable
     /// <summary>
     /// Looks up a device by ID on all discovery servers.
     /// </summary>
+    /// <remarks>
+    /// Protocol verification against Syncthing (lib/discover/global.go Lookup):
+    /// - Returns lookupError with 1-hour cache if noLookup is set
+    /// - Caches negative results (not found) using Retry-After header duration
+    /// - Merges addresses from all servers
+    /// - Returns null if device not found (but still caches negative result)
+    /// </remarks>
+    /// <exception cref="LookupError">Thrown when lookups are disabled (noLookup mode)</exception>
     public async Task<DiscoveredDevice?> LookupAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        // Check cache first
+        // Per Syncthing global.go: if noLookup, return error with 1 hour cache
+        if (_noLookup)
+        {
+            throw new LookupError("lookups not supported", TimeSpan.FromHours(1));
+        }
+
+        // Check cache first (includes both positive and negative cache entries)
         lock (_cacheLock)
         {
             if (_lookupCache.TryGetValue(deviceId, out var cached) &&
                 cached.ExpiresAt > DateTime.UtcNow)
             {
+                // If this is a negative cache entry, return null (device not found is cached)
+                if (cached.IsNegative)
+                {
+                    _logger.LogDebug("Using cached negative lookup for device: {DeviceId} (error: {Error})",
+                        deviceId, cached.ErrorMessage);
+                    return null;
+                }
+
                 _logger.LogDebug("Using cached lookup for device: {DeviceId}", deviceId);
                 return cached.Device;
             }
@@ -341,13 +369,45 @@ public class GlobalDiscovery : IAsyncDisposable
             LookupOnServerAsync(server, deviceId, cancellationToken));
 
         var results = await Task.WhenAll(tasks);
+
+        // Collect successful results (with addresses)
         var successfulResults = results
-            .Where(r => r != null && r.Addresses.Count > 0)
+            .Where(r => r is { Addresses.Count: > 0 })
+            .ToList();
+
+        // Collect error results with cache durations (for negative caching)
+        var errorResults = results
+            .Where(r => r is { Addresses.Count: 0, CacheForSeconds: not null })
             .ToList();
 
         if (successfulResults.Count == 0)
         {
             _logger.LogDebug("Device not found on any discovery server: {DeviceId}", deviceId);
+
+            // Cache negative result using the longest Retry-After duration from servers
+            // Per Syncthing: Retry-After header indicates how long to cache the error
+            var maxCacheSeconds = errorResults
+                .Where(r => r!.CacheForSeconds.HasValue)
+                .Select(r => r!.CacheForSeconds!.Value)
+                .DefaultIfEmpty(0)
+                .Max();
+
+            if (maxCacheSeconds > 0)
+            {
+                lock (_cacheLock)
+                {
+                    _lookupCache[deviceId] = new CachedLookup
+                    {
+                        Device = null,
+                        ExpiresAt = DateTime.UtcNow.AddSeconds(maxCacheSeconds),
+                        IsNegative = true,
+                        ErrorMessage = "device not found"
+                    };
+                }
+                _logger.LogDebug("Cached negative lookup for {DeviceId} for {Seconds}s",
+                    deviceId, maxCacheSeconds);
+            }
+
             return null;
         }
 
@@ -365,13 +425,15 @@ public class GlobalDiscovery : IAsyncDisposable
             Source = DiscoverySource.Global
         };
 
-        // Cache the result
+        // Cache the positive result
         lock (_cacheLock)
         {
             _lookupCache[deviceId] = new CachedLookup
             {
                 Device = discoveredDevice,
-                ExpiresAt = DateTime.UtcNow.AddSeconds(_lookupCacheSeconds)
+                ExpiresAt = DateTime.UtcNow.AddSeconds(_lookupCacheSeconds),
+                IsNegative = false,
+                ErrorMessage = null
             };
         }
 
@@ -548,6 +610,13 @@ public class GlobalDiscovery : IAsyncDisposable
     /// - No client certificate needed for lookups
     /// - Retry-After header indicates cache duration on error
     /// </summary>
+    /// <remarks>
+    /// Protocol verification against Syncthing (lib/discover/global.go):
+    /// - On non-OK status: Check Retry-After header and return error with cache duration
+    /// - Per Syncthing: "if secs, atoiErr := strconv.Atoi(resp.Header.Get("Retry-After")); atoiErr == nil && secs > 0"
+    /// - Returns lookupError with msg=resp.Status and cacheFor=Retry-After seconds
+    /// - On success: Parse JSON {"addresses": [...]} response
+    /// </remarks>
     private async Task<LookupResult?> LookupOnServerAsync(
         string server,
         string deviceId,
@@ -562,7 +631,9 @@ public class GlobalDiscovery : IAsyncDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                // Check for Retry-After header (cache duration for error)
+                // Per Syncthing: Check Retry-After header and return error with cache duration
+                // "if secs, atoiErr := strconv.Atoi(resp.Header.Get("Retry-After")); atoiErr == nil && secs > 0 {
+                //     err = &lookupError{msg: resp.Status, cacheFor: time.Duration(secs) * time.Second}"
                 int? cacheForSeconds = null;
                 if (response.Headers.TryGetValues("Retry-After", out var retryValues))
                 {
@@ -575,18 +646,22 @@ public class GlobalDiscovery : IAsyncDisposable
 
                 if (response.StatusCode == HttpStatusCode.NotFound)
                 {
-                    _logger.LogDebug("Device not found on {Server}: {DeviceId}", server, deviceId);
+                    _logger.LogDebug("Device not found on {Server}: {DeviceId} (cache for {CacheFor}s)",
+                        server, deviceId, cacheForSeconds);
                 }
                 else
                 {
                     _logger.LogDebug("Lookup failed on {Server}: {StatusCode} (cache for {CacheFor}s)",
                         server, response.StatusCode, cacheForSeconds);
                 }
-                return null;
+
+                // Return an empty result with cache duration for negative caching
+                // Per Syncthing: error responses should be cached according to Retry-After
+                return new LookupResult(new List<string>(), cacheForSeconds, response.ReasonPhrase);
             }
 
             var addresses = await response.Content.ReadFromJsonAsync<DiscoveryLookupResult>(cancellationToken: cancellationToken);
-            return addresses != null ? new LookupResult(addresses.Addresses, null) : null;
+            return addresses != null ? new LookupResult(addresses.Addresses, null, null) : null;
         }
         catch (Exception ex)
         {
@@ -597,8 +672,12 @@ public class GlobalDiscovery : IAsyncDisposable
 
     /// <summary>
     /// Result of a lookup attempt with optional cache duration.
+    /// Per Syncthing global.go lookupError pattern - errors include cache duration.
     /// </summary>
-    private record LookupResult(List<string> Addresses, int? CacheForSeconds);
+    /// <param name="Addresses">List of addresses found (empty if not found/error)</param>
+    /// <param name="CacheForSeconds">How long to cache this result (from Retry-After header)</param>
+    /// <param name="ErrorMessage">Error message if this is an error result</param>
+    private record LookupResult(List<string> Addresses, int? CacheForSeconds, string? ErrorMessage);
 
     /// <summary>
     /// Sets the error state.
@@ -632,6 +711,12 @@ public class GlobalDiscovery : IAsyncDisposable
     /// </summary>
     public bool HasClientCertificate => _clientCertificate != null;
 
+    /// <summary>
+    /// Gets whether lookups are disabled (announce-only mode).
+    /// Per Syncthing global.go ?nolookup option.
+    /// </summary>
+    public bool NoLookup => _noLookup;
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
@@ -658,5 +743,45 @@ public class GlobalDiscovery : IAsyncDisposable
     {
         public DiscoveredDevice? Device { get; set; }
         public DateTime ExpiresAt { get; set; }
+
+        /// <summary>
+        /// Whether this is a negative cache entry (device not found or error).
+        /// </summary>
+        public bool IsNegative { get; set; }
+
+        /// <summary>
+        /// Error message if this is a negative cache entry.
+        /// </summary>
+        public string? ErrorMessage { get; set; }
     }
+}
+
+/// <summary>
+/// A lookup error with cache validity time attached.
+/// Per Syncthing global.go lookupError pattern.
+/// </summary>
+/// <remarks>
+/// Protocol verification against Syncthing (lib/discover/global.go):
+/// - lookupError struct has msg (string) and cacheFor (time.Duration)
+/// - Error() returns the message
+/// - CacheFor() returns how long the error should be cached
+/// - Used to cache negative results (device not found, server errors)
+/// </remarks>
+public class LookupError : Exception
+{
+    /// <summary>
+    /// Creates a new lookup error.
+    /// </summary>
+    /// <param name="message">Error message</param>
+    /// <param name="cacheFor">How long to cache this error</param>
+    public LookupError(string message, TimeSpan cacheFor) : base(message)
+    {
+        CacheFor = cacheFor;
+    }
+
+    /// <summary>
+    /// How long this error should be cached.
+    /// Per Syncthing: Retry-After header value on error responses.
+    /// </summary>
+    public TimeSpan CacheFor { get; }
 }
