@@ -51,30 +51,76 @@ public class DiscoveryCache : IDisposable
     /// </summary>
     public void AddPositive(string deviceId, List<string> addresses, DiscoveryCacheSource source)
     {
+        AddPositive(deviceId, addresses, source, instanceId: 0);
+    }
+
+    /// <summary>
+    /// Add a positive entry with instance ID support for stale cache detection.
+    /// Returns true if this is a new device or the instance ID changed (device restarted).
+    /// Following Syncthing pattern: lib/discover/local.go registerDevice
+    /// </summary>
+    /// <param name="deviceId">Device ID</param>
+    /// <param name="addresses">Device addresses</param>
+    /// <param name="source">Discovery source</param>
+    /// <param name="instanceId">Instance ID from the announcing device</param>
+    /// <returns>True if this is a new device or instance ID changed, false otherwise</returns>
+    public bool AddPositive(string deviceId, List<string> addresses, DiscoveryCacheSource source, long instanceId)
+    {
         var ttl = source == DiscoveryCacheSource.Local ? LocalDiscoveryTtl : PositiveTtl;
+        var now = DateTime.UtcNow;
+        var isNewOrChanged = false;
+
         var entry = new CacheEntry
         {
             DeviceId = deviceId,
             Addresses = new List<string>(addresses),
             Source = source,
-            ExpiresAt = DateTime.UtcNow.Add(ttl),
-            IsNegative = false
+            ExpiresAt = now.Add(ttl),
+            IsNegative = false,
+            InstanceId = instanceId
         };
 
-        _positiveCache.AddOrUpdate(deviceId, entry, (_, existing) =>
-        {
-            // Merge addresses from different sources
-            var mergedAddresses = new HashSet<string>(existing.Addresses);
-            mergedAddresses.UnionWith(addresses);
-            entry.Addresses = mergedAddresses.ToList();
-            return entry;
-        });
+        _positiveCache.AddOrUpdate(deviceId,
+            // Add factory - this is a new device
+            _ =>
+            {
+                isNewOrChanged = true;
+                return entry;
+            },
+            // Update factory - check if instance ID changed or entry expired
+            (_, existing) =>
+            {
+                // Following Syncthing pattern from lib/discover/local.go registerDevice:
+                // isNewDevice := !existsAlready || time.Since(ce.when) > CacheLifeTime || ce.instanceID != device.InstanceId
+                var isExpired = existing.ExpiresAt <= now;
+                var instanceIdChanged = existing.InstanceId != instanceId && instanceId != 0 && existing.InstanceId != 0;
+
+                if (isExpired || instanceIdChanged)
+                {
+                    isNewOrChanged = true;
+                    // Don't merge addresses - replace with new set (device restarted or cache expired)
+                    if (instanceIdChanged)
+                    {
+                        _logger.LogInformation("Device {DeviceId} instance ID changed: {OldInstanceId} -> {NewInstanceId} (cache invalidated)",
+                            deviceId, existing.InstanceId, instanceId);
+                    }
+                    return entry;
+                }
+
+                // Entry is still valid and instance ID matches - merge addresses
+                var mergedAddresses = new HashSet<string>(existing.Addresses);
+                mergedAddresses.UnionWith(addresses);
+                entry.Addresses = mergedAddresses.ToList();
+                return entry;
+            });
 
         // Remove from negative cache if present
         _negativeCache.TryRemove(deviceId, out _);
 
-        _logger.LogDebug("Added positive cache entry for device {DeviceId} with {Count} addresses, expires in {Ttl}",
-            deviceId, addresses.Count, ttl);
+        _logger.LogDebug("Added positive cache entry for device {DeviceId} with {Count} addresses, expires in {Ttl}, isNew={IsNew}",
+            deviceId, addresses.Count, ttl, isNewOrChanged);
+
+        return isNewOrChanged;
     }
 
     /// <summary>
@@ -243,6 +289,14 @@ public class CacheEntry
     public DiscoveryCacheSource Source { get; set; }
     public DateTime ExpiresAt { get; set; }
     public bool IsNegative { get; set; }
+
+    /// <summary>
+    /// Instance ID from the announcing device. Used for stale cache detection.
+    /// When a device restarts, it generates a new instance ID, allowing receivers
+    /// to detect that cached information may be stale even if within TTL.
+    /// (Syncthing compatibility: lib/discover/local.go registerDevice)
+    /// </summary>
+    public long InstanceId { get; set; }
 
     public bool IsValid => ExpiresAt > DateTime.UtcNow;
     public TimeSpan TimeToLive => ExpiresAt - DateTime.UtcNow;
