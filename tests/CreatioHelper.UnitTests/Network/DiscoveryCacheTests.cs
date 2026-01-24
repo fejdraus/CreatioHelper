@@ -554,6 +554,236 @@ public class DiscoveryCacheTests : IDisposable
 
     #endregion
 
+    #region Instance ID Change Detection Tests (Syncthing Compatibility)
+
+    /// <summary>
+    /// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go registerDevice
+    /// isNewDevice := !existsAlready || time.Since(ce.when) > CacheLifeTime || ce.instanceID != device.InstanceId
+    /// </summary>
+    [Fact]
+    public void AddPositive_WithInstanceId_ReturnsTrue_WhenNewDevice()
+    {
+        // Arrange
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+        var instanceId = 12345L;
+
+        // Act - First time adding a device
+        var isNew = _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+
+        // Assert - Should be considered a new device
+        Assert.True(isNew);
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.Equal(instanceId, entry!.InstanceId);
+    }
+
+    [Fact]
+    public void AddPositive_WithInstanceId_ReturnsFalse_WhenSameInstanceId()
+    {
+        // Arrange
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+        var instanceId = 12345L;
+
+        // Act - Add device first time, then add again with same instance ID
+        _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+        var isNew = _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+
+        // Assert - Should NOT be considered new (same instance ID)
+        Assert.False(isNew);
+    }
+
+    [Fact]
+    public void AddPositive_WithInstanceId_ReturnsTrue_WhenInstanceIdChanged()
+    {
+        // Arrange - Simulates device restart (Syncthing compatibility)
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+        var instanceId1 = 12345L;
+        var instanceId2 = 67890L; // Different instance ID = device restarted
+
+        // Act - Add device with first instance ID, then with different instance ID
+        _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId1);
+        var isNew = _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId2);
+
+        // Assert - Should be considered new because instance ID changed
+        Assert.True(isNew);
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.Equal(instanceId2, entry!.InstanceId);
+    }
+
+    [Fact]
+    public void AddPositive_WithInstanceId_InvalidatesCache_WhenInstanceIdChanged()
+    {
+        // Arrange - Simulates device restart with different addresses
+        var deviceId = "device1";
+        var addresses1 = new List<string> { "tcp://192.168.1.1:22000", "tcp://192.168.1.2:22000" };
+        var addresses2 = new List<string> { "tcp://10.0.0.1:22000" }; // New address after restart
+        var instanceId1 = 12345L;
+        var instanceId2 = 67890L; // Different instance ID = device restarted
+
+        // Act - Add device with first instance ID, then with different instance ID and addresses
+        _cache.AddPositive(deviceId, addresses1, DiscoveryCacheSource.Local, instanceId1);
+        _cache.AddPositive(deviceId, addresses2, DiscoveryCacheSource.Local, instanceId2);
+
+        // Assert - Old addresses should be replaced (cache invalidated), not merged
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Single(entry.Addresses);
+        Assert.Equal("tcp://10.0.0.1:22000", entry.Addresses[0]);
+    }
+
+    [Fact]
+    public void AddPositive_WithSameInstanceId_MergesAddresses()
+    {
+        // Arrange - Same device with same instance ID should merge addresses
+        var deviceId = "device1";
+        var addresses1 = new List<string> { "tcp://192.168.1.1:22000" };
+        var addresses2 = new List<string> { "tcp://10.0.0.1:22000" };
+        var instanceId = 12345L;
+
+        // Act - Add device with same instance ID but different addresses
+        _cache.AddPositive(deviceId, addresses1, DiscoveryCacheSource.Local, instanceId);
+        _cache.AddPositive(deviceId, addresses2, DiscoveryCacheSource.Local, instanceId);
+
+        // Assert - Addresses should be merged (not replaced)
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Equal(2, entry.Addresses.Count);
+        Assert.Contains("tcp://192.168.1.1:22000", entry.Addresses);
+        Assert.Contains("tcp://10.0.0.1:22000", entry.Addresses);
+    }
+
+    [Fact]
+    public void AddPositive_WithInstanceId_StoresInstanceIdInEntry()
+    {
+        // Arrange
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+        var instanceId = 123456789L;
+
+        // Act
+        _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+
+        // Assert - Instance ID should be stored in cache entry
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Equal(instanceId, entry.InstanceId);
+    }
+
+    [Fact]
+    public void AddPositive_WithoutInstanceId_DefaultsToZero()
+    {
+        // Arrange
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+
+        // Act - Use the overload without instance ID
+        _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local);
+
+        // Assert - Instance ID should default to 0
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Equal(0, entry.InstanceId);
+    }
+
+    [Fact]
+    public void AddPositive_ZeroInstanceId_DoesNotTriggerChange()
+    {
+        // Arrange - Zero instance ID should be treated as "unknown" and not trigger changes
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+        var instanceId = 12345L;
+
+        // Act - Add with non-zero, then add with zero instance ID
+        _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+        var isNew = _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, 0);
+
+        // Assert - Zero instance ID should not trigger a change (backward compatibility)
+        Assert.False(isNew);
+    }
+
+    [Fact]
+    public void InstanceIdChange_SimulatesDeviceRestart()
+    {
+        // Arrange - Full simulation of Syncthing device restart scenario
+        var deviceId = "TESTDEVICE-1234567-ABCDEFG";
+        var originalAddresses = new List<string> { "tcp://192.168.1.100:22000" };
+        var newAddresses = new List<string> { "tcp://192.168.1.200:22000" }; // IP changed after restart
+        var originalInstanceId = Random.Shared.NextInt64();
+        var newInstanceId = Random.Shared.NextInt64(); // New random ID after restart
+
+        // Act - Simulate initial discovery
+        var firstAdd = _cache.AddPositive(deviceId, originalAddresses, DiscoveryCacheSource.Local, originalInstanceId);
+
+        // Assert - First add is always new
+        Assert.True(firstAdd);
+
+        // Act - Simulate device restart (new instance ID, new addresses)
+        var afterRestart = _cache.AddPositive(deviceId, newAddresses, DiscoveryCacheSource.Local, newInstanceId);
+
+        // Assert - Should be treated as new device (cache invalidated)
+        Assert.True(afterRestart);
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Equal(newInstanceId, entry.InstanceId);
+        Assert.Single(entry.Addresses);
+        Assert.Equal("tcp://192.168.1.200:22000", entry.Addresses[0]);
+    }
+
+    [Fact]
+    public void InstanceIdChange_MultipleUpdatesWithSameInstanceId_MergesAddresses()
+    {
+        // Arrange - Multiple announcements from same device instance should merge
+        var deviceId = "device1";
+        var instanceId = 12345L;
+
+        // Act - Multiple announcements with different addresses but same instance ID
+        _cache.AddPositive(deviceId, new List<string> { "tcp://192.168.1.1:22000" }, DiscoveryCacheSource.Local, instanceId);
+        _cache.AddPositive(deviceId, new List<string> { "tcp://[fe80::1]:22000" }, DiscoveryCacheSource.Local, instanceId);
+        _cache.AddPositive(deviceId, new List<string> { "tcp://10.0.0.1:22000" }, DiscoveryCacheSource.Local, instanceId);
+
+        // Assert - All addresses should be merged
+        Assert.True(_cache.TryGet(deviceId, out var entry));
+        Assert.NotNull(entry);
+        Assert.Equal(3, entry.Addresses.Count);
+        Assert.Contains("tcp://192.168.1.1:22000", entry.Addresses);
+        Assert.Contains("tcp://[fe80::1]:22000", entry.Addresses);
+        Assert.Contains("tcp://10.0.0.1:22000", entry.Addresses);
+    }
+
+    [Fact]
+    public void CacheEntry_InstanceId_HasCorrectRange()
+    {
+        // Arrange - Instance ID should support full Int64 range (Syncthing uses rand.Int63)
+        var deviceId = "device1";
+        var addresses = new List<string> { "tcp://192.168.1.1:22000" };
+
+        // Test with various valid instance ID values
+        var testValues = new long[]
+        {
+            0L,
+            1L,
+            -1L, // Should work even if negative
+            long.MaxValue,
+            long.MinValue,
+            Random.Shared.NextInt64()
+        };
+
+        foreach (var instanceId in testValues)
+        {
+            // Act
+            _cache.Remove(deviceId);
+            _cache.AddPositive(deviceId, addresses, DiscoveryCacheSource.Local, instanceId);
+
+            // Assert
+            Assert.True(_cache.TryGet(deviceId, out var entry));
+            Assert.Equal(instanceId, entry!.InstanceId);
+        }
+    }
+
+    #endregion
+
     public void Dispose()
     {
         _cache.Dispose();
