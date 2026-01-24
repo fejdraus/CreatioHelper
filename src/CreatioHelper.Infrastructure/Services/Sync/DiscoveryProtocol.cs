@@ -7,10 +7,17 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// Syncthing-compatible local discovery protocol implementation
 /// Based on discoproto.Announce protobuf message structure
 ///
+/// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go (2025-01-25)
+/// - Syncthing uses: pkt.Id = c.myID[:] (32 raw bytes, not base32 string)
+/// - This implementation correctly converts device ID to/from 32 raw bytes for wire format
+///
 /// Device ID encoding follows Syncthing protocol:
-/// - Raw device ID is 32 bytes (SHA-256 hash of certificate)
-/// - String format uses RFC 4648 base32 (A-Z, 2-7) with Luhn32 check digits
-/// - Final format: 8 groups of 7 chars separated by hyphens (63 chars total)
+/// - Wire format: 32 raw bytes (SHA-256 hash of TLS certificate)
+/// - Human-readable format: RFC 4648 base32 (A-Z, 2-7) with Luhn32 check digits
+/// - String format: 8 groups of 7 chars separated by hyphens (63 chars total)
+///
+/// IMPORTANT: Device ID MUST be transmitted as 32 raw bytes in the protobuf 'id' field,
+/// NOT as a base32-encoded string. This ensures compatibility with native Syncthing clients.
 /// </summary>
 public static class DiscoveryProtocol
 {
@@ -207,9 +214,14 @@ public static class DiscoveryProtocol
     }
     
     /// <summary>
-    /// Parses Syncthing device ID string (Luhnified base32) to raw 32 bytes
-    /// Device IDs are 32-byte (256-bit) SHA-256 hashes encoded as base32 with Luhn check digits
-    /// Format: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH (63 chars)
+    /// Parses Syncthing device ID string (Luhnified base32) to raw 32 bytes for wire transmission.
+    ///
+    /// VERIFIED: This method converts human-readable device ID to raw bytes for the wire format.
+    /// Syncthing transmits device IDs as 32 raw bytes (not base32 string) in local discovery.
+    /// Reference: lib/discover/local.go - pkt.Id = c.myID[:] where myID is [32]byte
+    ///
+    /// Input format: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH (63 chars)
+    /// Output: 32 raw bytes (256-bit SHA-256 hash)
     /// </summary>
     private static byte[] ParseDeviceId(string deviceId)
     {

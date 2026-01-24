@@ -12,10 +12,17 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// Uses UDP broadcast/multicast for device announcement and discovery
 /// Compatible with Syncthing's local discovery protocol (lib/discover/local.go)
 ///
+/// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go (2025-01-25)
+/// - Magic number: 0x2EA7D90B (big-endian, same as BEP protocol)
+/// - Device ID transmitted as 32 raw bytes, NOT base32 string
+/// - Legacy magic 0x7D79BC40 rejected with warning (v0.13 incompatible)
+/// - Broadcast interval: 30 seconds
+/// - Cache lifetime: 90 seconds (3 * BroadcastInterval)
+///
 /// Protocol structure:
 /// - Magic bytes: 4 bytes, big endian (0x2EA7D90B for current, 0x7D79BC40 for v0.13)
 /// - Protobuf payload (discoproto.Announce):
-///   - id: 32 raw bytes (device ID as SHA-256 hash)
+///   - id: 32 raw bytes (device ID as SHA-256 hash, NOT base32 encoded)
 ///   - addresses: repeated strings (device addresses)
 ///   - instance_id: int64 (random ID for detecting restarts)
 /// </summary>
