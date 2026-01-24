@@ -1,0 +1,44 @@
+@* ByteSizeDisplay - Displays byte values in human-readable format *@
+
+<MudText Typo="@Typo" Color="@Color" Class="@Class">@FormatBytes(Bytes)</MudText>
+
+@code {
+    [Parameter]
+    public long Bytes { get; set; }
+
+    [Parameter]
+    public Typo Typo { get; set; } = Typo.body1;
+
+    [Parameter]
+    public Color Color { get; set; } = Color.Default;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public int Decimals { get; set; } = 2;
+
+    [Parameter]
+    public bool ShowUnit { get; set; } = true;
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes == 0) return ShowUnit ? "0 B" : "0";
+
+        string[] sizes = { "B", "KB", "MB", "GB", "TB", "PB" };
+        double len = Math.Abs(bytes);
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+
+        var sign = bytes < 0 ? "-" : "";
+        var format = Decimals > 0 ? $"F{Decimals}" : "F0";
+        var value = len.ToString(format);
+
+        return ShowUnit ? $"{sign}{value} {sizes[order]}" : $"{sign}{value}";
+    }
+}

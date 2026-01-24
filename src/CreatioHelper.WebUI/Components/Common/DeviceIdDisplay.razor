@@ -1,0 +1,111 @@
+@* DeviceIdDisplay - Shows Device ID with copy functionality *@
+@inject IJSRuntime JS
+@inject ISnackbar Snackbar
+
+<div class="device-id-display @Class">
+    @if (ShowQrButton)
+    {
+        <MudIconButton Icon="@Icons.Material.Filled.QrCode2"
+                       Size="Size.Small"
+                       Color="Color.Default"
+                       OnClick="@ShowQrCode"
+                       aria-label="Show QR Code" />
+    }
+
+    <MudTooltip Text="@DeviceId" Placement="Placement.Top">
+        <MudText Typo="@Typo" Class="device-id-text" Style="font-family: monospace;">
+            @GetDisplayText()
+        </MudText>
+    </MudTooltip>
+
+    <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                   Size="Size.Small"
+                   Color="Color.Default"
+                   OnClick="@CopyToClipboard"
+                   aria-label="Copy to clipboard" />
+</div>
+
+@code {
+    [Parameter]
+    public string DeviceId { get; set; } = string.Empty;
+
+    [Parameter]
+    public Typo Typo { get; set; } = Typo.body2;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool ShowFull { get; set; } = false;
+
+    [Parameter]
+    public bool ShowQrButton { get; set; } = false;
+
+    [Parameter]
+    public int TruncateLength { get; set; } = 7;
+
+    [Parameter]
+    public EventCallback OnQrCodeClick { get; set; }
+
+    private string GetDisplayText()
+    {
+        if (string.IsNullOrEmpty(DeviceId))
+            return "—";
+
+        if (ShowFull)
+            return FormatDeviceId(DeviceId);
+
+        return DeviceId.Length > TruncateLength
+            ? DeviceId[..TruncateLength] + "..."
+            : DeviceId;
+    }
+
+    private static string FormatDeviceId(string deviceId)
+    {
+        // Format as XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX
+        if (string.IsNullOrEmpty(deviceId) || deviceId.Contains('-'))
+            return deviceId;
+
+        var parts = new List<string>();
+        for (int i = 0; i < deviceId.Length; i += 7)
+        {
+            var length = Math.Min(7, deviceId.Length - i);
+            parts.Add(deviceId.Substring(i, length));
+        }
+        return string.Join("-", parts);
+    }
+
+    private async Task CopyToClipboard()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", DeviceId);
+            Snackbar.Add("Device ID copied to clipboard", Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+        }
+    }
+
+    private async Task ShowQrCode()
+    {
+        if (OnQrCodeClick.HasDelegate)
+        {
+            await OnQrCodeClick.InvokeAsync();
+        }
+    }
+}
+
+<style>
+    .device-id-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .device-id-text {
+        user-select: all;
+        cursor: text;
+    }
+</style>

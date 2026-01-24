@@ -405,9 +405,7 @@ public class RelayServer : IDisposable
 
     public void Dispose()
     {
-        if (_disposed)
-            return;
-
+        if (_disposed) return;
         _disposed = true;
 
         try
@@ -420,7 +418,7 @@ public class RelayServer : IDisposable
         }
 
         _cleanupTimer.Dispose();
-        _cancellationTokenSource.Dispose();
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
     }
 }
 

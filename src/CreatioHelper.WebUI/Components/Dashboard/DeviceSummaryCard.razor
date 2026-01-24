@@ -1,0 +1,81 @@
+@* DeviceSummaryCard - Dashboard card showing device statistics *@
+@using CreatioHelper.WebUI.Models
+
+<MudPaper Class="pa-4" Elevation="2">
+    <div class="d-flex justify-space-between align-center mb-3">
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-2" />
+            Devices
+        </MudText>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/devices" Size="Size.Small">
+            View All
+        </MudButton>
+    </div>
+
+    @if (Loading)
+    {
+        <MudSkeleton Width="100%" Height="80px" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="4">
+                <div class="text-center">
+                    <MudText Typo="Typo.h4" Color="Color.Success">@ConnectedCount</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connected</MudText>
+                </div>
+            </MudItem>
+            <MudItem xs="4">
+                <div class="text-center">
+                    <MudText Typo="Typo.h4" Color="Color.Warning">@PausedCount</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Paused</MudText>
+                </div>
+            </MudItem>
+            <MudItem xs="4">
+                <div class="text-center">
+                    <MudText Typo="Typo.h4">@TotalCount</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Total</MudText>
+                </div>
+            </MudItem>
+        </MudGrid>
+
+        @if (Devices?.Any() == true)
+        {
+            <MudDivider Class="my-3" />
+
+            <MudList T="DeviceConfig" Dense="true" Class="py-0">
+                @foreach (var device in Devices.Take(5))
+                {
+                    var isConnected = Connections?.Any(c => c.DeviceId == device.DeviceId && c.Connected) ?? false;
+                    <MudListItem Href="@($"/devices/{device.DeviceId}")" Class="py-1">
+                        <div class="d-flex align-center gap-2">
+                            <MudIcon Icon="@Icons.Material.Filled.Circle"
+                                     Size="Size.Small"
+                                     Color="@(isConnected ? Color.Success : Color.Default)" />
+                            <MudText Typo="Typo.body2">@device.DisplayName</MudText>
+                            @if (device.Paused)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-auto">Paused</MudChip>
+                            }
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IEnumerable<DeviceConfig>? Devices { get; set; }
+
+    [Parameter]
+    public IEnumerable<ConnectionInfo>? Connections { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    private int TotalCount => Devices?.Count() ?? 0;
+    private int ConnectedCount => Connections?.Count(c => c.Connected) ?? 0;
+    private int PausedCount => Devices?.Count(d => d.Paused) ?? 0;
+}
