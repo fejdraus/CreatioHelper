@@ -4,6 +4,8 @@ using System.Net.Security;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
+using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Infrastructure.Services.Metrics;
 using CreatioHelper.Infrastructure.Services.Sync.Proto;
 using Google.Protobuf;
 using K4os.Compression.LZ4;
@@ -32,7 +34,7 @@ public enum BepSerializationMode
 /// Supports both JSON (legacy) and Protobuf (native Syncthing) serialization.
 /// Wire format: [2 bytes: header length][Header: protobuf][4 bytes: message length][Message: protobuf]
 /// </summary>
-public class BepConnection : IDisposable
+public class BepConnection : IDisposable, IConnectionLifecycle
 {
     private string _deviceId;
     private readonly TcpClient _tcpClient;
@@ -52,9 +54,41 @@ public class BepConnection : IDisposable
     private const int CompressionThreshold = 128;
     private const int MaxMessageSize = 1024 * 1024 * 16; // 16MB
 
+    // Connection lifecycle tracking
+    private ConnectionState _state = ConnectionState.Connecting;
+    private DateTime _lastActivity = DateTime.UtcNow;
+    private long _bytesSent = 0;
+    private long _bytesReceived = 0;
+    private int _errorCount = 0;
+    private readonly object _stateLock = new();
+
     public string DeviceId => _deviceId;
     public bool IsConnected => _isConnected && _tcpClient.Connected;
     public BepSerializationMode SerializationMode => _serializationMode;
+
+    // IConnectionLifecycle implementation
+    public event EventHandler<ConnectionStateEventArgs>? StateChanged;
+    public ConnectionState State
+    {
+        get
+        {
+            lock (_stateLock)
+            {
+                return _state;
+            }
+        }
+        private set
+        {
+            ConnectionState oldState;
+            lock (_stateLock)
+            {
+                if (_state == value) return;
+                oldState = _state;
+                _state = value;
+            }
+            OnStateChanged(oldState, value);
+        }
+    }
 
     // Events for message processing
     public event EventHandler<(BepMessageType Type, object Message)>? MessageReceived;
@@ -71,8 +105,94 @@ public class BepConnection : IDisposable
         _protobufSerializer = new BepProtobufSerializer(logger as ILogger<BepProtobufSerializer>);
     }
 
+    /// <summary>
+    /// Gets the current health status of the connection.
+    /// </summary>
+    public ConnectionHealth GetHealth()
+    {
+        // Calculate health score based on various factors
+        double score = 100.0;
+
+        // Deduct for errors (up to 50 points)
+        if (_errorCount > 0)
+        {
+            score -= Math.Min(50, _errorCount * 10);
+        }
+
+        // Deduct for inactivity (up to 30 points)
+        var inactivitySeconds = (DateTime.UtcNow - _lastActivity).TotalSeconds;
+        if (inactivitySeconds > 60)
+        {
+            score -= Math.Min(30, (inactivitySeconds - 60) / 10);
+        }
+
+        // Deduct if not connected (30 points)
+        if (!IsConnected)
+        {
+            score -= 30;
+        }
+
+        // Ensure score is within bounds
+        score = Math.Max(0, Math.Min(100, score));
+
+        // Update health score metric
+        ConnectionMetrics.SetHealthScore(_deviceId, score);
+
+        return new ConnectionHealth
+        {
+            Score = score,
+            Latency = TimeSpan.Zero, // TODO: Implement ping-based latency measurement
+            LastActivity = _lastActivity,
+            BytesSent = _bytesSent,
+            BytesReceived = _bytesReceived,
+            ErrorCount = _errorCount
+        };
+    }
+
+    private void OnStateChanged(ConnectionState oldState, ConnectionState newState, string? reason = null)
+    {
+        _logger.LogInformation("Connection state changed for device {DeviceId}: {OldState} -> {NewState}{Reason}",
+            _deviceId, oldState, newState, reason != null ? $" ({reason})" : "");
+
+        // Record state transition metric
+        ConnectionMetrics.RecordStateTransition(oldState.ToString(), newState.ToString());
+
+        StateChanged?.Invoke(this, new ConnectionStateEventArgs
+        {
+            OldState = oldState,
+            NewState = newState,
+            Reason = reason,
+            DeviceId = _deviceId
+        });
+    }
+
+    private void UpdateActivity()
+    {
+        _lastActivity = DateTime.UtcNow;
+    }
+
+    private void IncrementBytesSent(long bytes)
+    {
+        Interlocked.Add(ref _bytesSent, bytes);
+        UpdateActivity();
+    }
+
+    private void IncrementBytesReceived(long bytes)
+    {
+        Interlocked.Add(ref _bytesReceived, bytes);
+        UpdateActivity();
+    }
+
+    private void IncrementErrorCount()
+    {
+        Interlocked.Increment(ref _errorCount);
+    }
+
     public Task StartAsync()
     {
+        // Transition to Connected state
+        State = ConnectionState.Connected;
+
         _ = Task.Run(async () =>
         {
             try
@@ -82,10 +202,12 @@ public class BepConnection : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in BEP receive loop for device {DeviceId}", _deviceId);
+                IncrementErrorCount();
+                State = ConnectionState.Failed;
                 await DisconnectAsync();
             }
         });
-        
+
         return Task.CompletedTask;
     }
 
@@ -132,7 +254,8 @@ public class BepConnection : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error sending BEP message to device {DeviceId}", _deviceId);
-            await DisconnectAsync();
+            IncrementErrorCount();
+            await DisconnectAsync("Error sending message");
         }
         finally
         {
@@ -150,6 +273,7 @@ public class BepConnection : IDisposable
             await _stream.WriteAsync(helloData);
             await _stream.FlushAsync();
             _magicSent = true;
+            IncrementBytesSent(helloData.Length);
             _logger.LogDebug("Sent BEP Hello (Protobuf) to device {DeviceId}", _deviceId);
             return;
         }
@@ -159,6 +283,7 @@ public class BepConnection : IDisposable
         var wireData = _protobufSerializer.SerializeMessage(protoMessage, protoMessageType, allowCompression: true);
         await _stream.WriteAsync(wireData);
         await _stream.FlushAsync();
+        IncrementBytesSent(wireData.Length);
 
         _logger.LogDebug("Sent BEP {MessageType} (Protobuf) to device {DeviceId}, size: {Size}",
             messageType, _deviceId, wireData.Length);
@@ -190,6 +315,8 @@ public class BepConnection : IDisposable
 
     private async Task SendMessageJsonAsync<T>(BepMessageType messageType, T message)
     {
+        long totalBytesSent = 0;
+
         // Send BEP magic number only for Hello message (first message from client)
         if (messageType == BepMessageType.Hello && !_magicSent)
         {
@@ -197,6 +324,7 @@ public class BepConnection : IDisposable
             BinaryPrimitives.WriteUInt32BigEndian(magicBytes, BepMagic);
             await _stream.WriteAsync(magicBytes);
             _magicSent = true;
+            totalBytesSent += 4;
             _logger.LogDebug("Sent BEP magic number 0x{Magic:X8} to device {DeviceId}", BepMagic, _deviceId);
         }
 
@@ -239,18 +367,24 @@ public class BepConnection : IDisposable
         var headerLengthBytes = new byte[2];
         BinaryPrimitives.WriteUInt16BigEndian(headerLengthBytes, (ushort)headerData.Length);
         await _stream.WriteAsync(headerLengthBytes);
+        totalBytesSent += 2;
 
         // Write header
         await _stream.WriteAsync(headerData);
+        totalBytesSent += headerData.Length;
 
         // Write message length (4 bytes, big endian)
         var messageLengthBytes = new byte[4];
         BinaryPrimitives.WriteUInt32BigEndian(messageLengthBytes, (uint)messageData.Length);
         await _stream.WriteAsync(messageLengthBytes);
+        totalBytesSent += 4;
 
         // Write message
         await _stream.WriteAsync(messageData);
+        totalBytesSent += messageData.Length;
+
         await _stream.FlushAsync();
+        IncrementBytesSent(totalBytesSent);
 
         _logger.LogDebug("Sent BEP {MessageType} (JSON) to device {DeviceId}, size: {Size}, compressed: {Compressed}",
             messageType, _deviceId, messageData.Length, compression != BepCompression.None);
@@ -377,6 +511,7 @@ public class BepConnection : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error receiving BEP message (Protobuf) from device {DeviceId}", _deviceId);
+                IncrementErrorCount();
                 break;
             }
         }
@@ -386,6 +521,9 @@ public class BepConnection : IDisposable
     {
         try
         {
+            // Track bytes received (estimate based on serialized message size)
+            IncrementBytesReceived(message.CalculateSize());
+
             var messageType = (BepMessageType)(int)header.Type;
 
             switch (message)
@@ -459,6 +597,7 @@ public class BepConnection : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing BEP message (Protobuf) from device {DeviceId}", _deviceId);
+            IncrementErrorCount();
         }
     }
 
@@ -469,6 +608,7 @@ public class BepConnection : IDisposable
         {
             var magicBytes = new byte[4];
             await ReadExactAsync(magicBytes, cancellationToken);
+            IncrementBytesReceived(4);
             var magic = BinaryPrimitives.ReadUInt32BigEndian(magicBytes);
 
             if (magic != BepMagic)
@@ -483,43 +623,55 @@ public class BepConnection : IDisposable
         {
             try
             {
+                long bytesReceivedThisMessage = 0;
+
                 // Read header length (2 bytes, big endian)
                 var headerLengthBytes = new byte[2];
                 await ReadExactAsync(headerLengthBytes, cancellationToken);
+                bytesReceivedThisMessage += 2;
                 var headerLength = BinaryPrimitives.ReadUInt16BigEndian(headerLengthBytes);
 
                 if (headerLength > 1024) // Reasonable header size limit
                 {
                     _logger.LogError("Header too large from device {DeviceId}: {Length} bytes", _deviceId, headerLength);
+                    IncrementErrorCount();
                     return;
                 }
 
                 // Read header
                 var headerData = new byte[headerLength];
                 await ReadExactAsync(headerData, cancellationToken);
+                bytesReceivedThisMessage += headerLength;
 
                 var headerJson = Encoding.UTF8.GetString(headerData);
                 var header = JsonSerializer.Deserialize<BepHeader>(headerJson);
                 if (header == null)
                 {
                     _logger.LogError("Failed to deserialize header from device {DeviceId}", _deviceId);
+                    IncrementErrorCount();
                     return;
                 }
 
                 // Read message length (4 bytes, big endian)
                 var messageLengthBytes = new byte[4];
                 await ReadExactAsync(messageLengthBytes, cancellationToken);
+                bytesReceivedThisMessage += 4;
                 var messageLength = BinaryPrimitives.ReadUInt32BigEndian(messageLengthBytes);
 
                 if (messageLength > MaxMessageSize)
                 {
                     _logger.LogError("Message too large from device {DeviceId}: {Length} bytes", _deviceId, messageLength);
+                    IncrementErrorCount();
                     return;
                 }
 
                 // Read message data
                 var messageData = new byte[messageLength];
                 await ReadExactAsync(messageData, cancellationToken);
+                bytesReceivedThisMessage += messageLength;
+
+                // Track bytes received
+                IncrementBytesReceived(bytesReceivedThisMessage);
 
                 // Decompress if needed
                 if (header.Compression == BepCompression.Always)
@@ -531,6 +683,7 @@ public class BepConnection : IDisposable
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Failed to decompress message from device {DeviceId}", _deviceId);
+                        IncrementErrorCount();
                         return;
                     }
                 }
@@ -544,6 +697,7 @@ public class BepConnection : IDisposable
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error receiving BEP message (JSON) from device {DeviceId}", _deviceId);
+                IncrementErrorCount();
                 break;
             }
         }
@@ -673,14 +827,22 @@ public class BepConnection : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error processing BEP message type {MessageType} (JSON) from device {DeviceId}", messageType, _deviceId);
+            IncrementErrorCount();
         }
     }
 
     // Block request handling removed - now handled via MessageReceived event -> BlockRequestHandler
 
-    public async Task DisconnectAsync()
+    public async Task DisconnectAsync(string? reason = null)
     {
         if (!_isConnected) return;
+
+        // Transition to Disconnecting state
+        var previousState = State;
+        if (previousState != ConnectionState.Failed)
+        {
+            State = ConnectionState.Disconnecting;
+        }
 
         _isConnected = false;
         _cancellationTokenSource.Cancel();
@@ -688,7 +850,7 @@ public class BepConnection : IDisposable
         try
         {
             // Send close message
-            await SendMessageAsync(BepMessageType.Close, new BepClose { Reason = "Connection closed" });
+            await SendMessageAsync(BepMessageType.Close, new BepClose { Reason = reason ?? "Connection closed" });
         }
         catch
         {
@@ -704,6 +866,12 @@ public class BepConnection : IDisposable
 
         _stream.Dispose();
         _tcpClient.Dispose();
+
+        // Transition to Disconnected state (unless already Failed)
+        if (previousState != ConnectionState.Failed)
+        {
+            State = ConnectionState.Disconnected;
+        }
 
         _logger.LogInformation("Disconnected BEP connection from device {DeviceId}", _deviceId);
     }

@@ -2051,6 +2051,383 @@ public class SyncEngine : ISyncEngine, IDisposable
     }
 
     /// <summary>
+    /// Apply configuration changes from ConfigXml to the sync engine.
+    /// Compares current state with new config and applies changes incrementally.
+    /// Similar to Syncthing's lib/config/config.go CommitConfiguration().
+    /// </summary>
+    public async Task ApplyConfigurationAsync(ConfigXml config, CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Applying configuration changes...");
+
+        try
+        {
+            // Get current folder and device IDs for comparison
+            var currentFolderIds = _folders.Keys.ToHashSet();
+            var currentDeviceIds = _devices.Keys.ToHashSet();
+            var newFolderIds = config.Folders.Select(f => f.Id).ToHashSet();
+            var newDeviceIds = config.Devices.Select(d => d.Id).ToHashSet();
+
+            // 1. Remove folders that are no longer in config
+            var foldersToRemove = currentFolderIds.Except(newFolderIds).ToList();
+            foreach (var folderId in foldersToRemove)
+            {
+                _logger.LogInformation("Removing folder {FolderId} (no longer in config)", folderId);
+                await RemoveFolderInternalAsync(folderId);
+            }
+
+            // 2. Remove devices that are no longer in config (except self)
+            var devicesToRemove = currentDeviceIds.Except(newDeviceIds)
+                .Where(id => id != DeviceId) // Don't remove self
+                .ToList();
+            foreach (var deviceId in devicesToRemove)
+            {
+                _logger.LogInformation("Removing device {DeviceId} (no longer in config)", deviceId);
+                RemoveDeviceInternal(deviceId);
+            }
+
+            // 3. Add or update devices
+            foreach (var xmlDevice in config.Devices)
+            {
+                if (xmlDevice.Id == DeviceId) continue; // Skip self
+
+                if (_devices.TryGetValue(xmlDevice.Id, out var existingDevice))
+                {
+                    // Update existing device
+                    UpdateDeviceFromXml(existingDevice, xmlDevice);
+                    _logger.LogDebug("Updated device {DeviceId} ({Name})", xmlDevice.Id, xmlDevice.Name);
+                }
+                else
+                {
+                    // Add new device
+                    var newDevice = CreateDeviceFromXml(xmlDevice);
+                    _devices[xmlDevice.Id] = newDevice;
+                    _logger.LogInformation("Added device {DeviceId} ({Name})", xmlDevice.Id, xmlDevice.Name);
+
+                    // Try to connect to new device
+                    if (newDevice.Addresses.Any())
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(1000, cancellationToken);
+                            await ConnectToDeviceAsync(newDevice, cancellationToken);
+                        }, cancellationToken);
+                    }
+                }
+            }
+
+            // 4. Add or update folders
+            foreach (var xmlFolder in config.Folders)
+            {
+                if (_folders.TryGetValue(xmlFolder.Id, out var existingFolder))
+                {
+                    // Update existing folder
+                    var needsWatcherRestart = UpdateFolderFromXml(existingFolder, xmlFolder);
+                    _logger.LogDebug("Updated folder {FolderId} ({Label})", xmlFolder.Id, xmlFolder.Label);
+
+                    // Handle watcher restart if path changed or watcher settings changed
+                    if (needsWatcherRestart)
+                    {
+                        _fileWatcher.StopWatchingFolder(xmlFolder.Id);
+                        if (!existingFolder.Paused && existingFolder.FsWatcherEnabled)
+                        {
+                            _fileWatcher.WatchFolder(existingFolder);
+                        }
+                    }
+                }
+                else
+                {
+                    // Add new folder
+                    var newFolder = CreateFolderFromXml(xmlFolder);
+                    _folders[xmlFolder.Id] = newFolder;
+                    _folderSyncSemaphores.TryAdd(xmlFolder.Id, new SemaphoreSlim(1, 1));
+                    _folderStatuses.TryAdd(xmlFolder.Id, new SyncStatus
+                    {
+                        FolderId = xmlFolder.Id,
+                        State = newFolder.Paused ? SyncState.Paused : SyncState.Idle
+                    });
+
+                    // Register folder for block serving
+                    _blockRequestHandler.RegisterFolder(newFolder);
+
+                    // Create directory if needed
+                    if (!Directory.Exists(newFolder.Path))
+                    {
+                        Directory.CreateDirectory(newFolder.Path);
+                    }
+
+                    // Start watching if not paused
+                    if (!newFolder.Paused)
+                    {
+                        _fileWatcher.WatchFolder(newFolder);
+
+                        // Perform initial scan
+                        _ = Task.Run(async () =>
+                        {
+                            await Task.Delay(2000, cancellationToken);
+                            await ScanFolderAsync(xmlFolder.Id, deep: true);
+                        }, cancellationToken);
+                    }
+
+                    _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path}",
+                        xmlFolder.Id, xmlFolder.Label, xmlFolder.Path);
+                }
+            }
+
+            _logger.LogInformation("Configuration applied: {FolderCount} folders, {DeviceCount} devices",
+                _folders.Count, _devices.Count);
+
+            // Log event
+            _eventLogger.LogSystemEvent(EventType.ConfigSaved, "Configuration applied", new
+            {
+                FolderCount = _folders.Count,
+                DeviceCount = _devices.Count,
+                FoldersAdded = newFolderIds.Except(currentFolderIds).Count(),
+                FoldersRemoved = foldersToRemove.Count,
+                DevicesAdded = newDeviceIds.Except(currentDeviceIds).Count(),
+                DevicesRemoved = devicesToRemove.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error applying configuration");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Reload configuration from the config.xml file.
+    /// </summary>
+    public async Task ReloadConfigurationAsync(CancellationToken cancellationToken = default)
+    {
+        _logger.LogInformation("Reloading configuration from config.xml...");
+
+        var configXml = _configManager.GetCurrentConfig();
+        await ApplyConfigurationAsync(configXml, cancellationToken);
+    }
+
+    /// <summary>
+    /// Remove a folder from the sync engine (internal helper)
+    /// </summary>
+    private async Task RemoveFolderInternalAsync(string folderId)
+    {
+        if (_folders.TryRemove(folderId, out var folder))
+        {
+            // Stop watching
+            _fileWatcher.StopWatchingFolder(folderId);
+
+            // Remove status and semaphore
+            _folderStatuses.TryRemove(folderId, out _);
+            if (_folderSyncSemaphores.TryRemove(folderId, out var semaphore))
+            {
+                semaphore.Dispose();
+            }
+
+            // Remove from config manager
+            await _configManager.DeleteFolderAsync(folderId);
+
+            _logger.LogInformation("Removed folder {FolderId} ({Label})", folderId, folder.Label);
+        }
+    }
+
+    /// <summary>
+    /// Remove a device from the sync engine (internal helper)
+    /// </summary>
+    private void RemoveDeviceInternal(string deviceId)
+    {
+        if (_devices.TryRemove(deviceId, out var device))
+        {
+            // Disconnect if connected
+            device.UpdateConnection(false);
+            _logger.LogInformation("Removed device {DeviceId} ({Name})", deviceId, device.DeviceName);
+        }
+    }
+
+    /// <summary>
+    /// Create a SyncDevice from ConfigXmlDevice
+    /// </summary>
+    private SyncDevice CreateDeviceFromXml(ConfigXmlDevice xmlDevice)
+    {
+        var device = new SyncDevice(xmlDevice.Id, xmlDevice.Name);
+        device.SetCompression(xmlDevice.Compression);
+        device.SetPaused(xmlDevice.Paused);
+        device.SetBandwidthLimits(xmlDevice.MaxSendKbps, xmlDevice.MaxRecvKbps);
+        device.SetIntroducer(xmlDevice.Introducer);
+        device.AutoAcceptFolders = xmlDevice.AutoAcceptFolders;
+
+        foreach (var address in xmlDevice.Addresses)
+        {
+            device.AddAddress(address);
+        }
+
+        return device;
+    }
+
+    /// <summary>
+    /// Update an existing SyncDevice from ConfigXmlDevice
+    /// </summary>
+    private void UpdateDeviceFromXml(SyncDevice device, ConfigXmlDevice xmlDevice)
+    {
+        device.UpdateName(xmlDevice.Name);
+        device.SetCompression(xmlDevice.Compression);
+        device.SetPaused(xmlDevice.Paused);
+        device.SetBandwidthLimits(xmlDevice.MaxSendKbps, xmlDevice.MaxRecvKbps);
+        device.SetIntroducer(xmlDevice.Introducer);
+        device.AutoAcceptFolders = xmlDevice.AutoAcceptFolders;
+
+        // Update addresses
+        device.UpdateAddresses(xmlDevice.Addresses);
+    }
+
+    /// <summary>
+    /// Create a SyncFolder from ConfigXmlFolder
+    /// </summary>
+    private SyncFolder CreateFolderFromXml(ConfigXmlFolder xmlFolder)
+    {
+        var folder = new SyncFolder(
+            xmlFolder.Id,
+            xmlFolder.Label,
+            xmlFolder.Path,
+            xmlFolder.Type,
+            xmlFolder.RescanIntervalS,
+            xmlFolder.FsWatcherEnabled,
+            xmlFolder.FsWatcherDelayS,
+            xmlFolder.IgnorePerms,
+            xmlFolder.AutoNormalize,
+            $"{xmlFolder.MinDiskFree.Value}{xmlFolder.MinDiskFree.Unit}",
+            xmlFolder.CopyOwnershipFromParent,
+            xmlFolder.ModTimeWindowS,
+            xmlFolder.MaxConflicts,
+            xmlFolder.DisableSparseFiles,
+            xmlFolder.DisableTempIndexes,
+            xmlFolder.Paused,
+            xmlFolder.WeakHashThresholdPct,
+            xmlFolder.MarkerName,
+            xmlFolder.CopyRangeMethod,
+            xmlFolder.CaseSensitiveFS,
+            xmlFolder.JunctionsAsDirs, // Maps to junctionedAsDirectory constructor parameter
+            xmlFolder.SyncOwnership,
+            xmlFolder.SendOwnership,
+            xmlFolder.SyncXattrs,
+            xmlFolder.SendXattrs);
+
+        // Set versioning if configured
+        if (xmlFolder.Versioning != null && !string.IsNullOrEmpty(xmlFolder.Versioning.Type))
+        {
+            folder.SetVersioning(new VersioningConfiguration
+            {
+                Type = xmlFolder.Versioning.Type,
+                Params = xmlFolder.Versioning.Params.ToDictionary(p => p.Key, p => p.Val),
+                CleanupIntervalS = xmlFolder.Versioning.CleanupIntervalS,
+                FSPath = xmlFolder.Versioning.FsPath,
+                FSType = xmlFolder.Versioning.FsType
+            });
+        }
+
+        // Set pull order
+        if (!string.IsNullOrEmpty(xmlFolder.Order))
+        {
+            folder.SetPullOrder(ParsePullOrder(xmlFolder.Order));
+        }
+
+        folder.IgnoreDelete = xmlFolder.IgnoreDelete;
+
+        // Add devices
+        foreach (var device in xmlFolder.Devices)
+        {
+            folder.AddDevice(device.Id);
+        }
+
+        return folder;
+    }
+
+    /// <summary>
+    /// Update an existing SyncFolder from ConfigXmlFolder.
+    /// Returns true if file watcher needs restart.
+    /// Note: Some properties like Label, Path, Type have private setters and cannot be changed after creation.
+    /// </summary>
+    private bool UpdateFolderFromXml(SyncFolder folder, ConfigXmlFolder xmlFolder)
+    {
+        var needsWatcherRestart = folder.Path != xmlFolder.Path ||
+                                   folder.FsWatcherEnabled != xmlFolder.FsWatcherEnabled ||
+                                   folder.FSWatcherDelayS != xmlFolder.FsWatcherDelayS ||
+                                   folder.Paused != xmlFolder.Paused;
+
+        // Note: Label, Path, Type have private setters - cannot be changed after creation
+        // If these need to change, the folder should be removed and recreated
+        if (folder.Label != xmlFolder.Label || folder.Path != xmlFolder.Path || folder.Type != xmlFolder.Type)
+        {
+            _logger.LogWarning("Folder {FolderId} has changes to Label/Path/Type which cannot be updated in-place. " +
+                "Consider removing and recreating the folder.", folder.Id);
+        }
+
+        // Update properties with public setters
+        folder.RescanIntervalS = xmlFolder.RescanIntervalS;
+        folder.FsWatcherEnabled = xmlFolder.FsWatcherEnabled;
+        folder.FSWatcherDelayS = xmlFolder.FsWatcherDelayS;
+        folder.IgnorePerms = xmlFolder.IgnorePerms;
+        folder.AutoNormalize = xmlFolder.AutoNormalize;
+        folder.SetMinDiskFree($"{xmlFolder.MinDiskFree.Value}{xmlFolder.MinDiskFree.Unit}");
+        folder.MaxConflicts = xmlFolder.MaxConflicts;
+        folder.DisableSparseFiles = xmlFolder.DisableSparseFiles;
+        folder.DisableTempIndexes = xmlFolder.DisableTempIndexes;
+        folder.SetPaused(xmlFolder.Paused);
+        folder.WeakHashThresholdPct = xmlFolder.WeakHashThresholdPct;
+        folder.MarkerName = xmlFolder.MarkerName;
+        folder.IgnoreDelete = xmlFolder.IgnoreDelete;
+
+        // Update versioning
+        if (xmlFolder.Versioning != null && !string.IsNullOrEmpty(xmlFolder.Versioning.Type))
+        {
+            folder.SetVersioning(new VersioningConfiguration
+            {
+                Type = xmlFolder.Versioning.Type,
+                Params = xmlFolder.Versioning.Params.ToDictionary(p => p.Key, p => p.Val),
+                CleanupIntervalS = xmlFolder.Versioning.CleanupIntervalS,
+                FSPath = xmlFolder.Versioning.FsPath,
+                FSType = xmlFolder.Versioning.FsType
+            });
+        }
+        else
+        {
+            folder.SetVersioning(new VersioningConfiguration { Type = string.Empty });
+        }
+
+        // Update pull order
+        if (!string.IsNullOrEmpty(xmlFolder.Order))
+        {
+            folder.SetPullOrder(ParsePullOrder(xmlFolder.Order));
+        }
+
+        // Update folder status if paused state changed
+        if (_folderStatuses.TryGetValue(folder.Id, out var status))
+        {
+            if (folder.Paused && status.State != SyncState.Paused)
+            {
+                status.State = SyncState.Paused;
+            }
+            else if (!folder.Paused && status.State == SyncState.Paused)
+            {
+                status.State = SyncState.Idle;
+            }
+        }
+
+        // Update device list
+        var currentDeviceIds = folder.Devices.ToHashSet();
+        var newDeviceIds = xmlFolder.Devices.Select(d => d.Id).ToHashSet();
+
+        foreach (var deviceId in currentDeviceIds.Except(newDeviceIds))
+        {
+            folder.RemoveDevice(deviceId);
+        }
+        foreach (var deviceId in newDeviceIds.Except(currentDeviceIds))
+        {
+            folder.AddDevice(deviceId);
+        }
+
+        return needsWatcherRestart;
+    }
+
+    /// <summary>
     /// Initialize or generate device certificate and set DeviceID (similar to Syncthing's LoadOrGenerateCertificate)
     /// </summary>
     private async Task InitializeDeviceCertificateAsync(CancellationToken cancellationToken = default)

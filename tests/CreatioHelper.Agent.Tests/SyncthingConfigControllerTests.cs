@@ -259,4 +259,80 @@ public class SyncthingConfigControllerTests
     }
 
     #endregion
+
+    #region Configuration Apply Tests
+
+    [Fact]
+    public async Task LoadConfigFromFile_CallsApplyConfigurationAsync()
+    {
+        // Arrange
+        var configXml = new ConfigXml
+        {
+            Folders = new List<ConfigXmlFolder> { new ConfigXmlFolder { Id = "folder1", Label = "Folder 1", Path = "/test" } },
+            Devices = new List<ConfigXmlDevice> { new ConfigXmlDevice { Id = "device1", Name = "Device 1" } }
+        };
+
+        _configXmlServiceMock.Setup(s => s.ConfigExists()).Returns(true);
+        _configXmlServiceMock.Setup(s => s.ConfigPath).Returns("/config/config.xml");
+        _configXmlServiceMock.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(configXml);
+        _configXmlServiceMock.Setup(s => s.Validate(It.IsAny<ConfigXml>()))
+            .Returns(new ConfigValidationResult { IsValid = true });
+
+        _syncEngineMock.Setup(s => s.ApplyConfigurationAsync(It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        // Act
+        var result = await _controller.LoadConfigFromFile();
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result);
+        _syncEngineMock.Verify(s => s.ApplyConfigurationAsync(
+            It.Is<ConfigXml>(c => c.Folders.Count == 1 && c.Devices.Count == 1),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task LoadConfigFromFile_ReturnsNotFound_WhenConfigNotExists()
+    {
+        // Arrange
+        _configXmlServiceMock.Setup(s => s.ConfigExists()).Returns(false);
+        _configXmlServiceMock.Setup(s => s.ConfigPath).Returns("/config/config.xml");
+
+        // Act
+        var result = await _controller.LoadConfigFromFile();
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result);
+        _syncEngineMock.Verify(s => s.ApplyConfigurationAsync(
+            It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task LoadConfigFromFile_ReturnsBadRequest_WhenValidationFails()
+    {
+        // Arrange
+        var configXml = new ConfigXml();
+
+        _configXmlServiceMock.Setup(s => s.ConfigExists()).Returns(true);
+        _configXmlServiceMock.Setup(s => s.ConfigPath).Returns("/config/config.xml");
+        _configXmlServiceMock.Setup(s => s.LoadAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(configXml);
+        _configXmlServiceMock.Setup(s => s.Validate(It.IsAny<ConfigXml>()))
+            .Returns(new ConfigValidationResult
+            {
+                IsValid = false,
+                Errors = new List<string> { "Invalid configuration" }
+            });
+
+        // Act
+        var result = await _controller.LoadConfigFromFile();
+
+        // Assert
+        Assert.IsType<BadRequestObjectResult>(result);
+        _syncEngineMock.Verify(s => s.ApplyConfigurationAsync(
+            It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
 }

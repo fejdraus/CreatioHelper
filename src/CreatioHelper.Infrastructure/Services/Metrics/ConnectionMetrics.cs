@@ -43,6 +43,22 @@ public static class ConnectionMetrics
             LabelNames = new[] { "device", "reason" }
         });
 
+    private static readonly Counter ConnectionStateTransitions = Prometheus.Metrics.CreateCounter(
+        "creatiohelper_connection_state_transitions_total",
+        "Total connection state transitions",
+        new CounterConfiguration
+        {
+            LabelNames = new[] { "from_state", "to_state" }
+        });
+
+    private static readonly Gauge ConnectionHealthScore = Prometheus.Metrics.CreateGauge(
+        "creatiohelper_connection_health_score",
+        "Connection health score (0-100)",
+        new GaugeConfiguration
+        {
+            LabelNames = new[] { "device_id" }
+        });
+
     private static readonly Counter BytesSent = Prometheus.Metrics.CreateCounter(
         "creatiohelper_connection_bytes_sent_total",
         "Total bytes sent",
@@ -148,5 +164,21 @@ public static class ConnectionMetrics
     public static void SetUptime(string deviceId, double seconds)
     {
         ConnectionUptime.WithLabels(deviceId).Set(seconds);
+    }
+
+    /// <summary>
+    /// Record a connection state transition.
+    /// </summary>
+    public static void RecordStateTransition(string fromState, string toState)
+    {
+        ConnectionStateTransitions.WithLabels(fromState, toState).Inc();
+    }
+
+    /// <summary>
+    /// Update the health score for a connection.
+    /// </summary>
+    public static void SetHealthScore(string deviceId, double score)
+    {
+        ConnectionHealthScore.WithLabels(deviceId).Set(score);
     }
 }
