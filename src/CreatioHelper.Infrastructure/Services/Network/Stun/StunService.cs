@@ -38,14 +38,64 @@ public interface IStunService : IDisposable
     NatType? NatType { get; }
 
     /// <summary>
+    /// Gets the NAT type description.
+    /// </summary>
+    string? NatTypeDescription { get; }
+
+    /// <summary>
     /// Gets whether the service is running.
     /// </summary>
     bool IsRunning { get; }
 
     /// <summary>
+    /// Whether hole punching is likely to succeed based on NAT type.
+    /// True for Full Cone, Restricted Cone, and Port Restricted Cone NATs.
+    /// False for Symmetric NAT and Unknown.
+    /// </summary>
+    bool IsPunchable { get; }
+
+    /// <summary>
+    /// Gets the current external address.
+    /// </summary>
+    IPEndPoint? ExternalAddress { get; }
+
+    /// <summary>
+    /// Performs a fresh NAT type detection.
+    /// </summary>
+    Task<NatType> DetectNatTypeAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current service status.
+    /// </summary>
+    StunServiceStatus GetStatus();
+
+    /// <summary>
     /// Event raised when external IP changes.
     /// </summary>
     event EventHandler<ExternalAddressChangedEventArgs>? ExternalAddressChanged;
+
+    /// <summary>
+    /// Event raised when NAT type changes.
+    /// </summary>
+    event EventHandler<NatTypeChangedEventArgs>? NatTypeChanged;
+}
+
+/// <summary>
+/// STUN service status information
+/// </summary>
+public class StunServiceStatus
+{
+    public bool IsRunning { get; set; }
+    public NatType? NatType { get; set; }
+    public string? NatTypeDescription { get; set; }
+    public bool IsPunchable { get; set; }
+    public IPEndPoint? ExternalEndpoint { get; set; }
+    public DateTime LastCheck { get; set; }
+    public DateTime LastNatTypeDetection { get; set; }
+    public TimeSpan KeepaliveInterval { get; set; }
+    public int SuccessfulChecks { get; set; }
+    public int FailedChecks { get; set; }
+    public List<string> ConfiguredServers { get; set; } = new();
 }
 
 /// <summary>
@@ -68,17 +118,26 @@ public class StunService : IStunService
     private readonly SyncConfiguration _config;
     private readonly StunClient _stunClient;
     private readonly Timer _keepAliveTimer;
+    private readonly Timer _natTypeDetectionTimer;
     private readonly ConcurrentDictionary<string, StunResult> _serverResults;
 
     private IPEndPoint? _currentExternalEndPoint;
     private NatType? _natType;
+    private string? _natTypeDescription;
     private volatile bool _isRunning;
     private DateTime _lastCheck = DateTime.MinValue;
+    private DateTime _lastNatTypeDetection = DateTime.MinValue;
+    private int _successfulChecks;
+    private int _failedChecks;
+    private TimeSpan _currentKeepaliveInterval;
 
     // Syncthing-compatible intervals
-    private static readonly TimeSpan DefaultKeepAlive = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan DefaultKeepAlive = TimeSpan.FromSeconds(30);
+    private static readonly TimeSpan MinKeepAlive = TimeSpan.FromSeconds(20);
+    private static readonly TimeSpan MaxKeepAlive = TimeSpan.FromSeconds(180);
     private static readonly TimeSpan DefaultTimeout = TimeSpan.FromSeconds(5);
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan NatTypeDetectionInterval = TimeSpan.FromMinutes(30);
 
     // Default STUN servers (Syncthing compatible)
     private static readonly string[] DefaultStunServers =
@@ -91,9 +150,26 @@ public class StunService : IStunService
     ];
 
     public NatType? NatType => _natType;
+    public string? NatTypeDescription => _natTypeDescription;
     public bool IsRunning => _isRunning;
+    public IPEndPoint? ExternalAddress => _currentExternalEndPoint;
+
+    /// <summary>
+    /// Whether hole punching is likely to succeed based on NAT type.
+    /// </summary>
+    public bool IsPunchable => _natType switch
+    {
+        Stun.NatType.OpenInternet => true,
+        Stun.NatType.FullCone => true,
+        Stun.NatType.RestrictedCone => true,
+        Stun.NatType.PortRestrictedCone => true,
+        Stun.NatType.SymmetricNat => false,
+        Stun.NatType.Unknown => false,
+        _ => false
+    };
 
     public event EventHandler<ExternalAddressChangedEventArgs>? ExternalAddressChanged;
+    public event EventHandler<NatTypeChangedEventArgs>? NatTypeChanged;
 
     public StunService(ILogger<StunService> logger, ILogger<StunClient> stunClientLogger, IOptions<SyncConfiguration> config)
     {
@@ -102,6 +178,8 @@ public class StunService : IStunService
         _stunClient = new StunClient(stunClientLogger);
         _serverResults = new ConcurrentDictionary<string, StunResult>();
         _keepAliveTimer = new Timer(KeepAliveCallback, null, Timeout.Infinite, Timeout.Infinite);
+        _natTypeDetectionTimer = new Timer(NatTypeDetectionCallback, null, Timeout.Infinite, Timeout.Infinite);
+        _currentKeepaliveInterval = DefaultKeepAlive;
 
         _logger.LogInformation("StunService initialized");
     }
@@ -121,29 +199,37 @@ public class StunService : IStunService
             if (externalEndPoint != null)
             {
                 _currentExternalEndPoint = externalEndPoint;
+                _successfulChecks++;
                 _logger.LogInformation("STUN discovered external address: {ExternalEndPoint}", externalEndPoint);
 
                 // Detect NAT type
                 var natResult = await _stunClient.DetectNatTypeAsync(GetStunServers(), DefaultTimeout, cancellationToken);
                 _natType = natResult.Type;
+                _natTypeDescription = natResult.Description;
+                _lastNatTypeDetection = DateTime.UtcNow;
                 _logger.LogInformation("STUN detected NAT type: {NatType} - {Description}", natResult.Type, natResult.Description);
             }
             else
             {
+                _failedChecks++;
                 _logger.LogWarning("STUN could not discover external address - service may have limited functionality");
             }
 
-            // Start keepalive timer
-            var keepAliveInterval = _config.NatTraversal?.StunKeepAliveSeconds != null
+            // Start keepalive timer with adaptive interval
+            _currentKeepaliveInterval = _config.NatTraversal?.StunKeepAliveSeconds != null
                 ? TimeSpan.FromSeconds(_config.NatTraversal.StunKeepAliveSeconds.Value)
                 : DefaultKeepAlive;
 
-            _keepAliveTimer.Change(keepAliveInterval, keepAliveInterval);
+            _keepAliveTimer.Change(_currentKeepaliveInterval, _currentKeepaliveInterval);
+
+            // Start periodic NAT type detection (less frequent)
+            _natTypeDetectionTimer.Change(NatTypeDetectionInterval, NatTypeDetectionInterval);
 
             _isRunning = true;
             _lastCheck = DateTime.UtcNow;
 
-            _logger.LogInformation("STUN service started with keepalive interval {Interval}", keepAliveInterval);
+            _logger.LogInformation("STUN service started with keepalive interval {Interval}, IsPunchable: {IsPunchable}",
+                _currentKeepaliveInterval, IsPunchable);
             return true;
         }
         catch (Exception ex)
@@ -161,11 +247,68 @@ public class StunService : IStunService
         _logger.LogInformation("Stopping STUN service");
 
         _keepAliveTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        _natTypeDetectionTimer.Change(Timeout.Infinite, Timeout.Infinite);
         _isRunning = false;
         _serverResults.Clear();
 
         _logger.LogInformation("STUN service stopped");
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Performs a fresh NAT type detection.
+    /// </summary>
+    public async Task<NatType> DetectNatTypeAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var natResult = await _stunClient.DetectNatTypeAsync(GetStunServers(), DefaultTimeout, cancellationToken);
+
+            var oldType = _natType;
+            _natType = natResult.Type;
+            _natTypeDescription = natResult.Description;
+            _lastNatTypeDetection = DateTime.UtcNow;
+
+            // Notify if NAT type changed
+            if (oldType.HasValue && oldType != _natType)
+            {
+                _logger.LogInformation("NAT type changed: {OldType} -> {NewType} ({Description})",
+                    oldType, _natType, _natTypeDescription);
+
+                NatTypeChanged?.Invoke(this, new NatTypeChangedEventArgs(
+                    oldType.Value,
+                    _natType.Value,
+                    _natTypeDescription ?? string.Empty));
+            }
+
+            return _natType ?? Stun.NatType.Unknown;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "NAT type detection failed");
+            return Stun.NatType.Unknown;
+        }
+    }
+
+    /// <summary>
+    /// Gets the current service status.
+    /// </summary>
+    public StunServiceStatus GetStatus()
+    {
+        return new StunServiceStatus
+        {
+            IsRunning = _isRunning,
+            NatType = _natType,
+            NatTypeDescription = _natTypeDescription,
+            IsPunchable = IsPunchable,
+            ExternalEndpoint = _currentExternalEndPoint,
+            LastCheck = _lastCheck,
+            LastNatTypeDetection = _lastNatTypeDetection,
+            KeepaliveInterval = _currentKeepaliveInterval,
+            SuccessfulChecks = _successfulChecks,
+            FailedChecks = _failedChecks,
+            ConfiguredServers = GetStunServers().ToList()
+        };
     }
 
     public async Task<IPAddress?> GetExternalIPAsync(CancellationToken cancellationToken = default)
@@ -237,6 +380,9 @@ public class StunService : IStunService
 
                 if (newEndPoint != null)
                 {
+                    _successfulChecks++;
+                    _lastCheck = DateTime.UtcNow;
+
                     var changed = oldEndPoint == null ||
                                   !oldEndPoint.Address.Equals(newEndPoint.Address) ||
                                   oldEndPoint.Port != newEndPoint.Port;
@@ -253,14 +399,74 @@ public class StunService : IStunService
                             OldEndPoint = oldEndPoint,
                             NewEndPoint = newEndPoint
                         });
+
+                        // If address changed, trigger NAT type re-detection
+                        _ = DetectNatTypeAsync();
                     }
+
+                    // Adaptive keepalive: increase interval on success (up to max)
+                    AdjustKeepaliveInterval(success: true);
+                }
+                else
+                {
+                    _failedChecks++;
+                    // Adaptive keepalive: decrease interval on failure (down to min)
+                    AdjustKeepaliveInterval(success: false);
                 }
             }
             catch (Exception ex)
             {
+                _failedChecks++;
                 _logger.LogWarning(ex, "STUN keepalive check failed");
+                AdjustKeepaliveInterval(success: false);
             }
         });
+    }
+
+    private void NatTypeDetectionCallback(object? state)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await DetectNatTypeAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Periodic NAT type detection failed");
+            }
+        });
+    }
+
+    /// <summary>
+    /// Adjusts the keepalive interval based on success/failure.
+    /// Based on Syncthing's adaptive STUN keepalive (20-180 seconds).
+    /// </summary>
+    private void AdjustKeepaliveInterval(bool success)
+    {
+        var oldInterval = _currentKeepaliveInterval;
+
+        if (success)
+        {
+            // Increase interval by 10% on success, up to max
+            var newInterval = TimeSpan.FromSeconds(_currentKeepaliveInterval.TotalSeconds * 1.1);
+            _currentKeepaliveInterval = newInterval > MaxKeepAlive ? MaxKeepAlive : newInterval;
+        }
+        else
+        {
+            // Decrease interval by 50% on failure, down to min
+            var newInterval = TimeSpan.FromSeconds(_currentKeepaliveInterval.TotalSeconds * 0.5);
+            _currentKeepaliveInterval = newInterval < MinKeepAlive ? MinKeepAlive : newInterval;
+        }
+
+        // Only update timer if interval changed significantly (>5%)
+        var change = Math.Abs(_currentKeepaliveInterval.TotalSeconds - oldInterval.TotalSeconds) / oldInterval.TotalSeconds;
+        if (change > 0.05)
+        {
+            _keepAliveTimer.Change(_currentKeepaliveInterval, _currentKeepaliveInterval);
+            _logger.LogDebug("STUN keepalive interval adjusted: {OldInterval}s -> {NewInterval}s",
+                (int)oldInterval.TotalSeconds, (int)_currentKeepaliveInterval.TotalSeconds);
+        }
     }
 
     private string[] GetStunServers()
@@ -282,6 +488,7 @@ public class StunService : IStunService
         }
 
         _keepAliveTimer.Dispose();
+        _natTypeDetectionTimer.Dispose();
         _stunClient.Dispose();
     }
 }

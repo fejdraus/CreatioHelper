@@ -1,0 +1,221 @@
+@page "/folders/{FolderId}/edit"
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Services
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Edit @(_folder?.DisplayName ?? "Folder") - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_folder == null)
+    {
+        <MudAlert Severity="Severity.Error">Folder not found</MudAlert>
+    }
+    else
+    {
+        <MudPaper Class="pa-4">
+            <MudText Typo="Typo.h5" Class="mb-4">Edit Folder</MudText>
+
+            <MudForm @ref="_form" @bind-IsValid="@_isValid">
+                <!-- General Settings -->
+                <MudText Typo="Typo.h6" Class="mb-3">General</MudText>
+
+                <MudTextField @bind-Value="_folder.Label"
+                              Label="Folder Label"
+                              Variant="Variant.Outlined"
+                              Class="mb-3" />
+
+                <MudTextField @bind-Value="_folder.Path"
+                              Label="Folder Path"
+                              Variant="Variant.Outlined"
+                              Required="true"
+                              RequiredError="Path is required"
+                              Class="mb-3"
+                              Disabled="true" />
+
+                <MudSelect @bind-Value="_folder.Type"
+                           Label="Folder Type"
+                           Variant="Variant.Outlined"
+                           Class="mb-3">
+                    <MudSelectItem Value="@("sendreceive")">Send & Receive</MudSelectItem>
+                    <MudSelectItem Value="@("sendonly")">Send Only</MudSelectItem>
+                    <MudSelectItem Value="@("receiveonly")">Receive Only</MudSelectItem>
+                    <MudSelectItem Value="@("receiveencrypted")">Receive Encrypted</MudSelectItem>
+                </MudSelect>
+
+                <MudDivider Class="my-4" />
+
+                <!-- File Watching -->
+                <MudText Typo="Typo.h6" Class="mb-3">File Watching</MudText>
+
+                <MudSwitch @bind-Value="_folder.FsWatcherEnabled"
+                           Label="Watch for Changes"
+                           Color="Color.Primary"
+                           Class="mb-3" />
+
+                <MudNumericField @bind-Value="_folder.FsWatcherDelayS"
+                                 Label="Watch Delay (seconds)"
+                                 Variant="Variant.Outlined"
+                                 Min="0.1"
+                                 Max="300"
+                                 Class="mb-3"
+                                 Disabled="@(!_folder.FsWatcherEnabled)" />
+
+                <MudNumericField @bind-Value="_folder.RescanIntervalS"
+                                 Label="Full Rescan Interval (seconds)"
+                                 Variant="Variant.Outlined"
+                                 Min="0"
+                                 Max="86400"
+                                 Class="mb-3"
+                                 HelperText="0 to disable periodic rescans" />
+
+                <MudDivider Class="my-4" />
+
+                <!-- Advanced Settings -->
+                <MudText Typo="Typo.h6" Class="mb-3">Advanced</MudText>
+
+                <MudSwitch @bind-Value="_folder.IgnorePerms"
+                           Label="Ignore Permissions"
+                           Color="Color.Primary"
+                           Class="mb-3" />
+
+                <MudSwitch @bind-Value="_folder.IgnoreDelete"
+                           Label="Ignore Delete"
+                           Color="Color.Primary"
+                           Class="mb-3" />
+
+                <MudSwitch @bind-Value="_folder.AutoNormalize"
+                           Label="Auto Normalize Filenames"
+                           Color="Color.Primary"
+                           Class="mb-3" />
+
+                <MudSelect @bind-Value="_folder.Order"
+                           Label="File Pull Order"
+                           Variant="Variant.Outlined"
+                           Class="mb-3">
+                    <MudSelectItem Value="@("random")">Random</MudSelectItem>
+                    <MudSelectItem Value="@("alphabetic")">Alphabetic</MudSelectItem>
+                    <MudSelectItem Value="@("smallestFirst")">Smallest First</MudSelectItem>
+                    <MudSelectItem Value="@("largestFirst")">Largest First</MudSelectItem>
+                    <MudSelectItem Value="@("oldestFirst")">Oldest First</MudSelectItem>
+                    <MudSelectItem Value="@("newestFirst")">Newest First</MudSelectItem>
+                </MudSelect>
+
+                <MudNumericField @bind-Value="_folder.MaxConflicts"
+                                 Label="Max Conflicts"
+                                 Variant="Variant.Outlined"
+                                 Min="-1"
+                                 Max="1000"
+                                 Class="mb-3"
+                                 HelperText="-1 for unlimited, 0 to disable" />
+
+                <MudDivider Class="my-4" />
+
+                <!-- Actions -->
+                <div class="d-flex gap-3">
+                    <MudButton Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               OnClick="@SaveAsync"
+                               Disabled="@(!_isValid || _saving)">
+                        @if (_saving)
+                        {
+                            <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
+                        }
+                        Save
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Default"
+                               OnClick="@Cancel">
+                        Cancel
+                    </MudButton>
+
+                    <MudSpacer />
+
+                    <MudButton Variant="Variant.Text"
+                               Color="Color.Warning"
+                               OnClick="@(() => _folder.Paused = !_folder.Paused)">
+                        @(_folder.Paused ? "Resume" : "Pause")
+                    </MudButton>
+                </div>
+            </MudForm>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string FolderId { get; set; } = string.Empty;
+
+    private FolderConfig? _folder;
+    private MudForm? _form;
+    private bool _loading = true;
+    private bool _saving;
+    private bool _isValid;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var folders = await Api.GetFoldersAsync();
+            _folder = folders?.FirstOrDefault(f => f.Id == FolderId);
+
+            if (_folder != null)
+            {
+                _breadcrumbs = new List<BreadcrumbItem>
+                {
+                    new("Folders", "/folders"),
+                    new(_folder.DisplayName, $"/folders/{FolderId}"),
+                    new("Edit", null, disabled: true)
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load folder: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_folder == null || !_isValid) return;
+
+        _saving = true;
+        try
+        {
+            await Api.UpdateFolderAsync(_folder);
+            Snackbar.Add("Folder saved successfully", Severity.Success);
+            Navigation.NavigateTo($"/folders/{FolderId}");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to save folder: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private void Cancel()
+    {
+        Navigation.NavigateTo($"/folders/{FolderId}");
+    }
+}

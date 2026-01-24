@@ -7,6 +7,7 @@ using CreatioHelper.Infrastructure.Services.Sync.Handlers;
 using CreatioHelper.Infrastructure.Services.Sync.Encryption;
 using CreatioHelper.Infrastructure.Services.Network;
 using CreatioHelper.Infrastructure.Services.Network.UPnP;
+using CreatioHelper.Infrastructure.Services.Network.Discovery;
 using CreatioHelper.Infrastructure.Services.Security;
 using CreatioHelper.Infrastructure.Services.Events;
 using CreatioHelper.Infrastructure.Services.Statistics;
@@ -119,18 +120,44 @@ public static class SyncServiceExtensions
                 certificate,
                 syncConfig.DeviceId));
 
-        services.AddSingleton<IDeviceDiscovery>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<DeviceDiscovery>>();
-            var discoveryPort = syncConfig.DiscoveryPort;
-            return new DeviceDiscovery(logger, discoveryPort);
-        });
-        
         // Syncthing 100% compatible Global Discovery
         services.AddSingleton<SyncthingGlobalDiscovery>(provider =>
         {
             var logger = provider.GetRequiredService<ILogger<SyncthingGlobalDiscovery>>();
             return new SyncthingGlobalDiscovery(logger, certificate, syncConfig.DeviceId);
+        });
+
+        // Discovery infrastructure (DiscoveryManager is the more complete implementation)
+        services.AddSingleton<DiscoveryCache>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<DiscoveryCache>>();
+            return new DiscoveryCache(logger);
+        });
+
+        // Local discovery service - now uses SyncConfiguration from DI
+        services.AddSingleton<LocalDiscoveryService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<LocalDiscoveryService>>();
+            var syncConfiguration = provider.GetRequiredService<SyncConfiguration>();
+            return new LocalDiscoveryService(logger, syncConfiguration);
+        });
+        services.AddSingleton<ILocalDiscovery>(provider => provider.GetRequiredService<LocalDiscoveryService>());
+
+        services.AddSingleton<IDiscoveryManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<DiscoveryManager>>();
+            var cache = provider.GetRequiredService<DiscoveryCache>();
+            var localDiscovery = provider.GetService<ILocalDiscovery>();
+            var globalDiscovery = provider.GetService<SyncthingGlobalDiscovery>();
+            return new DiscoveryManager(logger, cache, localDiscovery, globalDiscovery);
+        });
+
+        // Adapter to make DiscoveryManager work with legacy IDeviceDiscovery interface
+        services.AddSingleton<IDeviceDiscovery>(provider =>
+        {
+            var discoveryManager = provider.GetRequiredService<IDiscoveryManager>();
+            var logger = provider.GetRequiredService<ILogger<DiscoveryManagerAdapter>>();
+            return new DiscoveryManagerAdapter(logger, discoveryManager);
         });
         
         // Syncthing 100% compatible File Versioning

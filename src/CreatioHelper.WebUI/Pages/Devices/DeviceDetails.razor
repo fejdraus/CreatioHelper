@@ -1,0 +1,342 @@
+@page "/devices/{DeviceId}"
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Services
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_device?.DisplayName ?? "Device") - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_device == null)
+    {
+        <MudAlert Severity="Severity.Error">Device not found</MudAlert>
+    }
+    else
+    {
+        <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+
+        <MudGrid>
+            <!-- Header -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <div class="d-flex justify-space-between align-center">
+                        <div class="d-flex align-center gap-3">
+                            <MudAvatar Color="@(_connection?.Connected == true ? Color.Success : Color.Default)" Size="Size.Large">
+                                <MudIcon Icon="@Icons.Material.Filled.Devices" />
+                            </MudAvatar>
+                            <div>
+                                <MudText Typo="Typo.h5">@_device.DisplayName</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="font-family: monospace;">
+                                    @_device.DeviceId
+                                </MudText>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-2">
+                            @if (_connection?.Connected == true)
+                            {
+                                <MudChip T="string" Color="Color.Success" Size="Size.Small">Connected</MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small">Disconnected</MudChip>
+                            }
+                            @if (_device.Paused)
+                            {
+                                <MudChip T="string" Color="Color.Warning" Size="Size.Small">Paused</MudChip>
+                            }
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Connection Info -->
+            @if (_connection?.Connected == true)
+            {
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">Connection</MudText>
+
+                        <MudSimpleTable Dense="true" Hover="true">
+                            <tbody>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Address</MudText></td>
+                                    <td>@_connection.Address</td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Type</MudText></td>
+                                    <td>
+                                        @_connection.Type
+                                        @if (_connection.IsRelay)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-2">Relay</MudChip>
+                                        }
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Encryption</MudText></td>
+                                    <td>@_connection.Crypto</td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Client Version</MudText></td>
+                                    <td>@_connection.ClientVersion</td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Connected Since</MudText></td>
+                                    <td>@_connection.ConnectedAt?.ToString("g")</td>
+                                </tr>
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Duration</MudText></td>
+                                    <td>@FormatDuration(_connection.ConnectionDuration)</td>
+                                </tr>
+                            </tbody>
+                        </MudSimpleTable>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Transfer Stats -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">Transfer</MudText>
+
+                        <MudGrid>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Download Rate</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Success">
+                                    <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" />
+                                    @FormatSpeed(_connection.InBytesPerSec)
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Upload Rate</MudText>
+                                <MudText Typo="Typo.h6" Color="Color.Primary">
+                                    <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" />
+                                    @FormatSpeed(_connection.OutBytesPerSec)
+                                </MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Downloaded</MudText>
+                                <MudText Typo="Typo.body1">@FormatBytes(_connection.InBytesTotal)</MudText>
+                            </MudItem>
+                            <MudItem xs="6">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Uploaded</MudText>
+                                <MudText Typo="Typo.body1">@FormatBytes(_connection.OutBytesTotal)</MudText>
+                            </MudItem>
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Configuration -->
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Configuration</MudText>
+
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Compression</MudText></td>
+                                <td>@_device.Compression</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Introducer</MudText></td>
+                                <td>@(_device.Introducer ? "Yes" : "No")</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Auto Accept Folders</MudText></td>
+                                <td>@(_device.AutoAcceptFolders ? "Yes" : "No")</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Untrusted</MudText></td>
+                                <td>@(_device.Untrusted ? "Yes" : "No")</td>
+                            </tr>
+                            @if (_device.MaxSendKbps > 0)
+                            {
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Max Send Rate</MudText></td>
+                                    <td>@(_device.MaxSendKbps) KB/s</td>
+                                </tr>
+                            }
+                            @if (_device.MaxRecvKbps > 0)
+                            {
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Max Recv Rate</MudText></td>
+                                    <td>@(_device.MaxRecvKbps) KB/s</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Addresses -->
+            <MudItem xs="12" md="6">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Configured Addresses</MudText>
+
+                    @if (_device.Addresses?.Length > 0)
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var address in _device.Addresses)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Link">
+                                    <MudText Typo="Typo.body2" Style="font-family: monospace;">@address</MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">No addresses configured (dynamic only)</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <!-- Statistics -->
+            @if (_stats != null)
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <MudText Typo="Typo.h6" Class="mb-3">Statistics</MudText>
+
+                        <MudGrid>
+                            <MudItem xs="6" md="3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Last Seen</MudText>
+                                <MudText Typo="Typo.body1">@(_stats.LastSeen?.ToString("g") ?? "Never")</MudText>
+                            </MudItem>
+                            @if (_stats.LastConnectionDurationS.HasValue)
+                            {
+                                <MudItem xs="6" md="3">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Last Connection Duration</MudText>
+                                    <MudText Typo="Typo.body1">@FormatDuration(TimeSpan.FromSeconds(_stats.LastConnectionDurationS.Value))</MudText>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Actions -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <div class="d-flex gap-3 flex-wrap">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="@(_device.Paused ? Color.Success : Color.Warning)"
+                                   StartIcon="@(_device.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                                   OnClick="@TogglePause">
+                            @(_device.Paused ? "Resume" : "Pause")
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.Delete"
+                                   OnClick="@RemoveDevice">
+                            Remove Device
+                        </MudButton>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string DeviceId { get; set; } = string.Empty;
+
+    private DeviceConfig? _device;
+    private DeviceStats? _stats;
+    private ConnectionInfo? _connection;
+    private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var devices = await Api.GetDevicesAsync();
+            _device = devices?.FirstOrDefault(d => d.DeviceId == DeviceId);
+
+            if (_device != null)
+            {
+                _stats = await Api.GetDeviceStatsAsync(DeviceId);
+
+                var connections = await Api.GetConnectionsAsync();
+                _connection = connections?.FirstOrDefault(c => c.DeviceId == DeviceId);
+
+                _breadcrumbs = new List<BreadcrumbItem>
+                {
+                    new("Devices", "/devices"),
+                    new(_device.DisplayName, null, disabled: true)
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load device: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task TogglePause()
+    {
+        if (_device == null) return;
+
+        try
+        {
+            _device.Paused = !_device.Paused;
+            // await Api.UpdateDeviceAsync(_device);
+            Snackbar.Add(_device.Paused ? "Device paused" : "Device resumed", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to update device: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RemoveDevice()
+    {
+        // TODO: Show confirmation dialog and remove
+        Snackbar.Add("Remove device not implemented", Severity.Warning);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:F2} {sizes[order]}";
+    }
+
+    private static string FormatSpeed(long bytesPerSec)
+    {
+        return FormatBytes(bytesPerSec) + "/s";
+    }
+
+    private static string FormatDuration(TimeSpan? duration)
+    {
+        if (!duration.HasValue) return "-";
+        var d = duration.Value;
+        if (d.TotalDays >= 1) return $"{(int)d.TotalDays}d {d.Hours}h";
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
+        if (d.TotalMinutes >= 1) return $"{(int)d.TotalMinutes}m {d.Seconds}s";
+        return $"{d.Seconds}s";
+    }
+}

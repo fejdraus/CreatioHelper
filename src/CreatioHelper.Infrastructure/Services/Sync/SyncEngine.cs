@@ -287,6 +287,52 @@ public class SyncEngine : ISyncEngine, IDisposable
         return device;
     }
 
+    public async Task<bool> RemoveDeviceAsync(string deviceId)
+    {
+        // Don't allow removing the local device
+        if (deviceId == _configuration.DeviceId)
+        {
+            _logger.LogWarning("Cannot remove local device {DeviceId}", deviceId);
+            return false;
+        }
+
+        if (!_devices.TryRemove(deviceId, out var device))
+        {
+            _logger.LogWarning("Device {DeviceId} not found for removal", deviceId);
+            return false;
+        }
+
+        // Disconnect from the device if connected
+        try
+        {
+            await _protocol.DisconnectAsync(deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error disconnecting from device {DeviceId} during removal", deviceId);
+        }
+
+        // Remove device from all folders
+        foreach (var folder in _folders.Values)
+        {
+            folder.RemoveDevice(deviceId);
+        }
+
+        // Remove from config.xml
+        try
+        {
+            await _configManager.DeleteDeviceAsync(deviceId);
+            _logger.LogInformation("Removed device {DeviceId} ({Name}) from config", deviceId, device.DeviceName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove device {DeviceId} from config", deviceId);
+        }
+
+        _logger.LogInformation("Removed device {DeviceId} ({Name})", deviceId, device.DeviceName);
+        return true;
+    }
+
     public async Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive")
     {
         if (!Directory.Exists(path))
@@ -2505,19 +2551,22 @@ public class SyncEngine : ISyncEngine, IDisposable
                 
                 // Update configuration with certificate-derived DeviceID
                 _configuration.DeviceId = deviceId;
-                
+
+                // Add this device to the device list (Syncthing-compatible)
+                EnsureLocalDeviceInList();
+
                 // Log device info event with detailed certificate info
-                _eventLogger.LogSystemEvent(EventType.DeviceConnected, 
-                    "Device certificate loaded with details", 
-                    new { 
-                        DeviceId = deviceId, 
+                _eventLogger.LogSystemEvent(EventType.DeviceConnected,
+                    "Device certificate loaded with details",
+                    new {
+                        DeviceId = deviceId,
                         SignatureAlgorithm = certInfo.SignatureAlgorithm.ToString(),
                         KeySize = certInfo.KeySize,
                         ExpiresAt = certInfo.ExpiresAt,
                         DaysUntilExpiry = certInfo.DaysUntilExpiry(),
-                        Subject = existingCert.Subject 
+                        Subject = existingCert.Subject
                     });
-                
+
                 return;
             }
 
@@ -2544,17 +2593,20 @@ public class SyncEngine : ISyncEngine, IDisposable
                 
                 // Update configuration with certificate-derived DeviceID
                 _configuration.DeviceId = deviceId;
-                
+
+                // Add this device to the device list (Syncthing-compatible)
+                EnsureLocalDeviceInList();
+
                 // Log device creation event with certificate details
                 var certInfo = _certificateManager.GetCertificateInfo(newCert);
-                _eventLogger.LogSystemEvent(EventType.DeviceConnected, 
-                    "New device certificate generated with signature algorithm", 
-                    new { 
-                        DeviceId = deviceId, 
+                _eventLogger.LogSystemEvent(EventType.DeviceConnected,
+                    "New device certificate generated with signature algorithm",
+                    new {
+                        DeviceId = deviceId,
                         SignatureAlgorithm = certInfo.SignatureAlgorithm.ToString(),
                         KeySize = certInfo.KeySize,
                         ExpiresAt = certInfo.ExpiresAt,
-                        Subject = newCert.Subject 
+                        Subject = newCert.Subject
                     });
             }
             else
@@ -2566,10 +2618,32 @@ public class SyncEngine : ISyncEngine, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error initializing device certificate");
-            _eventLogger.LogSystemEvent(EventType.Failure, 
-                "Certificate initialization failed", 
+            _eventLogger.LogSystemEvent(EventType.Failure,
+                "Certificate initialization failed",
                 new { Error = ex.Message });
             throw;
+        }
+    }
+
+    /// <summary>
+    /// Ensures the local device is in the device list (Syncthing-compatible behavior)
+    /// </summary>
+    private void EnsureLocalDeviceInList()
+    {
+        var localDeviceId = _configuration.DeviceId;
+        if (string.IsNullOrEmpty(localDeviceId)) return;
+
+        if (!_devices.ContainsKey(localDeviceId))
+        {
+            var localDevice = new SyncDevice(localDeviceId, _configuration.DeviceName);
+            localDevice.AddAddress("dynamic");
+            _devices[localDeviceId] = localDevice;
+            _logger.LogDebug("Added local device {DeviceId} to device list", localDeviceId);
+        }
+        else
+        {
+            // Update device name if it changed
+            _devices[localDeviceId].UpdateName(_configuration.DeviceName);
         }
     }
 
@@ -2795,7 +2869,10 @@ public class SyncEngine : ISyncEngine, IDisposable
 
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try { _cancellationTokenSource.Cancel(); } catch (ObjectDisposedException) { }
         _statusTimer?.Dispose();
         _fileWatcher?.Dispose();
         _protocol?.Dispose();
@@ -2803,6 +2880,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         _relayManager?.Dispose();
         _natService?.Dispose();
         _database?.Dispose();
-        _cancellationTokenSource.Dispose();
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
     }
+
+    private bool _disposed;
 }

@@ -1,0 +1,260 @@
+@page "/folders/{FolderId}"
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Services
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(_folder?.DisplayName ?? "Folder Details") - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    @if (_loading)
+    {
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+    }
+    else if (_folder == null)
+    {
+        <MudAlert Severity="Severity.Error">Folder not found</MudAlert>
+    }
+    else
+    {
+        <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+
+        <MudGrid>
+            <!-- Header -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <div class="d-flex justify-space-between align-center">
+                        <div>
+                            <MudText Typo="Typo.h5">@_folder.DisplayName</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">@_folder.Path</MudText>
+                        </div>
+                        <div>
+                            <MudChip T="string" Color="@GetStateColor(_status?.FolderState ?? FolderState.Unknown)" Size="Size.Small">
+                                @(_status?.State ?? "Unknown")
+                            </MudChip>
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@EditFolder" aria-label="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@ScanFolder" aria-label="Rescan" />
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Sync Progress -->
+            <MudItem xs="12" md="8">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Sync Progress</MudText>
+
+                    <MudProgressLinear Color="Color.Primary" Value="@(_status?.SyncPercentage ?? 0)" Class="mb-2" />
+                    <MudText Typo="Typo.body2">@FormatPercentage(_status?.SyncPercentage ?? 0) synced</MudText>
+
+                    <MudDivider Class="my-4" />
+
+                    <MudGrid>
+                        <MudItem xs="6" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Global Files</MudText>
+                            <MudText Typo="Typo.body1">@(_status?.GlobalFiles.ToString("N0") ?? "-")</MudText>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Local Files</MudText>
+                            <MudText Typo="Typo.body1">@(_status?.LocalFiles.ToString("N0") ?? "-")</MudText>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Global Size</MudText>
+                            <MudText Typo="Typo.body1">@FormatBytes(_status?.GlobalBytes ?? 0)</MudText>
+                        </MudItem>
+                        <MudItem xs="6" sm="3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Local Size</MudText>
+                            <MudText Typo="Typo.body1">@FormatBytes(_status?.LocalBytes ?? 0)</MudText>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (_status?.NeedFiles > 0 || _status?.NeedBytes > 0)
+                    {
+                        <MudDivider Class="my-4" />
+                        <MudText Typo="Typo.subtitle2" Color="Color.Warning">Out of Sync</MudText>
+                        <MudText Typo="Typo.body2">
+                            @(_status?.NeedFiles.ToString("N0")) files (@FormatBytes(_status?.NeedBytes ?? 0)) need syncing
+                        </MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+
+            <!-- Folder Info -->
+            <MudItem xs="12" md="4">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Configuration</MudText>
+
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Type</MudText></td>
+                                <td>@_folder.FolderType</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Folder ID</MudText></td>
+                                <td><MudText Typo="Typo.body2" Style="word-break: break-all">@_folder.Id</MudText></td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Rescan Interval</MudText></td>
+                                <td>@FormatInterval(_folder.RescanIntervalS)</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">File Watcher</MudText></td>
+                                <td>@(_folder.FsWatcherEnabled ? "Enabled" : "Disabled")</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Ignore Permissions</MudText></td>
+                                <td>@(_folder.IgnorePerms ? "Yes" : "No")</td>
+                            </tr>
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">Shared With</MudText></td>
+                                <td>@(_folder.Devices?.Length ?? 0) devices</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudPaper>
+            </MudItem>
+
+            <!-- Errors -->
+            @if (_status?.Errors > 0 || _status?.PullErrors > 0)
+            {
+                <MudItem xs="12">
+                    <MudPaper Class="pa-4">
+                        <div class="d-flex justify-space-between align-center mb-3">
+                            <MudText Typo="Typo.h6" Color="Color.Error">
+                                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+                                Errors (@((_status?.Errors ?? 0) + (_status?.PullErrors ?? 0)))
+                            </MudText>
+                            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                                       Href="@($"/folders/{FolderId}/errors")">
+                                View All
+                            </MudButton>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_status?.Error))
+                        {
+                            <MudAlert Severity="Severity.Error" Class="mb-2">@_status.Error</MudAlert>
+                        }
+                    </MudPaper>
+                </MudItem>
+            }
+
+            <!-- Shared Devices -->
+            <MudItem xs="12">
+                <MudPaper Class="pa-4">
+                    <MudText Typo="Typo.h6" Class="mb-3">Shared With</MudText>
+
+                    @if (_folder.Devices?.Length > 0)
+                    {
+                        <MudList T="string" Dense="true">
+                            @foreach (var device in _folder.Devices)
+                            {
+                                <MudListItem Icon="@Icons.Material.Filled.Devices">
+                                    <MudText Typo="Typo.body2" Style="word-break: break-all">@device.DeviceId</MudText>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Not shared with any devices</MudText>
+                    }
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string FolderId { get; set; } = string.Empty;
+
+    private FolderConfig? _folder;
+    private FolderStatus? _status;
+    private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var folders = await Api.GetFoldersAsync();
+            _folder = folders?.FirstOrDefault(f => f.Id == FolderId);
+
+            if (_folder != null)
+            {
+                _status = await Api.GetFolderStatusAsync(FolderId);
+                _breadcrumbs = new List<BreadcrumbItem>
+                {
+                    new("Folders", "/folders"),
+                    new(_folder.DisplayName, null, disabled: true)
+                };
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load folder: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void EditFolder()
+    {
+        Navigation.NavigateTo($"/folders/{FolderId}/edit");
+    }
+
+    private async Task ScanFolder()
+    {
+        try
+        {
+            await Api.ScanFolderAsync(FolderId);
+            Snackbar.Add("Scan started", Severity.Success);
+            await LoadDataAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to start scan: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private static Color GetStateColor(FolderState state) => state switch
+    {
+        FolderState.Idle => Color.Success,
+        FolderState.Scanning => Color.Info,
+        FolderState.Syncing => Color.Primary,
+        FolderState.Error => Color.Error,
+        _ => Color.Default
+    };
+
+    private static string FormatPercentage(double value) => $"{value:F1}%";
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:F2} {sizes[order]}";
+    }
+
+    private static string FormatInterval(int seconds)
+    {
+        if (seconds < 60) return $"{seconds}s";
+        if (seconds < 3600) return $"{seconds / 60}m";
+        return $"{seconds / 3600}h";
+    }
+}

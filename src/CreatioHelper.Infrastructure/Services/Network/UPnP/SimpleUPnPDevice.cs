@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Xml.Linq;
@@ -21,12 +22,15 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
     private const string WanIpConnectionV2 = "urn:schemas-upnp-org:service:WANIPConnection:2";
     private const string WanPppConnectionV1 = "urn:schemas-upnp-org:service:WANPPPConnection:1";
     private const string WanPppConnectionV2 = "urn:schemas-upnp-org:service:WANPPPConnection:2";
+    private const string WanIpv6FirewallControl = "urn:schemas-upnp-org:service:WANIPv6FirewallControl:1";
 
     public string DeviceId { get; }
     public string FriendlyName { get; private set; } = "Unknown Device";
     public string DeviceType { get; }
     public bool SupportsIPv6 { get; private set; } = false;
+    public bool SupportsIgdv2 => DeviceType.Contains(":2");
     public string ControlUrl { get; private set; } = string.Empty;
+    public string Ipv6ControlUrl { get; private set; } = string.Empty;
     public string LocalIPAddress { get; }
 
     public SimpleUPnPDevice(string locationUrl, string deviceId, string deviceType, string localIPAddress, ILogger logger)
@@ -220,6 +224,203 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
     }
 
     /// <summary>
+    /// IGDv2: Add any port mapping (router assigns the external port)
+    /// </summary>
+    public async Task<UPnPAnyPortMappingResult?> AddAnyPortMappingAsync(int internalPort, string localIP,
+        string protocol, string description, int leaseDuration, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SimpleUPnPDevice));
+
+        // This feature requires IGDv2
+        if (!SupportsIgdv2)
+        {
+            _logger.LogDebug("Device {DeviceId} does not support IGDv2 AddAnyPortMapping", DeviceId);
+            return null;
+        }
+
+        try
+        {
+            if (string.IsNullOrEmpty(ControlUrl))
+            {
+                _logger.LogWarning("Device {DeviceId} has no control URL available", DeviceId);
+                return null;
+            }
+
+            var soapAction = "AddAnyPortMapping";
+            var serviceType = WanIpConnectionV2;
+
+            var soapBody = $@"
+                <u:{soapAction} xmlns:u=""{serviceType}"">
+                    <NewRemoteHost></NewRemoteHost>
+                    <NewExternalPort>0</NewExternalPort>
+                    <NewProtocol>{protocol}</NewProtocol>
+                    <NewInternalPort>{internalPort}</NewInternalPort>
+                    <NewInternalClient>{localIP}</NewInternalClient>
+                    <NewEnabled>1</NewEnabled>
+                    <NewPortMappingDescription>{description}</NewPortMappingDescription>
+                    <NewLeaseDuration>{leaseDuration}</NewLeaseDuration>
+                </u:{soapAction}>";
+
+            var response = await SendSoapRequestAsync(soapAction, serviceType, soapBody, cancellationToken);
+
+            if (string.IsNullOrEmpty(response) || response.Contains("soap:Fault"))
+            {
+                // Check for specific error codes
+                var errorCode = ParseSoapErrorCode(response);
+                if (errorCode.HasValue)
+                {
+                    _logger.LogDebug("IGDv2 AddAnyPortMapping failed with error code {ErrorCode}", errorCode);
+                }
+                return null;
+            }
+
+            // Parse response to get assigned external port
+            var xDoc = XDocument.Parse(response);
+            var assignedPort = ParseIntElement(xDoc, "NewReservedPort");
+
+            if (assignedPort == 0)
+            {
+                _logger.LogWarning("IGDv2 AddAnyPortMapping returned invalid port");
+                return null;
+            }
+
+            _logger.LogDebug("IGDv2 AddAnyPortMapping succeeded: internal {InternalPort} -> external {ExternalPort}",
+                internalPort, assignedPort);
+
+            return new UPnPAnyPortMappingResult
+            {
+                AssignedExternalPort = assignedPort,
+                InternalPort = internalPort,
+                Protocol = protocol,
+                LeaseDuration = leaseDuration,
+                ExpiresAt = leaseDuration > 0 ? DateTime.UtcNow.AddSeconds(leaseDuration) : DateTime.MaxValue
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in IGDv2 AddAnyPortMapping on device {DeviceId}", DeviceId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// IPv6: Add a firewall pinhole for incoming connections
+    /// </summary>
+    public async Task<UPnPPinholeResult?> AddPinholeAsync(IPAddress remoteHost, int remotePort,
+        IPAddress internalClient, int internalPort, string protocol, int leaseTime,
+        CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SimpleUPnPDevice));
+
+        if (!SupportsIPv6 || string.IsNullOrEmpty(Ipv6ControlUrl))
+        {
+            _logger.LogDebug("Device {DeviceId} does not support IPv6 pinholes", DeviceId);
+            return null;
+        }
+
+        try
+        {
+            var soapAction = "AddPinhole";
+            var serviceType = WanIpv6FirewallControl;
+
+            // Protocol numbers: 6 = TCP, 17 = UDP, 0 = all
+            var protocolNumber = protocol.ToUpperInvariant() switch
+            {
+                "TCP" => 6,
+                "UDP" => 17,
+                _ => 0
+            };
+
+            var soapBody = $@"
+                <u:{soapAction} xmlns:u=""{serviceType}"">
+                    <RemoteHost>{(remoteHost.Equals(IPAddress.IPv6Any) ? "" : remoteHost)}</RemoteHost>
+                    <RemotePort>{remotePort}</RemotePort>
+                    <InternalClient>{internalClient}</InternalClient>
+                    <InternalPort>{internalPort}</InternalPort>
+                    <Protocol>{protocolNumber}</Protocol>
+                    <LeaseTime>{leaseTime}</LeaseTime>
+                </u:{soapAction}>";
+
+            var response = await SendSoapRequestWithUrlAsync(Ipv6ControlUrl, soapAction, serviceType, soapBody, cancellationToken);
+
+            if (string.IsNullOrEmpty(response) || response.Contains("soap:Fault"))
+            {
+                _logger.LogDebug("IPv6 AddPinhole failed on device {DeviceId}", DeviceId);
+                return null;
+            }
+
+            // Parse response to get UniqueID
+            var xDoc = XDocument.Parse(response);
+            var uniqueId = ParseIntElement(xDoc, "UniqueID");
+
+            if (uniqueId == 0)
+            {
+                _logger.LogWarning("IPv6 AddPinhole returned invalid UniqueID");
+                return null;
+            }
+
+            _logger.LogDebug("IPv6 AddPinhole succeeded: UniqueID={UniqueId}", uniqueId);
+
+            return new UPnPPinholeResult
+            {
+                UniqueId = uniqueId,
+                RemoteHost = remoteHost,
+                RemotePort = remotePort,
+                InternalClient = internalClient,
+                InternalPort = internalPort,
+                Protocol = protocol,
+                LeaseTime = leaseTime,
+                ExpiresAt = leaseTime > 0 ? DateTime.UtcNow.AddSeconds(leaseTime) : DateTime.MaxValue
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in IPv6 AddPinhole on device {DeviceId}", DeviceId);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// IPv6: Delete a firewall pinhole by its unique ID
+    /// </summary>
+    public async Task<bool> DeletePinholeAsync(int uniqueId, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SimpleUPnPDevice));
+
+        if (!SupportsIPv6 || string.IsNullOrEmpty(Ipv6ControlUrl))
+        {
+            return false;
+        }
+
+        try
+        {
+            var soapAction = "DeletePinhole";
+            var serviceType = WanIpv6FirewallControl;
+
+            var soapBody = $@"
+                <u:{soapAction} xmlns:u=""{serviceType}"">
+                    <UniqueID>{uniqueId}</UniqueID>
+                </u:{soapAction}>";
+
+            var response = await SendSoapRequestWithUrlAsync(Ipv6ControlUrl, soapAction, serviceType, soapBody, cancellationToken);
+
+            var success = !string.IsNullOrEmpty(response) && !response.Contains("soap:Fault");
+
+            if (success)
+            {
+                _logger.LogDebug("IPv6 DeletePinhole succeeded: UniqueID={UniqueId}", uniqueId);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in IPv6 DeletePinhole on device {DeviceId}", DeviceId);
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Get a specific port mapping entry by index
     /// </summary>
     private async Task<UPnPPortMapping?> GetGenericPortMappingEntryAsync(int index, CancellationToken cancellationToken)
@@ -368,11 +569,22 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
                 ControlUrl = ResolveControlUrl(controlUrlElement.Value, locationUrl);
             }
 
-            // Check IPv6 support based on device type
-            SupportsIPv6 = DeviceType.Contains(":2"); // IGDv2 supports IPv6
+            // Find IPv6 firewall control URL if available
+            var ipv6ControlUrlElement = FindControlUrl(xDoc, WanIpv6FirewallControl);
+            if (ipv6ControlUrlElement != null)
+            {
+                Ipv6ControlUrl = ResolveControlUrl(ipv6ControlUrlElement.Value, locationUrl);
+                SupportsIPv6 = true;
+                _logger.LogDebug("Device {DeviceId} supports IPv6 firewall control at {Ipv6ControlUrl}", DeviceId, Ipv6ControlUrl);
+            }
+            else
+            {
+                // Check IPv6 support based on device type (IGDv2 can potentially support it)
+                SupportsIPv6 = DeviceType.Contains(":2");
+            }
 
-            _logger.LogDebug("Device {DeviceId} initialized: {FriendlyName}, ControlUrl: {ControlUrl}", 
-                DeviceId, FriendlyName, ControlUrl);
+            _logger.LogDebug("Device {DeviceId} initialized: {FriendlyName}, ControlUrl: {ControlUrl}, SupportsIPv6: {SupportsIPv6}",
+                DeviceId, FriendlyName, ControlUrl, SupportsIPv6);
         }
         catch (Exception ex)
         {
@@ -380,18 +592,28 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
         }
     }
 
-    private XElement? FindControlUrl(XDocument deviceDoc)
+    private XElement? FindControlUrl(XDocument deviceDoc, string? specificServiceType = null)
     {
-        // Look for WANIPConnection or WANPPPConnection services
+        // Look for WANIPConnection, WANPPPConnection, or specific services
         var services = deviceDoc.Descendants().Where(e => e.Name.LocalName == "service");
-        
+
         foreach (var service in services)
         {
             var serviceTypeElement = service.Descendants().FirstOrDefault(e => e.Name.LocalName == "serviceType");
             if (serviceTypeElement != null)
             {
                 var serviceType = serviceTypeElement.Value;
-                if (serviceType == WanIpConnectionV1 || serviceType == WanIpConnectionV2 ||
+
+                // If looking for a specific service type
+                if (specificServiceType != null)
+                {
+                    if (serviceType == specificServiceType)
+                    {
+                        return service.Descendants().FirstOrDefault(e => e.Name.LocalName == "controlURL");
+                    }
+                }
+                // Default: look for WAN connection services
+                else if (serviceType == WanIpConnectionV1 || serviceType == WanIpConnectionV2 ||
                     serviceType == WanPppConnectionV1 || serviceType == WanPppConnectionV2)
                 {
                     return service.Descendants().FirstOrDefault(e => e.Name.LocalName == "controlURL");
@@ -422,6 +644,11 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
 
     private async Task<string> SendSoapRequestAsync(string action, string serviceType, string soapBody, CancellationToken cancellationToken)
     {
+        return await SendSoapRequestWithUrlAsync(ControlUrl, action, serviceType, soapBody, cancellationToken);
+    }
+
+    private async Task<string> SendSoapRequestWithUrlAsync(string controlUrl, string action, string serviceType, string soapBody, CancellationToken cancellationToken)
+    {
         var soapEnvelope = $@"<?xml version=""1.0""?>
 <soap:Envelope xmlns:soap=""http://schemas.xmlsoap.org/soap/envelope/"" soap:encodingStyle=""http://schemas.xmlsoap.org/soap/encoding/"">
     <soap:Body>
@@ -432,8 +659,52 @@ public class SimpleUPnPDevice : IUPnPDevice, IDisposable
         var content = new StringContent(soapEnvelope, Encoding.UTF8, "text/xml");
         content.Headers.Add("SOAPAction", $"\"{serviceType}#{action}\"");
 
-        var response = await _httpClient.PostAsync(ControlUrl, content, cancellationToken);
+        var response = await _httpClient.PostAsync(controlUrl, content, cancellationToken);
         return await response.Content.ReadAsStringAsync(cancellationToken);
+    }
+
+    /// <summary>
+    /// Parse SOAP error code from fault response
+    /// </summary>
+    private static int? ParseSoapErrorCode(string? response)
+    {
+        if (string.IsNullOrEmpty(response) || !response.Contains("soap:Fault"))
+            return null;
+
+        try
+        {
+            var xDoc = XDocument.Parse(response);
+
+            // Look for UPnP error code in various formats
+            var errorCodeElement = xDoc.Descendants()
+                .FirstOrDefault(e => e.Name.LocalName == "errorCode" ||
+                                    e.Name.LocalName == "ErrorCode");
+
+            if (errorCodeElement != null && int.TryParse(errorCodeElement.Value, out var errorCode))
+            {
+                return errorCode;
+            }
+
+            // Try to parse from faultcode or faultstring
+            var faultCodeElement = xDoc.Descendants()
+                .FirstOrDefault(e => e.Name.LocalName == "faultcode");
+
+            if (faultCodeElement != null)
+            {
+                // Try to extract numeric error code from format like "s:Client" or "718"
+                var faultCode = faultCodeElement.Value;
+                if (int.TryParse(faultCode, out var numericCode))
+                {
+                    return numericCode;
+                }
+            }
+        }
+        catch
+        {
+            // Parsing failed, return null
+        }
+
+        return null;
     }
 
     private string GetServiceType()

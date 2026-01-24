@@ -15,21 +15,30 @@ public class SyncthingUPnPService : IUPnPService, IDisposable
 {
     private readonly ILogger<SyncthingUPnPService> _logger;
     private readonly List<IUPnPDevice> _discoveredDevices;
+    private readonly List<UPnPPortMapping> _activeMappings;
+    private readonly List<UPnPPinholeResult> _activePinholes;
     private readonly object _lock = new();
     private bool _disposed = false;
+    private DateTime _lastDiscovery = DateTime.MinValue;
+    private string? _cachedExternalIPv4;
+    private string? _cachedExternalIPv6;
 
     // UPnP constants matching Syncthing implementation
     private const string SsdpMulticastAddress = "239.255.255.250";
+    private const string SsdpMulticastAddressIPv6 = "ff02::c";
     private const int SsdpPort = 1900;
     private const string IgdV1DeviceType = "urn:schemas-upnp-org:device:InternetGatewayDevice:1";
     private const string IgdV2DeviceType = "urn:schemas-upnp-org:device:InternetGatewayDevice:2";
+    private const string WanIpv6FirewallControlService = "urn:schemas-upnp-org:service:WANIPv6FirewallControl:1";
     private const string UserAgent = "syncthing/1.0";
 
     public SyncthingUPnPService(ILogger<SyncthingUPnPService> logger)
     {
         _logger = logger;
         _discoveredDevices = new List<IUPnPDevice>();
-        
+        _activeMappings = new List<UPnPPortMapping>();
+        _activePinholes = new List<UPnPPinholeResult>();
+
         _logger.LogInformation("SyncthingUPnPService initialized");
     }
 
@@ -371,6 +380,294 @@ public class SyncthingUPnPService : IUPnPService, IDisposable
         return null;
     }
 
+    public async Task<UPnPAnyPortMappingResult?> AddAnyPortMappingAsync(int internalPort, string protocol = "TCP",
+        string description = "Syncthing", int leaseDuration = 3600, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingUPnPService));
+
+        try
+        {
+            var devices = await GetAvailableDevicesAsync(cancellationToken);
+            var localIP = GetLocalIPAddress();
+
+            if (string.IsNullOrEmpty(localIP))
+            {
+                _logger.LogError("Could not determine local IP address for AddAnyPortMapping");
+                return null;
+            }
+
+            // Try IGDv2 devices first (they support AddAnyPortMapping)
+            var igdv2Devices = devices.Where(d => d.DeviceType.Contains(":2")).ToList();
+
+            foreach (var device in igdv2Devices)
+            {
+                var result = await TryAddAnyPortMappingOnDeviceAsync(device, internalPort, localIP, protocol, description, leaseDuration, cancellationToken);
+                if (result != null)
+                {
+                    lock (_lock)
+                    {
+                        _activeMappings.Add(new UPnPPortMapping
+                        {
+                            ExternalPort = result.AssignedExternalPort,
+                            InternalPort = internalPort,
+                            InternalClient = localIP,
+                            Protocol = protocol,
+                            Description = description,
+                            LeaseDuration = leaseDuration,
+                            CreatedAt = DateTime.UtcNow
+                        });
+                    }
+                    return result;
+                }
+            }
+
+            // Fallback: Try standard AddPortMapping with requested port = internal port
+            _logger.LogDebug("No IGDv2 device available for AddAnyPortMapping, falling back to standard mapping");
+            var standardSuccess = await AddPortMappingAsync(internalPort, internalPort, protocol, description, leaseDuration, cancellationToken);
+            if (standardSuccess)
+            {
+                return new UPnPAnyPortMappingResult
+                {
+                    AssignedExternalPort = internalPort,
+                    InternalPort = internalPort,
+                    Protocol = protocol,
+                    LeaseDuration = leaseDuration,
+                    ExpiresAt = leaseDuration > 0 ? DateTime.UtcNow.AddSeconds(leaseDuration) : DateTime.MaxValue
+                };
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add any port mapping for internal port {InternalPort}", internalPort);
+            return null;
+        }
+    }
+
+    private async Task<UPnPAnyPortMappingResult?> TryAddAnyPortMappingOnDeviceAsync(IUPnPDevice device, int internalPort,
+        string localIP, string protocol, string description, int leaseDuration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            // IGDv2 AddAnyPortMapping action - router assigns the external port
+            if (device is SimpleUPnPDevice simpleDevice)
+            {
+                var result = await simpleDevice.AddAnyPortMappingAsync(internalPort, localIP, protocol, description, leaseDuration, cancellationToken);
+                if (result != null)
+                {
+                    _logger.LogInformation("IGDv2 AddAnyPortMapping succeeded: internal {InternalPort} -> external {ExternalPort}",
+                        internalPort, result.AssignedExternalPort);
+                    return result;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "IGDv2 AddAnyPortMapping failed on device {DeviceId}", device.DeviceId);
+        }
+        return null;
+    }
+
+    public async Task<bool> DeletePortMappingRangeAsync(int startPort, int endPort, string protocol = "TCP", CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingUPnPService));
+
+        try
+        {
+            var devices = await GetAvailableDevicesAsync(cancellationToken);
+            var deletedCount = 0;
+
+            for (int port = startPort; port <= endPort; port++)
+            {
+                if (await DeletePortMappingAsync(port, protocol, cancellationToken))
+                {
+                    deletedCount++;
+                }
+            }
+
+            _logger.LogInformation("Deleted {Count} port mappings in range {Start}-{End}:{Protocol}",
+                deletedCount, startPort, endPort, protocol);
+
+            return deletedCount > 0;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete port mapping range {Start}-{End}:{Protocol}", startPort, endPort, protocol);
+            return false;
+        }
+    }
+
+    public async Task<UPnPPinholeResult?> AddPinholeAsync(IPAddress remoteHost, int remotePort,
+        IPAddress internalClient, int internalPort, string protocol, int leaseTime,
+        CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingUPnPService));
+
+        try
+        {
+            var devices = await GetAvailableDevicesAsync(cancellationToken);
+            var ipv6Devices = devices.Where(d => d.SupportsIPv6).ToList();
+
+            if (!ipv6Devices.Any())
+            {
+                _logger.LogDebug("No IPv6-capable devices found for pinhole creation");
+                return null;
+            }
+
+            foreach (var device in ipv6Devices)
+            {
+                if (device is SimpleUPnPDevice simpleDevice)
+                {
+                    var result = await simpleDevice.AddPinholeAsync(remoteHost, remotePort, internalClient, internalPort, protocol, leaseTime, cancellationToken);
+                    if (result != null)
+                    {
+                        lock (_lock)
+                        {
+                            _activePinholes.Add(result);
+                        }
+                        _logger.LogInformation("Created IPv6 pinhole: UniqueId={UniqueId}, {RemoteHost}:{RemotePort} -> {InternalClient}:{InternalPort}",
+                            result.UniqueId, remoteHost, remotePort, internalClient, internalPort);
+                        return result;
+                    }
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to add IPv6 pinhole");
+            return null;
+        }
+    }
+
+    public async Task<bool> DeletePinholeAsync(int uniqueId, CancellationToken cancellationToken = default)
+    {
+        if (_disposed) throw new ObjectDisposedException(nameof(SyncthingUPnPService));
+
+        try
+        {
+            var devices = await GetAvailableDevicesAsync(cancellationToken);
+            var ipv6Devices = devices.Where(d => d.SupportsIPv6).ToList();
+
+            foreach (var device in ipv6Devices)
+            {
+                if (device is SimpleUPnPDevice simpleDevice)
+                {
+                    var success = await simpleDevice.DeletePinholeAsync(uniqueId, cancellationToken);
+                    if (success)
+                    {
+                        lock (_lock)
+                        {
+                            _activePinholes.RemoveAll(p => p.UniqueId == uniqueId);
+                        }
+                        _logger.LogInformation("Deleted IPv6 pinhole: UniqueId={UniqueId}", uniqueId);
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete IPv6 pinhole {UniqueId}", uniqueId);
+            return false;
+        }
+    }
+
+    public UPnPServiceStatus GetStatus()
+    {
+        lock (_lock)
+        {
+            var igdv1Count = _discoveredDevices.Count(d => !d.DeviceType.Contains(":2"));
+            var igdv2Count = _discoveredDevices.Count(d => d.DeviceType.Contains(":2"));
+            var ipv6Count = _discoveredDevices.Count(d => d.SupportsIPv6);
+
+            return new UPnPServiceStatus
+            {
+                IsAvailable = _discoveredDevices.Count > 0,
+                DeviceCount = _discoveredDevices.Count,
+                Igdv1DeviceCount = igdv1Count,
+                Igdv2DeviceCount = igdv2Count,
+                Ipv6DeviceCount = ipv6Count,
+                ActiveMappingCount = _activeMappings.Count,
+                ActivePinholeCount = _activePinholes.Count,
+                ExternalIPv4 = _cachedExternalIPv4,
+                ExternalIPv6 = _cachedExternalIPv6,
+                LastDiscovery = _lastDiscovery,
+                Devices = _discoveredDevices.Select(d => new UPnPDeviceStatus
+                {
+                    DeviceId = d.DeviceId,
+                    FriendlyName = d.FriendlyName,
+                    DeviceType = d.DeviceType,
+                    SupportsIgdv2 = d.DeviceType.Contains(":2"),
+                    SupportsIpv6 = d.SupportsIPv6,
+                    ExternalIP = null // Would need async call
+                }).ToList()
+            };
+        }
+    }
+
+    /// <summary>
+    /// Enhanced port mapping with UPnP error code handling
+    /// </summary>
+    private async Task<(bool Success, int? ErrorCode)> AddPortMappingWithErrorHandlingAsync(
+        IUPnPDevice device, int externalPort, int internalPort, string localIP,
+        string protocol, string description, int leaseDuration, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var success = await device.AddPortMappingAsync(externalPort, internalPort, localIP, protocol, description, leaseDuration, cancellationToken);
+
+            if (success)
+            {
+                return (true, null);
+            }
+
+            // The SimpleUPnPDevice doesn't return error codes directly, but we can infer from the result
+            // In a full implementation, we would parse the SOAP fault response
+            return (false, null);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Port mapping failed with exception");
+            return (false, null);
+        }
+    }
+
+    /// <summary>
+    /// Try to add port mapping with automatic error handling and retry logic
+    /// </summary>
+    public async Task<bool> AddPortMappingWithRetryAsync(int externalPort, int internalPort, string protocol = "TCP",
+        string description = "Syncthing", int leaseDuration = 3600, CancellationToken cancellationToken = default)
+    {
+        // First attempt
+        var success = await AddPortMappingAsync(externalPort, internalPort, protocol, description, leaseDuration, cancellationToken);
+        if (success) return true;
+
+        // If failed with lease duration, try with permanent lease (duration=0)
+        _logger.LogDebug("Port mapping failed, retrying with permanent lease (duration=0)");
+        success = await AddPortMappingAsync(externalPort, internalPort, protocol, description, 0, cancellationToken);
+        if (success) return true;
+
+        // If port conflict, try a different port
+        _logger.LogDebug("Port mapping failed, trying alternative port");
+        for (int offset = 1; offset <= 10; offset++)
+        {
+            var altPort = externalPort + offset;
+            success = await AddPortMappingAsync(altPort, internalPort, protocol, description, 0, cancellationToken);
+            if (success)
+            {
+                _logger.LogInformation("Port mapping succeeded with alternative external port {AltPort}", altPort);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public void Dispose()
     {
         if (!_disposed)
@@ -378,6 +675,8 @@ public class SyncthingUPnPService : IUPnPService, IDisposable
             lock (_lock)
             {
                 _discoveredDevices.Clear();
+                _activeMappings.Clear();
+                _activePinholes.Clear();
             }
             _disposed = true;
             _logger.LogDebug("SyncthingUPnPService disposed");

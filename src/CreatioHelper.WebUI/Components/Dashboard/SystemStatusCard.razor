@@ -1,0 +1,105 @@
+@* SystemStatusCard - Dashboard card showing system status *@
+@using CreatioHelper.WebUI.Models
+
+<MudPaper Class="pa-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+        System Status
+    </MudText>
+
+    @if (Loading)
+    {
+        <MudSkeleton Width="100%" Height="120px" />
+    }
+    else if (Status != null)
+    {
+        <MudGrid>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Device ID</MudText>
+                <MudText Typo="Typo.body2" Class="text-truncate" Style="font-family: monospace; max-width: 150px;">
+                    @(Status.MyId?.Length > 12 ? Status.MyId[..12] + "..." : Status.MyId)
+                </MudText>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Uptime</MudText>
+                <MudText Typo="Typo.body2">@FormatUptime(Status.UptimeSpan)</MudText>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">System Memory</MudText>
+                <MudText Typo="Typo.body2">@FormatBytes(Status.Sys ?? 0)</MudText>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Memory</MudText>
+                <MudText Typo="Typo.body2">@FormatBytes(Status.Alloc ?? 0)</MudText>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">CPU</MudText>
+                <MudText Typo="Typo.body2">@((Status.CpuPercent ?? 0).ToString("F1"))%</MudText>
+            </MudItem>
+            <MudItem xs="6" sm="4">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Goroutines</MudText>
+                <MudText Typo="Typo.body2">@(Status.Goroutines ?? 0)</MudText>
+            </MudItem>
+        </MudGrid>
+
+        @if (ShowActions)
+        {
+            <MudDivider Class="my-3" />
+            <div class="d-flex gap-2">
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="@OnRestart">
+                    Restart
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           Size="Size.Small"
+                           Color="Color.Error"
+                           StartIcon="@Icons.Material.Filled.PowerSettingsNew"
+                           OnClick="@OnShutdown">
+                    Shutdown
+                </MudButton>
+            </div>
+        }
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Warning" Dense="true">
+            Unable to retrieve system status
+        </MudAlert>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public SystemStatus? Status { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    [Parameter]
+    public bool ShowActions { get; set; } = false;
+
+    [Parameter]
+    public EventCallback OnRestart { get; set; }
+
+    [Parameter]
+    public EventCallback OnShutdown { get; set; }
+
+    private static string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{(int)uptime.TotalDays}d {uptime.Hours}h";
+        if (uptime.TotalHours >= 1)
+            return $"{uptime.Hours}h {uptime.Minutes}m";
+        return $"{uptime.Minutes}m {uptime.Seconds}s";
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+}

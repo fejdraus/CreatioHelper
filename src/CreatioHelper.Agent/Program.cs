@@ -3,6 +3,7 @@ using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
+using CreatioHelper.Infrastructure.Services.Sync.Configuration;
 using CreatioHelper.Infrastructure.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -183,22 +184,28 @@ builder.Services.AddSyncthingAutoStop(builder.Configuration);
 // Add heartbeat service
 builder.Services.AddHostedService<HeartbeatService>();
 
-// Add sync services with configuration
-var syncConfigFromFile = builder.Configuration.GetSection("Sync").Get<SyncConfigurationFromFile>();
+// Add sync services with configuration from config.xml
 SyncConfiguration? syncConfig = null;
-
-if (syncConfigFromFile != null)
+try
 {
-    Log.Debug("Loaded sync config: DeviceId={DeviceId}, Port={Port}", syncConfigFromFile.DeviceId, syncConfigFromFile.Port);
+    var configXmlService = new ConfigXmlService(
+        LoggerFactory.Create(b => b.AddSerilog()).CreateLogger<ConfigXmlService>());
 
-    // Convert from file config to domain config
-    syncConfig = new SyncConfiguration(syncConfigFromFile.DeviceId, syncConfigFromFile.DeviceName);
-    syncConfig.SetPort(syncConfigFromFile.Port);
-    syncConfig.SetDiscoveryPort(syncConfigFromFile.DiscoveryPort);
+    if (configXmlService.ConfigExists())
+    {
+        var configXml = await configXmlService.LoadAsync();
+        syncConfig = configXmlService.ToSyncConfiguration(configXml);
+        Log.Information("Loaded sync config from config.xml: DeviceId={DeviceId}, Port={Port}",
+            syncConfig.DeviceId, syncConfig.Port);
+    }
+    else
+    {
+        Log.Debug("config.xml not found at {Path}", configXmlService.ConfigPath);
+    }
 }
-else
+catch (Exception ex)
 {
-    Log.Debug("No sync config found in appsettings");
+    Log.Warning(ex, "Failed to load config.xml, sync will use defaults");
 }
 builder.Services.AddSyncServices(syncConfig);
 

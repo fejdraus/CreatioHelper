@@ -299,9 +299,14 @@ public class IgnoreMatcher : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
-        _cancellationTokenSource.Dispose();
+        if (_disposed) return;
+        _disposed = true;
+
+        try { _cancellationTokenSource.Cancel(); } catch (ObjectDisposedException) { }
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
     }
+
+    private bool _disposed;
 }
 
 /// <summary>
