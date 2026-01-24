@@ -14,9 +14,59 @@ public static class RelayProtocol
     public const uint Magic = 0x9E79BC40;
 
     /// <summary>
-    /// Protocol name for relay connections.
+    /// Protocol name for relay connections used in ALPN negotiation.
     /// </summary>
     public const string ProtocolName = "bep-relay";
+
+    /// <summary>
+    /// TLS handshake record type byte (0x16 = 22).
+    /// Used to detect if an incoming connection is TLS or plaintext.
+    /// The first byte of a TLS connection is always ContentType.Handshake (0x16).
+    /// </summary>
+    public const byte TlsHandshakeRecordType = 0x16;
+
+    /// <summary>
+    /// Detects if the first byte indicates a TLS connection.
+    /// TLS connections always start with the handshake record type (0x16).
+    /// </summary>
+    /// <param name="firstByte">The first byte read from the connection</param>
+    /// <returns>True if the connection appears to be TLS</returns>
+    public static bool IsTlsConnection(byte firstByte) => firstByte == TlsHandshakeRecordType;
+
+    /// <summary>
+    /// Reads the first byte from a stream to detect TLS mode without consuming it.
+    /// For server-side TLS mode detection when the connection type is unknown.
+    /// </summary>
+    /// <param name="stream">The network stream to peek</param>
+    /// <param name="buffer">A buffer to receive the peeked byte</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if the first byte indicates a TLS connection (0x16)</returns>
+    public static async Task<bool> DetectTlsModeAsync(Stream stream, byte[] buffer, CancellationToken cancellationToken = default)
+    {
+        if (buffer.Length < 1)
+            throw new ArgumentException("Buffer must have at least 1 byte", nameof(buffer));
+
+        // Read first byte to detect TLS mode
+        var bytesRead = await stream.ReadAsync(buffer.AsMemory(0, 1), cancellationToken);
+        if (bytesRead == 0)
+            throw new EndOfStreamException("Connection closed before TLS detection");
+
+        return IsTlsConnection(buffer[0]);
+    }
+
+    /// <summary>
+    /// Validates that the negotiated ALPN protocol matches the expected relay protocol.
+    /// </summary>
+    /// <param name="negotiatedProtocol">The negotiated ALPN protocol from the TLS connection</param>
+    /// <returns>True if the protocol matches "bep-relay"</returns>
+    public static bool ValidateAlpnProtocol(System.Net.Security.SslApplicationProtocol negotiatedProtocol)
+    {
+        if (negotiatedProtocol == default)
+            return false;
+
+        var expectedBytes = System.Text.Encoding.UTF8.GetBytes(ProtocolName);
+        return negotiatedProtocol.Protocol.Span.SequenceEqual(expectedBytes);
+    }
 
     /// <summary>
     /// Maximum message length in bytes (1024).
