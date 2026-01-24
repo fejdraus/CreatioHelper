@@ -16,7 +16,7 @@ public class DiscoveryManager : IDiscoveryManager
 {
     private readonly ILogger<DiscoveryManager> _logger;
     private readonly DiscoveryCache _cache;
-    private readonly LocalDiscoveryService? _localDiscovery;
+    private readonly ILocalDiscovery? _localDiscovery;
     private readonly SyncthingGlobalDiscovery? _globalDiscovery;
     private readonly ConcurrentDictionary<string, List<string>> _staticAddresses = new();
     private readonly SemaphoreSlim _lookupSemaphore = new(1, 1);
@@ -36,7 +36,7 @@ public class DiscoveryManager : IDiscoveryManager
     public DiscoveryManager(
         ILogger<DiscoveryManager> logger,
         DiscoveryCache cache,
-        LocalDiscoveryService? localDiscovery = null,
+        ILocalDiscovery? localDiscovery = null,
         SyncthingGlobalDiscovery? globalDiscovery = null)
     {
         _logger = logger;

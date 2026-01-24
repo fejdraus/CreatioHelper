@@ -1,0 +1,200 @@
+@* FolderCard - Detailed folder card for folder list *@
+@using CreatioHelper.WebUI.Models
+
+<MudCard Elevation="2" Class="@($"folder-card {Class}")">
+    <MudCardHeader>
+        <CardHeaderAvatar>
+            <MudAvatar Color="@GetStatusColor()" Size="Size.Medium">
+                <MudIcon Icon="@GetStatusIcon()" />
+            </MudAvatar>
+        </CardHeaderAvatar>
+        <CardHeaderContent>
+            <MudText Typo="Typo.h6">@Folder.Label</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@Folder.Path</MudText>
+        </CardHeaderContent>
+        <CardHeaderActions>
+            @if (Folder.Paused)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Warning">Paused</MudChip>
+            }
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small">
+                <MudMenuItem OnClick="@(() => OnScan.InvokeAsync())">
+                    <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" Size="Size.Small" />
+                    Rescan
+                </MudMenuItem>
+                <MudMenuItem OnClick="@(() => OnEditIgnores.InvokeAsync())">
+                    <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" Size="Size.Small" />
+                    Edit Ignores
+                </MudMenuItem>
+                <MudMenuItem OnClick="@(() => OnEdit.InvokeAsync())">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" Size="Size.Small" />
+                    Edit
+                </MudMenuItem>
+                <MudDivider />
+                <MudMenuItem OnClick="@(() => OnTogglePause.InvokeAsync())">
+                    <MudIcon Icon="@(Folder.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
+                             Class="mr-2" Size="Size.Small" />
+                    @(Folder.Paused ? "Resume" : "Pause")
+                </MudMenuItem>
+            </MudMenu>
+        </CardHeaderActions>
+    </MudCardHeader>
+
+    <MudCardContent>
+        @if (Status != null)
+        {
+            <SyncProgressBar Status="@Status" Class="mb-3" />
+
+            <MudGrid Spacing="2">
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Local Files</MudText>
+                    <MudText Typo="Typo.body2">@Status.LocalFiles.ToString("N0")</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Local Size</MudText>
+                    <MudText Typo="Typo.body2">@FormatBytes(Status.LocalBytes)</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Global Files</MudText>
+                    <MudText Typo="Typo.body2">@Status.GlobalFiles.ToString("N0")</MudText>
+                </MudItem>
+                <MudItem xs="6">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">Global Size</MudText>
+                    <MudText Typo="Typo.body2">@FormatBytes(Status.GlobalBytes)</MudText>
+                </MudItem>
+            </MudGrid>
+
+            @if (Status.NeedFiles > 0 || Status.NeedBytes > 0)
+            {
+                <MudDivider Class="my-2" />
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Warning">Need Files</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Warning">@Status.NeedFiles.ToString("N0")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.caption" Color="Color.Warning">Need Size</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Warning">@FormatBytes(Status.NeedBytes)</MudText>
+                    </MudItem>
+                </MudGrid>
+            }
+
+            @if (!string.IsNullOrEmpty(Status.Error))
+            {
+                <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">
+                    @Status.Error
+                </MudAlert>
+            }
+        }
+        else
+        {
+            <MudSkeleton Width="100%" Height="60px" />
+        }
+
+        @* Shared with devices *@
+        @if (Folder.Devices?.Length > 0)
+        {
+            <MudDivider Class="my-2" />
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-1">Shared with</MudText>
+            <div class="d-flex flex-wrap gap-1">
+                @foreach (var device in Folder.Devices.Take(5))
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                        @(device.DeviceId?.Length > 7 ? device.DeviceId[..7] : device.DeviceId)
+                    </MudChip>
+                }
+                @if (Folder.Devices.Length > 5)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                        +@(Folder.Devices.Length - 5) more
+                    </MudChip>
+                }
+            </div>
+        }
+    </MudCardContent>
+
+    <MudCardActions>
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   Size="Size.Small"
+                   OnClick="@(() => OnViewDetails.InvokeAsync())">
+            View Details
+        </MudButton>
+        @if (Status?.Errors > 0)
+        {
+            <MudButton Variant="Variant.Text"
+                       Color="Color.Error"
+                       Size="Size.Small"
+                       OnClick="@(() => OnViewErrors.InvokeAsync())">
+                @Status.Errors Errors
+            </MudButton>
+        }
+    </MudCardActions>
+</MudCard>
+
+@code {
+    [Parameter]
+    public FolderConfig Folder { get; set; } = null!;
+
+    [Parameter]
+    public FolderStatus? Status { get; set; }
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public EventCallback OnViewDetails { get; set; }
+
+    [Parameter]
+    public EventCallback OnViewErrors { get; set; }
+
+    [Parameter]
+    public EventCallback OnEdit { get; set; }
+
+    [Parameter]
+    public EventCallback OnEditIgnores { get; set; }
+
+    [Parameter]
+    public EventCallback OnScan { get; set; }
+
+    [Parameter]
+    public EventCallback OnTogglePause { get; set; }
+
+    private Color GetStatusColor()
+    {
+        if (Folder.Paused) return Color.Warning;
+        if (Status == null) return Color.Default;
+
+        return Status.State switch
+        {
+            "idle" => Color.Success,
+            "syncing" => Color.Info,
+            "scanning" => Color.Info,
+            "error" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusIcon()
+    {
+        if (Folder.Paused) return Icons.Material.Filled.Pause;
+        if (Status == null) return Icons.Material.Filled.Folder;
+
+        return Status.State switch
+        {
+            "idle" => Icons.Material.Filled.CheckCircle,
+            "syncing" => Icons.Material.Filled.Sync,
+            "scanning" => Icons.Material.Filled.Search,
+            "error" => Icons.Material.Filled.Error,
+            _ => Icons.Material.Filled.Folder
+        };
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+    }
+}

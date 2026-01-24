@@ -1,0 +1,144 @@
+@page "/folders/{FolderId}/errors"
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Services
+@inject ApiClient Api
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Errors - @(_folderName ?? "Folder") - CreatioHelper</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
+
+    <MudPaper Class="pa-4">
+        <div class="d-flex justify-space-between align-center mb-4">
+            <MudText Typo="Typo.h5">
+                <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Color="Color.Error" />
+                Folder Errors
+            </MudText>
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Refresh"
+                       OnClick="@LoadDataAsync">
+                Refresh
+            </MudButton>
+        </div>
+
+        @if (_loading)
+        {
+            <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+        }
+        else if (_errors == null || _errors.Length == 0)
+        {
+            <MudAlert Severity="Severity.Success" Class="mb-4">
+                <MudText>No errors found for this folder.</MudText>
+            </MudAlert>
+        }
+        else
+        {
+            <MudAlert Severity="Severity.Warning" Class="mb-4">
+                <MudText>@_errors.Length error(s) found. These files failed to sync.</MudText>
+            </MudAlert>
+
+            <MudTable Items="@_errors" Dense="true" Hover="true" Striped="true" Bordered="true">
+                <HeaderContent>
+                    <MudTh>File Path</MudTh>
+                    <MudTh>Error</MudTh>
+                    <MudTh>Time</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="File Path">
+                        <MudText Typo="Typo.body2" Style="word-break: break-all; font-family: monospace;">
+                            @context.Path
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Error">
+                        <MudText Typo="Typo.body2" Color="Color.Error">
+                            @context.Error
+                        </MudText>
+                    </MudTd>
+                    <MudTd DataLabel="Time">
+                        <MudText Typo="Typo.body2">
+                            @context.Time.ToString("g")
+                        </MudText>
+                    </MudTd>
+                </RowTemplate>
+                <PagerContent>
+                    <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                </PagerContent>
+            </MudTable>
+        }
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+            Errors usually resolve automatically when the underlying issue is fixed (e.g., file permissions, disk space).
+            You can also try rescanning the folder to clear resolved errors.
+        </MudText>
+
+        <MudButton Variant="Variant.Text"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Sync"
+                   OnClick="@RescanFolder"
+                   Class="mt-3">
+            Rescan Folder
+        </MudButton>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string FolderId { get; set; } = string.Empty;
+
+    private FileError[]? _errors;
+    private string? _folderName;
+    private bool _loading = true;
+    private List<BreadcrumbItem> _breadcrumbs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        _loading = true;
+        try
+        {
+            var folders = await Api.GetFoldersAsync();
+            var folder = folders?.FirstOrDefault(f => f.Id == FolderId);
+            _folderName = folder?.DisplayName ?? FolderId;
+
+            _errors = await Api.GetFolderErrorsAsync(FolderId);
+
+            _breadcrumbs = new List<BreadcrumbItem>
+            {
+                new("Folders", "/folders"),
+                new(_folderName, $"/folders/{FolderId}"),
+                new("Errors", null, disabled: true)
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load errors: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task RescanFolder()
+    {
+        try
+        {
+            await Api.ScanFolderAsync(FolderId);
+            Snackbar.Add("Rescan started", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to start rescan: {ex.Message}", Severity.Error);
+        }
+    }
+}

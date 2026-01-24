@@ -843,14 +843,28 @@ public class BepProtocol : ISyncProtocol, IDisposable
 
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            _cancellationTokenSource.Cancel();
+        }
+        catch (ObjectDisposedException) { }
+
         _listener?.Stop();
-        
+
         foreach (var connection in _connections.Values)
         {
             connection.Dispose();
         }
-        
-        _cancellationTokenSource.Dispose();
+
+        try
+        {
+            _cancellationTokenSource.Dispose();
+        }
+        catch (ObjectDisposedException) { }
     }
+
+    private bool _disposed;
 }

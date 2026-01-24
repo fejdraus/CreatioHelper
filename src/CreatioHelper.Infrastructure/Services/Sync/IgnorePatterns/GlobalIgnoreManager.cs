@@ -166,7 +166,10 @@ public class GlobalIgnoreManager : IDisposable
     /// </summary>
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try { _cancellationTokenSource.Cancel(); } catch (ObjectDisposedException) { }
 
         lock (_lock)
         {
@@ -177,7 +180,9 @@ public class GlobalIgnoreManager : IDisposable
             _globalMatchers.Clear();
         }
 
-        _cancellationTokenSource.Dispose();
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
     }
+
+    private bool _disposed;
 }
 

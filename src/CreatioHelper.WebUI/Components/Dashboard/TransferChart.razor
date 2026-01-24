@@ -1,0 +1,118 @@
+@* TransferChart - Dashboard card showing transfer rates *@
+@using CreatioHelper.WebUI.Models
+
+<MudPaper Class="pa-4" Elevation="2">
+    <MudText Typo="Typo.h6" Class="mb-3">
+        <MudIcon Icon="@Icons.Material.Filled.Speed" Class="mr-2" />
+        Transfer Rates
+    </MudText>
+
+    @if (Loading)
+    {
+        <MudSkeleton Width="100%" Height="120px" />
+    }
+    else
+    {
+        <MudGrid>
+            <MudItem xs="6">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-success-lighten);">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Color="Color.Success" />
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Success">Download</MudText>
+                            <MudText Typo="Typo.h6">@FormatSpeed(DownloadRate)</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+            <MudItem xs="6">
+                <MudPaper Class="pa-3" Elevation="0" Style="background-color: var(--mud-palette-primary-lighten);">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Color="Color.Primary" />
+                        <div>
+                            <MudText Typo="Typo.caption" Color="Color.Primary">Upload</MudText>
+                            <MudText Typo="Typo.h6">@FormatSpeed(UploadRate)</MudText>
+                        </div>
+                    </div>
+                </MudPaper>
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-3" />
+
+        <MudGrid>
+            <MudItem xs="6">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Downloaded</MudText>
+                <MudText Typo="Typo.body1">@FormatBytes(TotalDownloaded)</MudText>
+            </MudItem>
+            <MudItem xs="6">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">Total Uploaded</MudText>
+                <MudText Typo="Typo.body1">@FormatBytes(TotalUploaded)</MudText>
+            </MudItem>
+        </MudGrid>
+
+        @if (Connections?.Any(c => c.Connected) == true)
+        {
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-2">Per Device</MudText>
+
+            @foreach (var conn in Connections.Where(c => c.Connected).Take(3))
+            {
+                <div class="d-flex justify-space-between align-center mb-1">
+                    <MudText Typo="Typo.body2">@GetDeviceName(conn.DeviceId)</MudText>
+                    <div class="d-flex gap-3">
+                        <MudText Typo="Typo.body2" Color="Color.Success">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" />
+                            @FormatSpeed(conn.InBytesPerSec)
+                        </MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Primary">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" />
+                            @FormatSpeed(conn.OutBytesPerSec)
+                        </MudText>
+                    </div>
+                </div>
+            }
+        }
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public IEnumerable<ConnectionInfo>? Connections { get; set; }
+
+    [Parameter]
+    public IEnumerable<DeviceConfig>? Devices { get; set; }
+
+    [Parameter]
+    public bool Loading { get; set; }
+
+    private long DownloadRate => Connections?.Where(c => c.Connected).Sum(c => c.InBytesPerSec) ?? 0;
+    private long UploadRate => Connections?.Where(c => c.Connected).Sum(c => c.OutBytesPerSec) ?? 0;
+    private long TotalDownloaded => Connections?.Sum(c => c.InBytesTotal) ?? 0;
+    private long TotalUploaded => Connections?.Sum(c => c.OutBytesTotal) ?? 0;
+
+    private string GetDeviceName(string deviceId)
+    {
+        var device = Devices?.FirstOrDefault(d => d.DeviceId == deviceId);
+        return device?.DisplayName ?? deviceId[..Math.Min(7, deviceId.Length)];
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:F2} {sizes[order]}";
+    }
+
+    private static string FormatSpeed(long bytesPerSec)
+    {
+        return FormatBytes(bytesPerSec) + "/s";
+    }
+}

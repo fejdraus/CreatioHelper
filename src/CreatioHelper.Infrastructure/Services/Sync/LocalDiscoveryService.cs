@@ -1,9 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Configuration;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Infrastructure.Services.Network.Discovery;
 
 namespace CreatioHelper.Infrastructure.Services.Sync;
 
@@ -12,63 +12,54 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// Uses UDP broadcast/multicast for device announcement and discovery
 /// Compatible with Syncthing's local discovery protocol
 /// </summary>
-public class LocalDiscoveryService : IDeviceDiscovery
+public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
 {
     private readonly ILogger<LocalDiscoveryService> _logger;
-    private readonly IConfiguration _configuration;
+    private readonly SyncConfiguration _syncConfig;
     private readonly string _currentDeviceId;
     private readonly int _currentPort;
     private readonly int _discoveryPort;
     private Timer? _announceTimer;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private readonly Dictionary<string, DiscoveredDevice> _discoveredDevices = new();
-    
+
     private UdpClient? _udpClient;
     private UdpClient? _broadcastClient;
     private CancellationTokenSource _cancellationTokenSource = new();
     private bool _isRunning;
     private readonly long _instanceId; // Random instance ID generated on startup
 
-    // Syncthing local discovery magic numbers (4 bytes, big endian) 
+    // Syncthing local discovery magic numbers (4 bytes, big endian)
     private const uint Magic = 0x2EA7D90B; // same as BEP protocol
     private const uint v13Magic = 0x7D79BC40; // previous version for compatibility
     private static readonly byte[] MagicBytes = BitConverter.GetBytes(Magic).Reverse().ToArray(); // Big endian
     private const int DefaultDiscoveryPort = 21027;
     private const int BroadcastInterval = 30; // seconds
     private const int CacheLifeTime = 90; // 3 * BroadcastInterval, seconds
-    
+
     public event EventHandler<DeviceDiscoveredEventArgs>? DeviceDiscovered;
+
+    /// <summary>
+    /// Whether the local discovery service is currently running
+    /// </summary>
+    public bool IsRunning => _isRunning;
 
     public LocalDiscoveryService(
         ILogger<LocalDiscoveryService> logger,
-        IConfiguration configuration)
+        SyncConfiguration syncConfig)
     {
         _logger = logger;
-        _configuration = configuration;
-        
+        _syncConfig = syncConfig;
+
         // Generate random instance ID (Syncthing compatibility)
         _instanceId = Random.Shared.NextInt64();
-        
-        // Try environment variable first, then configuration, then throw
-        _currentDeviceId = Environment.GetEnvironmentVariable("Sync__DeviceId") 
-            ?? _configuration["Sync:DeviceId"]
-            ?? throw new InvalidOperationException("Sync__DeviceId environment variable or Sync:DeviceId configuration is required");
-        
-        // Try environment variable first, then configuration, then default
-        var portString = Environment.GetEnvironmentVariable("Sync__Port") 
-            ?? _configuration["Sync:Port"] 
-            ?? "22000";
-        if (!int.TryParse(portString, out _currentPort))
-            _currentPort = 22000;
-        
-        // Discovery port
-        var discoveryPortString = Environment.GetEnvironmentVariable("Sync__DiscoveryPort") 
-            ?? _configuration["Sync:DiscoveryPort"] 
-            ?? DefaultDiscoveryPort.ToString();
-        if (!int.TryParse(discoveryPortString, out _discoveryPort))
-            _discoveryPort = DefaultDiscoveryPort;
-        
-        _logger.LogInformation("Local discovery service initialized for device {DeviceId} on port {Port}, discovery port {DiscoveryPort}", 
+
+        // Get DeviceId and Port from SyncConfiguration (already registered in DI)
+        _currentDeviceId = syncConfig.DeviceId;
+        _currentPort = syncConfig.Port;
+        _discoveryPort = DefaultDiscoveryPort;
+
+        _logger.LogInformation("Local discovery service initialized for device {DeviceId} on port {Port}, discovery port {DiscoveryPort}",
             _currentDeviceId, _currentPort, _discoveryPort);
     }
 
@@ -127,10 +118,32 @@ public class LocalDiscoveryService : IDeviceDiscovery
         _logger.LogInformation("Local discovery service stopped");
     }
 
+    /// <summary>
+    /// ILocalDiscovery.AnnounceAsync - announce this device on local network
+    /// </summary>
+    public async Task AnnounceAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_isRunning) return;
+
+        var addresses = GetLocalAddresses();
+        await _semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            await BroadcastAnnouncementAsync(addresses);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    /// <summary>
+    /// IDeviceDiscovery.AnnounceAsync - announce with explicit device and addresses (legacy interface)
+    /// </summary>
     public async Task AnnounceAsync(SyncDevice localDevice, List<string> addresses)
     {
         if (!_isRunning) return;
-        
+
         await _semaphore.WaitAsync();
         try
         {
@@ -142,32 +155,69 @@ public class LocalDiscoveryService : IDeviceDiscovery
         }
     }
 
-    public async Task<List<DiscoveredDevice>> DiscoverAsync(string deviceId, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// ILocalDiscovery.DiscoverAsync implementation - discover devices by ID or all devices
+    /// </summary>
+    public async Task<IReadOnlyList<DiscoveredDevice>> DiscoverAsync(string? deviceId = null, CancellationToken cancellationToken = default)
     {
         await _semaphore.WaitAsync(cancellationToken);
         try
         {
             var devices = new List<DiscoveredDevice>();
-            
-            if (_discoveredDevices.TryGetValue(deviceId, out var device))
+            var now = DateTime.UtcNow;
+
+            if (deviceId != null)
             {
-                // Check if device is still fresh (last seen within CacheLifeTime)
-                if (DateTime.UtcNow - device.LastSeen < TimeSpan.FromSeconds(CacheLifeTime))
+                // Find specific device
+                if (_discoveredDevices.TryGetValue(deviceId, out var device))
                 {
-                    devices.Add(device);
-                }
-                else
-                {
-                    _discoveredDevices.Remove(deviceId);
+                    if (now - device.LastSeen < TimeSpan.FromSeconds(CacheLifeTime))
+                    {
+                        devices.Add(device);
+                    }
+                    else
+                    {
+                        _discoveredDevices.Remove(deviceId);
+                    }
                 }
             }
-            
+            else
+            {
+                // Return all non-expired devices
+                var expiredDevices = new List<string>();
+                foreach (var kvp in _discoveredDevices)
+                {
+                    if (now - kvp.Value.LastSeen < TimeSpan.FromSeconds(CacheLifeTime))
+                    {
+                        devices.Add(kvp.Value);
+                    }
+                    else
+                    {
+                        expiredDevices.Add(kvp.Key);
+                    }
+                }
+                // Remove expired devices
+                foreach (var expired in expiredDevices)
+                {
+                    _discoveredDevices.Remove(expired);
+                }
+            }
+
             return devices;
         }
         finally
         {
             _semaphore.Release();
         }
+    }
+
+    /// <summary>
+    /// IDeviceDiscovery.DiscoverAsync implementation (legacy interface)
+    /// </summary>
+    async Task<List<DiscoveredDevice>> IDeviceDiscovery.DiscoverAsync(string deviceId, CancellationToken cancellationToken)
+    {
+        var result = await DiscoverAsync(deviceId, cancellationToken);
+        return result.ToList();
     }
 
     public async Task SetGlobalDiscoveryServersAsync(List<string> servers)
@@ -567,10 +617,15 @@ public class LocalDiscoveryService : IDeviceDiscovery
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         StopAsync().GetAwaiter().GetResult();
-        _cancellationTokenSource.Dispose();
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
         _semaphore.Dispose();
         _announceTimer?.Dispose();
     }
+
+    private bool _disposed;
 }
 

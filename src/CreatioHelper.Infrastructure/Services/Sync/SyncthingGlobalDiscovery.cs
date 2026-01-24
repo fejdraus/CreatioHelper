@@ -306,11 +306,16 @@ public class SyncthingGlobalDiscovery : IDisposable
 
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try { _cancellationTokenSource.Cancel(); } catch (ObjectDisposedException) { }
         _announceClient?.Dispose();
         _queryClient?.Dispose();
-        _cancellationTokenSource?.Dispose();
+        try { _cancellationTokenSource?.Dispose(); } catch (ObjectDisposedException) { }
     }
+
+    private bool _disposed;
 }
 
 /// <summary>

@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Navigation -->
+  <data name="Nav_Dashboard" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Nav_Folders" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="Nav_Devices" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Nav_Events" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Nav_Diagnostics" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+
+  <!-- Dashboard -->
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Dashboard</value>
+  </data>
+  <data name="Dashboard_SystemStatus" xml:space="preserve">
+    <value>System Status</value>
+  </data>
+  <data name="Dashboard_DeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="Dashboard_Uptime" xml:space="preserve">
+    <value>Uptime</value>
+  </data>
+  <data name="Dashboard_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Dashboard_Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Dashboard_CPU" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="Dashboard_Goroutines" xml:space="preserve">
+    <value>Goroutines</value>
+  </data>
+  <data name="Dashboard_ConnectedDevices" xml:space="preserve">
+    <value>Connected Devices</value>
+  </data>
+  <data name="Dashboard_TotalFolders" xml:space="preserve">
+    <value>Total Folders</value>
+  </data>
+  <data name="Dashboard_SyncingFolders" xml:space="preserve">
+    <value>Syncing Folders</value>
+  </data>
+
+  <!-- Folders -->
+  <data name="Folders_Title" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="Folders_AddFolder" xml:space="preserve">
+    <value>Add Folder</value>
+  </data>
+  <data name="Folders_NoFolders" xml:space="preserve">
+    <value>No folders configured</value>
+  </data>
+  <data name="Folders_Path" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="Folders_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Folders_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Folders_Progress" xml:space="preserve">
+    <value>Progress</value>
+  </data>
+  <data name="Folders_SharedWith" xml:space="preserve">
+    <value>Shared With</value>
+  </data>
+  <data name="Folders_GlobalFiles" xml:space="preserve">
+    <value>Global Files</value>
+  </data>
+  <data name="Folders_LocalFiles" xml:space="preserve">
+    <value>Local Files</value>
+  </data>
+  <data name="Folders_GlobalSize" xml:space="preserve">
+    <value>Global Size</value>
+  </data>
+  <data name="Folders_LocalSize" xml:space="preserve">
+    <value>Local Size</value>
+  </data>
+  <data name="Folders_OutOfSync" xml:space="preserve">
+    <value>Out of Sync</value>
+  </data>
+  <data name="Folders_NeedSyncing" xml:space="preserve">
+    <value>{0} files ({1}) need syncing</value>
+  </data>
+  <data name="Folders_RescanInterval" xml:space="preserve">
+    <value>Rescan Interval</value>
+  </data>
+  <data name="Folders_FileWatcher" xml:space="preserve">
+    <value>File Watcher</value>
+  </data>
+  <data name="Folders_IgnorePermissions" xml:space="preserve">
+    <value>Ignore Permissions</value>
+  </data>
+  <data name="Folders_Errors" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+
+  <!-- Folder States -->
+  <data name="FolderState_Idle" xml:space="preserve">
+    <value>Idle</value>
+  </data>
+  <data name="FolderState_Scanning" xml:space="preserve">
+    <value>Scanning</value>
+  </data>
+  <data name="FolderState_Syncing" xml:space="preserve">
+    <value>Syncing</value>
+  </data>
+  <data name="FolderState_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="FolderState_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+
+  <!-- Devices -->
+  <data name="Devices_Title" xml:space="preserve">
+    <value>Devices</value>
+  </data>
+  <data name="Devices_AddDevice" xml:space="preserve">
+    <value>Add Device</value>
+  </data>
+  <data name="Devices_NoDevices" xml:space="preserve">
+    <value>No devices configured</value>
+  </data>
+  <data name="Devices_ThisDevice" xml:space="preserve">
+    <value>This Device</value>
+  </data>
+  <data name="Devices_Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Devices_Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="Devices_LastSeen" xml:space="preserve">
+    <value>Last Seen</value>
+  </data>
+  <data name="Devices_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Devices_Compression" xml:space="preserve">
+    <value>Compression</value>
+  </data>
+  <data name="Devices_Introducer" xml:space="preserve">
+    <value>Introducer</value>
+  </data>
+  <data name="Devices_SharedFolders" xml:space="preserve">
+    <value>Shared Folders</value>
+  </data>
+  <data name="Devices_InSync" xml:space="preserve">
+    <value>In Sync</value>
+  </data>
+  <data name="Devices_Syncing" xml:space="preserve">
+    <value>Syncing</value>
+  </data>
+  <data name="Devices_Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Devices_Upload" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="Devices_Paused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+
+  <!-- Settings -->
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="Settings_Network" xml:space="preserve">
+    <value>Network</value>
+  </data>
+  <data name="Settings_GUI" xml:space="preserve">
+    <value>GUI</value>
+  </data>
+  <data name="Settings_Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="Settings_DeviceName" xml:space="preserve">
+    <value>Device Name</value>
+  </data>
+  <data name="Settings_ListenAddresses" xml:space="preserve">
+    <value>Listen Addresses</value>
+  </data>
+  <data name="Settings_GlobalDiscovery" xml:space="preserve">
+    <value>Global Discovery</value>
+  </data>
+  <data name="Settings_LocalDiscovery" xml:space="preserve">
+    <value>Local Discovery</value>
+  </data>
+  <data name="Settings_NATTraversal" xml:space="preserve">
+    <value>NAT Traversal</value>
+  </data>
+  <data name="Settings_Relaying" xml:space="preserve">
+    <value>Relaying</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Theme</value>
+  </data>
+  <data name="Settings_ThemeLight" xml:space="preserve">
+    <value>Light</value>
+  </data>
+  <data name="Settings_ThemeDark" xml:space="preserve">
+    <value>Dark</value>
+  </data>
+  <data name="Settings_ThemeSystem" xml:space="preserve">
+    <value>System</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Language</value>
+  </data>
+  <data name="Settings_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Settings_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+
+  <!-- Events -->
+  <data name="Events_Title" xml:space="preserve">
+    <value>Events</value>
+  </data>
+  <data name="Events_NoEvents" xml:space="preserve">
+    <value>No events</value>
+  </data>
+  <data name="Events_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="Events_Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Events_Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+
+  <!-- Diagnostics -->
+  <data name="Diagnostics_Title" xml:space="preserve">
+    <value>Diagnostics</value>
+  </data>
+  <data name="Diagnostics_SystemLog" xml:space="preserve">
+    <value>System Log</value>
+  </data>
+  <data name="Diagnostics_Profiling" xml:space="preserve">
+    <value>Profiling</value>
+  </data>
+  <data name="Diagnostics_SupportBundle" xml:space="preserve">
+    <value>Support Bundle</value>
+  </data>
+  <data name="Diagnostics_CreateBundle" xml:space="preserve">
+    <value>Create Support Bundle</value>
+  </data>
+
+  <!-- Actions -->
+  <data name="Action_Restart" xml:space="preserve">
+    <value>Restart</value>
+  </data>
+  <data name="Action_Shutdown" xml:space="preserve">
+    <value>Shutdown</value>
+  </data>
+  <data name="Action_Rescan" xml:space="preserve">
+    <value>Rescan</value>
+  </data>
+  <data name="Action_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Action_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Action_Pause" xml:space="preserve">
+    <value>Pause</value>
+  </data>
+  <data name="Action_Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="Action_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Action_ShowQR" xml:space="preserve">
+    <value>Show QR Code</value>
+  </data>
+
+  <!-- Common -->
+  <data name="Common_Yes" xml:space="preserve">
+    <value>Yes</value>
+  </data>
+  <data name="Common_No" xml:space="preserve">
+    <value>No</value>
+  </data>
+  <data name="Common_Enabled" xml:space="preserve">
+    <value>Enabled</value>
+  </data>
+  <data name="Common_Disabled" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="Common_Loading" xml:space="preserve">
+    <value>Loading...</value>
+  </data>
+  <data name="Common_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Common_Success" xml:space="preserve">
+    <value>Success</value>
+  </data>
+  <data name="Common_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Common_Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Unknown</value>
+  </data>
+  <data name="Common_None" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="Common_All" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="Common_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Common_Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Close</value>
+  </data>
+  <data name="Common_Confirm" xml:space="preserve">
+    <value>Confirm</value>
+  </data>
+  <data name="Common_ViewAll" xml:space="preserve">
+    <value>View All</value>
+  </data>
+
+  <!-- Messages -->
+  <data name="Msg_DeviceIdCopied" xml:space="preserve">
+    <value>Device ID copied to clipboard</value>
+  </data>
+  <data name="Msg_CopyFailed" xml:space="preserve">
+    <value>Failed to copy to clipboard</value>
+  </data>
+  <data name="Msg_ScanStarted" xml:space="preserve">
+    <value>Scan started</value>
+  </data>
+  <data name="Msg_ScanFailed" xml:space="preserve">
+    <value>Failed to start scan: {0}</value>
+  </data>
+  <data name="Msg_LoadFailed" xml:space="preserve">
+    <value>Failed to load data: {0}</value>
+  </data>
+  <data name="Msg_SaveSuccess" xml:space="preserve">
+    <value>Settings saved successfully</value>
+  </data>
+  <data name="Msg_SaveFailed" xml:space="preserve">
+    <value>Failed to save settings: {0}</value>
+  </data>
+  <data name="Msg_RestartConfirm" xml:space="preserve">
+    <value>Are you sure you want to restart?</value>
+  </data>
+  <data name="Msg_ShutdownConfirm" xml:space="preserve">
+    <value>Are you sure you want to shutdown?</value>
+  </data>
+  <data name="Msg_DeleteConfirm" xml:space="preserve">
+    <value>Are you sure you want to delete this item?</value>
+  </data>
+  <data name="Msg_UnableRetrieveStatus" xml:space="preserve">
+    <value>Unable to retrieve system status</value>
+  </data>
+  <data name="Msg_FolderNotFound" xml:space="preserve">
+    <value>Folder not found</value>
+  </data>
+  <data name="Msg_DeviceNotFound" xml:space="preserve">
+    <value>Device not found</value>
+  </data>
+
+  <!-- Time Formats -->
+  <data name="Time_Days" xml:space="preserve">
+    <value>{0}d {1}h</value>
+  </data>
+  <data name="Time_Hours" xml:space="preserve">
+    <value>{0}h {1}m</value>
+  </data>
+  <data name="Time_Minutes" xml:space="preserve">
+    <value>{0}m {1}s</value>
+  </data>
+  <data name="Time_JustNow" xml:space="preserve">
+    <value>Just now</value>
+  </data>
+  <data name="Time_MinutesAgo" xml:space="preserve">
+    <value>{0} minutes ago</value>
+  </data>
+  <data name="Time_HoursAgo" xml:space="preserve">
+    <value>{0} hours ago</value>
+  </data>
+  <data name="Time_DaysAgo" xml:space="preserve">
+    <value>{0} days ago</value>
+  </data>
+</root>

@@ -4,6 +4,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CreatioHelper.Application.Interfaces;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Network.Discovery;
@@ -174,8 +175,8 @@ public class GlobalDiscovery : IAsyncDisposable
         {
             DeviceId = deviceId,
             Addresses = allAddresses,
-            DiscoveredAt = DateTime.UtcNow,
-            DiscoveryMethod = DiscoveryMethod.Global
+            LastSeen = DateTime.UtcNow,
+            Source = DiscoverySource.Global
         };
 
         // Cache the result

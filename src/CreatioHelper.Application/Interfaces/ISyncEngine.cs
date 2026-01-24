@@ -11,6 +11,7 @@ public interface ISyncEngine
     Task StartAsync(CancellationToken cancellationToken = default);
     Task StopAsync();
     Task<SyncDevice> AddDeviceAsync(string deviceId, string name, string? certificateFingerprint = null, List<string>? addresses = null);
+    Task<bool> RemoveDeviceAsync(string deviceId);
     Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive");
 
     /// <summary>

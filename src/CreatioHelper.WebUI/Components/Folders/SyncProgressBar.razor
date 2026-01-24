@@ -1,0 +1,153 @@
+@* SyncProgressBar - Shows folder sync progress with status *@
+@using CreatioHelper.WebUI.Models
+
+<div class="sync-progress @Class">
+    <div class="d-flex justify-space-between align-center mb-1">
+        <MudText Typo="Typo.body2" Color="@GetStatusColor()">
+            <MudIcon Icon="@GetStatusIcon()" Size="Size.Small" Class="mr-1" />
+            @GetStatusText()
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @GetProgressText()
+        </MudText>
+    </div>
+
+    @if (Status.State == "syncing" || Status.State == "scanning")
+    {
+        <MudProgressLinear Color="@GetProgressColor()"
+                           Value="@GetProgressValue()"
+                           Max="100"
+                           Striped="@(Status.State == "syncing")"
+                           Size="Size.Medium"
+                           Rounded="true" />
+    }
+    else if (ShowBarWhenIdle)
+    {
+        <MudProgressLinear Color="@GetProgressColor()"
+                           Value="100"
+                           Max="100"
+                           Size="Size.Medium"
+                           Rounded="true" />
+    }
+
+    @if (ShowDetails && (Status.InSyncFiles > 0 || Status.InSyncBytes > 0))
+    {
+        <div class="d-flex justify-space-between mt-1">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @Status.InSyncFiles files syncing
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @FormatBytes(Status.InSyncBytes)
+            </MudText>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public FolderStatus Status { get; set; } = null!;
+
+    [Parameter]
+    public string? Class { get; set; }
+
+    [Parameter]
+    public bool ShowDetails { get; set; } = false;
+
+    [Parameter]
+    public bool ShowBarWhenIdle { get; set; } = false;
+
+    private string GetStatusText()
+    {
+        return Status.State switch
+        {
+            "idle" => "Up to Date",
+            "syncing" => "Syncing...",
+            "scanning" => "Scanning...",
+            "error" => "Error",
+            "sync-preparing" => "Preparing...",
+            "sync-waiting" => "Waiting...",
+            "cleaning" => "Cleaning...",
+            "clean-waiting" => "Clean Waiting...",
+            _ => Status.State ?? "Unknown"
+        };
+    }
+
+    private string GetProgressText()
+    {
+        if (Status.State == "idle")
+        {
+            return $"{Status.GlobalFiles:N0} files, {FormatBytes(Status.GlobalBytes)}";
+        }
+
+        if (Status.State == "syncing" && Status.NeedBytes > 0)
+        {
+            var done = Status.GlobalBytes - Status.NeedBytes;
+            var total = Status.GlobalBytes;
+            var percent = total > 0 ? (double)done / total * 100 : 0;
+            return $"{percent:F1}% ({FormatBytes(done)} / {FormatBytes(total)})";
+        }
+
+        if (Status.State == "scanning")
+        {
+            return $"{Status.LocalFiles:N0} files scanned";
+        }
+
+        return string.Empty;
+    }
+
+    private double GetProgressValue()
+    {
+        if (Status.GlobalBytes == 0) return 0;
+
+        var done = Status.GlobalBytes - Status.NeedBytes;
+        return (double)done / Status.GlobalBytes * 100;
+    }
+
+    private Color GetStatusColor()
+    {
+        return Status.State switch
+        {
+            "idle" => Color.Success,
+            "syncing" => Color.Info,
+            "scanning" => Color.Info,
+            "error" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetProgressColor()
+    {
+        return Status.State switch
+        {
+            "idle" => Color.Success,
+            "syncing" => Color.Primary,
+            "scanning" => Color.Secondary,
+            "error" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetStatusIcon()
+    {
+        return Status.State switch
+        {
+            "idle" => Icons.Material.Filled.CheckCircle,
+            "syncing" => Icons.Material.Filled.Sync,
+            "scanning" => Icons.Material.Filled.Search,
+            "error" => Icons.Material.Filled.Error,
+            "sync-preparing" => Icons.Material.Filled.HourglassEmpty,
+            "sync-waiting" => Icons.Material.Filled.Schedule,
+            "cleaning" => Icons.Material.Filled.CleaningServices,
+            _ => Icons.Material.Filled.QuestionMark
+        };
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} B";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
+        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
+        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+    }
+}

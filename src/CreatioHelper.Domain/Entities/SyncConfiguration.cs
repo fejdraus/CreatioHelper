@@ -76,7 +76,7 @@ public class SyncConfiguration : AggregateRoot
     public int NatLeaseMinutes { get; set; } = 60;
     public int NatRenewalMinutes { get; set; } = 30;
     public int NatTimeoutSeconds { get; set; } = 10;
-    public bool CrashReportingEnabled { get; private set; } = true;
+    public bool CrashReportingEnabled { get; private set; } = false; // Telemetry disabled
     public bool UsageReportingAccepted { get; private set; } = false;
     public bool AutoUpgradeEnabled { get; set; } = true;
     public int AutoUpgradeIntervalHours { get; set; } = 12;

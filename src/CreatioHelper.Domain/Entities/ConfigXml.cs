@@ -444,7 +444,7 @@ public class ConfigXmlOptions
     public string UrUniqueId { get; set; } = string.Empty;
 
     [XmlElement("urURL")]
-    public string UrURL { get; set; } = "https://data.syncthing.net/newdata";
+    public string UrURL { get; set; } = ""; // Telemetry disabled
 
     [XmlElement("urPostInsecurely")]
     public bool UrPostInsecurely { get; set; } = false;
@@ -474,7 +474,7 @@ public class ConfigXmlOptions
     public ConfigXmlMinDiskFree MinHomeDiskFree { get; set; } = new();
 
     [XmlElement("releasesURL")]
-    public string ReleasesURL { get; set; } = "https://upgrades.syncthing.net/meta.json";
+    public string ReleasesURL { get; set; } = ""; // Disabled
 
     [XmlElement("overwriteRemoteDeviceNamesOnConnect")]
     public bool OverwriteRemoteDeviceNamesOnConnect { get; set; } = false;
@@ -492,10 +492,10 @@ public class ConfigXmlOptions
     public int MaxFolderConcurrency { get; set; } = 0;
 
     [XmlElement("crashReportingURL")]
-    public string CrashReportingURL { get; set; } = "https://crash.syncthing.net/newcrash";
+    public string CrashReportingURL { get; set; } = ""; // Telemetry disabled
 
     [XmlElement("crashReportingEnabled")]
-    public bool CrashReportingEnabled { get; set; } = true;
+    public bool CrashReportingEnabled { get; set; } = false; // Disabled by default
 
     [XmlElement("stunKeepaliveStartS")]
     public int StunKeepaliveStartS { get; set; } = 180;

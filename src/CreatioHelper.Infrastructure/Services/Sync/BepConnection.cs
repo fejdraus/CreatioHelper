@@ -878,8 +878,13 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _ = DisconnectAsync();
-        _cancellationTokenSource.Dispose();
+        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
         _sendSemaphore.Dispose();
     }
+
+    private bool _disposed;
 }

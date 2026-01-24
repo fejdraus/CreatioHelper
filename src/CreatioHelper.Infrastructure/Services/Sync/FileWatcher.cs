@@ -570,7 +570,17 @@ public class FileWatcher : IDisposable
 
     public void Dispose()
     {
-        _cancellationTokenSource.Cancel();
+        if (_disposed) return;
+        _disposed = true;
+
+        try
+        {
+            _cancellationTokenSource.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed, ignore
+        }
 
         foreach (var watcher in _watchers.Values)
         {
@@ -592,8 +602,17 @@ public class FileWatcher : IDisposable
         _scanTimers.Clear();
         _folderPaths.Clear();
 
-        _cancellationTokenSource.Dispose();
+        try
+        {
+            _cancellationTokenSource.Dispose();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Already disposed, ignore
+        }
     }
+
+    private bool _disposed;
 }
 
 public class FileChangedEventArgs : EventArgs

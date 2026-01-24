@@ -353,7 +353,6 @@ public class SyncthingConfigController : ControllerBase
     /// <summary>
     /// Delete a device - 100% Syncthing compatible
     /// DELETE /rest/config/devices/{id}
-    /// Note: This endpoint would require implementation in ISyncEngine
     /// </summary>
     [HttpDelete("devices/{id}")]
     [Authorize(Roles = Roles.WriteRoles)]
@@ -361,14 +360,12 @@ public class SyncthingConfigController : ControllerBase
     {
         try
         {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var device = devices.FirstOrDefault(d => d.DeviceId == id);
-            if (device == null)
-                return NotFound(new { error = $"Device {id} not found" });
+            var result = await _syncEngine.RemoveDeviceAsync(id);
+            if (!result)
+                return NotFound(new { error = $"Device {id} not found or cannot be removed" });
 
-            // Device deletion would require implementation in ISyncEngine
-            _logger.LogWarning("Device deletion not implemented for device {DeviceId}", id);
-            return StatusCode(501, new { error = "Device deletion not implemented" });
+            _logger.LogInformation("Device {DeviceId} deleted via API", id);
+            return Ok(new { message = $"Device {id} removed successfully" });
         }
         catch (Exception ex)
         {
@@ -1121,7 +1118,7 @@ public class SyncthingConfigController : ControllerBase
             urAccepted = -1,
             urSeen = 3,
             urUniqueId = string.Empty,
-            urURL = "https://data.syncthing.net/newdata",
+            urURL = "",
             urPostInsecurely = false,
             urInitialDelayS = 1800,
             autoUpgradeEnabled = false,
@@ -1141,8 +1138,8 @@ public class SyncthingConfigController : ControllerBase
             defaultFolderPath = "~",
             setLowPriority = true,
             maxFolderConcurrency = 0,
-            crURL = "https://crash.syncthing.net/newcrash",
-            crashReportingEnabled = true,
+            crURL = "",
+            crashReportingEnabled = false,
             stunKeepaliveStartS = 180,
             stunKeepaliveMinS = 20,
             stunServers = new[] { "default" },

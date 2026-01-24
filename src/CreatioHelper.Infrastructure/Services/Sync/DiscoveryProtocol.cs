@@ -193,30 +193,17 @@ public static class DiscoveryProtocol
     }
     
     /// <summary>
-    /// Parses Syncthing device ID string to bytes
-    /// Device IDs are 32-byte (256-bit) identifiers encoded as hex strings with dashes
+    /// Parses Syncthing device ID string to bytes (32 bytes)
+    /// Device IDs are Base32 encoded with Luhn checksums: 56 chars without dashes
     /// </summary>
     private static byte[] ParseDeviceId(string deviceId)
     {
-        // Remove dashes and convert to uppercase
-        var cleaned = deviceId.Replace("-", "").ToUpperInvariant();
-        
-        if (cleaned.Length != 64) // 32 bytes * 2 hex chars
-        {
-            throw new ArgumentException($"Invalid device ID length: {cleaned.Length}, expected 64");
-        }
-        
-        var bytes = new byte[32];
-        for (int i = 0; i < 32; i++)
-        {
-            bytes[i] = Convert.ToByte(cleaned.Substring(i * 2, 2), 16);
-        }
-        
-        return bytes;
+        // Use DeviceIdGenerator to decode Base32 format
+        return DeviceIdGenerator.FromBase32(deviceId);
     }
     
     /// <summary>
-    /// Formats device ID bytes to Syncthing string format
+    /// Formats device ID bytes to Syncthing string format (Base32 + Luhn32)
     /// </summary>
     private static string FormatDeviceId(byte[] bytes)
     {
@@ -224,18 +211,9 @@ public static class DiscoveryProtocol
         {
             throw new ArgumentException($"Invalid device ID byte length: {bytes.Length}, expected 32");
         }
-        
-        var hex = Convert.ToHexString(bytes);
-        
-        // Format with dashes: XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX
-        var formatted = new StringBuilder();
-        for (int i = 0; i < hex.Length; i += 7)
-        {
-            if (i > 0) formatted.Append('-');
-            formatted.Append(hex.Substring(i, Math.Min(7, hex.Length - i)));
-        }
-        
-        return formatted.ToString();
+
+        // Use DeviceIdGenerator to format as Base32 with Luhn checksums
+        return DeviceIdGenerator.FormatDeviceId(bytes);
     }
 }
 

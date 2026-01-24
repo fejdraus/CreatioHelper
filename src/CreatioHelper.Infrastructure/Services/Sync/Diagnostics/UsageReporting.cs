@@ -134,7 +134,7 @@ public class UsageReportingOptions
     /// <summary>
     /// URL to submit reports to
     /// </summary>
-    public string ReportUrl { get; set; } = "https://data.syncthing.net/newdata";
+    public string ReportUrl { get; set; } = ""; // Telemetry disabled
 
     /// <summary>
     /// Reporting interval

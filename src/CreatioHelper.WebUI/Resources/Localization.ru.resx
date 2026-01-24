@@ -1,0 +1,457 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+  <!-- Navigation -->
+  <data name="Nav_Dashboard" xml:space="preserve">
+    <value>Панель управления</value>
+  </data>
+  <data name="Nav_Folders" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Nav_Devices" xml:space="preserve">
+    <value>Устройства</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="Nav_Events" xml:space="preserve">
+    <value>События</value>
+  </data>
+  <data name="Nav_Diagnostics" xml:space="preserve">
+    <value>Диагностика</value>
+  </data>
+
+  <!-- Dashboard -->
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Панель управления</value>
+  </data>
+  <data name="Dashboard_SystemStatus" xml:space="preserve">
+    <value>Состояние системы</value>
+  </data>
+  <data name="Dashboard_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="Dashboard_Uptime" xml:space="preserve">
+    <value>Время работы</value>
+  </data>
+  <data name="Dashboard_Version" xml:space="preserve">
+    <value>Версия</value>
+  </data>
+  <data name="Dashboard_Memory" xml:space="preserve">
+    <value>Память</value>
+  </data>
+  <data name="Dashboard_CPU" xml:space="preserve">
+    <value>ЦП</value>
+  </data>
+  <data name="Dashboard_Goroutines" xml:space="preserve">
+    <value>Горутины</value>
+  </data>
+  <data name="Dashboard_ConnectedDevices" xml:space="preserve">
+    <value>Подключенные устройства</value>
+  </data>
+  <data name="Dashboard_TotalFolders" xml:space="preserve">
+    <value>Всего папок</value>
+  </data>
+  <data name="Dashboard_SyncingFolders" xml:space="preserve">
+    <value>Синхронизируемые папки</value>
+  </data>
+
+  <!-- Folders -->
+  <data name="Folders_Title" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Folders_AddFolder" xml:space="preserve">
+    <value>Добавить папку</value>
+  </data>
+  <data name="Folders_NoFolders" xml:space="preserve">
+    <value>Папки не настроены</value>
+  </data>
+  <data name="Folders_Path" xml:space="preserve">
+    <value>Путь</value>
+  </data>
+  <data name="Folders_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="Folders_Status" xml:space="preserve">
+    <value>Статус</value>
+  </data>
+  <data name="Folders_Progress" xml:space="preserve">
+    <value>Прогресс</value>
+  </data>
+  <data name="Folders_SharedWith" xml:space="preserve">
+    <value>Доступ для</value>
+  </data>
+  <data name="Folders_GlobalFiles" xml:space="preserve">
+    <value>Глобальные файлы</value>
+  </data>
+  <data name="Folders_LocalFiles" xml:space="preserve">
+    <value>Локальные файлы</value>
+  </data>
+  <data name="Folders_GlobalSize" xml:space="preserve">
+    <value>Глобальный размер</value>
+  </data>
+  <data name="Folders_LocalSize" xml:space="preserve">
+    <value>Локальный размер</value>
+  </data>
+  <data name="Folders_OutOfSync" xml:space="preserve">
+    <value>Не синхронизировано</value>
+  </data>
+  <data name="Folders_NeedSyncing" xml:space="preserve">
+    <value>{0} файлов ({1}) требуют синхронизации</value>
+  </data>
+  <data name="Folders_RescanInterval" xml:space="preserve">
+    <value>Интервал сканирования</value>
+  </data>
+  <data name="Folders_FileWatcher" xml:space="preserve">
+    <value>Отслеживание файлов</value>
+  </data>
+  <data name="Folders_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права</value>
+  </data>
+  <data name="Folders_Errors" xml:space="preserve">
+    <value>Ошибки</value>
+  </data>
+
+  <!-- Folder States -->
+  <data name="FolderState_Idle" xml:space="preserve">
+    <value>Ожидание</value>
+  </data>
+  <data name="FolderState_Scanning" xml:space="preserve">
+    <value>Сканирование</value>
+  </data>
+  <data name="FolderState_Syncing" xml:space="preserve">
+    <value>Синхронизация</value>
+  </data>
+  <data name="FolderState_Error" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="FolderState_Unknown" xml:space="preserve">
+    <value>Неизвестно</value>
+  </data>
+
+  <!-- Devices -->
+  <data name="Devices_Title" xml:space="preserve">
+    <value>Устройства</value>
+  </data>
+  <data name="Devices_AddDevice" xml:space="preserve">
+    <value>Добавить устройство</value>
+  </data>
+  <data name="Devices_NoDevices" xml:space="preserve">
+    <value>Устройства не настроены</value>
+  </data>
+  <data name="Devices_ThisDevice" xml:space="preserve">
+    <value>Это устройство</value>
+  </data>
+  <data name="Devices_Connected" xml:space="preserve">
+    <value>Подключено</value>
+  </data>
+  <data name="Devices_Disconnected" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="Devices_LastSeen" xml:space="preserve">
+    <value>Последнее подключение</value>
+  </data>
+  <data name="Devices_Address" xml:space="preserve">
+    <value>Адрес</value>
+  </data>
+  <data name="Devices_Compression" xml:space="preserve">
+    <value>Сжатие</value>
+  </data>
+  <data name="Devices_Introducer" xml:space="preserve">
+    <value>Посредник</value>
+  </data>
+  <data name="Devices_SharedFolders" xml:space="preserve">
+    <value>Общие папки</value>
+  </data>
+  <data name="Devices_InSync" xml:space="preserve">
+    <value>Синхронизировано</value>
+  </data>
+  <data name="Devices_Syncing" xml:space="preserve">
+    <value>Синхронизация</value>
+  </data>
+  <data name="Devices_Download" xml:space="preserve">
+    <value>Загрузка</value>
+  </data>
+  <data name="Devices_Upload" xml:space="preserve">
+    <value>Отдача</value>
+  </data>
+  <data name="Devices_Paused" xml:space="preserve">
+    <value>Приостановлено</value>
+  </data>
+
+  <!-- Settings -->
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>Общие</value>
+  </data>
+  <data name="Settings_Network" xml:space="preserve">
+    <value>Сеть</value>
+  </data>
+  <data name="Settings_GUI" xml:space="preserve">
+    <value>Интерфейс</value>
+  </data>
+  <data name="Settings_Advanced" xml:space="preserve">
+    <value>Расширенные</value>
+  </data>
+  <data name="Settings_DeviceName" xml:space="preserve">
+    <value>Имя устройства</value>
+  </data>
+  <data name="Settings_ListenAddresses" xml:space="preserve">
+    <value>Адреса прослушивания</value>
+  </data>
+  <data name="Settings_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальное обнаружение</value>
+  </data>
+  <data name="Settings_LocalDiscovery" xml:space="preserve">
+    <value>Локальное обнаружение</value>
+  </data>
+  <data name="Settings_NATTraversal" xml:space="preserve">
+    <value>NAT Traversal</value>
+  </data>
+  <data name="Settings_Relaying" xml:space="preserve">
+    <value>Релеинг</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Тема</value>
+  </data>
+  <data name="Settings_ThemeLight" xml:space="preserve">
+    <value>Светлая</value>
+  </data>
+  <data name="Settings_ThemeDark" xml:space="preserve">
+    <value>Тёмная</value>
+  </data>
+  <data name="Settings_ThemeSystem" xml:space="preserve">
+    <value>Системная</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Язык</value>
+  </data>
+  <data name="Settings_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="Settings_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+
+  <!-- Events -->
+  <data name="Events_Title" xml:space="preserve">
+    <value>События</value>
+  </data>
+  <data name="Events_NoEvents" xml:space="preserve">
+    <value>Нет событий</value>
+  </data>
+  <data name="Events_Clear" xml:space="preserve">
+    <value>Очистить</value>
+  </data>
+  <data name="Events_Pause" xml:space="preserve">
+    <value>Пауза</value>
+  </data>
+  <data name="Events_Resume" xml:space="preserve">
+    <value>Продолжить</value>
+  </data>
+
+  <!-- Diagnostics -->
+  <data name="Diagnostics_Title" xml:space="preserve">
+    <value>Диагностика</value>
+  </data>
+  <data name="Diagnostics_SystemLog" xml:space="preserve">
+    <value>Системный журнал</value>
+  </data>
+  <data name="Diagnostics_Profiling" xml:space="preserve">
+    <value>Профилирование</value>
+  </data>
+  <data name="Diagnostics_SupportBundle" xml:space="preserve">
+    <value>Пакет поддержки</value>
+  </data>
+  <data name="Diagnostics_CreateBundle" xml:space="preserve">
+    <value>Создать пакет поддержки</value>
+  </data>
+
+  <!-- Actions -->
+  <data name="Action_Restart" xml:space="preserve">
+    <value>Перезапуск</value>
+  </data>
+  <data name="Action_Shutdown" xml:space="preserve">
+    <value>Выключение</value>
+  </data>
+  <data name="Action_Rescan" xml:space="preserve">
+    <value>Пересканировать</value>
+  </data>
+  <data name="Action_Edit" xml:space="preserve">
+    <value>Редактировать</value>
+  </data>
+  <data name="Action_Delete" xml:space="preserve">
+    <value>Удалить</value>
+  </data>
+  <data name="Action_Pause" xml:space="preserve">
+    <value>Приостановить</value>
+  </data>
+  <data name="Action_Resume" xml:space="preserve">
+    <value>Возобновить</value>
+  </data>
+  <data name="Action_Copy" xml:space="preserve">
+    <value>Копировать</value>
+  </data>
+  <data name="Action_ShowQR" xml:space="preserve">
+    <value>Показать QR-код</value>
+  </data>
+
+  <!-- Common -->
+  <data name="Common_Yes" xml:space="preserve">
+    <value>Да</value>
+  </data>
+  <data name="Common_No" xml:space="preserve">
+    <value>Нет</value>
+  </data>
+  <data name="Common_Enabled" xml:space="preserve">
+    <value>Включено</value>
+  </data>
+  <data name="Common_Disabled" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="Common_Loading" xml:space="preserve">
+    <value>Загрузка...</value>
+  </data>
+  <data name="Common_Error" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="Common_Success" xml:space="preserve">
+    <value>Успешно</value>
+  </data>
+  <data name="Common_Warning" xml:space="preserve">
+    <value>Предупреждение</value>
+  </data>
+  <data name="Common_Info" xml:space="preserve">
+    <value>Информация</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Неизвестно</value>
+  </data>
+  <data name="Common_None" xml:space="preserve">
+    <value>Нет</value>
+  </data>
+  <data name="Common_All" xml:space="preserve">
+    <value>Все</value>
+  </data>
+  <data name="Common_Search" xml:space="preserve">
+    <value>Поиск</value>
+  </data>
+  <data name="Common_Filter" xml:space="preserve">
+    <value>Фильтр</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Обновить</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Закрыть</value>
+  </data>
+  <data name="Common_Confirm" xml:space="preserve">
+    <value>Подтвердить</value>
+  </data>
+  <data name="Common_ViewAll" xml:space="preserve">
+    <value>Показать все</value>
+  </data>
+
+  <!-- Messages -->
+  <data name="Msg_DeviceIdCopied" xml:space="preserve">
+    <value>ID устройства скопирован в буфер обмена</value>
+  </data>
+  <data name="Msg_CopyFailed" xml:space="preserve">
+    <value>Не удалось скопировать в буфер обмена</value>
+  </data>
+  <data name="Msg_ScanStarted" xml:space="preserve">
+    <value>Сканирование запущено</value>
+  </data>
+  <data name="Msg_ScanFailed" xml:space="preserve">
+    <value>Не удалось запустить сканирование: {0}</value>
+  </data>
+  <data name="Msg_LoadFailed" xml:space="preserve">
+    <value>Не удалось загрузить данные: {0}</value>
+  </data>
+  <data name="Msg_SaveSuccess" xml:space="preserve">
+    <value>Настройки успешно сохранены</value>
+  </data>
+  <data name="Msg_SaveFailed" xml:space="preserve">
+    <value>Не удалось сохранить настройки: {0}</value>
+  </data>
+  <data name="Msg_RestartConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите перезапустить?</value>
+  </data>
+  <data name="Msg_ShutdownConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите выключить?</value>
+  </data>
+  <data name="Msg_DeleteConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите удалить этот элемент?</value>
+  </data>
+  <data name="Msg_UnableRetrieveStatus" xml:space="preserve">
+    <value>Не удалось получить состояние системы</value>
+  </data>
+  <data name="Msg_FolderNotFound" xml:space="preserve">
+    <value>Папка не найдена</value>
+  </data>
+  <data name="Msg_DeviceNotFound" xml:space="preserve">
+    <value>Устройство не найдено</value>
+  </data>
+
+  <!-- Time Formats -->
+  <data name="Time_Days" xml:space="preserve">
+    <value>{0}д {1}ч</value>
+  </data>
+  <data name="Time_Hours" xml:space="preserve">
+    <value>{0}ч {1}м</value>
+  </data>
+  <data name="Time_Minutes" xml:space="preserve">
+    <value>{0}м {1}с</value>
+  </data>
+  <data name="Time_JustNow" xml:space="preserve">
+    <value>Только что</value>
+  </data>
+  <data name="Time_MinutesAgo" xml:space="preserve">
+    <value>{0} минут назад</value>
+  </data>
+  <data name="Time_HoursAgo" xml:space="preserve">
+    <value>{0} часов назад</value>
+  </data>
+  <data name="Time_DaysAgo" xml:space="preserve">
+    <value>{0} дней назад</value>
+  </data>
+</root>
