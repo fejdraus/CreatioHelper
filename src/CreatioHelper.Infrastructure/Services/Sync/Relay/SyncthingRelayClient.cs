@@ -69,7 +69,15 @@ public class SyncthingRelayClient : IDisposable
     public event EventHandler<SessionInvitation>? SessionInvitationReceived;
 
     /// <summary>
+    /// Event fired when the relay server reports it is full (RelayFull message)
+    /// Following Syncthing pattern from lib/relay/client/static.go
+    /// </summary>
+    public event EventHandler<RelayFullEventArgs>? RelayFullReceived;
+
+    /// <summary>
     /// Connect to relay server (supports static 'relay://' and dynamic 'dynamic+http(s)://' schemes)
+    /// Returns false if connection fails; throws RelayFullException for static relays when full
+    /// Following Syncthing pattern from lib/relay/client/client.go
     /// </summary>
     public async Task<bool> ConnectAsync()
     {
@@ -89,6 +97,26 @@ public class SyncthingRelayClient : IDisposable
                     throw new NotSupportedException($"Unsupported relay scheme: {_relayUri.Scheme}");
             }
         }
+        catch (RelayFullException)
+        {
+            // Re-throw RelayFullException for static relays so callers can try alternative relays
+            _logger.LogDebug("Relay {RelayUri} is full", _relayUri);
+            await DisconnectAsync();
+            throw;
+        }
+        catch (RelayIncorrectResponseCodeException ex)
+        {
+            // Log and return false for incorrect response codes
+            _logger.LogWarning(ex, "Failed to connect to relay {RelayUri}: incorrect response code", _relayUri);
+            await DisconnectAsync();
+            return false;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Connection to relay {RelayUri} was cancelled", _relayUri);
+            await DisconnectAsync();
+            return false;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to relay: {RelayUri}", _relayUri);
@@ -99,6 +127,8 @@ public class SyncthingRelayClient : IDisposable
 
     /// <summary>
     /// Connect to static relay server
+    /// Following Syncthing pattern from lib/relay/client/static.go connect() and join()
+    /// Throws RelayFullException if the relay is full (to allow callers to try alternatives)
     /// </summary>
     private async Task<bool> ConnectStaticAsync()
     {
@@ -120,29 +150,42 @@ public class SyncthingRelayClient : IDisposable
             TargetHost = _relayUri.Host,
             ClientCertificates = _certificates,
             EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
-            ApplicationProtocols = new List<SslApplicationProtocol> 
-            { 
-                new SslApplicationProtocol(RelayProtocol.ProtocolName) 
+            ApplicationProtocols = new List<SslApplicationProtocol>
+            {
+                new SslApplicationProtocol(RelayProtocol.ProtocolName)
             }
         };
 
         await _sslStream.AuthenticateAsClientAsync(clientAuthOptions, combinedCts.Token);
 
-        // Verify ALPN negotiation
-        if (_sslStream.NegotiatedApplicationProtocol.Protocol.ToArray() != 
-            System.Text.Encoding.UTF8.GetBytes(RelayProtocol.ProtocolName))
+        // Verify ALPN negotiation (following Syncthing pattern from lib/relay/client/static.go)
+        var negotiatedProtocol = _sslStream.NegotiatedApplicationProtocol;
+        var expectedProtocolBytes = System.Text.Encoding.UTF8.GetBytes(RelayProtocol.ProtocolName);
+
+        if (negotiatedProtocol == default ||
+            !negotiatedProtocol.Protocol.Span.SequenceEqual(expectedProtocolBytes))
         {
-            throw new InvalidOperationException("ALPN protocol negotiation failed");
+            var actualProtocol = negotiatedProtocol == default
+                ? "<none>"
+                : System.Text.Encoding.UTF8.GetString(negotiatedProtocol.Protocol.Span);
+            _logger.LogError("ALPN protocol negotiation error: expected '{Expected}', got '{Actual}'",
+                RelayProtocol.ProtocolName, actualProtocol);
+            throw new InvalidOperationException("protocol negotiation error");
         }
 
         _logger.LogDebug("TLS connection established with ALPN protocol: {Protocol}", RelayProtocol.ProtocolName);
 
-        // Join the relay
+        // Verify relay server identity if ?id= parameter is present (Syncthing pattern)
+        await VerifyRelayServerIdentityAsync();
+
+        // Join the relay - may throw RelayFullException
         return await JoinRelayAsync();
     }
 
     /// <summary>
     /// Connect to dynamic relay server (discovers available relays via HTTP)
+    /// Following Syncthing pattern from lib/relay/client/dynamic.go serve()
+    /// When a relay is full or disconnects, tries the next relay in the ordered list
     /// </summary>
     private async Task<bool> ConnectDynamicAsync()
     {
@@ -168,20 +211,24 @@ public class SyncthingRelayClient : IDisposable
         var relayUrls = announcement.Relays.Select(r => r.Url).ToList();
         _logger.LogDebug("Found {Count} dynamic relays", relayUrls.Count);
 
-        // Order relays by latency (Syncthing algorithm)
+        // Order relays by latency (Syncthing algorithm from dynamic.go relayAddressesOrder)
         var orderedRelays = await OrderRelaysByLatency(relayUrls);
 
         // Try connecting to relays in order
+        // Following Syncthing pattern: when relay is full or disconnects, try next relay
         foreach (var relayUrl in orderedRelays)
         {
             if (_cancellationTokenSource.Token.IsCancellationRequested)
+            {
+                _logger.LogDebug("Dynamic relay connection cancelled");
                 return false;
+            }
 
             try
             {
                 var relayUri = new Uri(relayUrl);
                 var staticClient = new SyncthingRelayClient(_logger, relayUri, _certificates, _connectTimeout, _messageTimeout);
-                
+
                 if (await staticClient.ConnectStaticAsync())
                 {
                     // Transfer connection to this client
@@ -202,19 +249,39 @@ public class SyncthingRelayClient : IDisposable
                     return true;
                 }
             }
+            catch (RelayFullException ex)
+            {
+                // Relay is full - try the next one (following Syncthing pattern)
+                _logger.LogDebug(ex, "Relay {RelayUrl} is full, trying next relay", relayUrl);
+                continue;
+            }
+            catch (RelayIncorrectResponseCodeException ex)
+            {
+                // Wrong response code (e.g., wrong token) - try the next one
+                _logger.LogDebug(ex, "Relay {RelayUrl} returned error code {Code}, trying next relay",
+                    relayUrl, ex.Code);
+                continue;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogDebug("Dynamic relay connection cancelled while connecting to {RelayUrl}", relayUrl);
+                return false;
+            }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to connect to relay {RelayUrl}", relayUrl);
+                // Connection failed - try the next relay
+                _logger.LogDebug(ex, "Failed to connect to relay {RelayUrl}, trying next relay", relayUrl);
                 continue;
             }
         }
 
-        _logger.LogError("Could not connect to any dynamic relay");
+        _logger.LogWarning("Could not find a connectable relay from {Count} dynamic relays", orderedRelays.Count);
         return false;
     }
 
     /// <summary>
     /// Join the relay server (send JoinRelayRequest and handle response)
+    /// Following Syncthing pattern from lib/relay/client/static.go join()
     /// </summary>
     private async Task<bool> JoinRelayAsync()
     {
@@ -239,23 +306,209 @@ public class SyncthingRelayClient : IDisposable
                     return true;
 
                 case Response joinResponse:
+                    // Following Syncthing pattern: incorrectResponseCodeErr
                     _logger.LogError("Join relay failed: {Code} - {Message}", joinResponse.Code, joinResponse.Message);
-                    return false;
+                    throw new RelayIncorrectResponseCodeException(joinResponse.Code, joinResponse.Message);
 
                 case RelayFull:
-                    _logger.LogError("Relay server is full");
-                    return false;
+                    // Following Syncthing pattern: errors.New("relay full")
+                    _logger.LogWarning("Relay server is full: {RelayUri}", _relayUri);
+                    RelayFullReceived?.Invoke(this, new RelayFullEventArgs(_relayUri));
+                    throw new RelayFullException(_relayUri);
 
                 default:
                     _logger.LogError("Expected Response message, got {MessageType}", response.GetType().Name);
-                    return false;
+                    throw new InvalidOperationException($"protocol error: expecting response got {response.GetType().Name}");
             }
+        }
+        catch (RelayFullException)
+        {
+            // Re-throw RelayFullException to allow callers to handle it specifically
+            throw;
+        }
+        catch (RelayIncorrectResponseCodeException)
+        {
+            // Re-throw to allow callers to handle it specifically
+            throw;
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogDebug("Join relay cancelled");
+            throw;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error joining relay server");
-            return false;
+            throw;
         }
+    }
+
+    /// <summary>
+    /// Verify relay server identity using the ?id= query parameter (following Syncthing pattern)
+    /// See lib/relay/client/static.go performHandshakeAndValidation()
+    /// </summary>
+    private Task VerifyRelayServerIdentityAsync()
+    {
+        var query = System.Web.HttpUtility.ParseQueryString(_relayUri.Query);
+        var expectedRelayId = query["id"];
+
+        if (string.IsNullOrEmpty(expectedRelayId))
+        {
+            _logger.LogDebug("No relay ID verification required (no ?id= parameter)");
+            return Task.CompletedTask;
+        }
+
+        // Get peer certificates from the TLS connection
+        var peerCertificate = _sslStream?.RemoteCertificate;
+        if (peerCertificate == null)
+        {
+            throw new InvalidOperationException("Relay ID verification failed: no peer certificate");
+        }
+
+        // Syncthing expects exactly one certificate
+        using var x509Cert = new System.Security.Cryptography.X509Certificates.X509Certificate2(peerCertificate);
+
+        // Compute device ID from certificate (SHA-256 hash of raw certificate data)
+        using var sha256 = System.Security.Cryptography.SHA256.Create();
+        var hash = sha256.ComputeHash(x509Cert.RawData);
+        var actualRelayId = FormatDeviceIdWithLuhn(hash);
+
+        // Compare device IDs (case-insensitive, ignore hyphens)
+        var normalizedExpected = expectedRelayId.Replace("-", "").ToUpperInvariant();
+        var normalizedActual = actualRelayId.Replace("-", "").ToUpperInvariant();
+
+        if (!string.Equals(normalizedExpected, normalizedActual, StringComparison.Ordinal))
+        {
+            _logger.LogError("Relay ID verification failed: expected {Expected}, got {Actual}",
+                expectedRelayId, actualRelayId);
+            throw new InvalidOperationException($"relay id does not match. Expected {expectedRelayId} got {actualRelayId}");
+        }
+
+        _logger.LogDebug("Relay server identity verified: {RelayId}", actualRelayId);
+        return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Format raw SHA-256 hash as Syncthing Device ID with Luhn checksums
+    /// Format: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH
+    /// </summary>
+    private static string FormatDeviceIdWithLuhn(byte[] hash)
+    {
+        // Convert to base32 (Syncthing uses RFC 4648 base32 without padding)
+        var base32 = ConvertToBase32(hash);
+
+        // Take first 52 characters
+        var deviceIdBase = base32.Substring(0, 52);
+
+        // Luhnify: split into 4 groups of 13 chars, add check digit after each
+        var luhnified = Luhnify(deviceIdBase);
+
+        // Chunkify: format with hyphens every 7 characters
+        return Chunkify(luhnified);
+    }
+
+    private static string ConvertToBase32(byte[] data)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+        var result = new System.Text.StringBuilder();
+        var buffer = 0;
+        var bitsLeft = 0;
+
+        foreach (var b in data)
+        {
+            buffer = (buffer << 8) | b;
+            bitsLeft += 8;
+
+            while (bitsLeft >= 5)
+            {
+                result.Append(alphabet[(buffer >> (bitsLeft - 5)) & 0x1F]);
+                bitsLeft -= 5;
+            }
+        }
+
+        if (bitsLeft > 0)
+        {
+            result.Append(alphabet[(buffer << (5 - bitsLeft)) & 0x1F]);
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Add Luhn check digits to a 52-character base32 string.
+    /// Splits into 4 groups of 13 chars and adds a check digit after each.
+    /// Result is 56 characters.
+    /// </summary>
+    private static string Luhnify(string s)
+    {
+        if (s.Length != 52)
+            throw new ArgumentException($"Input must be 52 characters, got {s.Length}");
+
+        var result = new System.Text.StringBuilder(56);
+        for (int i = 0; i < 4; i++)
+        {
+            var group = s.Substring(i * 13, 13);
+            result.Append(group);
+            result.Append(CalculateLuhn32(group));
+        }
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Format a 56-character string with hyphens every 7 characters.
+    /// </summary>
+    private static string Chunkify(string s)
+    {
+        if (s.Length != 56)
+            return s;
+
+        var chunks = new System.Text.StringBuilder(63);
+        for (int i = 0; i < 8; i++)
+        {
+            if (i > 0)
+                chunks.Append('-');
+            chunks.Append(s.Substring(i * 7, 7));
+        }
+        return chunks.ToString();
+    }
+
+    /// <summary>
+    /// Calculate Luhn32 check digit for a base32 string.
+    /// This follows the exact Syncthing algorithm from lib/protocol/luhn.go
+    /// </summary>
+    private static char CalculateLuhn32(string s)
+    {
+        const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+        const int n = 32;
+
+        var factor = 1;
+        var sum = 0;
+
+        foreach (var c in s)
+        {
+            var codepoint = Codepoint32(c);
+            if (codepoint == -1)
+                throw new ArgumentException($"Character '{c}' not valid in base32 alphabet");
+
+            var addend = factor * codepoint;
+            factor = (factor == 2) ? 1 : 2;
+            addend = (addend / n) + (addend % n);
+            sum += addend;
+        }
+
+        var remainder = sum % n;
+        var checkCodepoint = (n - remainder) % n;
+        return alphabet[checkCodepoint];
+    }
+
+    private static int Codepoint32(char b)
+    {
+        if (b >= 'A' && b <= 'Z')
+            return b - 'A';
+        if (b >= '2' && b <= '7')
+            return b - '2' + 26;
+        return -1;
     }
 
     /// <summary>
@@ -333,6 +586,7 @@ public class SyncthingRelayClient : IDisposable
 
     /// <summary>
     /// Main message processing loop with timeout handling
+    /// Following Syncthing pattern from lib/relay/client/static.go serve()
     /// </summary>
     private async Task MessageLoop()
     {
@@ -343,8 +597,8 @@ public class SyncthingRelayClient : IDisposable
             while (IsConnected && !_cancellationTokenSource.Token.IsCancellationRequested)
             {
                 var message = await RelayMessageSerializer.ReadMessageAsync(_sslStream!, _cancellationTokenSource.Token);
-                
-                // Reset timeout timer
+
+                // Reset timeout timer (following Syncthing timeout.Reset pattern)
                 messageTimer.Change(_messageTimeout, Timeout.InfiniteTimeSpan);
 
                 await HandleMessageAsync(message);
@@ -354,9 +608,16 @@ public class SyncthingRelayClient : IDisposable
         {
             _logger.LogDebug("Message loop cancelled");
         }
+        catch (RelayFullException ex)
+        {
+            // RelayFull is handled by HandleMessageAsync, just log and exit
+            _logger.LogDebug(ex, "Message loop exiting due to relay full");
+            _isConnected = false;
+        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error in relay message loop");
+            // Following Syncthing pattern: log disconnect reason
+            _logger.LogDebug(ex, "Disconnected from relay {RelayUri} due to error", _relayUri);
             _isConnected = false;
         }
     }
@@ -370,6 +631,7 @@ public class SyncthingRelayClient : IDisposable
 
     /// <summary>
     /// Handle incoming relay messages
+    /// Following Syncthing pattern from lib/relay/client/static.go serve() message handling
     /// </summary>
     private async Task HandleMessageAsync(IRelayMessage message)
     {
@@ -391,17 +653,22 @@ public class SyncthingRelayClient : IDisposable
                 break;
 
             case RelayFull:
-                _logger.LogWarning("Relay server is full - disconnecting");
+                // Following Syncthing pattern: disconnect and return error when relay becomes full
+                // From static.go: "Disconnected from relay %s due to it becoming full."
+                _logger.LogWarning("Disconnected from relay {RelayUri} due to it becoming full", _relayUri);
                 _isConnected = false;
-                break;
+                RelayFullReceived?.Invoke(this, new RelayFullEventArgs(_relayUri));
+                throw new RelayFullException(_relayUri);
 
             case Response response:
                 _logger.LogDebug("Received response: {Code} - {Message}", response.Code, response.Message);
                 break;
 
             default:
+                // Following Syncthing pattern: return error for unexpected messages
+                // From static.go: "protocol error: unexpected message %v"
                 _logger.LogWarning("Received unexpected message type: {MessageType}", message.Type);
-                break;
+                throw new InvalidOperationException($"protocol error: unexpected message {message.Type}");
         }
     }
 

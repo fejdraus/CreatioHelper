@@ -152,17 +152,7 @@ public class DeviceIdValidator
     /// <returns>Formatted Device ID with hyphens</returns>
     public string FormatDeviceId(string normalizedDeviceId)
     {
-        if (string.IsNullOrEmpty(normalizedDeviceId) || normalizedDeviceId.Length != 56)
-            return normalizedDeviceId;
-
-        var formatted = new StringBuilder();
-        for (int i = 0; i < 8; i++)
-        {
-            if (i > 0) formatted.Append('-');
-            formatted.Append(normalizedDeviceId.Substring(i * 7, 7));
-        }
-
-        return formatted.ToString();
+        return Chunkify(normalizedDeviceId);
     }
 
     /// <summary>
@@ -181,18 +171,96 @@ public class DeviceIdValidator
 
     private string FormatDeviceIdWithLuhn(byte[] hash)
     {
-        // Convert to base32 (Syncthing uses custom base32 without padding)
+        // Convert to base32 (Syncthing uses RFC 4648 base32 without padding)
         var base32 = ConvertToBase32(hash);
-        
-        // Take first 52 characters (52 + 4 Luhn digits = 56 total)
+
+        // Take first 52 characters
         var deviceIdBase = base32.Substring(0, 52);
-        
-        // Calculate and append Luhn checksum
-        var luhnDigits = CalculateLuhnChecksum(deviceIdBase);
-        var fullDeviceId = deviceIdBase + luhnDigits;
-        
-        // Format with hyphens: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH
-        return FormatDeviceId(fullDeviceId);
+
+        // Luhnify: split into 4 groups of 13 chars, add check digit after each
+        var luhnified = Luhnify(deviceIdBase);
+
+        // Chunkify: format with hyphens every 7 characters
+        return Chunkify(luhnified);
+    }
+
+    /// <summary>
+    /// Add Luhn check digits to a 52-character base32 string.
+    /// Splits into 4 groups of 13 chars and adds a check digit after each.
+    /// Result is 56 characters.
+    /// </summary>
+    private string Luhnify(string s)
+    {
+        if (s.Length != 52)
+            throw new ArgumentException($"Input must be 52 characters, got {s.Length}");
+
+        var result = new StringBuilder(56);
+        for (int i = 0; i < 4; i++)
+        {
+            var group = s.Substring(i * 13, 13);
+            result.Append(group);
+            result.Append(CalculateLuhn32(group));
+        }
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Remove and validate Luhn check digits from a 56-character string.
+    /// Returns the original 52-character string if valid.
+    /// </summary>
+    private string? Unluhnify(string s)
+    {
+        if (s.Length != 56)
+            return null;
+
+        var result = new StringBuilder(52);
+        for (int i = 0; i < 4; i++)
+        {
+            var group = s.Substring(i * 14, 13);
+            var checkDigit = s[i * 14 + 13];
+            var expectedCheckDigit = CalculateLuhn32(group);
+
+            if (checkDigit != expectedCheckDigit)
+                return null;
+
+            result.Append(group);
+        }
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Format a 56-character string with hyphens every 7 characters.
+    /// Result: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH
+    /// </summary>
+    private static string Chunkify(string s)
+    {
+        if (s.Length != 56)
+            return s;
+
+        var chunks = new StringBuilder(63); // 56 chars + 7 hyphens
+        for (int i = 0; i < 8; i++)
+        {
+            if (i > 0)
+                chunks.Append('-');
+            chunks.Append(s.Substring(i * 7, 7));
+        }
+        return chunks.ToString();
+    }
+
+    /// <summary>
+    /// Remove hyphens and spaces from a device ID.
+    /// </summary>
+    private static string Unchunkify(string s)
+    {
+        return s.Replace("-", "").Replace(" ", "");
+    }
+
+    /// <summary>
+    /// Replace common typing errors in device IDs (0->O, 1->I, 8->B)
+    /// </summary>
+    private static string Untypeoify(string s)
+    {
+        return s.Replace("0", "O").Replace("1", "I").Replace("8", "B");
     }
 
     private string ConvertToBase32(byte[] data)
@@ -224,65 +292,63 @@ public class DeviceIdValidator
         return result.ToString();
     }
 
-    private string CalculateLuhnChecksum(string input)
+    /// <summary>
+    /// Calculate Luhn32 check digit for a base32 string.
+    /// This follows the exact Syncthing algorithm from lib/protocol/luhn.go
+    /// </summary>
+    /// <param name="s">Base32 string to calculate check digit for</param>
+    /// <returns>Check digit character</returns>
+    private char CalculateLuhn32(string s)
     {
-        // Convert base32 characters to numeric values for Luhn algorithm
         const string alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-        
+        const int n = 32;
+
+        var factor = 1;
         var sum = 0;
-        var isEven = false;
-        
-        // Process from right to left
-        for (int i = input.Length - 1; i >= 0; i--)
+
+        foreach (var c in s)
         {
-            var digit = alphabet.IndexOf(input[i]);
-            if (digit < 0) throw new ArgumentException($"Invalid character in device ID: {input[i]}");
-            
-            if (isEven)
-            {
-                digit *= 2;
-                if (digit > 31) // 31 is max for base32 (32-1)
-                    digit = (digit % 32) + (digit / 32);
-            }
-            
-            sum += digit;
-            isEven = !isEven;
+            var codepoint = Codepoint32(c);
+            if (codepoint == -1)
+                throw new ArgumentException($"Character '{c}' not valid in base32 alphabet");
+
+            var addend = factor * codepoint;
+            factor = (factor == 2) ? 1 : 2;
+            addend = (addend / n) + (addend % n);
+            sum += addend;
         }
-        
-        // Calculate checksum digits
-        var checksum = (32 - (sum % 32)) % 32;
-        
-        // Convert back to base32 and pad to 4 characters
-        var checksumStr = alphabet[checksum].ToString();
-        
-        // For Syncthing compatibility, we need exactly 4 checksum digits
-        // Calculate additional digits to make total length 56
-        var remainingDigits = new StringBuilder();
-        for (int i = 1; i < 4; i++)
-        {
-            // Simple algorithm to generate consistent additional digits
-            var additionalDigit = (checksum + i * 7) % 32;
-            remainingDigits.Append(alphabet[additionalDigit]);
-        }
-        
-        return checksumStr + remainingDigits.ToString();
+
+        var remainder = sum % n;
+        var checkCodepoint = (n - remainder) % n;
+        return alphabet[checkCodepoint];
+    }
+
+    /// <summary>
+    /// Convert a base32 character to its codepoint value (0-31)
+    /// </summary>
+    private static int Codepoint32(char b)
+    {
+        if (b >= 'A' && b <= 'Z')
+            return b - 'A';
+        if (b >= '2' && b <= '7')
+            return b - '2' + 26;
+        return -1;
     }
 
     private bool ValidateLuhnChecksum(string deviceId)
     {
         try
         {
-            var normalized = NormalizeDeviceId(deviceId);
-            if (normalized.Length != 56) return false;
-            
-            // Extract the base (first 52 chars) and checksum (last 4 chars)
-            var deviceIdBase = normalized.Substring(0, 52);
-            var providedChecksum = normalized.Substring(52, 4);
-            
-            // Calculate expected checksum
-            var expectedChecksum = CalculateLuhnChecksum(deviceIdBase);
-            
-            return string.Equals(providedChecksum, expectedChecksum, StringComparison.OrdinalIgnoreCase);
+            // Normalize: uppercase, remove hyphens/spaces, fix typos
+            var normalized = Unchunkify(deviceId).ToUpperInvariant();
+            normalized = Untypeoify(normalized);
+
+            if (normalized.Length != 56)
+                return false;
+
+            // Validate by attempting to unluhnify
+            var base52 = Unluhnify(normalized);
+            return base52 != null;
         }
         catch (Exception ex)
         {

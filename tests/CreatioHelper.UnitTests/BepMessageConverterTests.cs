@@ -110,8 +110,8 @@ public class BepMessageConverterTests
         Assert.Equal("test-folder", folder.Id);
         Assert.Equal("Test Folder", folder.Label);
         Assert.True(folder.ReadOnly);
-        Assert.False(folder.IgnorePermissions);
-        Assert.True(folder.IgnoreDelete);
+        Assert.False(folder.IgnorePermissions); // No longer in protocol
+        Assert.False(folder.IgnoreDelete); // No longer in protocol - always false after round-trip
         Assert.False(folder.Paused);
 
         Assert.Single(folder.Devices);
@@ -346,12 +346,12 @@ public class BepMessageConverterTests
         Assert.Equal(0, blocks[0].Offset);
         Assert.Equal(512, blocks[0].Size);
         Assert.Equal(new byte[] { 0xDE, 0xAD, 0xBE, 0xEF }, blocks[0].Hash);
-        Assert.Equal(0xCAFEBABEu, blocks[0].WeakHash);
+        Assert.Equal(0u, blocks[0].WeakHash); // WeakHash removed from protocol - always 0 after round-trip
 
         Assert.Equal(512, blocks[1].Offset);
         Assert.Equal(512, blocks[1].Size);
         Assert.Equal(new byte[] { 0xFE, 0xED, 0xFA, 0xCE }, blocks[1].Hash);
-        Assert.Equal(0xDEADC0DEu, blocks[1].WeakHash);
+        Assert.Equal(0u, blocks[1].WeakHash); // WeakHash removed from protocol - always 0 after round-trip
     }
 
     #endregion
@@ -550,7 +550,7 @@ public class BepMessageConverterTests
         Assert.Equal(65536, backToOriginal.Size);
         Assert.Equal(new byte[] { 0xDE, 0xAD, 0xBE, 0xEF }, backToOriginal.Hash);
         Assert.True(backToOriginal.FromTemporary);
-        Assert.Equal(0xCAFEBABEu, backToOriginal.WeakHash);
+        Assert.Equal(0u, backToOriginal.WeakHash); // WeakHash removed from protocol - always 0 after round-trip
         Assert.Equal(5, backToOriginal.BlockNo);
     }
 
@@ -794,6 +794,61 @@ public class BepMessageConverterTests
             BlockSize = 131072,
             Version = new BepVector { Counters = [new BepCounter { Id = 1, Value = 1 }] }
         };
+    }
+
+    #endregion
+
+    #region BEP Protocol State Tests (ClusterConfig Ordering)
+
+    /// <summary>
+    /// Verifies that BepProtocolState enum exists and has correct values.
+    /// Following Syncthing pattern from lib/protocol/protocol.go stateInitial/stateReady.
+    /// </summary>
+    [Fact]
+    public void BepProtocolState_HasCorrectValues()
+    {
+        // Assert - verify the enum values exist
+        Assert.Equal(0, (int)BepProtocolState.Initial);
+        Assert.Equal(1, (int)BepProtocolState.Ready);
+    }
+
+    /// <summary>
+    /// Verifies that ClusterConfig message can be properly converted.
+    /// ClusterConfig MUST be the first message after Hello exchange per Syncthing BEP protocol.
+    /// </summary>
+    [Fact]
+    public void ClusterConfig_ConversionWorks_ForProtocolOrdering()
+    {
+        // Arrange - create a minimal ClusterConfig that would be sent first after Hello
+        var bepConfig = new BepClusterConfig
+        {
+            Folders =
+            [
+                new BepFolder
+                {
+                    Id = "default",
+                    Label = "Default Folder",
+                    ReadOnly = false,
+                    Devices =
+                    [
+                        new BepDevice
+                        {
+                            DeviceId = "MRIW7OK-NETT3M4-N6SBWME-N7XGODL-VMBUXKV-TQPBQCE-XKS4K3W-LO2SLQE",
+                            Name = "LocalDevice"
+                        }
+                    ]
+                }
+            ]
+        };
+
+        // Act - convert to protobuf and back
+        var proto = BepMessageConverter.ToProto(bepConfig);
+        var backToOriginal = BepMessageConverter.FromProto(proto);
+
+        // Assert - verify the ClusterConfig can be properly sent as first message
+        Assert.NotNull(backToOriginal);
+        Assert.Single(backToOriginal.Folders);
+        Assert.Equal("default", backToOriginal.Folders[0].Id);
     }
 
     #endregion

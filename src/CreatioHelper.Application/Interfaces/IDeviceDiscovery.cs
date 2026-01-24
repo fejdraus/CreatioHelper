@@ -22,6 +22,14 @@ public class DiscoveredDevice
     public List<string> Addresses { get; set; } = new();
     public DateTime LastSeen { get; set; } = DateTime.UtcNow;
     public DiscoverySource Source { get; set; } = DiscoverySource.Local;
+
+    /// <summary>
+    /// Instance ID from the announcing device. Used for stale cache detection.
+    /// When a device restarts, it generates a new instance ID, allowing receivers
+    /// to detect that cached information may be stale even if within CacheLifeTime.
+    /// (Syncthing compatibility: lib/discover/local.go registerDevice)
+    /// </summary>
+    public long InstanceId { get; set; }
 }
 
 public class DeviceDiscoveredEventArgs : EventArgs

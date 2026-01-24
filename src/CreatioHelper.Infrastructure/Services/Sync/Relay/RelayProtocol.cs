@@ -128,13 +128,71 @@ public record SessionInvitation(
 ) : IRelayMessage
 {
     public RelayProtocol.MessageType Type => RelayProtocol.MessageType.SessionInvitation;
-    
+
     public SessionInvitation() : this(Array.Empty<byte>(), Array.Empty<byte>(), Array.Empty<byte>(), 0, false) { }
-    
+
     public override string ToString()
     {
         var deviceId = From.Length == 32 ? Convert.ToHexString(From) : "<invalid>";
         var ip = Address.Length >= 4 ? new System.Net.IPAddress(Address).ToString() : "<invalid>";
         return $"{deviceId}@{ip}:{Port}";
+    }
+}
+
+/// <summary>
+/// Exception thrown when a relay server is full (RelayFull message received)
+/// Following Syncthing pattern from lib/relay/client/static.go
+/// </summary>
+public class RelayFullException : Exception
+{
+    public Uri? RelayUri { get; }
+
+    public RelayFullException() : base("relay full")
+    {
+    }
+
+    public RelayFullException(Uri relayUri) : base($"relay full: {relayUri}")
+    {
+        RelayUri = relayUri;
+    }
+
+    public RelayFullException(string message) : base(message)
+    {
+    }
+
+    public RelayFullException(string message, Exception innerException) : base(message, innerException)
+    {
+    }
+}
+
+/// <summary>
+/// Exception thrown when the response code from relay server is not success
+/// Following Syncthing pattern from lib/relay/client/static.go incorrectResponseCodeErr
+/// </summary>
+public class RelayIncorrectResponseCodeException : Exception
+{
+    public int Code { get; }
+    public string ResponseMessage { get; }
+
+    public RelayIncorrectResponseCodeException(int code, string message)
+        : base($"incorrect response code {code}: {message}")
+    {
+        Code = code;
+        ResponseMessage = message;
+    }
+}
+
+/// <summary>
+/// Event arguments for RelayFull event
+/// </summary>
+public class RelayFullEventArgs : EventArgs
+{
+    public Uri RelayUri { get; }
+    public DateTime Timestamp { get; }
+
+    public RelayFullEventArgs(Uri relayUri)
+    {
+        RelayUri = relayUri;
+        Timestamp = DateTime.UtcNow;
     }
 }
