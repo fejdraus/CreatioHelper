@@ -151,6 +151,11 @@ public class BepProtocol : ISyncProtocol, IDisposable
             // Send Hello message to establish protocol
             await connection.SendHelloAsync(DeviceId, DeviceName, ClientName, ClientVersion);
 
+            // NOTE: Following Syncthing BEP protocol (lib/protocol/protocol.go):
+            // ClusterConfig MUST be sent as the first message after Hello exchange.
+            // The caller must call SendClusterConfigAsync immediately after this method returns.
+            // The BepConnection will throw an exception if any other message is sent before ClusterConfig.
+
             // Fire DeviceConnected event for relay connections
             var device = new SyncDevice(connection.DeviceId, "Relay Device");
             DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(device));
@@ -206,6 +211,15 @@ public class BepProtocol : ISyncProtocol, IDisposable
         await connection.SendMessageAsync(BepMessageType.Hello, hello);
     }
 
+    /// <summary>
+    /// Sends ClusterConfig to the specified device.
+    /// IMPORTANT: Following Syncthing BEP protocol (lib/protocol/protocol.go writerLoop),
+    /// ClusterConfig MUST be the first message sent after Hello exchange.
+    /// This method must be called immediately after a successful connection before
+    /// any other messages (Index, IndexUpdate, Request, etc.) can be sent.
+    /// </summary>
+    /// <param name="deviceId">The target device ID</param>
+    /// <param name="folders">List of folders to share with the device</param>
     public async Task SendClusterConfigAsync(string deviceId, List<SyncFolder> folders)
     {
         if (!_connections.TryGetValue(deviceId, out var connection))
@@ -569,6 +583,12 @@ public class BepProtocol : ISyncProtocol, IDisposable
         // Send Hello message
         await connection.SendHelloAsync(DeviceId, DeviceName, ClientName, ClientVersion);
 
+        // NOTE: Following Syncthing BEP protocol (lib/protocol/protocol.go):
+        // ClusterConfig MUST be sent as the first message after Hello exchange.
+        // The caller (ConnectAsync) must call SendClusterConfigAsync immediately
+        // after this method returns. The BepConnection will throw an exception
+        // if any other message is sent before ClusterConfig.
+
         return connection;
     }
 
@@ -843,28 +863,14 @@ public class BepProtocol : ISyncProtocol, IDisposable
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-
-        try
-        {
-            _cancellationTokenSource.Cancel();
-        }
-        catch (ObjectDisposedException) { }
-
+        _cancellationTokenSource.Cancel();
         _listener?.Stop();
-
+        
         foreach (var connection in _connections.Values)
         {
             connection.Dispose();
         }
-
-        try
-        {
-            _cancellationTokenSource.Dispose();
-        }
-        catch (ObjectDisposedException) { }
+        
+        _cancellationTokenSource.Dispose();
     }
-
-    private bool _disposed;
 }

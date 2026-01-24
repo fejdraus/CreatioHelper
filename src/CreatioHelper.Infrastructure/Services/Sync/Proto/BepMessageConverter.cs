@@ -39,15 +39,17 @@ public static class BepMessageConverter
 
         foreach (var folder in config.Folders)
         {
+            // Map boolean folder flags to the new enum-based approach
+            // ReadOnly maps to SEND_ONLY type
+            var folderType = folder.ReadOnly ? FolderType.SendOnly : FolderType.SendReceive;
+            var stopReason = folder.Paused ? FolderStopReason.Paused : FolderStopReason.Running;
+
             var protoFolder = new Folder
             {
                 Id = folder.Id ?? string.Empty,
                 Label = folder.Label ?? string.Empty,
-                ReadOnly = folder.ReadOnly,
-                IgnorePermissions = folder.IgnorePermissions,
-                IgnoreDelete = folder.IgnoreDelete,
-                DisableTempIndexes = folder.DisableTempIndexes,
-                Paused = folder.Paused
+                Type = folderType,
+                StopReason = stopReason
             };
 
             foreach (var device in folder.Devices)
@@ -82,11 +84,12 @@ public static class BepMessageConverter
         {
             Id = f.Id,
             Label = f.Label,
-            ReadOnly = f.ReadOnly,
-            IgnorePermissions = f.IgnorePermissions,
-            IgnoreDelete = f.IgnoreDelete,
-            DisableTempIndexes = f.DisableTempIndexes,
-            Paused = f.Paused,
+            // Map new enum fields back to legacy boolean fields
+            ReadOnly = f.Type == FolderType.SendOnly || f.Type == FolderType.ReceiveEncrypted,
+            IgnorePermissions = false, // No longer in protocol
+            IgnoreDelete = false, // No longer in protocol
+            DisableTempIndexes = false, // No longer in protocol
+            Paused = f.StopReason == FolderStopReason.Paused,
             Devices = f.Devices.Select(d => new BepDevice
             {
                 Id = d.Id.ToByteArray(),
@@ -170,7 +173,7 @@ public static class BepMessageConverter
             NoPermissions = file.NoPermissions,
             Sequence = file.Sequence,
             BlockSize = file.BlockSize,
-            SymlinkTarget = file.Symlink ?? string.Empty,
+            SymlinkTarget = ByteString.CopyFromUtf8(file.Symlink ?? string.Empty),
             BlocksHash = file.BlocksHash != null ? ByteString.CopyFrom(file.BlocksHash) : ByteString.Empty,
             VersionHash = file.VersionHash != null ? ByteString.CopyFrom(file.VersionHash) : ByteString.Empty
         };
@@ -188,8 +191,8 @@ public static class BepMessageConverter
             {
                 Offset = block.Offset,
                 Size = block.Size,
-                Hash = block.Hash != null ? ByteString.CopyFrom(block.Hash) : ByteString.Empty,
-                WeakHash = block.WeakHash
+                Hash = block.Hash != null ? ByteString.CopyFrom(block.Hash) : ByteString.Empty
+                // WeakHash removed in current Syncthing protocol
             });
         }
 
@@ -222,9 +225,9 @@ public static class BepMessageConverter
             Offset = b.Offset,
             Size = b.Size,
             Hash = b.Hash?.ToByteArray() ?? Array.Empty<byte>(),
-            WeakHash = b.WeakHash
+            WeakHash = 0 // No longer in protocol
         }).ToList(),
-        Symlink = file.SymlinkTarget,
+        Symlink = file.SymlinkTarget?.ToStringUtf8() ?? string.Empty,
         BlocksHash = file.BlocksHash?.ToByteArray() ?? Array.Empty<byte>(),
         Encrypted = file.Encrypted != null && file.Encrypted.Length > 0,
         Platform = FromProtoPlatformData(file.Platform),
@@ -422,7 +425,7 @@ public static class BepMessageConverter
         Size = request.Size,
         Hash = request.Hash != null ? ByteString.CopyFrom(request.Hash) : ByteString.Empty,
         FromTemporary = request.FromTemporary,
-        WeakHash = request.WeakHash,
+        // WeakHash removed in current Syncthing protocol
         BlockNo = request.BlockNo
     };
 
@@ -435,7 +438,7 @@ public static class BepMessageConverter
         Size = request.Size,
         Hash = request.Hash?.ToByteArray() ?? Array.Empty<byte>(),
         FromTemporary = request.FromTemporary,
-        WeakHash = request.WeakHash,
+        WeakHash = 0, // No longer in protocol
         BlockNo = request.BlockNo
     };
 

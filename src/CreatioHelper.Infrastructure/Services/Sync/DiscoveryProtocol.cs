@@ -6,9 +6,23 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// <summary>
 /// Syncthing-compatible local discovery protocol implementation
 /// Based on discoproto.Announce protobuf message structure
+///
+/// Device ID encoding follows Syncthing protocol:
+/// - Raw device ID is 32 bytes (SHA-256 hash of certificate)
+/// - String format uses RFC 4648 base32 (A-Z, 2-7) with Luhn32 check digits
+/// - Final format: 8 groups of 7 chars separated by hyphens (63 chars total)
 /// </summary>
 public static class DiscoveryProtocol
 {
+    // Base32 alphabet per RFC 4648 (same as Syncthing)
+    private const string Base32Alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+
+    // Device ID length constants
+    private const int RawDeviceIdLength = 32; // 256-bit SHA-256 hash
+    private const int Base32DeviceIdLength = 52; // 32 bytes * 8 bits / 5 bits per base32 char
+    private const int LuhnifiedLength = 56; // 52 base32 + 4 Luhn check digits (one per 13-char group)
+    private const int FormattedLength = 63; // 56 chars + 7 hyphens
+
     /// <summary>
     /// Creates a Syncthing-compatible discovery announcement packet
     /// Compatible with discoproto.Announce protobuf message format
@@ -193,27 +207,215 @@ public static class DiscoveryProtocol
     }
     
     /// <summary>
-    /// Parses Syncthing device ID string to bytes (32 bytes)
-    /// Device IDs are Base32 encoded with Luhn checksums: 56 chars without dashes
+    /// Parses Syncthing device ID string (Luhnified base32) to raw 32 bytes
+    /// Device IDs are 32-byte (256-bit) SHA-256 hashes encoded as base32 with Luhn check digits
+    /// Format: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH (63 chars)
     /// </summary>
     private static byte[] ParseDeviceId(string deviceId)
     {
-        // Use DeviceIdGenerator to decode Base32 format
-        return DeviceIdGenerator.FromBase32(deviceId);
+        // Normalize: remove hyphens/spaces, uppercase, fix common typos
+        var normalized = deviceId.Replace("-", "").Replace(" ", "").ToUpperInvariant();
+        normalized = FixTypos(normalized);
+
+        if (normalized.Length != LuhnifiedLength)
+        {
+            throw new ArgumentException($"Invalid device ID length: {normalized.Length}, expected {LuhnifiedLength}");
+        }
+
+        // Remove Luhn check digits (convert 56 chars to 52 chars)
+        var base32 = Unluhnify(normalized);
+        if (base32 == null)
+        {
+            throw new ArgumentException("Invalid device ID Luhn checksum");
+        }
+
+        // Decode base32 to raw 32 bytes
+        return DecodeBase32(base32);
     }
-    
+
     /// <summary>
-    /// Formats device ID bytes to Syncthing string format (Base32 + Luhn32)
+    /// Formats raw 32 device ID bytes to Syncthing string format (Luhnified base32)
     /// </summary>
     private static string FormatDeviceId(byte[] bytes)
     {
-        if (bytes.Length != 32)
+        if (bytes.Length != RawDeviceIdLength)
         {
-            throw new ArgumentException($"Invalid device ID byte length: {bytes.Length}, expected 32");
+            throw new ArgumentException($"Invalid device ID byte length: {bytes.Length}, expected {RawDeviceIdLength}");
         }
 
-        // Use DeviceIdGenerator to format as Base32 with Luhn checksums
-        return DeviceIdGenerator.FormatDeviceId(bytes);
+        // Encode 32 bytes as base32 (52 chars)
+        var base32 = EncodeBase32(bytes);
+
+        // Add Luhn check digits (52 -> 56 chars)
+        var luhnified = Luhnify(base32);
+
+        // Format with hyphens (56 -> 63 chars)
+        return Chunkify(luhnified);
+    }
+
+    /// <summary>
+    /// Encode bytes as RFC 4648 base32 (Syncthing alphabet)
+    /// </summary>
+    private static string EncodeBase32(byte[] data)
+    {
+        var result = new StringBuilder();
+        var buffer = 0;
+        var bitsLeft = 0;
+
+        foreach (var b in data)
+        {
+            buffer = (buffer << 8) | b;
+            bitsLeft += 8;
+
+            while (bitsLeft >= 5)
+            {
+                result.Append(Base32Alphabet[(buffer >> (bitsLeft - 5)) & 0x1F]);
+                bitsLeft -= 5;
+            }
+        }
+
+        if (bitsLeft > 0)
+        {
+            result.Append(Base32Alphabet[(buffer << (5 - bitsLeft)) & 0x1F]);
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Decode base32 string to bytes (RFC 4648, Syncthing alphabet)
+    /// </summary>
+    private static byte[] DecodeBase32(string base32)
+    {
+        var result = new List<byte>();
+        var buffer = 0;
+        var bitsLeft = 0;
+
+        foreach (var c in base32)
+        {
+            var value = Base32Codepoint(c);
+            if (value < 0)
+                throw new ArgumentException($"Invalid base32 character: {c}");
+
+            buffer = (buffer << 5) | value;
+            bitsLeft += 5;
+
+            if (bitsLeft >= 8)
+            {
+                result.Add((byte)(buffer >> (bitsLeft - 8)));
+                bitsLeft -= 8;
+            }
+        }
+
+        return result.ToArray();
+    }
+
+    /// <summary>
+    /// Get base32 codepoint value (0-31) for a character
+    /// </summary>
+    private static int Base32Codepoint(char c)
+    {
+        if (c >= 'A' && c <= 'Z')
+            return c - 'A';
+        if (c >= '2' && c <= '7')
+            return c - '2' + 26;
+        return -1;
+    }
+
+    /// <summary>
+    /// Add Luhn check digits: split 52 chars into 4 groups of 13, add check digit after each
+    /// Result is 56 characters
+    /// </summary>
+    private static string Luhnify(string s)
+    {
+        if (s.Length != Base32DeviceIdLength)
+            throw new ArgumentException($"Input must be {Base32DeviceIdLength} characters, got {s.Length}");
+
+        var result = new StringBuilder(LuhnifiedLength);
+        for (int i = 0; i < 4; i++)
+        {
+            var group = s.Substring(i * 13, 13);
+            result.Append(group);
+            result.Append(CalculateLuhn32(group));
+        }
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Remove and validate Luhn check digits: convert 56 chars back to 52 chars
+    /// Returns null if validation fails
+    /// </summary>
+    private static string? Unluhnify(string s)
+    {
+        if (s.Length != LuhnifiedLength)
+            return null;
+
+        var result = new StringBuilder(Base32DeviceIdLength);
+        for (int i = 0; i < 4; i++)
+        {
+            var group = s.Substring(i * 14, 13);
+            var checkDigit = s[i * 14 + 13];
+            var expectedCheckDigit = CalculateLuhn32(group);
+
+            if (checkDigit != expectedCheckDigit)
+                return null;
+
+            result.Append(group);
+        }
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Calculate Luhn32 check digit (following Syncthing lib/protocol/luhn.go)
+    /// </summary>
+    private static char CalculateLuhn32(string s)
+    {
+        const int n = 32;
+        var factor = 1;
+        var sum = 0;
+
+        foreach (var c in s)
+        {
+            var codepoint = Base32Codepoint(c);
+            if (codepoint < 0)
+                throw new ArgumentException($"Invalid base32 character: {c}");
+
+            var addend = factor * codepoint;
+            factor = (factor == 2) ? 1 : 2;
+            addend = (addend / n) + (addend % n);
+            sum += addend;
+        }
+
+        var remainder = sum % n;
+        var checkCodepoint = (n - remainder) % n;
+        return Base32Alphabet[checkCodepoint];
+    }
+
+    /// <summary>
+    /// Format 56-char string with hyphens every 7 characters (Syncthing chunkify)
+    /// Result: AAAAAAA-BBBBBBB-CCCCCCC-DDDDDDD-EEEEEEE-FFFFFFF-GGGGGGG-HHHHHHH
+    /// </summary>
+    private static string Chunkify(string s)
+    {
+        if (s.Length != LuhnifiedLength)
+            return s;
+
+        var chunks = new StringBuilder(FormattedLength);
+        for (int i = 0; i < 8; i++)
+        {
+            if (i > 0)
+                chunks.Append('-');
+            chunks.Append(s.Substring(i * 7, 7));
+        }
+        return chunks.ToString();
+    }
+
+    /// <summary>
+    /// Fix common typing errors in device IDs (0->O, 1->I, 8->B)
+    /// </summary>
+    private static string FixTypos(string s)
+    {
+        return s.Replace("0", "O").Replace("1", "I").Replace("8", "B");
     }
 }
 
