@@ -30,6 +30,26 @@ public enum BepSerializationMode
 }
 
 /// <summary>
+/// BEP Protocol state tracking.
+/// Following Syncthing pattern: ClusterConfig must be the first message after Hello.
+/// See Syncthing lib/protocol/protocol.go stateInitial/stateReady.
+/// </summary>
+public enum BepProtocolState
+{
+    /// <summary>
+    /// Initial state - waiting for ClusterConfig to be sent/received.
+    /// Only Hello, ClusterConfig, and Close messages are allowed.
+    /// </summary>
+    Initial,
+
+    /// <summary>
+    /// Ready state - ClusterConfig has been exchanged.
+    /// All message types are allowed.
+    /// </summary>
+    Ready
+}
+
+/// <summary>
 /// BEP Connection handling exact Syncthing wire format.
 /// Supports both JSON (legacy) and Protobuf (native Syncthing) serialization.
 /// Wire format: [2 bytes: header length][Header: protobuf][4 bytes: message length][Message: protobuf]
@@ -54,6 +74,10 @@ public class BepConnection : IDisposable, IConnectionLifecycle
     private const int CompressionThreshold = 128;
     private const int MaxMessageSize = 1024 * 1024 * 16; // 16MB
 
+    // BEP Protocol state tracking (following Syncthing pattern from lib/protocol/protocol.go)
+    // ClusterConfig MUST be the first message after Hello exchange
+    private volatile BepProtocolState _protocolState = BepProtocolState.Initial;
+
     // Connection lifecycle tracking
     private ConnectionState _state = ConnectionState.Connecting;
     private DateTime _lastActivity = DateTime.UtcNow;
@@ -65,6 +89,17 @@ public class BepConnection : IDisposable, IConnectionLifecycle
     public string DeviceId => _deviceId;
     public bool IsConnected => _isConnected && _tcpClient.Connected;
     public BepSerializationMode SerializationMode => _serializationMode;
+
+    /// <summary>
+    /// Gets the current BEP protocol state.
+    /// ClusterConfig must be sent/received before other messages.
+    /// </summary>
+    public BepProtocolState ProtocolState => _protocolState;
+
+    /// <summary>
+    /// Gets whether the connection is ready for data messages (ClusterConfig was exchanged).
+    /// </summary>
+    public bool IsProtocolReady => _protocolState == BepProtocolState.Ready;
 
     // IConnectionLifecycle implementation
     public event EventHandler<ConnectionStateEventArgs>? StateChanged;
@@ -188,6 +223,73 @@ public class BepConnection : IDisposable, IConnectionLifecycle
         Interlocked.Increment(ref _errorCount);
     }
 
+    /// <summary>
+    /// Validates that the protocol state allows sending the specified message type.
+    /// Following Syncthing BEP protocol: ClusterConfig MUST be the first message after Hello.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when trying to send data messages before ClusterConfig.</exception>
+    private void ValidateProtocolStateForSend(BepMessageType messageType)
+    {
+        // Hello, ClusterConfig, and Close are always allowed regardless of state
+        if (messageType == BepMessageType.Hello ||
+            messageType == BepMessageType.ClusterConfig ||
+            messageType == BepMessageType.Close)
+        {
+            return;
+        }
+
+        // For all other messages (Index, IndexUpdate, Request, Response, DownloadProgress, Ping),
+        // ClusterConfig must have been sent first
+        if (_protocolState != BepProtocolState.Ready)
+        {
+            _logger.LogWarning(
+                "BepConnection: Protocol violation - attempting to send {MessageType} before ClusterConfig for device {DeviceId}. " +
+                "ClusterConfig MUST be the first message after Hello exchange (Syncthing BEP protocol requirement).",
+                messageType, _deviceId);
+
+            throw new InvalidOperationException(
+                $"BEP protocol violation: Cannot send {messageType} before ClusterConfig. " +
+                "ClusterConfig must be the first message after Hello exchange.");
+        }
+    }
+
+    /// <summary>
+    /// Validates that the protocol state allows receiving the specified message type.
+    /// Following Syncthing BEP protocol: ClusterConfig MUST be the first message received after Hello.
+    /// </summary>
+    /// <returns>True if the message should be processed, false if it should be rejected.</returns>
+    private bool ValidateProtocolStateForReceive(BepMessageType messageType)
+    {
+        // ClusterConfig transitions state from Initial to Ready
+        if (messageType == BepMessageType.ClusterConfig)
+        {
+            if (_protocolState == BepProtocolState.Initial)
+            {
+                _protocolState = BepProtocolState.Ready;
+                _logger.LogDebug("BepConnection: ClusterConfig received, protocol state transitioned to Ready for device {DeviceId}", _deviceId);
+            }
+            return true;
+        }
+
+        // Close is always allowed
+        if (messageType == BepMessageType.Close)
+        {
+            return true;
+        }
+
+        // For all other messages, protocol must be in Ready state
+        if (_protocolState != BepProtocolState.Ready)
+        {
+            _logger.LogWarning(
+                "BepConnection: Protocol violation - received {MessageType} before ClusterConfig from device {DeviceId}. " +
+                "ClusterConfig MUST be the first message after Hello exchange (Syncthing BEP protocol requirement).",
+                messageType, _deviceId);
+            return false;
+        }
+
+        return true;
+    }
+
     public Task StartAsync()
     {
         // Transition to Connected state
@@ -230,6 +332,17 @@ public class BepConnection : IDisposable, IConnectionLifecycle
         {
             _logger.LogWarning("BepConnection: Cannot send {MessageType} to device {DeviceId} - not connected", messageType, _deviceId);
             return;
+        }
+
+        // Validate BEP protocol ordering: ClusterConfig MUST be the first message after Hello
+        // Following Syncthing pattern from lib/protocol/protocol.go dispatcherLoop
+        ValidateProtocolStateForSend(messageType);
+
+        // Update protocol state when ClusterConfig is sent
+        if (messageType == BepMessageType.ClusterConfig)
+        {
+            _protocolState = BepProtocolState.Ready;
+            _logger.LogDebug("BepConnection: ClusterConfig sent, protocol state transitioned to Ready for device {DeviceId}", _deviceId);
         }
 
         // Add extra logging for Request messages
@@ -526,6 +639,15 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
             var messageType = (BepMessageType)(int)header.Type;
 
+            // Validate protocol state: ClusterConfig must be received before other messages
+            // Following Syncthing pattern from lib/protocol/protocol.go dispatcherLoop
+            if (!ValidateProtocolStateForReceive(messageType))
+            {
+                // Protocol violation - reject the message
+                await DisconnectAsync($"Protocol violation: received {messageType} before ClusterConfig");
+                return;
+            }
+
             switch (message)
             {
                 case Proto.ClusterConfig config:
@@ -721,6 +843,16 @@ public class BepConnection : IDisposable, IConnectionLifecycle
     {
         try
         {
+            // Validate protocol state: ClusterConfig must be received before other messages
+            // Following Syncthing pattern from lib/protocol/protocol.go dispatcherLoop
+            // Note: Hello is processed separately before this method is called
+            if (messageType != BepMessageType.Hello && !ValidateProtocolStateForReceive(messageType))
+            {
+                // Protocol violation - reject the message
+                await DisconnectAsync($"Protocol violation: received {messageType} before ClusterConfig");
+                return;
+            }
+
             var json = Encoding.UTF8.GetString(data);
 
             switch (messageType)
@@ -878,13 +1010,8 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-
         _ = DisconnectAsync();
-        try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
+        _cancellationTokenSource.Dispose();
         _sendSemaphore.Dispose();
     }
-
-    private bool _disposed;
 }

@@ -55,25 +55,24 @@ message ClusterConfig {
 }
 
 message Folder {
-    string          id                   = 1;
-    string          label                = 2;
-    bool            read_only            = 3;
-    bool            ignore_permissions   = 4;
-    bool            ignore_delete        = 5;
-    bool            disable_temp_indexes = 6;
-    bool            paused               = 7;
-    repeated Device devices              = 16;
+    string          id          = 1;
+    string          label       = 2;
+    FolderType      type        = 3;
+    FolderStopReason stop_reason = 7;
+    reserved 4 to 6;
+
+    repeated Device devices     = 16;
 }
 
 message Device {
-    bytes           id                    = 1;
-    string          name                  = 2;
-    repeated string addresses             = 3;
-    Compression     compression           = 4;
-    string          cert_name             = 5;
-    int64           max_sequence          = 6;
-    bool            introducer            = 7;
-    uint64          index_id              = 8;
+    bytes           id                         = 1;
+    string          name                       = 2;
+    repeated string addresses                  = 3;
+    Compression     compression                = 4;
+    string          cert_name                  = 5;
+    int64           max_sequence               = 6;
+    bool            introducer                 = 7;
+    uint64          index_id                   = 8;
     bool            skip_introduction_removals = 9;
     bytes           encryption_password_token  = 10;
 }
@@ -84,44 +83,77 @@ enum Compression {
     COMPRESSION_ALWAYS   = 2;
 }
 
+enum FolderType {
+    FOLDER_TYPE_SEND_RECEIVE     = 0;
+    FOLDER_TYPE_SEND_ONLY        = 1;
+    FOLDER_TYPE_RECEIVE_ONLY     = 2;
+    FOLDER_TYPE_RECEIVE_ENCRYPTED = 3;
+}
+
+enum FolderStopReason {
+    FOLDER_STOP_REASON_RUNNING = 0;  // i.e., not stopped
+    FOLDER_STOP_REASON_PAUSED  = 1;
+}
+
 // ============================================================================
 // Index and file metadata
 // ============================================================================
 
 message Index {
-    string           folder = 1;
-    repeated FileInfo files = 2;
-    int64  last_sequence    = 3;
+    string           folder        = 1;
+    repeated FileInfo files        = 2;
+    int64            last_sequence = 3;  // the highest sequence in this batch
 }
 
 message IndexUpdate {
-    string           folder = 1;
-    repeated FileInfo files = 2;
-    int64  last_sequence    = 3;
+    string           folder        = 1;
+    repeated FileInfo files        = 2;
+    int64            last_sequence = 3;  // the highest sequence in this batch
+    int64            prev_sequence = 4;  // the highest sequence in the previous batch
 }
 
 message FileInfo {
-    string            name           = 1;
-    FileInfoType      type           = 2;
-    int64             size           = 3;
-    uint32            permissions    = 4;
-    int64             modified_s     = 5;
-    int32             modified_ns    = 11;
-    uint64            modified_by    = 12;
-    bool              deleted        = 6;
-    bool              invalid        = 7;
-    bool              no_permissions = 8;
-    Vector            version        = 9;
-    int64             sequence       = 10;
-    int32             block_size     = 13;
-    repeated BlockInfo blocks        = 16;
-    string            symlink_target = 17;
-    bytes             blocks_hash    = 18;
-    bytes             encrypted      = 19;
-    PlatformData      platform       = 20;
-    bool              inode_change_ns = 21;
-    int64             local_flags    = 1000;
-    bytes             version_hash   = 1001;
+    // The field ordering here optimizes for struct size / alignment --
+    // large types come before smaller ones.
+
+    string             name                 = 1;
+    int64              size                 = 3;
+    int64              modified_s           = 5;
+    uint64             modified_by          = 12;
+    Vector             version              = 9;
+    int64              sequence             = 10;
+    repeated BlockInfo blocks               = 16;
+    bytes              symlink_target       = 17;
+    bytes              blocks_hash          = 18;
+    bytes              previous_blocks_hash = 20;
+    bytes              encrypted            = 19;
+    FileInfoType       type                 = 2;
+    uint32             permissions          = 4;
+    int32              modified_ns          = 11;
+    int32              block_size           = 13;
+    PlatformData       platform             = 14;
+
+    // The local_flags fields stores flags that are relevant to the local
+    // host only. It is not part of the protocol, doesn't get sent or
+    // received (we make sure to zero it), nonetheless we need it on our
+    // struct and to be able to serialize it to/from the database.
+    uint32 local_flags = 1000;
+
+    // The version_hash is an implementation detail and not part of the wire
+    // format. It is used in the old database format.
+    bytes version_hash = 1001;
+
+    // The time when the inode was last changed (i.e., permissions, xattrs
+    // etc changed). This is host-local, not sent over the wire.
+    int64 inode_change_ns = 1002;
+
+    // The size of the data appended to the encrypted file on disk. This is
+    // host-local, not sent over the wire.
+    int32 encryption_trailer_size = 1003;
+
+    bool deleted        = 6;
+    bool invalid        = 7;
+    bool no_permissions = 8;
 }
 
 enum FileInfoType {
@@ -133,10 +165,10 @@ enum FileInfoType {
 }
 
 message BlockInfo {
-    int64  offset    = 1;
-    int32  size      = 2;
-    bytes  hash      = 3;
-    uint32 weak_hash = 4;
+    bytes  hash   = 3;
+    int64  offset = 1;
+    int32  size   = 2;
+    reserved 4;
 }
 
 message Vector {
@@ -158,15 +190,21 @@ message PlatformData {
 }
 
 message UnixData {
-    string owner_name  = 1;
-    string group_name  = 2;
-    int32  uid         = 3;
-    int32  gid         = 4;
+    // The owner name and group name are set when known (i.e., could be
+    // resolved on the source device), while the UID and GID are always set
+    // as they come directly from the stat() call.
+    string owner_name = 1;
+    string group_name = 2;
+    int32  uid        = 3;
+    int32  gid        = 4;
 }
 
 message WindowsData {
-    string            owner_name       = 1;
-    bool              owner_is_group   = 2;
+    // Windows file objects have a single owner, which may be a user or a
+    // group. We keep the name of that account, and a flag to indicate what
+    // type it is.
+    string owner_name    = 1;
+    bool   owner_is_group = 2;
 }
 
 message XattrData {
@@ -190,8 +228,8 @@ message Request {
     int32  size           = 5;
     bytes  hash           = 6;
     bool   from_temporary = 7;
-    uint32 weak_hash      = 8;
     int32  block_no       = 9;
+    reserved 8;
 }
 
 message Response {
@@ -212,7 +250,7 @@ enum ErrorCode {
 // ============================================================================
 
 message DownloadProgress {
-    string                        folder  = 1;
+    string                             folder  = 1;
     repeated FileDownloadProgressUpdate updates = 2;
 }
 
@@ -220,7 +258,7 @@ message FileDownloadProgressUpdate {
     FileDownloadProgressUpdateType update_type   = 1;
     string                         name          = 2;
     Vector                         version       = 3;
-    repeated int32                 block_indexes = 4 [packed=false];
+    repeated int32                 block_indexes = 4 [packed = false];
     int32                          block_size    = 5;
 }
 
@@ -233,8 +271,7 @@ enum FileDownloadProgressUpdateType {
 // Connection control
 // ============================================================================
 
-message Ping {
-}
+message Ping {}
 
 message Close {
     string reason = 1;
