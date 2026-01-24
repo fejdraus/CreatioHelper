@@ -13,18 +13,35 @@ namespace CreatioHelper.Infrastructure.Services.Sync;
 /// Compatible with Syncthing's local discovery protocol (lib/discover/local.go)
 ///
 /// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go (2025-01-25)
-/// - Magic number: 0x2EA7D90B (big-endian, same as BEP protocol)
-/// - Device ID transmitted as 32 raw bytes, NOT base32 string
-/// - Legacy magic 0x7D79BC40 rejected with warning (v0.13 incompatible)
-/// - Broadcast interval: 30 seconds
-/// - Cache lifetime: 90 seconds (3 * BroadcastInterval)
 ///
-/// Protocol structure:
-/// - Magic bytes: 4 bytes, big endian (0x2EA7D90B for current, 0x7D79BC40 for v0.13)
-/// - Protobuf payload (discoproto.Announce):
-///   - id: 32 raw bytes (device ID as SHA-256 hash, NOT base32 encoded)
-///   - addresses: repeated strings (device addresses)
-///   - instance_id: int64 (random ID for detecting restarts)
+/// PACKET FORMAT (wire level):
+/// ┌─────────────────────────────────────────────────────────────────┐
+/// │ Magic (4 bytes, big-endian)  │  Protobuf Payload (Announce)    │
+/// │    0x2EA7D90B                │  [varint-encoded fields]        │
+/// └─────────────────────────────────────────────────────────────────┘
+///
+/// MAGIC NUMBER HANDLING:
+/// - Current version: 0x2EA7D90B (same as BEP protocol magic)
+/// - Legacy v0.13:    0x7D79BC40 (rejected with warning - incompatible)
+///
+/// PROTOBUF STRUCTURE (discoproto.Announce from proto/discoproto/local.proto):
+/// ┌──────────────────────────────────────────────────────────────────┐
+/// │ Field 1 (bytes):          id - 32 raw bytes (SHA-256 hash)      │
+/// │ Field 2 (repeated string): addresses - device listen addresses  │
+/// │ Field 3 (int64):          instance_id - random restart detector │
+/// └──────────────────────────────────────────────────────────────────┘
+///
+/// CRITICAL IMPLEMENTATION NOTES:
+/// - Device ID transmitted as 32 raw bytes, NOT base32 string
+/// - Magic bytes written in big-endian byte order
+/// - Addresses are filtered using filterUndialableLocal logic
+/// - Relay addresses sanitized to only keep "id" query parameter
+/// - Empty/unspecified addresses in received packets replaced with sender IP
+///
+/// TIMING CONSTANTS (verified from Syncthing source):
+/// - Broadcast interval: 30 seconds (BroadcastInterval)
+/// - Cache lifetime: 90 seconds (3 * BroadcastInterval = CacheLifeTime)
+/// - Instance ID change = device restarted (invalidates cache)
 /// </summary>
 public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
 {
@@ -321,39 +338,52 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
 
     /// <summary>
     /// Process received announcement
+    ///
+    /// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go recvAnnouncements
+    /// Packet parsing follows this sequence:
+    /// 1. Check length >= 4 bytes (magic number)
+    /// 2. Read magic as big-endian uint32: binary.BigEndian.Uint32(buf)
+    /// 3. Switch on magic value (accept current, reject v0.13 with warning)
+    /// 4. Unmarshal protobuf: proto.Unmarshal(buf[4:], &pkt)
+    /// 5. Get device ID from bytes: protocol.DeviceIDFromBytes(pkt.Id)
     /// </summary>
     private async Task ProcessAnnouncementAsync(UdpReceiveResult result)
     {
         try
         {
             var data = result.Buffer;
-            
-            // Check magic bytes (4 bytes, big endian)
+
+            // VERIFIED: Check minimum packet length (4 bytes for magic)
             if (data.Length < 4)
             {
-                return; // Too short
+                return; // Too short - Syncthing logs "received short packet"
             }
-            
+
+            // VERIFIED: Read magic as big-endian uint32
+            // Syncthing: magic := binary.BigEndian.Uint32(buf)
             var receivedMagic = (uint)((data[0] << 24) | (data[1] << 16) | (data[2] << 8) | data[3]);
-            
-            // Check magic numbers
+
+            // VERIFIED: Magic number switch handling (lib/discover/local.go lines 186-201)
             switch (receivedMagic)
             {
                 case Magic:
-                    // Current version - all good
+                    // Current version - all good (0x2EA7D90B)
                     break;
-                
+
                 case v13Magic:
-                    // Old version - log warning and skip (Syncthing compatibility)
+                    // VERIFIED: Old version v0.13 (0x7D79BC40) - log error and skip
+                    // Syncthing: slog.ErrorContext(ctx, "Incompatible (v0.13) local discovery packet...")
                     _logger.LogWarning("Incompatible (v0.13) local discovery packet - upgrade that device to connect. Source: {RemoteEndPoint}", result.RemoteEndPoint);
                     return;
-                
+
                 default:
+                    // VERIFIED: Unknown magic - debug log and skip
                     _logger.LogDebug("Incorrect magic {Magic:X8} from {RemoteEndPoint}", receivedMagic, result.RemoteEndPoint);
                     return; // Not a Syncthing announcement
             }
-            
-            // Extract Protobuf payload (skip first 4 bytes - magic number)
+
+            // VERIFIED: Extract Protobuf payload (skip first 4 bytes - magic number)
+            // Syncthing: proto.Unmarshal(buf[4:], &pkt)
             var protobufData = data.Skip(4).ToArray();
             var announcement = DiscoveryProtocol.ParseAnnouncePacket(protobufData);
             
@@ -440,23 +470,35 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
 
     /// <summary>
     /// Broadcast announcement to local network
+    ///
+    /// VERIFIED PACKET FORMAT (lib/discover/local.go announcementPkt):
+    /// Packet = [4 bytes magic (big-endian)] + [protobuf Announce message]
+    ///
+    /// The announcementPkt function in Syncthing:
+    ///   msg = msg[:4]
+    ///   binary.BigEndian.PutUint32(msg, Magic)  // 0x2EA7D90B
+    ///   msg = append(msg, bs...)                // protobuf bytes
     /// </summary>
     private async Task BroadcastAnnouncementAsync(List<string> addresses)
     {
         try
         {
-            // Create Syncthing-compatible protobuf announcement packet
+            // VERIFIED: Create Syncthing-compatible protobuf Announce message
+            // - Device ID as 32 raw bytes (field 1, bytes)
+            // - Addresses as repeated strings (field 2)
+            // - Instance ID as int64 varint (field 3)
             var protobufData = DiscoveryProtocol.CreateAnnouncePacket(_currentDeviceId, addresses, _instanceId);
-            
-            // Combine magic bytes with protobuf data
+
+            // VERIFIED: Packet format = [4B magic] + [protobuf]
             var packet = new byte[4 + protobufData.Length];
-            
-            // Write magic number in big endian format
-            packet[0] = (byte)((Magic >> 24) & 0xFF);
-            packet[1] = (byte)((Magic >> 16) & 0xFF);
-            packet[2] = (byte)((Magic >> 8) & 0xFF);
-            packet[3] = (byte)(Magic & 0xFF);
-            
+
+            // VERIFIED: Magic number in big endian format (binary.BigEndian.PutUint32)
+            // 0x2EA7D90B -> bytes [0x2E, 0xA7, 0xD9, 0x0B]
+            packet[0] = (byte)((Magic >> 24) & 0xFF); // 0x2E
+            packet[1] = (byte)((Magic >> 16) & 0xFF); // 0xA7
+            packet[2] = (byte)((Magic >> 8) & 0xFF);  // 0xD9
+            packet[3] = (byte)(Magic & 0xFF);         // 0x0B
+
             Array.Copy(protobufData, 0, packet, 4, protobufData.Length);
             
             // IPv4 Broadcast to subnet
@@ -590,57 +632,119 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
     
     /// <summary>
     /// Check if address is dialable (compatible with Syncthing logic)
+    ///
+    /// VERIFIED AGAINST SYNCTHING SOURCE: lib/discover/local.go filterUndialableLocal
+    /// In Go, IsGlobalUnicast() returns true for ANY unicast address that is NOT:
+    /// - The unspecified address (0.0.0.0 or ::)
+    /// - The loopback address (127.0.0.1 or ::1)
+    /// - The broadcast address
+    /// - A multicast address
+    /// - A link-local unicast address
+    ///
+    /// IMPORTANT: Private network addresses (192.168.x.x, 10.x.x.x, 172.16-31.x.x) ARE
+    /// considered "global unicast" in Go's terminology and MUST be allowed for local discovery.
     /// </summary>
     private bool IsDialableAddress(IPAddress address)
     {
-        // Allow global unicast, link-local unicast, and unspecified addresses
-        return IsIPv6GlobalUnicast(address) ||
-               address.IsIPv6LinkLocal ||
-               address.IsIPv4MappedToIPv6 ||
-               IsIPv4GlobalUnicast(address) ||
-               IsIPv4LinkLocal(address) ||
-               address.Equals(IPAddress.Any) ||
-               address.Equals(IPAddress.IPv6Any);
+        // Check for unspecified addresses (allowed per Syncthing's filterUndialableLocal)
+        if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))
+            return true;
+
+        // Allow global unicast addresses (includes private networks!)
+        if (IsGlobalUnicast(address))
+            return true;
+
+        // Allow link-local unicast addresses
+        if (IsLinkLocalUnicast(address))
+            return true;
+
+        // Allow IPv4-mapped IPv6 addresses
+        if (address.IsIPv4MappedToIPv6)
+            return true;
+
+        return false;
     }
-    
+
     /// <summary>
-    /// Check if IPv6 address is global unicast
+    /// Check if address is global unicast (Go's net.IP.IsGlobalUnicast semantics)
+    ///
+    /// VERIFIED AGAINST GO SOURCE: net/ip.go IsGlobalUnicast()
+    /// Returns true for any unicast address that is not:
+    /// - IPv4 broadcast (255.255.255.255)
+    /// - Unspecified (0.0.0.0 or ::)
+    /// - Loopback (127.0.0.0/8 or ::1)
+    /// - Multicast (224.0.0.0/4 or ff00::/8)
+    /// - Link-local unicast (169.254.0.0/16 or fe80::/10)
+    ///
+    /// NOTE: Private networks (10/8, 172.16/12, 192.168/16) ARE global unicast!
     /// </summary>
-    private bool IsIPv6GlobalUnicast(IPAddress address)
+    private bool IsGlobalUnicast(IPAddress address)
     {
-        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetworkV6)
+        // Must have valid length
+        if (address.AddressFamily != AddressFamily.InterNetwork &&
+            address.AddressFamily != AddressFamily.InterNetworkV6)
             return false;
-            
-        var bytes = address.GetAddressBytes();
-        
-        // Global unicast addresses start with 2000::/3 (first 3 bits are 001)
-        return (bytes[0] & 0xE0) == 0x20;
-    }
-    
-    private bool IsIPv4GlobalUnicast(IPAddress address)
-    {
-        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
+
+        // Not broadcast (IPv4 only)
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = address.GetAddressBytes();
+            if (bytes[0] == 255 && bytes[1] == 255 && bytes[2] == 255 && bytes[3] == 255)
+                return false;
+        }
+
+        // Not unspecified
+        if (address.Equals(IPAddress.Any) || address.Equals(IPAddress.IPv6Any))
             return false;
-            
-        var bytes = address.GetAddressBytes();
-        
-        // Exclude private ranges, loopback, multicast, broadcast
-        if (bytes[0] == 127) return false; // Loopback
-        if (bytes[0] == 10) return false; // Private 10.0.0.0/8
-        if (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) return false; // Private 172.16.0.0/12
-        if (bytes[0] == 192 && bytes[1] == 168) return false; // Private 192.168.0.0/16
-        if (bytes[0] >= 224) return false; // Multicast and reserved
-        
+
+        // Not loopback
+        if (IPAddress.IsLoopback(address))
+            return false;
+
+        // Not multicast
+        if (IsMulticast(address))
+            return false;
+
+        // Not link-local unicast
+        if (IsLinkLocalUnicast(address))
+            return false;
+
         return true;
     }
-    
-    private bool IsIPv4LinkLocal(IPAddress address)
+
+    /// <summary>
+    /// Check if address is multicast
+    /// </summary>
+    private bool IsMulticast(IPAddress address)
     {
-        if (address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
-            return false;
-            
-        var bytes = address.GetAddressBytes();
-        return bytes[0] == 169 && bytes[1] == 254; // Link-local 169.254.0.0/16
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = address.GetAddressBytes();
+            return bytes[0] >= 224 && bytes[0] <= 239; // 224.0.0.0/4
+        }
+        else if (address.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            var bytes = address.GetAddressBytes();
+            return bytes[0] == 0xFF; // ff00::/8
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Check if address is link-local unicast
+    /// </summary>
+    private bool IsLinkLocalUnicast(IPAddress address)
+    {
+        if (address.AddressFamily == AddressFamily.InterNetwork)
+        {
+            var bytes = address.GetAddressBytes();
+            return bytes[0] == 169 && bytes[1] == 254; // 169.254.0.0/16
+        }
+        else if (address.AddressFamily == AddressFamily.InterNetworkV6)
+        {
+            return address.IsIPv6LinkLocal; // fe80::/10
+        }
+        return false;
     }
     
     /// <summary>
