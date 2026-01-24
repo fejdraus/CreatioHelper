@@ -39,6 +39,21 @@ public interface ISyncEngine
     string DeviceId { get; } // Device ID property
 
     /// <summary>
+    /// Apply configuration changes from ConfigXml to the sync engine.
+    /// Compares current state with new config and applies changes incrementally.
+    /// </summary>
+    /// <param name="config">The ConfigXml to apply</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task ApplyConfigurationAsync(ConfigXml config, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reload configuration from the config.xml file.
+    /// Equivalent to calling IConfigXmlService.LoadAsync() then ApplyConfigurationAsync().
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    Task ReloadConfigurationAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Override local changes to global state (for SendOnly folders)
     /// </summary>
     Task<bool> OverrideFolderAsync(string folderId, CancellationToken cancellationToken = default);

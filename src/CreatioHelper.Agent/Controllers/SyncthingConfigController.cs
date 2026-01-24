@@ -763,9 +763,9 @@ public class SyncthingConfigController : ControllerBase
                 return BadRequest(new { error = "Configuration validation failed", errors = validation.Errors });
             }
 
-            // TODO: Apply configuration to sync engine
-            // This would require additional methods in ISyncEngine to apply the loaded configuration
-            _logger.LogInformation("Configuration loaded from {Path}", _configXmlService.ConfigPath);
+            // Apply configuration to sync engine
+            await _syncEngine.ApplyConfigurationAsync(configXml);
+            _logger.LogInformation("Configuration loaded and applied from {Path}", _configXmlService.ConfigPath);
 
             return Ok(new
             {
@@ -836,8 +836,9 @@ public class SyncthingConfigController : ControllerBase
             // Save to file
             await _configXmlService.SaveAsync(configXml);
 
-            // TODO: Apply configuration to sync engine
-            _logger.LogInformation("Configuration uploaded and saved to {Path}", _configXmlService.ConfigPath);
+            // Apply configuration to sync engine
+            await _syncEngine.ApplyConfigurationAsync(configXml);
+            _logger.LogInformation("Configuration uploaded, saved, and applied from {Path}", _configXmlService.ConfigPath);
 
             return Ok(new
             {

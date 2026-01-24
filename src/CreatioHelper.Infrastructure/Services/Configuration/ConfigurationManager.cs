@@ -11,8 +11,9 @@ namespace CreatioHelper.Infrastructure.Services.Configuration;
 /// Unified configuration manager using config.xml as the single source of truth.
 /// Like Syncthing, folder and device configurations are stored in config.xml,
 /// while runtime statistics are kept in memory.
+/// Supports hot-reload via FileSystemWatcher (like Syncthing's lib/config/wrapper.go).
 /// </summary>
-public class ConfigurationManager : IConfigurationManager
+public class ConfigurationManager : IConfigurationManager, IDisposable
 {
     private readonly IConfigXmlService _configXmlService;
     private readonly ILogger<ConfigurationManager> _logger;
@@ -31,6 +32,19 @@ public class ConfigurationManager : IConfigurationManager
     // Dirty flag for batched saves
     private volatile bool _isDirty;
     private DateTime _lastSaveTime = DateTime.UtcNow;
+
+    // Hot-reload support
+    private FileSystemWatcher? _configFileWatcher;
+    private DateTime _lastExternalChange = DateTime.MinValue;
+    private readonly TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(500);
+    private volatile bool _isReloading;
+    private bool _disposed;
+
+    /// <summary>
+    /// Indicates whether certain configuration changes require a restart.
+    /// This includes listen addresses, TLS settings, and other critical options.
+    /// </summary>
+    public bool RequiresRestart { get; private set; }
 
     public event EventHandler<ConfigurationChangedEventArgs>? ConfigurationChanged;
 
@@ -79,11 +93,50 @@ public class ConfigurationManager : IConfigurationManager
             _logger.LogInformation(
                 "ConfigurationManager initialized with {FolderCount} folders and {DeviceCount} devices",
                 _folders.Count, _devices.Count);
+
+            // Initialize file watcher for hot-reload
+            InitializeConfigFileWatcher();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize ConfigurationManager");
             throw;
+        }
+    }
+
+    private void InitializeConfigFileWatcher()
+    {
+        var configDir = _configXmlService.GetConfigDirectory();
+        _configFileWatcher = new FileSystemWatcher(configDir, "config.xml");
+        _configFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+        _configFileWatcher.Changed += OnConfigFileChanged;
+        _configFileWatcher.EnableRaisingEvents = true;
+        _logger.LogInformation("Config file watcher initialized for {Path}", configDir);
+    }
+
+    private async void OnConfigFileChanged(object sender, FileSystemEventArgs e)
+    {
+        // Debounce - ignore changes within 500ms
+        var now = DateTime.UtcNow;
+        if ((now - _lastExternalChange) < _debounceInterval) return;
+        if (_isReloading) return;
+
+        _lastExternalChange = now;
+        await Task.Delay(_debounceInterval); // Wait for file to be fully written
+
+        try
+        {
+            _isReloading = true;
+            _logger.LogInformation("Config file changed externally, reloading...");
+            await ReloadAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to reload config after external change");
+        }
+        finally
+        {
+            _isReloading = false;
         }
     }
 
@@ -629,5 +682,14 @@ public class ConfigurationManager : IConfigurationManager
     private void OnConfigurationChanged(ConfigurationChangedEventArgs e)
     {
         ConfigurationChanged?.Invoke(this, e);
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        _configFileWatcher?.Dispose();
+        _saveLock.Dispose();
     }
 }
