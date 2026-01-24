@@ -1,17 +1,33 @@
-using System.Text.Json.Serialization;
-
 namespace CreatioHelper.Infrastructure.Services.Sync.Relay;
 
 /// <summary>
-/// Relay protocol implementation based on Syncthing's relay protocol
-/// Compatible with syncthing-relay-server and syncthing relay protocol v1
+/// Relay protocol implementation based on Syncthing's relay protocol.
+/// Compatible with syncthing-relay-server and syncthing relay protocol v1.
+/// Reference: github.com/syncthing/syncthing/lib/relay/protocol/protocol.go
 /// </summary>
 public static class RelayProtocol
 {
+    /// <summary>
+    /// Protocol magic number (0x9E79BC40).
+    /// Used to identify relay protocol messages.
+    /// </summary>
     public const uint Magic = 0x9E79BC40;
+
+    /// <summary>
+    /// Protocol name for relay connections.
+    /// </summary>
     public const string ProtocolName = "bep-relay";
-    
-    // Message types matching Syncthing's implementation
+
+    /// <summary>
+    /// Maximum message length in bytes (1024).
+    /// From Syncthing: header.messageLength > 1024 returns "bad length" error.
+    /// </summary>
+    public const int MaxMessageLength = 1024;
+
+    /// <summary>
+    /// Message types matching Syncthing's implementation.
+    /// Values correspond to iota-based constants in lib/relay/protocol/packets.go.
+    /// </summary>
     public enum MessageType : int
     {
         Ping = 0,
@@ -23,17 +39,45 @@ public static class RelayProtocol
         SessionInvitation = 6,
         RelayFull = 7
     }
+
+    /// <summary>
+    /// Response codes matching Syncthing's implementation.
+    /// From lib/relay/protocol/protocol.go.
+    /// </summary>
+    public static class ResponseCode
+    {
+        public const int Success = 0;
+        public const int NotFound = 1;
+        public const int AlreadyConnected = 2;
+        public const int WrongToken = 3;
+        public const int UnexpectedMessage = 100;
+    }
 }
 
 /// <summary>
-/// Relay message header
+/// Relay message header.
+/// Wire format (12 bytes, all big-endian):
+/// <code>
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                             magic                             |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                         message Type                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        message Length                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// </code>
 /// </summary>
 public struct RelayHeader
 {
     public uint Magic { get; set; }
     public RelayProtocol.MessageType MessageType { get; set; }
     public int MessageLength { get; set; }
-    
+
+    /// <summary>XDR header size in bytes.</summary>
+    public const int Size = 12;
+
     public RelayHeader(RelayProtocol.MessageType messageType, int messageLength)
     {
         Magic = RelayProtocol.Magic;
@@ -51,7 +95,8 @@ public interface IRelayMessage
 }
 
 /// <summary>
-/// Ping message
+/// Ping message (empty payload).
+/// Used to keep connections alive.
 /// </summary>
 public record Ping : IRelayMessage
 {
@@ -59,7 +104,8 @@ public record Ping : IRelayMessage
 }
 
 /// <summary>
-/// Pong message  
+/// Pong message (empty payload).
+/// Response to a Ping message.
 /// </summary>
 public record Pong : IRelayMessage
 {
@@ -67,7 +113,8 @@ public record Pong : IRelayMessage
 }
 
 /// <summary>
-/// RelayFull message
+/// RelayFull message (empty payload).
+/// Indicates the relay server has reached its capacity limit.
 /// </summary>
 public record RelayFull : IRelayMessage
 {
@@ -75,7 +122,9 @@ public record RelayFull : IRelayMessage
 }
 
 /// <summary>
-/// JoinRelayRequest message
+/// JoinRelayRequest message.
+/// Wire format: [4B token_length][token_data][padding]
+/// Note: In prior versions of the protocol, Token did not exist (empty payload was valid).
 /// </summary>
 public record JoinRelayRequest(string Token = "") : IRelayMessage
 {
@@ -83,41 +132,67 @@ public record JoinRelayRequest(string Token = "") : IRelayMessage
 }
 
 /// <summary>
-/// JoinSessionRequest message
+/// JoinSessionRequest message.
+/// Wire format: [4B key_length][key_data (max 32B)][padding]
 /// </summary>
 public record JoinSessionRequest(byte[] Key) : IRelayMessage
 {
     public RelayProtocol.MessageType Type => RelayProtocol.MessageType.JoinSessionRequest;
-    
+
     public JoinSessionRequest() : this(Array.Empty<byte>()) { }
 }
 
 /// <summary>
-/// Response message
+/// Response message.
+/// Wire format: [4B code][4B message_length][message_data][padding]
 /// </summary>
 public record Response(int Code, string Message) : IRelayMessage
 {
     public RelayProtocol.MessageType Type => RelayProtocol.MessageType.Response;
-    
-    public static Response Success => new(0, "success");
-    public static Response NotFound => new(1, "not found");
-    public static Response AlreadyConnected => new(2, "already connected");
-    public static Response WrongToken => new(3, "wrong token");
-    public static Response UnexpectedMessage => new(100, "unexpected message");
+
+    /// <summary>Standard response for success (code 0).</summary>
+    public static Response Success => new(RelayProtocol.ResponseCode.Success, "success");
+
+    /// <summary>Standard response for not found (code 1).</summary>
+    public static Response NotFound => new(RelayProtocol.ResponseCode.NotFound, "not found");
+
+    /// <summary>Standard response for already connected (code 2).</summary>
+    public static Response AlreadyConnected => new(RelayProtocol.ResponseCode.AlreadyConnected, "already connected");
+
+    /// <summary>Standard response for wrong token (code 3).</summary>
+    public static Response WrongToken => new(RelayProtocol.ResponseCode.WrongToken, "wrong token");
+
+    /// <summary>Standard response for unexpected message (code 100).</summary>
+    public static Response UnexpectedMessage => new(RelayProtocol.ResponseCode.UnexpectedMessage, "unexpected message");
+
+    /// <summary>
+    /// Checks if this response indicates success.
+    /// </summary>
+    public bool IsSuccess => Code == RelayProtocol.ResponseCode.Success;
 }
 
 /// <summary>
-/// ConnectRequest message
+/// ConnectRequest message.
+/// Wire format: [4B id_length][id_data (max 32B)][padding]
+/// ID is the device ID to connect to (32 bytes for SHA-256 device ID).
 /// </summary>
 public record ConnectRequest(byte[] Id) : IRelayMessage
 {
     public RelayProtocol.MessageType Type => RelayProtocol.MessageType.ConnectRequest;
-    
+
     public ConnectRequest() : this(Array.Empty<byte>()) { }
 }
 
 /// <summary>
-/// SessionInvitation message
+/// SessionInvitation message.
+/// Wire format:
+/// <code>
+/// [4B from_length][from_data (max 32B)][padding]
+/// [4B key_length][key_data (max 32B)][padding]
+/// [4B address_length][address_data (max 32B)][padding]
+/// [2B zero_padding][2B port]
+/// [4B server_socket (0 or 1)]
+/// </code>
 /// </summary>
 public record SessionInvitation(
     byte[] From,
