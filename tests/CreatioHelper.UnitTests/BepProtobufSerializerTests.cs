@@ -1416,4 +1416,765 @@ public class BepProtobufSerializerTests
     }
 
     #endregion
+
+    #region Cross-Compatibility Tests (Syncthing Wire Format)
+
+    /// <summary>
+    /// Tests that we can parse a Hello message created using the exact Syncthing wire format.
+    /// Mirrors TestVersion14Hello from syncthing/lib/protocol/bep_hello_test.go.
+    /// Wire format: [4B magic (0x2EA7D90B big-endian)][2B length (big-endian)][Hello protobuf]
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_ParseSyncthingHelloMessage()
+    {
+        // Arrange - create Hello message exactly as Syncthing would
+        var expectedHello = new Hello
+        {
+            DeviceName = "test device",
+            ClientName = "syncthing",
+            ClientVersion = "v0.14.5"
+        };
+
+        // Serialize the Hello protobuf
+        var helloProtoBytes = expectedHello.ToByteArray();
+
+        // Build wire format: [4B magic][2B length][protobuf]
+        var wireData = new byte[4 + 2 + helloProtoBytes.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(wireData.AsSpan(0, 4), BepProtobufSerializer.BepMagic);
+        BinaryPrimitives.WriteUInt16BigEndian(wireData.AsSpan(4, 2), (ushort)helloProtoBytes.Length);
+        helloProtoBytes.CopyTo(wireData.AsSpan(6));
+
+        // Act - parse using our serializer
+        var parsedHello = _serializer.DeserializeHello(wireData, out var bytesConsumed);
+
+        // Assert - verify we correctly parsed Syncthing format
+        Assert.Equal(wireData.Length, bytesConsumed);
+        Assert.Equal(expectedHello.DeviceName, parsedHello.DeviceName);
+        Assert.Equal(expectedHello.ClientName, parsedHello.ClientName);
+        Assert.Equal(expectedHello.ClientVersion, parsedHello.ClientVersion);
+    }
+
+    /// <summary>
+    /// Tests bidirectional Hello message exchange as would occur during BEP connection setup.
+    /// Mirrors the ExchangeHello pattern from syncthing/lib/protocol/bep_hello_test.go.
+    /// </summary>
+    [Fact]
+    public async Task CrossCompatibility_HelloExchange_BidirectionalStream()
+    {
+        // Arrange - simulate Syncthing sending a Hello
+        var remoteHello = new Hello
+        {
+            DeviceName = "remote device",
+            ClientName = "syncthing",
+            ClientVersion = "v1.27.0",
+            NumConnections = 1,
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+
+        var localHello = new Hello
+        {
+            DeviceName = "local device",
+            ClientName = "CreatioHelper",
+            ClientVersion = "1.0.0",
+            NumConnections = 1,
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+
+        // Create bidirectional stream (simulating network connection)
+        using var remoteToLocal = new MemoryStream();
+        using var localToRemote = new MemoryStream();
+
+        // Remote writes Hello (simulating Syncthing)
+        var remoteProtoBytes = remoteHello.ToByteArray();
+        var remoteWireData = new byte[6 + remoteProtoBytes.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(remoteWireData.AsSpan(0, 4), BepProtobufSerializer.BepMagic);
+        BinaryPrimitives.WriteUInt16BigEndian(remoteWireData.AsSpan(4, 2), (ushort)remoteProtoBytes.Length);
+        remoteProtoBytes.CopyTo(remoteWireData.AsSpan(6));
+        await remoteToLocal.WriteAsync(remoteWireData);
+        remoteToLocal.Position = 0;
+
+        // Act - Local reads remote Hello and writes its own
+        var receivedRemoteHello = await _serializer.ReadHelloAsync(remoteToLocal);
+        await _serializer.WriteHelloAsync(localToRemote, localHello);
+        localToRemote.Position = 0;
+
+        // Verify the Hello we sent can be read by Syncthing format
+        var localWireData = localToRemote.ToArray();
+        var localMagic = BinaryPrimitives.ReadUInt32BigEndian(localWireData.AsSpan(0, 4));
+        var localLength = BinaryPrimitives.ReadUInt16BigEndian(localWireData.AsSpan(4, 2));
+
+        // Assert
+        Assert.Equal(remoteHello.DeviceName, receivedRemoteHello.DeviceName);
+        Assert.Equal(remoteHello.ClientName, receivedRemoteHello.ClientName);
+        Assert.Equal(remoteHello.ClientVersion, receivedRemoteHello.ClientVersion);
+        Assert.Equal(BepProtobufSerializer.BepMagic, localMagic);
+        Assert.Equal(localWireData.Length - 6, localLength);
+    }
+
+    /// <summary>
+    /// Tests that old/legacy magic numbers are correctly identified and rejected.
+    /// Mirrors TestOldHelloMsgs from syncthing/lib/protocol/bep_hello_test.go.
+    /// </summary>
+    [Theory]
+    [InlineData("00010001", true, false)]  // v12 - too old
+    [InlineData("9F79BC40", true, false)]  // v13 - too old
+    [InlineData("12345678", false, true)]  // unknown magic - newer?
+    public void CrossCompatibility_OldHelloMagic_ThrowsCorrectException(
+        string magicHex, bool expectTooOld, bool expectUnknown)
+    {
+        // Arrange - create wire data with specified magic number
+        var magicBytes = Convert.FromHexString(magicHex);
+        var wireData = new byte[magicBytes.Length + 2 + 1]; // magic + length + dummy body
+        magicBytes.CopyTo(wireData.AsSpan(0));
+        BinaryPrimitives.WriteUInt16BigEndian(wireData.AsSpan(4, 2), 1);
+        wireData[6] = 0; // dummy body byte
+
+        // Act & Assert
+        if (expectTooOld)
+        {
+            var ex = Assert.Throws<BepTooOldVersionException>(() =>
+                _serializer.DeserializeHello(wireData, out _));
+            Assert.Contains("older version", ex.Message);
+        }
+        else if (expectUnknown)
+        {
+            var ex = Assert.Throws<BepUnknownMagicException>(() =>
+                _serializer.DeserializeHello(wireData, out _));
+            Assert.Contains("unknown", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Tests that a BEP message created in Syncthing wire format can be parsed.
+    /// Wire format: [2B header length][Header protobuf][4B message length][Message protobuf]
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_ParseSyncthingBepMessage()
+    {
+        // Arrange - create a Request message in exact Syncthing wire format
+        var expectedRequest = new Request
+        {
+            Id = 12345,
+            Folder = "default",
+            Name = "test-file.txt",
+            Offset = 0,
+            Size = 131072,
+            Hash = ByteString.CopyFrom(new byte[32]),
+            FromTemporary = false,
+            BlockNo = 0
+        };
+        var requestProtoBytes = expectedRequest.ToByteArray();
+
+        var header = new Header
+        {
+            Type = MessageType.Request,
+            Compression = MessageCompression.None
+        };
+        var headerProtoBytes = header.ToByteArray();
+
+        // Build wire format: [2B header len][header proto][4B msg len][msg proto]
+        var wireData = new byte[2 + headerProtoBytes.Length + 4 + requestProtoBytes.Length];
+        BinaryPrimitives.WriteUInt16BigEndian(wireData.AsSpan(0, 2), (ushort)headerProtoBytes.Length);
+        headerProtoBytes.CopyTo(wireData.AsSpan(2));
+        BinaryPrimitives.WriteInt32BigEndian(wireData.AsSpan(2 + headerProtoBytes.Length, 4), requestProtoBytes.Length);
+        requestProtoBytes.CopyTo(wireData.AsSpan(2 + headerProtoBytes.Length + 4));
+
+        // Act
+        var (parsedHeader, messageBytes) = _serializer.DeserializeMessage(wireData, out var bytesConsumed);
+        var parsedRequest = _serializer.ParseMessage<Request>(messageBytes);
+
+        // Assert
+        Assert.Equal(wireData.Length, bytesConsumed);
+        Assert.Equal(MessageType.Request, parsedHeader.Type);
+        Assert.Equal(MessageCompression.None, parsedHeader.Compression);
+        Assert.Equal(expectedRequest.Id, parsedRequest.Id);
+        Assert.Equal(expectedRequest.Folder, parsedRequest.Folder);
+        Assert.Equal(expectedRequest.Name, parsedRequest.Name);
+        Assert.Equal(expectedRequest.Offset, parsedRequest.Offset);
+        Assert.Equal(expectedRequest.Size, parsedRequest.Size);
+    }
+
+    /// <summary>
+    /// Tests ClusterConfig message exchange as occurs immediately after Hello exchange.
+    /// ClusterConfig MUST be the first message after Hello in BEP protocol.
+    /// </summary>
+    [Fact]
+    public async Task CrossCompatibility_ClusterConfigExchange()
+    {
+        // Arrange - create ClusterConfig as Syncthing would send
+        var remoteConfig = new ClusterConfig();
+        var folder = new Folder
+        {
+            Id = "default",
+            Label = "Default Folder",
+            Type = FolderType.SendReceive,
+            StopReason = FolderStopReason.Running
+        };
+        folder.Devices.Add(new Device
+        {
+            Id = ByteString.CopyFrom(new byte[32]),
+            Name = "syncthing-device",
+            Compression = Compression.Metadata,
+            MaxSequence = 0,
+            IndexId = 0
+        });
+        remoteConfig.Folders.Add(folder);
+
+        // Simulate stream exchange
+        using var stream = new MemoryStream();
+
+        // Write ClusterConfig as Syncthing would
+        await _serializer.WriteMessageAsync(stream, remoteConfig, MessageType.ClusterConfig);
+        stream.Position = 0;
+
+        // Act - read and parse
+        var (header, message) = await _serializer.ReadMessageAsync(stream);
+
+        // Assert
+        Assert.Equal(MessageType.ClusterConfig, header.Type);
+        var parsedConfig = Assert.IsType<ClusterConfig>(message);
+        Assert.Single(parsedConfig.Folders);
+        Assert.Equal("default", parsedConfig.Folders[0].Id);
+        Assert.Single(parsedConfig.Folders[0].Devices);
+    }
+
+    /// <summary>
+    /// Tests Index message wire format compatibility with Syncthing.
+    /// Verifies FileInfo and BlockInfo are correctly serialized/deserialized.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_IndexMessageFormat()
+    {
+        // Arrange - create Index message with realistic file structure
+        var syncthingIndex = new BepIndex
+        {
+            Folder = "default",
+            LastSequence = 42
+        };
+
+        var fileInfo = new BepFileInfo
+        {
+            Name = "documents/report.pdf",
+            Type = FileInfoType.File,
+            Size = 1048576, // 1 MB
+            Permissions = 0x1A4, // 0644 octal
+            ModifiedS = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            ModifiedNs = 500000000, // 0.5 seconds
+            ModifiedBy = 12345678901234567890UL, // ShortID
+            Deleted = false,
+            Invalid = false,
+            NoPermissions = false,
+            Sequence = 42,
+            BlockSize = 131072 // 128 KB
+        };
+
+        // Add blocks (1 MB file with 128 KB blocks = 8 blocks)
+        for (int i = 0; i < 8; i++)
+        {
+            fileInfo.Blocks.Add(new BlockInfo
+            {
+                Offset = i * 131072,
+                Size = 131072,
+                Hash = ByteString.CopyFrom(new byte[32])
+            });
+        }
+        syncthingIndex.Files.Add(fileInfo);
+
+        // Act - serialize and deserialize
+        var serialized = _serializer.SerializeMessage(syncthingIndex, MessageType.Index, allowCompression: false);
+        var (header, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<BepIndex>(messageBytes);
+
+        // Assert wire format compatibility
+        Assert.Equal(MessageType.Index, header.Type);
+        Assert.Equal("default", parsed.Folder);
+        Assert.Equal(42, parsed.LastSequence);
+        Assert.Single(parsed.Files);
+
+        var parsedFile = parsed.Files[0];
+        Assert.Equal("documents/report.pdf", parsedFile.Name);
+        Assert.Equal(FileInfoType.File, parsedFile.Type);
+        Assert.Equal(1048576, parsedFile.Size);
+        Assert.Equal(0x1A4u, parsedFile.Permissions);
+        Assert.Equal(8, parsedFile.Blocks.Count);
+        Assert.Equal(131072, parsedFile.BlockSize);
+
+        // Verify block offsets
+        for (int i = 0; i < 8; i++)
+        {
+            Assert.Equal(i * 131072, parsedFile.Blocks[i].Offset);
+        }
+    }
+
+    /// <summary>
+    /// Tests Response message with data payload - critical for file transfer.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_ResponseMessageWithData()
+    {
+        // Arrange - create Response as Syncthing would for a block request
+        var blockData = new byte[131072]; // 128 KB block
+        new Random(42).NextBytes(blockData);
+
+        var response = new Response
+        {
+            Id = 12345,
+            Data = ByteString.CopyFrom(blockData),
+            Code = ErrorCode.NoError
+        };
+
+        // Act - round trip through wire format
+        var serialized = _serializer.SerializeMessage(response, MessageType.Response, allowCompression: false);
+        var (header, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<Response>(messageBytes);
+
+        // Assert - verify data integrity
+        Assert.Equal(MessageType.Response, header.Type);
+        Assert.Equal(12345, parsed.Id);
+        Assert.Equal(ErrorCode.NoError, parsed.Code);
+        Assert.Equal(blockData, parsed.Data.ToByteArray());
+    }
+
+    /// <summary>
+    /// Tests LZ4 compressed message format is compatible with Syncthing.
+    /// Wire format for compressed: [header][4B uncompressed size (big-endian)][LZ4 block]
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_LZ4CompressedMessageFormat()
+    {
+        // Arrange - highly compressible data that will trigger compression
+        var compressibleData = new byte[4096];
+        Array.Fill(compressibleData, (byte)'A');
+
+        var response = new Response
+        {
+            Id = 1,
+            Data = ByteString.CopyFrom(compressibleData),
+            Code = ErrorCode.NoError
+        };
+
+        // Act - serialize with compression
+        var serialized = _serializer.SerializeMessage(response, MessageType.Response, allowCompression: true);
+
+        // Extract compressed payload
+        var headerLength = BinaryPrimitives.ReadUInt16BigEndian(serialized.AsSpan(0, 2));
+        var header = Header.Parser.ParseFrom(serialized.AsSpan(2, headerLength));
+
+        // Assert compression was used
+        Assert.Equal(MessageCompression.Lz4, header.Compression);
+
+        // Verify round-trip
+        var (_, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<Response>(messageBytes);
+        Assert.Equal(compressibleData, parsed.Data.ToByteArray());
+    }
+
+    /// <summary>
+    /// Tests that our serializer produces wire format identical to manual construction.
+    /// This ensures byte-for-byte compatibility with Syncthing.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_WireFormatByteLevelMatch()
+    {
+        // Arrange
+        var hello = new Hello
+        {
+            DeviceName = "test",
+            ClientName = "syncthing",
+            ClientVersion = "v1.0.0"
+        };
+
+        // Manually construct expected wire format
+        var protoBytes = hello.ToByteArray();
+        var expectedWire = new byte[6 + protoBytes.Length];
+        BinaryPrimitives.WriteUInt32BigEndian(expectedWire.AsSpan(0, 4), BepProtobufSerializer.BepMagic);
+        BinaryPrimitives.WriteUInt16BigEndian(expectedWire.AsSpan(4, 2), (ushort)protoBytes.Length);
+        protoBytes.CopyTo(expectedWire.AsSpan(6));
+
+        // Act - use our serializer
+        var actualWire = _serializer.SerializeHello(hello);
+
+        // Assert - byte-for-byte match
+        Assert.Equal(expectedWire, actualWire);
+    }
+
+    /// <summary>
+    /// Tests message exchange over a simulated TCP connection stream.
+    /// Validates the full message exchange pattern used in BEP connections.
+    /// </summary>
+    [Fact]
+    public async Task CrossCompatibility_FullMessageExchangeSimulation()
+    {
+        using var stream = new MemoryStream();
+
+        // Phase 1: Hello exchange
+        var localHello = new Hello
+        {
+            DeviceName = "local",
+            ClientName = "CreatioHelper",
+            ClientVersion = "1.0.0",
+            Timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        };
+
+        await _serializer.WriteHelloAsync(stream, localHello);
+
+        // Phase 2: ClusterConfig (must be first message after Hello)
+        var config = new ClusterConfig();
+        config.Folders.Add(new Folder
+        {
+            Id = "sync",
+            Label = "Sync Folder",
+            Type = FolderType.SendReceive,
+            StopReason = FolderStopReason.Running
+        });
+
+        await _serializer.WriteMessageAsync(stream, config, MessageType.ClusterConfig);
+
+        // Phase 3: Index message
+        var index = new BepIndex
+        {
+            Folder = "sync",
+            LastSequence = 1
+        };
+        index.Files.Add(new BepFileInfo
+        {
+            Name = "test.txt",
+            Type = FileInfoType.File,
+            Size = 100,
+            Sequence = 1
+        });
+
+        await _serializer.WriteMessageAsync(stream, index, MessageType.Index);
+
+        // Reset stream to read back
+        stream.Position = 0;
+
+        // Act - read all messages back
+        var receivedHello = await _serializer.ReadHelloAsync(stream);
+        var (configHeader, configMsg) = await _serializer.ReadMessageAsync(stream);
+        var (indexHeader, indexMsg) = await _serializer.ReadMessageAsync(stream);
+
+        // Assert - all messages received correctly
+        Assert.Equal("local", receivedHello.DeviceName);
+
+        Assert.Equal(MessageType.ClusterConfig, configHeader.Type);
+        var receivedConfig = Assert.IsType<ClusterConfig>(configMsg);
+        Assert.Single(receivedConfig.Folders);
+
+        Assert.Equal(MessageType.Index, indexHeader.Type);
+        var receivedIndex = Assert.IsType<BepIndex>(indexMsg);
+        Assert.Equal("sync", receivedIndex.Folder);
+        Assert.Single(receivedIndex.Files);
+    }
+
+    /// <summary>
+    /// Tests handling of Ping/Close control messages in wire format.
+    /// These are special messages with minimal payload.
+    /// </summary>
+    [Fact]
+    public async Task CrossCompatibility_ControlMessageExchange()
+    {
+        using var stream = new MemoryStream();
+
+        // Write Ping (empty payload)
+        var ping = new Ping();
+        await _serializer.WriteMessageAsync(stream, ping, MessageType.Ping);
+
+        // Write Close with reason
+        var close = new Close { Reason = "test complete" };
+        await _serializer.WriteMessageAsync(stream, close, MessageType.Close);
+
+        stream.Position = 0;
+
+        // Act - read back
+        var (pingHeader, pingMsg) = await _serializer.ReadMessageAsync(stream);
+        var (closeHeader, closeMsg) = await _serializer.ReadMessageAsync(stream);
+
+        // Assert
+        Assert.Equal(MessageType.Ping, pingHeader.Type);
+        Assert.IsType<Ping>(pingMsg);
+
+        Assert.Equal(MessageType.Close, closeHeader.Type);
+        var receivedClose = Assert.IsType<Close>(closeMsg);
+        Assert.Equal("test complete", receivedClose.Reason);
+    }
+
+    /// <summary>
+    /// Tests Request/Response message pair as used in file block transfer.
+    /// This is the core data transfer mechanism in BEP.
+    /// </summary>
+    [Fact]
+    public async Task CrossCompatibility_RequestResponseExchange()
+    {
+        using var requestStream = new MemoryStream();
+        using var responseStream = new MemoryStream();
+
+        // Create request for a block
+        var request = new Request
+        {
+            Id = 42,
+            Folder = "default",
+            Name = "large-file.bin",
+            Offset = 131072, // Second block
+            Size = 131072,   // 128 KB
+            Hash = ByteString.CopyFrom(new byte[32]),
+            FromTemporary = false,
+            BlockNo = 1
+        };
+
+        await _serializer.WriteMessageAsync(requestStream, request, MessageType.Request);
+
+        // Create response with block data
+        var blockData = new byte[131072];
+        new Random(42).NextBytes(blockData);
+
+        var response = new Response
+        {
+            Id = 42, // Matches request
+            Data = ByteString.CopyFrom(blockData),
+            Code = ErrorCode.NoError
+        };
+
+        await _serializer.WriteMessageAsync(responseStream, response, MessageType.Response);
+
+        // Reset streams
+        requestStream.Position = 0;
+        responseStream.Position = 0;
+
+        // Act - read both
+        var (reqHeader, reqMsg) = await _serializer.ReadMessageAsync(requestStream);
+        var (respHeader, respMsg) = await _serializer.ReadMessageAsync(responseStream);
+
+        // Assert
+        var receivedRequest = Assert.IsType<Request>(reqMsg);
+        Assert.Equal(42, receivedRequest.Id);
+        Assert.Equal("large-file.bin", receivedRequest.Name);
+        Assert.Equal(131072, receivedRequest.Offset);
+        Assert.Equal(1, receivedRequest.BlockNo);
+
+        var receivedResponse = Assert.IsType<Response>(respMsg);
+        Assert.Equal(42, receivedResponse.Id);
+        Assert.Equal(ErrorCode.NoError, receivedResponse.Code);
+        Assert.Equal(blockData, receivedResponse.Data.ToByteArray());
+    }
+
+    /// <summary>
+    /// Verifies that known Syncthing magic constants are correctly defined.
+    /// These values are critical for protocol compatibility.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_MagicConstants_MatchSyncthing()
+    {
+        // From syncthing/lib/protocol/bep.go:
+        // HelloMessageMagic = 0x2EA7D90B
+        // Version13HelloMagic = 0x9F79BC40 (legacy)
+        // OldMagic1 = 0x00010001 (v12 legacy)
+        // OldMagic2 = 0x00010000 (v12 legacy)
+
+        Assert.Equal(0x2EA7D90Bu, BepProtobufSerializer.BepMagic);
+        Assert.Equal(0x9F79BC40u, BepProtobufSerializer.Version13HelloMagic);
+        Assert.Equal(0x00010001u, BepProtobufSerializer.OldMagic1);
+        Assert.Equal(0x00010000u, BepProtobufSerializer.OldMagic2);
+    }
+
+    /// <summary>
+    /// Tests IndexUpdate message format which is used for incremental updates.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_IndexUpdateFormat()
+    {
+        // Arrange - IndexUpdate for a modified file
+        var update = new IndexUpdate
+        {
+            Folder = "default",
+            LastSequence = 100
+        };
+
+        update.Files.Add(new BepFileInfo
+        {
+            Name = "modified-file.txt",
+            Type = FileInfoType.File,
+            Size = 2048,
+            Sequence = 100,
+            ModifiedS = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            ModifiedBy = 0x1234567890ABCDEF,
+            Deleted = false
+        });
+
+        // Act
+        var serialized = _serializer.SerializeMessage(update, MessageType.IndexUpdate, allowCompression: false);
+        var (header, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<IndexUpdate>(messageBytes);
+
+        // Assert
+        Assert.Equal(MessageType.IndexUpdate, header.Type);
+        Assert.Equal("default", parsed.Folder);
+        Assert.Equal(100, parsed.LastSequence);
+        Assert.Single(parsed.Files);
+        Assert.Equal("modified-file.txt", parsed.Files[0].Name);
+    }
+
+    /// <summary>
+    /// Tests handling of deleted file entries in Index messages.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_DeletedFileInIndex()
+    {
+        // Arrange - Index with deleted file
+        var index = new BepIndex
+        {
+            Folder = "default",
+            LastSequence = 50
+        };
+
+        index.Files.Add(new BepFileInfo
+        {
+            Name = "deleted-file.txt",
+            Type = FileInfoType.File,
+            Size = 0,
+            Sequence = 50,
+            Deleted = true
+        });
+
+        // Act
+        var serialized = _serializer.SerializeMessage(index, MessageType.Index, allowCompression: false);
+        var (_, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<BepIndex>(messageBytes);
+
+        // Assert
+        Assert.Single(parsed.Files);
+        Assert.True(parsed.Files[0].Deleted);
+        Assert.Equal(0, parsed.Files[0].Size);
+    }
+
+    /// <summary>
+    /// Tests directory entry in Index messages.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_DirectoryInIndex()
+    {
+        // Arrange - Index with directory
+        var index = new BepIndex
+        {
+            Folder = "default",
+            LastSequence = 10
+        };
+
+        index.Files.Add(new BepFileInfo
+        {
+            Name = "subdir",
+            Type = FileInfoType.Directory,
+            Permissions = 0x1ED, // 0755 octal
+            ModifiedS = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Sequence = 10,
+            Deleted = false
+        });
+
+        // Act
+        var serialized = _serializer.SerializeMessage(index, MessageType.Index, allowCompression: false);
+        var (_, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<BepIndex>(messageBytes);
+
+        // Assert
+        Assert.Single(parsed.Files);
+        Assert.Equal(FileInfoType.Directory, parsed.Files[0].Type);
+        Assert.Equal("subdir", parsed.Files[0].Name);
+        Assert.Empty(parsed.Files[0].Blocks); // Directories have no blocks
+    }
+
+    /// <summary>
+    /// Tests symlink entry in Index messages.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_SymlinkInIndex()
+    {
+        // Arrange - Index with symlink
+        var index = new BepIndex
+        {
+            Folder = "default",
+            LastSequence = 15
+        };
+
+        var symlinkTarget = "/actual/path/to/file.txt";
+        index.Files.Add(new BepFileInfo
+        {
+            Name = "link-to-file",
+            Type = FileInfoType.Symlink,
+            SymlinkTarget = ByteString.CopyFromUtf8(symlinkTarget),
+            Sequence = 15,
+            Deleted = false
+        });
+
+        // Act
+        var serialized = _serializer.SerializeMessage(index, MessageType.Index, allowCompression: false);
+        var (_, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<BepIndex>(messageBytes);
+
+        // Assert
+        Assert.Single(parsed.Files);
+        Assert.Equal(FileInfoType.Symlink, parsed.Files[0].Type);
+        Assert.Equal(symlinkTarget, parsed.Files[0].SymlinkTarget.ToStringUtf8());
+    }
+
+    /// <summary>
+    /// Tests error response codes in Response messages.
+    /// </summary>
+    [Theory]
+    [InlineData(ErrorCode.NoError)]
+    [InlineData(ErrorCode.Generic)]
+    [InlineData(ErrorCode.NoSuchFile)]
+    [InlineData(ErrorCode.InvalidFile)]
+    public void CrossCompatibility_ResponseErrorCodes(ErrorCode errorCode)
+    {
+        // Arrange
+        var response = new Response
+        {
+            Id = 1,
+            Code = errorCode,
+            Data = ByteString.Empty
+        };
+
+        // Act
+        var serialized = _serializer.SerializeMessage(response, MessageType.Response, allowCompression: false);
+        var (_, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<Response>(messageBytes);
+
+        // Assert
+        Assert.Equal(errorCode, parsed.Code);
+    }
+
+    /// <summary>
+    /// Tests DownloadProgress message format used for transfer progress tracking.
+    /// </summary>
+    [Fact]
+    public void CrossCompatibility_DownloadProgressFormat()
+    {
+        // Arrange
+        var progress = new DownloadProgress
+        {
+            Folder = "default"
+        };
+
+        progress.Updates.Add(new FileDownloadProgressUpdate
+        {
+            UpdateType = FileDownloadProgressUpdateType.Append,
+            Name = "large-file.bin",
+            BlockSize = 131072 // 128 KB
+        });
+        progress.Updates[0].BlockIndexes.AddRange(new[] { 0, 1, 2, 3, 4 });
+
+        // Act
+        var serialized = _serializer.SerializeMessage(progress, MessageType.DownloadProgress, allowCompression: false);
+        var (header, messageBytes) = _serializer.DeserializeMessage(serialized, out _);
+        var parsed = _serializer.ParseMessage<DownloadProgress>(messageBytes);
+
+        // Assert
+        Assert.Equal(MessageType.DownloadProgress, header.Type);
+        Assert.Equal("default", parsed.Folder);
+        Assert.Single(parsed.Updates);
+        Assert.Equal(FileDownloadProgressUpdateType.Append, parsed.Updates[0].UpdateType);
+        Assert.Equal(5, parsed.Updates[0].BlockIndexes.Count);
+    }
+
+    #endregion
 }

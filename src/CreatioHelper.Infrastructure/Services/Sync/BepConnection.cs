@@ -328,15 +328,17 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     public async Task SendMessageAsync<T>(BepMessageType messageType, T message)
     {
+        // Validate BEP protocol ordering: ClusterConfig MUST be the first message after Hello
+        // Following Syncthing pattern from lib/protocol/protocol.go dispatcherLoop
+        // Protocol validation comes FIRST - protocol violations are programmer errors
+        // and should always throw, regardless of connection state.
+        ValidateProtocolStateForSend(messageType);
+
         if (!IsConnected)
         {
             _logger.LogWarning("BepConnection: Cannot send {MessageType} to device {DeviceId} - not connected", messageType, _deviceId);
             return;
         }
-
-        // Validate BEP protocol ordering: ClusterConfig MUST be the first message after Hello
-        // Following Syncthing pattern from lib/protocol/protocol.go dispatcherLoop
-        ValidateProtocolStateForSend(messageType);
 
         // Update protocol state when ClusterConfig is sent
         if (messageType == BepMessageType.ClusterConfig)
