@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Controllers;
+using CreatioHelper.Application.DTOs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -332,6 +333,207 @@ public class SyncthingConfigControllerTests
         Assert.IsType<BadRequestObjectResult>(result);
         _syncEngineMock.Verify(s => s.ApplyConfigurationAsync(
             It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    #endregion
+
+    #region PATCH Folder Tests
+
+    [Fact]
+    public async Task PatchFolder_ReturnsNotFound_WhenFolderDoesNotExist()
+    {
+        // Arrange
+        _syncEngineMock.Setup(s => s.GetFolderAsync("nonexistent"))
+            .ReturnsAsync((SyncFolder?)null);
+
+        var patchData = JsonSerializer.SerializeToElement(new { label = "New Label" });
+
+        // Act
+        var result = await _controller.PatchFolder("nonexistent", patchData);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task PatchFolder_ReturnsOk_WhenFolderExists()
+    {
+        // Arrange
+        var existingFolder = new SyncFolder("folder1", "Original Label", "/test/path", "sendreceive");
+        var updatedFolder = new SyncFolder("folder1", "New Label", "/test/path", "sendreceive");
+
+        _syncEngineMock.Setup(s => s.GetFolderAsync("folder1"))
+            .ReturnsAsync(existingFolder);
+        _syncEngineMock.Setup(s => s.UpdateFolderAsync(It.IsAny<FolderConfiguration>()))
+            .ReturnsAsync(updatedFolder);
+        _syncEngineMock.Setup(s => s.GetConfigurationAsync())
+            .ReturnsAsync(new SyncConfiguration { DeviceId = "TEST-DEVICE-ID" });
+        _configXmlServiceMock.Setup(s => s.FromSyncConfiguration(
+            It.IsAny<SyncConfiguration>(), It.IsAny<List<SyncDevice>>(), It.IsAny<List<SyncFolder>>()))
+            .Returns(new ConfigXml());
+        _configXmlServiceMock.Setup(s => s.SaveAsync(It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var patchData = JsonSerializer.SerializeToElement(new { label = "New Label" });
+
+        // Act
+        var result = await _controller.PatchFolder("folder1", patchData);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    #endregion
+
+    #region PATCH Device Tests
+
+    [Fact]
+    public async Task PatchDevice_ReturnsNotFound_WhenDeviceDoesNotExist()
+    {
+        // Arrange
+        _syncEngineMock.Setup(s => s.GetDevicesAsync())
+            .ReturnsAsync(new List<SyncDevice>());
+
+        var patchData = JsonSerializer.SerializeToElement(new { paused = true });
+
+        // Act
+        var result = await _controller.PatchDevice("nonexistent", patchData);
+
+        // Assert
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task PatchDevice_ReturnsOk_WhenDeviceExists()
+    {
+        // Arrange
+        var device = new SyncDevice("device1", "Test Device");
+
+        _syncEngineMock.Setup(s => s.GetDevicesAsync())
+            .ReturnsAsync(new List<SyncDevice> { device });
+
+        var patchData = JsonSerializer.SerializeToElement(new { name = "Updated Device" });
+
+        // Act
+        var result = await _controller.PatchDevice("device1", patchData);
+
+        // Assert
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public async Task PatchDevice_CallsPauseDevice_WhenPausedIsTrue()
+    {
+        // Arrange
+        var device = new SyncDevice("device1", "Test Device");
+
+        _syncEngineMock.Setup(s => s.GetDevicesAsync())
+            .ReturnsAsync(new List<SyncDevice> { device });
+        _syncEngineMock.Setup(s => s.PauseDeviceAsync("device1"))
+            .Returns(Task.CompletedTask);
+
+        var patchData = JsonSerializer.SerializeToElement(new { paused = true });
+
+        // Act
+        var result = await _controller.PatchDevice("device1", patchData);
+
+        // Assert
+        _syncEngineMock.Verify(s => s.PauseDeviceAsync("device1"), Times.Once);
+    }
+
+    [Fact]
+    public async Task PatchDevice_CallsResumeDevice_WhenPausedIsFalse()
+    {
+        // Arrange
+        var device = new SyncDevice("device1", "Test Device");
+        device.SetPaused(true); // Set paused to true initially
+
+        _syncEngineMock.Setup(s => s.GetDevicesAsync())
+            .ReturnsAsync(new List<SyncDevice> { device });
+        _syncEngineMock.Setup(s => s.ResumeDeviceAsync("device1"))
+            .Returns(Task.CompletedTask);
+
+        var patchData = JsonSerializer.SerializeToElement(new { paused = false });
+
+        // Act
+        var result = await _controller.PatchDevice("device1", patchData);
+
+        // Assert
+        _syncEngineMock.Verify(s => s.ResumeDeviceAsync("device1"), Times.Once);
+    }
+
+    #endregion
+
+    #region PUT Defaults Tests
+
+    [Fact]
+    public void UpdateDefaultFolderConfig_ReturnsOk()
+    {
+        var folderConfig = JsonSerializer.SerializeToElement(new
+        {
+            rescanIntervalS = 7200,
+            fsWatcherEnabled = false
+        });
+
+        var result = _controller.UpdateDefaultFolderConfig(folderConfig);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void UpdateDefaultDeviceConfig_ReturnsOk()
+    {
+        var deviceConfig = JsonSerializer.SerializeToElement(new
+        {
+            compression = "always",
+            autoAcceptFolders = true
+        });
+
+        var result = _controller.UpdateDefaultDeviceConfig(deviceConfig);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void UpdateDefaultIgnoresConfig_ReturnsOk()
+    {
+        var ignoresConfig = JsonSerializer.SerializeToElement(new
+        {
+            lines = new[] { "*.tmp", "*.bak", ".git" }
+        });
+
+        var result = _controller.UpdateDefaultIgnoresConfig(ignoresConfig);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+    }
+
+    [Fact]
+    public void UpdateDefaultIgnoresConfig_StoresIgnoreLines()
+    {
+        // First update
+        var ignoresConfig = JsonSerializer.SerializeToElement(new
+        {
+            lines = new[] { "*.tmp", "*.bak" }
+        });
+
+        _controller.UpdateDefaultIgnoresConfig(ignoresConfig);
+
+        // Verify stored by getting defaults
+        var result = _controller.GetDefaultIgnoresConfig();
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var value = ok.Value!;
+
+        var linesProperty = value.GetType().GetProperty("lines");
+        var lines = linesProperty?.GetValue(value) as string[];
+
+        Assert.NotNull(lines);
+        Assert.Contains("*.tmp", lines);
+        Assert.Contains("*.bak", lines);
     }
 
     #endregion

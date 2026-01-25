@@ -13,17 +13,22 @@ public enum BepMessageType
     DownloadProgress = 5,
     Ping = 6,
     Close = 7,
-    Hello = 8 // Extension for initial handshake
+    Hello = 8, // Extension for initial handshake
+
+    // CreatioHelper P2P Upgrade Extensions (100+ to avoid conflicts with Syncthing)
+    AgentUpdateRequest = 100,
+    AgentUpdateResponse = 101
 }
 
 /// <summary>
-/// BEP Compression types
+/// BEP Compression types for device configuration.
+/// Values must match proto Compression enum: METADATA=0, NEVER=1, ALWAYS=2
 /// </summary>
 public enum BepCompression
 {
-    None = 0,
-    Always = 1,
-    Metadata = 2
+    Metadata = 0,  // COMPRESSION_METADATA - compress only metadata
+    Never = 1,     // COMPRESSION_NEVER - never compress
+    Always = 2     // COMPRESSION_ALWAYS - always compress
 }
 
 /// <summary>
@@ -79,6 +84,9 @@ public class BepHello
 
     // Extension for device identification when TLS is disabled (non-standard)
     public string DeviceId { get; set; } = string.Empty;
+
+    // CreatioHelper P2P Upgrade Extensions (ignored by Syncthing clients)
+    public BepHelloExtensions? Extensions { get; set; }
 }
 
 /// <summary>
@@ -168,7 +176,7 @@ public class BepFileInfo
     public BepPlatform Platform { get; set; } = new();
     public string LocalFlags { get; set; } = "";
     public byte[] VersionHash { get; set; } = Array.Empty<byte>();
-    public bool InodeChangeNs { get; set; }
+    public long InodeChangeNs { get; set; }
     public byte[] EncryptionTrailerHash { get; set; } = Array.Empty<byte>();
 }
 
@@ -351,4 +359,102 @@ public class BepPing
 public class BepClose
 {
     public string Reason { get; set; } = string.Empty;
+}
+
+// ============================================================================
+// CreatioHelper P2P Upgrade Extensions
+// ============================================================================
+
+/// <summary>
+/// Extended Hello fields for P2P agent upgrades.
+/// These extensions are ignored by native Syncthing clients.
+/// </summary>
+public class BepHelloExtensions
+{
+    /// <summary>
+    /// SHA256 hash of the agent binary
+    /// </summary>
+    public string AgentBinaryHash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Size of the agent binary in bytes
+    /// </summary>
+    public long AgentBinarySize { get; set; }
+
+    /// <summary>
+    /// Platform identifier: "windows-x64", "linux-x64", "linux-arm64", "darwin-x64", "darwin-arm64"
+    /// </summary>
+    public string AgentPlatform { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Agent update request - sent by agent wanting to receive an update
+/// </summary>
+public class BepAgentUpdateRequest
+{
+    /// <summary>
+    /// Current version of the requesting agent
+    /// </summary>
+    public string FromVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Requested target version
+    /// </summary>
+    public string ToVersion { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Platform of the requesting agent
+    /// </summary>
+    public string Platform { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Agent update response - sent by agent providing the update
+/// </summary>
+public class BepAgentUpdateResponse
+{
+    /// <summary>
+    /// Version being sent
+    /// </summary>
+    public string Version { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Platform of the binary
+    /// </summary>
+    public string Platform { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Binary data (may be one chunk of a larger file)
+    /// </summary>
+    public byte[] Data { get; set; } = Array.Empty<byte>();
+
+    /// <summary>
+    /// SHA256 hash of the complete binary for verification
+    /// </summary>
+    public string Hash { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Total size of the complete binary
+    /// </summary>
+    public long TotalSize { get; set; }
+
+    /// <summary>
+    /// Current chunk index (0-based)
+    /// </summary>
+    public int ChunkIndex { get; set; }
+
+    /// <summary>
+    /// Total number of chunks
+    /// </summary>
+    public int TotalChunks { get; set; }
+
+    /// <summary>
+    /// True if this is the final chunk
+    /// </summary>
+    public bool IsComplete { get; set; }
+
+    /// <summary>
+    /// Error code if request failed
+    /// </summary>
+    public BepErrorCode Error { get; set; } = BepErrorCode.NoError;
 }

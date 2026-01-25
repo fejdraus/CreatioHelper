@@ -289,6 +289,13 @@ public class FileWatcher : IDisposable
                 if (ShouldIgnoreFile(subdirectoryPath, basePath, ignorePatterns))
                     continue;
 
+                // Add directory itself as an entry (Syncthing tracks directories too)
+                var dirInfo = CreateDirectoryInfo(folderId, subdirectoryPath, basePath);
+                if (dirInfo != null)
+                {
+                    files.Add(dirInfo);
+                }
+
                 var subdirectoryFiles = await ScanDirectoryRecursiveAsync(folderId, subdirectoryPath, basePath, ignorePatterns, onFileScanned);
                 files.AddRange(subdirectoryFiles);
             }
@@ -330,6 +337,30 @@ public class FileWatcher : IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating file info for {FilePath}", filePath);
+            return null;
+        }
+    }
+
+    private SyncFileInfo? CreateDirectoryInfo(string folderId, string directoryPath, string basePath)
+    {
+        try
+        {
+            var dirInfo = new DirectoryInfo(directoryPath);
+            if (!dirInfo.Exists) return null;
+
+            var relativePath = Path.GetRelativePath(basePath, directoryPath);
+            // Convert Windows path separators to forward slashes for cross-platform compatibility
+            relativePath = relativePath.Replace('\\', '/');
+
+            // Create SyncFileInfo for directory (size = 0, Type = Directory)
+            var syncFileInfo = new SyncFileInfo(folderId, relativePath, relativePath, 0, dirInfo.LastWriteTimeUtc);
+            syncFileInfo.SetAsDirectory();
+
+            return syncFileInfo;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error creating directory info for {DirectoryPath}", directoryPath);
             return null;
         }
     }

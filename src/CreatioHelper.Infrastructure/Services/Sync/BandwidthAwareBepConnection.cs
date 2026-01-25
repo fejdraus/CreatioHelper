@@ -129,10 +129,25 @@ public class BandwidthAwareBepConnection : IBepConnection
     }
 
     // Event forwarding
+
+    /// <inheritdoc />
+    public event EventHandler<BepClusterConfigReceivedEventArgs>? ClusterConfigReceived
+    {
+        add => _innerConnection.ClusterConfigReceived += value;
+        remove => _innerConnection.ClusterConfigReceived -= value;
+    }
+
     public event EventHandler<BepIndexReceivedEventArgs>? IndexReceived
     {
         add => _innerConnection.IndexReceived += value;
         remove => _innerConnection.IndexReceived -= value;
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<BepIndexUpdateReceivedEventArgs>? IndexUpdateReceived
+    {
+        add => _innerConnection.IndexUpdateReceived += value;
+        remove => _innerConnection.IndexUpdateReceived -= value;
     }
 
     public event EventHandler<BepBlockRequestReceivedEventArgs>? BlockRequestReceived
@@ -145,6 +160,13 @@ public class BandwidthAwareBepConnection : IBepConnection
     {
         add => _innerConnection.BlockResponseReceived += value;
         remove => _innerConnection.BlockResponseReceived -= value;
+    }
+
+    /// <inheritdoc />
+    public event EventHandler<BepDownloadProgressReceivedEventArgs>? DownloadProgressReceived
+    {
+        add => _innerConnection.DownloadProgressReceived += value;
+        remove => _innerConnection.DownloadProgressReceived -= value;
     }
 
     public event EventHandler<BepPingReceivedEventArgs>? PingReceived

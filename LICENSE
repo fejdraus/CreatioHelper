@@ -672,3 +672,23 @@ may consider it more useful to permit linking proprietary applications with
 the library. If this is what you want to do, use the GNU Lesser General
 Public License instead of this License. But first, please read
 <https://www.gnu.org/licenses/why-not-lgpl.html>.
+
+-------------------------------------------------------------------------------
+
+THIRD-PARTY NOTICES
+
+This project contains files derived from Syncthing
+(https://github.com/syncthing/syncthing), which is licensed under the
+Mozilla Public License 2.0 (MPL-2.0).
+
+The following files are derived from Syncthing and retain their original
+MPL-2.0 license headers:
+- src/CreatioHelper.Infrastructure/Protos/bep.proto
+- src/CreatioHelper.Infrastructure/Services/Sync/Proto/bep.proto
+
+Original work Copyright (C) 2014-2024 The Syncthing Authors.
+See https://mozilla.org/MPL/2.0/ for the full MPL-2.0 license text.
+
+Per MPL-2.0 Section 3.3, these files are incorporated into this GPL-3.0
+licensed project. The MPL-2.0 licensed files may also be used under the
+terms of the GPL-3.0 license as part of this larger work.

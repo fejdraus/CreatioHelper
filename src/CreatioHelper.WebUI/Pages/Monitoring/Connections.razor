@@ -2,12 +2,13 @@
 @inject IApiClient ApiClient
 @inject StateContainer State
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>Connections - CreatioHelper</PageTitle>
+<PageTitle>@L["Connections_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Connections</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Connections_Title"]</MudText>
     <MudButton Variant="Variant.Outlined"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
@@ -25,27 +26,27 @@ else
     <MudGrid>
         <MudItem xs="12" md="4">
             <MudPaper Elevation="2" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-2">Summary</MudText>
+                <MudText Typo="Typo.h6" Class="mb-2">@L["Connections_Summary"]</MudText>
                 <MudSimpleTable Dense="true">
                     <tbody>
                         <tr>
-                            <td>Total Devices</td>
+                            <td>@L["Connections_TotalDevices"]</td>
                             <td class="text-right font-weight-bold">@_totalDevices</td>
                         </tr>
                         <tr>
-                            <td>Connected</td>
+                            <td>@L["Connections_ActiveConns"]</td>
                             <td class="text-right font-weight-bold" style="color: var(--mud-palette-success);">@_connectedDevices</td>
                         </tr>
                         <tr>
-                            <td>Disconnected</td>
+                            <td>@L["Connections_Disconnect"]</td>
                             <td class="text-right font-weight-bold" style="color: var(--mud-palette-error);">@_disconnectedDevices</td>
                         </tr>
                         <tr>
-                            <td>Direct Connections</td>
+                            <td>@L["Connections_DirectConns"]</td>
                             <td class="text-right font-weight-bold">@_directConnections</td>
                         </tr>
                         <tr>
-                            <td>Relay Connections</td>
+                            <td>@L["Connections_RelayConns"]</td>
                             <td class="text-right font-weight-bold">@_relayConnections</td>
                         </tr>
                     </tbody>
@@ -55,13 +56,13 @@ else
 
         <MudItem xs="12" md="8">
             <MudPaper Elevation="2" Class="pa-4">
-                <MudText Typo="Typo.h6" Class="mb-2">Bandwidth</MudText>
+                <MudText Typo="Typo.h6" Class="mb-2">@L["Connections_Bandwidth"]</MudText>
                 <MudGrid>
                     <MudItem xs="6">
                         <div class="d-flex align-center">
                             <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Color="Color.Success" Class="mr-2" />
                             <div>
-                                <MudText Typo="Typo.caption" Color="Color.Default">Download Rate</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["Connections_InRate"]</MudText>
                                 <MudText Typo="Typo.h5">@FormatBytes(_totalInBytesPerSec)/s</MudText>
                             </div>
                         </div>
@@ -70,17 +71,17 @@ else
                         <div class="d-flex align-center">
                             <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Color="Color.Info" Class="mr-2" />
                             <div>
-                                <MudText Typo="Typo.caption" Color="Color.Default">Upload Rate</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["Connections_OutRate"]</MudText>
                                 <MudText Typo="Typo.h5">@FormatBytes(_totalOutBytesPerSec)/s</MudText>
                             </div>
                         </div>
                     </MudItem>
                     <MudItem xs="6">
-                        <MudText Typo="Typo.caption" Color="Color.Default">Total Downloaded</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Connections_TotalIn"]</MudText>
                         <MudText Typo="Typo.body1">@FormatBytes(_totalInBytesTotal)</MudText>
                     </MudItem>
                     <MudItem xs="6">
-                        <MudText Typo="Typo.caption" Color="Color.Default">Total Uploaded</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Connections_TotalOut"]</MudText>
                         <MudText Typo="Typo.body1">@FormatBytes(_totalOutBytesTotal)</MudText>
                     </MudItem>
                 </MudGrid>
@@ -94,13 +95,13 @@ else
                   Hover="true"
                   FixedHeader="true">
             <HeaderContent>
-                <MudTh>Device</MudTh>
-                <MudTh>Status</MudTh>
-                <MudTh>Type</MudTh>
-                <MudTh>Address</MudTh>
-                <MudTh>Download</MudTh>
-                <MudTh>Upload</MudTh>
-                <MudTh>Connected</MudTh>
+                <MudTh>@L["Connections_Device"]</MudTh>
+                <MudTh>@L["Connections_Details"]</MudTh>
+                <MudTh>@L["Connections_Type"]</MudTh>
+                <MudTh>@L["Connections_Address"]</MudTh>
+                <MudTh>@L["Connections_InRate"]</MudTh>
+                <MudTh>@L["Connections_OutRate"]</MudTh>
+                <MudTh>@L["Connections_ConnectedAt"]</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Device">
@@ -188,11 +189,11 @@ else
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mt-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Discovery Status</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Connections_Discovery"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Local Discovery</MudText>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Connections_LocalDiscovery"]</MudText>
                 @if (_discoveryStatus?.LocalAnnounceEnabled == true)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Enabled</MudChip>
@@ -203,7 +204,7 @@ else
                 }
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudText Typo="Typo.subtitle2" Class="mb-2">Global Discovery</MudText>
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Connections_GlobalDiscovery"]</MudText>
                 @if (_discoveryStatus?.GlobalAnnounceEnabled == true)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
@@ -219,7 +220,7 @@ else
 
         @if (_discoveryStatus?.ExternalAddresses?.Length > 0)
         {
-            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">External Addresses</MudText>
+            <MudText Typo="Typo.subtitle2" Class="mt-4 mb-2">@L["Connections_ExternalAddr"]</MudText>
             <div class="d-flex flex-wrap gap-2">
                 @foreach (var addr in _discoveryStatus.ExternalAddresses)
                 {

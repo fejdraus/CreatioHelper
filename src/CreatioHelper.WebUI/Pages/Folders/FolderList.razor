@@ -3,17 +3,18 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>Folders - CreatioHelper</PageTitle>
+<PageTitle>@L["Folders_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Folders</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Folders_Title"]</MudText>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Add"
                OnClick="@AddFolder">
-        Add Folder
+        @L["Folders_AddFolder"]
     </MudButton>
 </div>
 
@@ -28,15 +29,15 @@ else if (State.Folders.Length == 0)
                  Size="Size.Large"
                  Color="Color.Default"
                  Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">No folders configured</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@L["Folders_NoFolders"]</MudText>
         <MudText Color="Color.Default" Class="mb-4">
-            Add a folder to start synchronizing files between devices.
+            @L["Folders_AddFolderHint"]
         </MudText>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="@AddFolder">
-            Add Your First Folder
+            @L["Folders_AddFolder"]
         </MudButton>
     </MudPaper>
 }
@@ -74,7 +75,7 @@ else
                             <div class="mb-3">
                                 <div class="d-flex justify-space-between mb-1">
                                     <MudText Typo="Typo.caption" Color="Color.Info">
-                                        @GetScanPhaseText(status.ScanProgress.ScanPhase) - @status.ScanProgress.FilesScanned.ToString("N0") / @status.ScanProgress.FilesTotal.ToString("N0") files
+                                        @GetScanPhaseText(status.ScanProgress.ScanPhase) - @status.ScanProgress.FilesScanned.ToString("N0") / @status.ScanProgress.FilesTotal.ToString("N0") @L["Folders_Files"]
                                     </MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Info">@status.ScanProgress.PercentComplete.ToString("F0")%</MudText>
                                 </div>
@@ -89,7 +90,7 @@ else
                         {
                             <div class="mb-3">
                                 <div class="d-flex justify-space-between mb-1">
-                                    <MudText Typo="Typo.caption" Color="Color.Primary">Syncing</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Primary">@L["FolderState_Syncing"]</MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Primary">@status.SyncPercentage.ToString("F0")%</MudText>
                                 </div>
                                 <MudProgressLinear Color="Color.Primary" Value="@status.SyncPercentage" Max="100" Size="Size.Small" />
@@ -100,15 +101,15 @@ else
                         <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
                             <tbody>
                                 <tr>
-                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Folder ID</MudText></td>
+                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_Id"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@folder.Id</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Folder Path</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_Path"]</MudText></td>
                                     <td><MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 300px;">@folder.Path</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Global State</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_GlobalState"]</MudText></td>
                                     <td>
                                         <MudText Typo="Typo.body2">
                                             <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.GlobalFiles.ToString("N0")
@@ -118,7 +119,7 @@ else
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Local State</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_LocalState"]</MudText></td>
                                     <td>
                                         <MudText Typo="Typo.body2">
                                             <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.LocalFiles.ToString("N0")
@@ -130,7 +131,7 @@ else
                                 @if (status.NeedFiles > 0 || status.NeedBytes > 0)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Out of Sync</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_OutOfSync"]</MudText></td>
                                         <td>
                                             <MudText Typo="Typo.body2" Color="Color.Warning">
                                                 <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.NeedFiles.ToString("N0")
@@ -140,19 +141,19 @@ else
                                     </tr>
                                 }
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Folder Type</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_Type"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@GetFolderTypeDisplay(folder.Type)</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Rescan Interval</MudText></td>
-                                    <td><MudText Typo="Typo.body2">@FormatInterval(folder.RescanIntervalS), @(folder.FsWatcherEnabled ? "Watch enabled" : "Watch disabled")</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_RescanInterval"]</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@FormatInterval(folder.RescanIntervalS), @(folder.FsWatcherEnabled ? L["Folders_WatchEnabled"] : L["Folders_WatchDisabled"])</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">File Pull Order</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_PullOrder"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@GetPullOrderDisplay(folder.Order)</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Shared With</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_SharedWith"]</MudText></td>
                                     <td>
                                         @if (folder.Devices?.Length > 0)
                                         {
@@ -164,13 +165,13 @@ else
                                         }
                                         else
                                         {
-                                            <MudText Typo="Typo.body2" Color="Color.Default">Not shared</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_NotShared"]</MudText>
                                         }
                                     </td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Last State Change</MudText></td>
-                                    <td><MudText Typo="Typo.body2">@(status.StateChanged != default ? status.StateChanged.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : "Never")</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_LastStateChange"]</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@(status.StateChanged != default ? status.StateChanged.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") : L["Common_Never"])</MudText></td>
                                 </tr>
                             </tbody>
                         </MudSimpleTable>
@@ -178,8 +179,8 @@ else
                         @if (status.Errors > 0)
                         {
                             <MudAlert Severity="Severity.Error" Class="mt-3" Dense="true">
-                                @status.Errors error(s)
-                                <MudLink Href="@($"/folders/{folder.Id}/errors")" Class="ml-2">View</MudLink>
+                                @status.Errors @L["Folders_Errors"]
+                                <MudLink Href="@($"/folders/{folder.Id}/errors")" Class="ml-2">@L["Common_ViewAll"]</MudLink>
                             </MudAlert>
                         }
                     }
@@ -195,20 +196,26 @@ else
                                    Color="@(folder.Paused ? Color.Success : Color.Warning)"
                                    StartIcon="@(folder.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                                    OnClick="@(() => TogglePause(folder))">
-                            @(folder.Paused ? "Resume" : "Pause")
+                            @(folder.Paused ? L["Action_Resume"] : L["Action_Pause"])
                         </MudButton>
                         <MudButton Variant="Variant.Outlined"
                                    Size="Size.Small"
                                    Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="@(() => ScanFolder(folder.Id))">
-                            Rescan
+                            @L["Action_Rescan"]
                         </MudButton>
                         <MudButton Variant="Variant.Outlined"
                                    Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.Edit"
                                    OnClick="@(() => EditFolder(folder))">
-                            Edit
+                            @L["Action_Edit"]
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined"
+                                   Size="Size.Small"
+                                   StartIcon="@Icons.Material.Filled.FilterList"
+                                   OnClick="@(() => EditIgnores(folder))">
+                            @L["Folders_Ignores"]
                         </MudButton>
                     </div>
                 </div>
@@ -236,7 +243,6 @@ else
 
     private void StartAutoRefresh()
     {
-        // Auto-refresh every 1 second while page is open
         _refreshTimer?.Dispose();
         _refreshTimer = new System.Threading.Timer(async _ =>
         {
@@ -244,7 +250,6 @@ else
             {
                 try
                 {
-                    // Refresh all folders to catch state changes
                     foreach (var folder in State.Folders)
                     {
                         var status = await ApiClient.GetFolderStatusAsync(folder.Id);
@@ -257,7 +262,6 @@ else
                 }
                 catch
                 {
-                    // Ignore errors during auto-refresh
                 }
             });
         }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
@@ -281,7 +285,7 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load folder statuses: {ex.Message}", Severity.Warning);
+            Snackbar.Add($"{L["Msg_LoadFailed", ex.Message]}", Severity.Warning);
         }
         finally
         {
@@ -310,53 +314,21 @@ else
         };
     }
 
-    private Color GetProgressBarColor(FolderConfig folder, FolderStatus? status)
-    {
-        if (folder.Paused) return Color.Warning;
-        if (status == null) return Color.Default;
-
-        return status.FolderState switch
-        {
-            FolderState.Idle when status.SyncPercentage >= 100 => Color.Success,
-            FolderState.Idle => Color.Default,
-            FolderState.Scanning => Color.Info,
-            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Primary,
-            FolderState.Error => Color.Error,
-            _ => Color.Default
-        };
-    }
-
-    private Color GetProgressTextColor(FolderConfig folder, FolderStatus? status)
-    {
-        if (folder.Paused) return Color.Warning;
-        if (status == null) return Color.Default;
-
-        return status.FolderState switch
-        {
-            FolderState.Idle when status.SyncPercentage >= 100 => Color.Success,
-            FolderState.Idle => Color.Default,
-            FolderState.Scanning => Color.Info,
-            FolderState.Syncing or FolderState.SyncPreparing or FolderState.SyncWaiting => Color.Primary,
-            FolderState.Error => Color.Error,
-            _ => Color.Default
-        };
-    }
-
     private string GetStatusText(FolderConfig folder, FolderStatus? status)
     {
-        if (folder.Paused) return "Paused";
-        if (status == null) return "Loading...";
+        if (folder.Paused) return L["Devices_Paused"];
+        if (status == null) return L["Common_Loading"];
 
         return status.FolderState switch
         {
-            FolderState.Idle => status.SyncPercentage >= 100 ? "Up to Date" : $"{status.SyncPercentage:F0}% synced",
-            FolderState.Syncing => $"Syncing ({status.SyncPercentage:F0}%)",
-            FolderState.SyncPreparing => "Preparing...",
-            FolderState.SyncWaiting => "Waiting...",
+            FolderState.Idle => status.SyncPercentage >= 100 ? L["Folders_UpToDate"] : $"{status.SyncPercentage:F0}%",
+            FolderState.Syncing => $"{L["FolderState_Syncing"]} ({status.SyncPercentage:F0}%)",
+            FolderState.SyncPreparing => L["Folders_Preparing"],
+            FolderState.SyncWaiting => L["Folders_Waiting"],
             FolderState.Scanning => status.ScanProgress != null
-                ? $"Scanning ({status.ScanProgress.PercentComplete:F0}%)"
-                : "Scanning...",
-            FolderState.Error => status.Error ?? "Error",
+                ? $"{L["FolderState_Scanning"]} ({status.ScanProgress.PercentComplete:F0}%)"
+                : L["FolderState_Scanning"],
+            FolderState.Error => status.Error ?? L["FolderState_Error"],
             _ => status.State
         };
     }
@@ -365,12 +337,12 @@ else
     {
         return phase switch
         {
-            ScanPhase.Enumerating => "Enumerating...",
-            ScanPhase.Scanning => "Scanning...",
-            ScanPhase.Updating => "Updating...",
-            ScanPhase.Completed => "Completed",
-            ScanPhase.Cancelled => "Cancelled",
-            ScanPhase.Failed => "Failed",
+            ScanPhase.Enumerating => L["ScanPhase_Enumerating"],
+            ScanPhase.Scanning => L["ScanPhase_Scanning"],
+            ScanPhase.Updating => L["ScanPhase_Updating"],
+            ScanPhase.Completed => L["ScanPhase_Completed"],
+            ScanPhase.Cancelled => L["ScanPhase_Cancelled"],
+            ScanPhase.Failed => L["ScanPhase_Failed"],
             _ => "..."
         };
     }
@@ -380,11 +352,11 @@ else
         try
         {
             await ApiClient.ScanFolderAsync(folderId);
-            Snackbar.Add("Scan initiated", Severity.Success);
+            Snackbar.Add(L["Msg_ScanStarted"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to scan folder: {ex.Message}", Severity.Error);
+            Snackbar.Add($"{L["Msg_ScanFailed", ex.Message]}", Severity.Error);
         }
     }
 
@@ -394,23 +366,23 @@ else
         {
             folder.Paused = !folder.Paused;
             await ApiClient.UpdateFolderAsync(folder);
-            Snackbar.Add(folder.Paused ? "Folder paused" : "Folder resumed", Severity.Success);
+            Snackbar.Add(folder.Paused ? L["Msg_FolderPaused"] : L["Msg_FolderResumed"], Severity.Success);
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            folder.Paused = !folder.Paused; // Revert
-            Snackbar.Add($"Failed to toggle pause: {ex.Message}", Severity.Error);
+            folder.Paused = !folder.Paused;
+            Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
         }
     }
 
     private async Task DeleteFolder(FolderConfig folder)
     {
         var confirmed = await DialogService.ShowMessageBox(
-            "Remove Folder",
-            $"Are you sure you want to remove '{folder.DisplayName}'? This will not delete any files on disk.",
-            yesText: "Remove",
-            cancelText: "Cancel");
+            L["Folders_RemoveFolder"],
+            L["Msg_DeleteFolderConfirm", folder.DisplayName],
+            yesText: L["Action_Delete"],
+            cancelText: L["Settings_Cancel"]);
 
         if (confirmed == true)
         {
@@ -418,11 +390,11 @@ else
             {
                 await ApiClient.DeleteFolderAsync(folder.Id);
                 State.Folders = State.Folders.Where(f => f.Id != folder.Id).ToArray();
-                Snackbar.Add("Folder removed", Severity.Success);
+                Snackbar.Add(L["Msg_FolderRemoved"], Severity.Success);
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Failed to remove folder: {ex.Message}", Severity.Error);
+                Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
             }
         }
     }
@@ -436,12 +408,11 @@ else
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<AddFolderDialog>("Add Folder", options);
+        var dialog = await DialogService.ShowAsync<AddFolderDialog>(L["Folders_AddFolder"], options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false, Data: FolderConfig newFolder })
         {
-            // Add to state and refresh
             State.Folders = [.. State.Folders, newFolder];
             await LoadFolderStatusesAsync();
         }
@@ -461,12 +432,11 @@ else
             { x => x.Folder, folder }
         };
 
-        var dialog = await DialogService.ShowAsync<AddFolderDialog>("Edit Folder", parameters, options);
+        var dialog = await DialogService.ShowAsync<AddFolderDialog>(L["Folders_EditFolder"], parameters, options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false, Data: FolderConfig updatedFolder })
         {
-            // Update in state
             var folders = State.Folders.ToList();
             var index = folders.FindIndex(f => f.Id == updatedFolder.Id);
             if (index >= 0)
@@ -493,7 +463,7 @@ else
             { x => x.FolderName, folder.DisplayName }
         };
 
-        await DialogService.ShowAsync<IgnoresDialog>("Ignore Patterns", parameters, options);
+        await DialogService.ShowAsync<IgnoresDialog>(L["Folders_Ignores"], parameters, options);
     }
 
     private string FormatBytes(long bytes)
@@ -517,11 +487,11 @@ else
     {
         return type?.ToLowerInvariant() switch
         {
-            "sendreceive" or null => "Send & Receive",
-            "sendonly" => "Send Only",
-            "receiveonly" => "Receive Only",
-            "receiveencrypted" => "Receive Encrypted",
-            _ => type ?? "Send & Receive"
+            "sendreceive" or null => L["FolderType_SendReceive"],
+            "sendonly" => L["FolderType_SendOnly"],
+            "receiveonly" => L["FolderType_ReceiveOnly"],
+            "receiveencrypted" => L["FolderType_ReceiveEncrypted"],
+            _ => type ?? L["FolderType_SendReceive"]
         };
     }
 
@@ -537,13 +507,13 @@ else
     {
         return order?.ToLowerInvariant() switch
         {
-            "random" => "Random",
-            "alphabetic" => "Alphabetic",
-            "smallestfirst" => "Smallest First",
-            "largestfirst" => "Largest First",
-            "oldestfirst" => "Oldest First",
-            "newestfirst" => "Newest First",
-            _ => "Random"
+            "random" => L["PullOrder_Random"],
+            "alphabetic" => L["PullOrder_Alphabetic"],
+            "smallestfirst" => L["PullOrder_SmallestFirst"],
+            "largestfirst" => L["PullOrder_LargestFirst"],
+            "oldestfirst" => L["PullOrder_OldestFirst"],
+            "newestfirst" => L["PullOrder_NewestFirst"],
+            _ => L["PullOrder_Random"]
         };
     }
 

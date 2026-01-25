@@ -11,13 +11,18 @@ namespace CreatioHelper.Infrastructure.Services.Network.Discovery;
 /// <summary>
 /// Unified device discovery manager that coordinates local and global discovery.
 /// Based on Syncthing's discovery coordination from lib/discover/manager.go
+///
+/// Supports multiple global discovery backends:
+/// - GlobalDiscovery: Newer implementation with TLS client certificate support
+/// - SyncthingGlobalDiscovery: Legacy implementation for backwards compatibility
 /// </summary>
 public class DiscoveryManager : IDiscoveryManager
 {
     private readonly ILogger<DiscoveryManager> _logger;
     private readonly DiscoveryCache _cache;
     private readonly ILocalDiscovery? _localDiscovery;
-    private readonly SyncthingGlobalDiscovery? _globalDiscovery;
+    private readonly SyncthingGlobalDiscovery? _syncthingGlobalDiscovery;
+    private readonly GlobalDiscovery? _globalDiscovery;
     private readonly ConcurrentDictionary<string, List<string>> _staticAddresses = new();
     private readonly SemaphoreSlim _lookupSemaphore = new(1, 1);
 
@@ -29,26 +34,113 @@ public class DiscoveryManager : IDiscoveryManager
     private DateTime _lastReceived = DateTime.MinValue;
 
     public bool LocalDiscoveryEnabled => _localDiscovery != null;
-    public bool GlobalDiscoveryEnabled => _globalDiscovery != null;
+    public bool GlobalDiscoveryEnabled => _globalDiscovery != null || _syncthingGlobalDiscovery != null;
+
+    /// <summary>
+    /// Returns true if using the newer GlobalDiscovery implementation with TLS support.
+    /// </summary>
+    public bool UsingTlsGlobalDiscovery => _globalDiscovery != null;
 
     public event EventHandler<DeviceDiscoveredArgs>? DeviceDiscovered;
 
+    /// <summary>
+    /// Creates a new DiscoveryManager with the newer GlobalDiscovery implementation.
+    /// Preferred constructor for new code.
+    /// </summary>
     public DiscoveryManager(
         ILogger<DiscoveryManager> logger,
         DiscoveryCache cache,
         ILocalDiscovery? localDiscovery = null,
-        SyncthingGlobalDiscovery? globalDiscovery = null)
+        GlobalDiscovery? globalDiscovery = null)
     {
         _logger = logger;
         _cache = cache;
         _localDiscovery = localDiscovery;
         _globalDiscovery = globalDiscovery;
+        _syncthingGlobalDiscovery = null;
 
+        SubscribeToDiscoveryEvents();
+    }
+
+    /// <summary>
+    /// Creates a new DiscoveryManager with the legacy SyncthingGlobalDiscovery.
+    /// Provided for backwards compatibility.
+    /// </summary>
+    public DiscoveryManager(
+        ILogger<DiscoveryManager> logger,
+        DiscoveryCache cache,
+        ILocalDiscovery? localDiscovery,
+        SyncthingGlobalDiscovery? syncthingGlobalDiscovery)
+    {
+        _logger = logger;
+        _cache = cache;
+        _localDiscovery = localDiscovery;
+        _syncthingGlobalDiscovery = syncthingGlobalDiscovery;
+        _globalDiscovery = null;
+
+        SubscribeToDiscoveryEvents();
+    }
+
+    /// <summary>
+    /// Creates a new DiscoveryManager with both global discovery implementations.
+    /// The newer GlobalDiscovery is preferred when available.
+    /// </summary>
+    public DiscoveryManager(
+        ILogger<DiscoveryManager> logger,
+        DiscoveryCache cache,
+        ILocalDiscovery? localDiscovery,
+        GlobalDiscovery? globalDiscovery,
+        SyncthingGlobalDiscovery? syncthingGlobalDiscovery)
+    {
+        _logger = logger;
+        _cache = cache;
+        _localDiscovery = localDiscovery;
+        _globalDiscovery = globalDiscovery;
+        _syncthingGlobalDiscovery = syncthingGlobalDiscovery;
+
+        SubscribeToDiscoveryEvents();
+    }
+
+    private void SubscribeToDiscoveryEvents()
+    {
         // Subscribe to local discovery events
         if (_localDiscovery != null)
         {
             _localDiscovery.DeviceDiscovered += OnLocalDeviceDiscovered;
         }
+
+        // Subscribe to global discovery events (newer implementation)
+        if (_globalDiscovery != null)
+        {
+            _globalDiscovery.DeviceDiscovered += OnGlobalDeviceDiscovered;
+        }
+    }
+
+    /// <summary>
+    /// Handle device discovered via GlobalDiscovery (async event).
+    /// </summary>
+    private async Task OnGlobalDeviceDiscovered(DiscoveredDevice device)
+    {
+        _lastReceived = DateTime.UtcNow;
+
+        // Add to cache
+        _cache.AddPositive(device.DeviceId, device.Addresses, DiscoveryCacheSource.Global);
+
+        // Raise event
+        var addresses = device.Addresses
+            .Select(a => new DiscoveredAddress
+            {
+                Address = a,
+                Source = DiscoveryCacheSource.Global,
+                Priority = CalculatePriority(a, DiscoveryCacheSource.Global),
+                IsLan = IsLanAddress(a),
+                DiscoveredAt = device.LastSeen
+            })
+            .ToList();
+
+        DeviceDiscovered?.Invoke(this, new DeviceDiscoveredArgs(device.DeviceId, addresses, DiscoveryCacheSource.Global));
+
+        await Task.CompletedTask;
     }
 
     public async Task StartAsync(CancellationToken cancellationToken = default)
@@ -67,15 +159,22 @@ public class DiscoveryManager : IDiscoveryManager
                 _logger.LogInformation("Local discovery started");
             }
 
-            // Global discovery doesn't need explicit start - it's used on-demand
+            // Log global discovery availability
+            // Note: GlobalDiscovery and SyncthingGlobalDiscovery are used on-demand for lookups
+            // GlobalDiscovery can be started separately for announcements if needed
             if (_globalDiscovery != null)
             {
-                _logger.LogInformation("Global discovery available");
+                _logger.LogInformation("Global discovery available (TLS-enabled, {ServerCount} servers)",
+                    _globalDiscovery.DiscoveryServers.Count);
+            }
+            else if (_syncthingGlobalDiscovery != null)
+            {
+                _logger.LogInformation("Global discovery available (legacy mode)");
             }
 
             _isRunning = true;
-            _logger.LogInformation("Discovery manager started (Local: {Local}, Global: {Global})",
-                LocalDiscoveryEnabled, GlobalDiscoveryEnabled);
+            _logger.LogInformation("Discovery manager started (Local: {Local}, Global: {Global}, TLS: {TLS})",
+                LocalDiscoveryEnabled, GlobalDiscoveryEnabled, UsingTlsGlobalDiscovery);
         }
         catch (Exception ex)
         {
@@ -94,6 +193,12 @@ public class DiscoveryManager : IDiscoveryManager
         if (_localDiscovery != null)
         {
             await _localDiscovery.StopAsync();
+        }
+
+        // Stop GlobalDiscovery if running
+        if (_globalDiscovery != null && _globalDiscovery.IsRunning)
+        {
+            await _globalDiscovery.StopAsync();
         }
 
         _isRunning = false;
@@ -179,12 +284,50 @@ public class DiscoveryManager : IDiscoveryManager
             }
 
             // 3. Try global discovery if we don't have enough addresses or need verification
-            if (_globalDiscovery != null && (result.Addresses.Count == 0 || !result.Sources.Contains(DiscoveryCacheSource.Local)))
+            // Prefer the newer GlobalDiscovery (TLS-enabled) if available, fallback to legacy
+            if ((result.Addresses.Count == 0 || !result.Sources.Contains(DiscoveryCacheSource.Local)) &&
+                (_globalDiscovery != null || _syncthingGlobalDiscovery != null))
             {
                 try
                 {
-                    var globalAddresses = await _globalDiscovery.LookupAsync(deviceId, cancellationToken);
-                    if (globalAddresses.Any())
+                    List<string>? globalAddresses = null;
+                    DateTime lastSeen = DateTime.UtcNow;
+
+                    // Try the newer TLS-enabled GlobalDiscovery first
+                    if (_globalDiscovery != null)
+                    {
+                        try
+                        {
+                            var discoveredDevice = await _globalDiscovery.LookupAsync(deviceId, cancellationToken);
+                            if (discoveredDevice != null && discoveredDevice.Addresses.Any())
+                            {
+                                globalAddresses = discoveredDevice.Addresses;
+                                lastSeen = discoveredDevice.LastSeen;
+                                _logger.LogDebug("Global discovery (TLS) found device {DeviceId} with {Count} addresses",
+                                    deviceId, globalAddresses.Count);
+                            }
+                        }
+                        catch (LookupError lookupError)
+                        {
+                            // LookupError indicates lookups are disabled (noLookup mode)
+                            // Cache the error duration and try fallback
+                            _logger.LogDebug("Global discovery (TLS) lookup disabled: {Error}, cache for {CacheFor}",
+                                lookupError.Message, lookupError.CacheFor);
+                        }
+                    }
+
+                    // Fallback to legacy SyncthingGlobalDiscovery if TLS lookup failed
+                    if (globalAddresses == null && _syncthingGlobalDiscovery != null)
+                    {
+                        globalAddresses = await _syncthingGlobalDiscovery.LookupAsync(deviceId, cancellationToken);
+                        if (globalAddresses != null && globalAddresses.Any())
+                        {
+                            _logger.LogDebug("Global discovery (legacy) found device {DeviceId} with {Count} addresses",
+                                deviceId, globalAddresses.Count);
+                        }
+                    }
+
+                    if (globalAddresses != null && globalAddresses.Any())
                     {
                         result.Sources.Add(DiscoveryCacheSource.Global);
                         foreach (var addr in globalAddresses)
@@ -197,7 +340,7 @@ public class DiscoveryManager : IDiscoveryManager
                                     Source = DiscoveryCacheSource.Global,
                                     Priority = CalculatePriority(addr, DiscoveryCacheSource.Global),
                                     IsLan = IsLanAddress(addr),
-                                    DiscoveredAt = DateTime.UtcNow
+                                    DiscoveredAt = lastSeen
                                 });
                             }
                         }
@@ -278,10 +421,43 @@ public class DiscoveryManager : IDiscoveryManager
             };
         }
 
-        // Global discovery status
+        // Global discovery status - prefer TLS implementation if available
         if (_globalDiscovery != null)
         {
-            var errors = _globalDiscovery.GetErrors();
+            // Use the newer TLS-enabled GlobalDiscovery
+            var servers = _globalDiscovery.DiscoveryServers.ToList();
+            var serverStatuses = new Dictionary<string, GlobalDiscoveryServerStatus>();
+
+            // Check for errors on each server
+            var currentError = _globalDiscovery.Error;
+            if (currentError != null)
+            {
+                // If there's an error, mark all servers as having issues
+                foreach (var server in servers)
+                {
+                    serverStatuses[server] = new GlobalDiscoveryServerStatus
+                    {
+                        Server = server,
+                        Available = false,
+                        Error = currentError,
+                        FailureCount = 1
+                    };
+                }
+            }
+
+            status.GlobalDiscovery = new GlobalDiscoveryStatus
+            {
+                Enabled = true,
+                Running = _globalDiscovery.IsRunning,
+                Servers = servers,
+                LastAnnouncement = _lastGlobalAnnouncement,
+                ServerStatuses = serverStatuses
+            };
+        }
+        else if (_syncthingGlobalDiscovery != null)
+        {
+            // Fallback to legacy SyncthingGlobalDiscovery
+            var errors = _syncthingGlobalDiscovery.GetErrors();
             status.GlobalDiscovery = new GlobalDiscoveryStatus
             {
                 Enabled = true,
@@ -443,9 +619,16 @@ public class DiscoveryManager : IDiscoveryManager
     {
         if (!_disposed)
         {
+            // Unsubscribe from local discovery events
             if (_localDiscovery != null)
             {
                 _localDiscovery.DeviceDiscovered -= OnLocalDeviceDiscovered;
+            }
+
+            // Unsubscribe from global discovery events
+            if (_globalDiscovery != null)
+            {
+                _globalDiscovery.DeviceDiscovered -= OnGlobalDeviceDiscovered;
             }
 
             _lookupSemaphore.Dispose();

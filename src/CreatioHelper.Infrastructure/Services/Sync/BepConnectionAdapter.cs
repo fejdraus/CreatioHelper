@@ -21,9 +21,16 @@ public class BepConnectionAdapter : IBepConnection
     public bool IsConnected => _useConnectionPool ? (_pooledConnection != null) : (_connection?.IsConnected ?? false);
 
     // Events
+
+    /// <inheritdoc />
+    public event EventHandler<BepClusterConfigReceivedEventArgs>? ClusterConfigReceived;
     public event EventHandler<BepIndexReceivedEventArgs>? IndexReceived;
+    /// <inheritdoc />
+    public event EventHandler<BepIndexUpdateReceivedEventArgs>? IndexUpdateReceived;
     public event EventHandler<BepBlockRequestReceivedEventArgs>? BlockRequestReceived;
     public event EventHandler<BepBlockResponseReceivedEventArgs>? BlockResponseReceived;
+    /// <inheritdoc />
+    public event EventHandler<BepDownloadProgressReceivedEventArgs>? DownloadProgressReceived;
     public event EventHandler<BepPingReceivedEventArgs>? PingReceived;
     public event EventHandler<BepPongReceivedEventArgs>? PongReceived;
     public event EventHandler<BepConnectionClosedEventArgs>? ConnectionClosed;
@@ -57,15 +64,76 @@ public class BepConnectionAdapter : IBepConnection
         {
             switch (e.Type)
             {
+                case BepMessageType.ClusterConfig:
+                    // ClusterConfig MUST be the first message after TLS authentication (BEP spec).
+                    // This message contains device and folder configuration from the peer.
+                    if (e.Message is BepClusterConfig clusterConfig)
+                    {
+                        _logger.LogDebug(
+                            "BepConnectionAdapter: Received ClusterConfig from device {DeviceId} with {FolderCount} folders",
+                            DeviceId, clusterConfig.Folders.Count);
+
+                        var args = new BepClusterConfigReceivedEventArgs
+                        {
+                            Folders = clusterConfig.Folders.Select(f => new BepClusterConfigFolder
+                            {
+                                Id = f.Id,
+                                Label = f.Label,
+                                ReadOnly = f.ReadOnly,
+                                Paused = f.Paused,
+                                Devices = f.Devices.Select(d => new BepClusterConfigDevice
+                                {
+                                    Id = d.Id,
+                                    DeviceId = d.DeviceId,
+                                    Name = d.Name,
+                                    Introducer = d.Introducer,
+                                    MaxSequence = d.MaxSequence
+                                }).ToList()
+                            }).ToList()
+                        };
+                        ClusterConfigReceived?.Invoke(this, args);
+                    }
+                    break;
+
                 case BepMessageType.Index:
+                    // Index message contains the complete file listing for a folder.
+                    // According to BEP spec, Index is sent after ClusterConfig exchange
+                    // and contains the full list of files for a folder at the current sequence.
                     if (e.Message is BepIndex index)
                     {
+                        _logger.LogDebug(
+                            "BepConnectionAdapter: Received Index from device {DeviceId} for folder {FolderId} " +
+                            "with {FileCount} files (LastSequence: {LastSequence})",
+                            DeviceId, index.Folder, index.Files.Count, index.LastSequence);
+
                         var args = new BepIndexReceivedEventArgs
                         {
                             FolderId = index.Folder,
-                            Files = index.Files.Cast<object>()
+                            Files = index.Files.Cast<object>(),
+                            LastSequence = index.LastSequence
                         };
                         IndexReceived?.Invoke(this, args);
+                    }
+                    break;
+
+                case BepMessageType.IndexUpdate:
+                    // IndexUpdate message contains incremental changes to a folder's file listing.
+                    // According to BEP spec, IndexUpdate is sent after the initial Index exchange
+                    // and contains only the files that have changed since the last sequence.
+                    if (e.Message is BepIndexUpdate indexUpdate)
+                    {
+                        _logger.LogDebug(
+                            "BepConnectionAdapter: Received IndexUpdate from device {DeviceId} for folder {FolderId} " +
+                            "with {FileCount} changed files (LastSequence: {LastSequence})",
+                            DeviceId, indexUpdate.Folder, indexUpdate.Files.Count, indexUpdate.LastSequence);
+
+                        var args = new BepIndexUpdateReceivedEventArgs
+                        {
+                            FolderId = indexUpdate.Folder,
+                            Files = indexUpdate.Files.Cast<object>(),
+                            LastSequence = indexUpdate.LastSequence
+                        };
+                        IndexUpdateReceived?.Invoke(this, args);
                     }
                     break;
 
@@ -95,6 +163,32 @@ public class BepConnectionAdapter : IBepConnection
                             ErrorCode = (Application.Interfaces.BepErrorCode)(int)response.Code
                         };
                         BlockResponseReceived?.Invoke(this, args);
+                    }
+                    break;
+
+                case BepMessageType.DownloadProgress:
+                    // DownloadProgress message provides feedback about file transfer progress.
+                    // According to BEP spec, this message is sent periodically to inform peers
+                    // about which blocks have been downloaded or are in progress.
+                    if (e.Message is BepDownloadProgress downloadProgress)
+                    {
+                        _logger.LogDebug(
+                            "BepConnectionAdapter: Received DownloadProgress from device {DeviceId} for folder {FolderId} " +
+                            "with {UpdateCount} file updates",
+                            DeviceId, downloadProgress.Folder, downloadProgress.Updates.Count);
+
+                        var args = new BepDownloadProgressReceivedEventArgs
+                        {
+                            FolderId = downloadProgress.Folder,
+                            Updates = downloadProgress.Updates.Select(u => new BepFileDownloadProgressUpdateInfo
+                            {
+                                UpdateType = (BepDownloadProgressUpdateType)(int)u.UpdateType,
+                                FileName = u.Name,
+                                BlockIndexes = u.BlockIndexes,
+                                BlockSize = u.BlockSize
+                            }).ToList()
+                        };
+                        DownloadProgressReceived?.Invoke(this, args);
                     }
                     break;
 

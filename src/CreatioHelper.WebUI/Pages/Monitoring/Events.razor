@@ -3,15 +3,16 @@
 @inject ISignalRService SignalR
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>Events - CreatioHelper</PageTitle>
+<PageTitle>@L["Events_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Events</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Events_Title"]</MudText>
     <MudSwitch @bind-Value="_liveUpdates"
                Color="Color.Primary"
-               Label="Live Updates" />
+               Label="@L["Events_LiveUpdates"]" />
 </div>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -20,10 +21,10 @@
             <MudSelect T="string"
                        Value="_selectedEventType"
                        ValueChanged="OnEventTypeChanged"
-                       Label="Event Type"
+                       Label="@L["Events_FilterByType"]"
                        Variant="Variant.Outlined"
                        Dense="true">
-                <MudSelectItem Value="@("all")">All Events</MudSelectItem>
+                <MudSelectItem Value="@("all")">@L["Events_AllTypes"]</MudSelectItem>
                 <MudSelectItem Value="@("StateChanged")">State Changed</MudSelectItem>
                 <MudSelectItem Value="@("ItemStarted")">Item Started</MudSelectItem>
                 <MudSelectItem Value="@("ItemFinished")">Item Finished</MudSelectItem>
@@ -75,9 +76,9 @@ else if (_filteredEvents.Count == 0)
                  Size="Size.Large"
                  Color="Color.Default"
                  Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">No events</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@L["Events_NoEvents"]</MudText>
         <MudText Color="Color.Default">
-            No events match the current filter criteria
+            @L["Events_WaitingForEvents"]
         </MudText>
     </MudPaper>
 }
@@ -90,9 +91,9 @@ else
                   FixedHeader="true"
                   Height="calc(100vh - 350px)">
             <HeaderContent>
-                <MudTh Style="width: 160px;">Time</MudTh>
-                <MudTh Style="width: 140px;">Type</MudTh>
-                <MudTh>Details</MudTh>
+                <MudTh Style="width: 160px;">@L["Events_Time"]</MudTh>
+                <MudTh Style="width: 140px;">@L["Events_EventType"]</MudTh>
+                <MudTh>@L["Events_Data"]</MudTh>
                 <MudTh Style="width: 50px;"></MudTh>
             </HeaderContent>
             <RowTemplate>

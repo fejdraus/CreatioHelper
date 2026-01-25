@@ -16,6 +16,7 @@ using CreatioHelper.Infrastructure.Services.Sync.Diagnostics;
 using CreatioHelper.Infrastructure.Services.Sync.FileSystem;
 using CreatioHelper.Infrastructure.Services.Sync.Security;
 using CreatioHelper.Infrastructure.Services.Sync.Transfer;
+using CreatioHelper.Infrastructure.Services.Sync.Upgrade;
 using ScanningNs = CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
@@ -75,12 +76,18 @@ public static class SyncServiceExtensions
     {
         // Generate or load device certificate
         var certificate = GenerateDeviceCertificate();
-        
+
         // Use provided config or create default
         var syncConfig = config ?? new SyncConfiguration(
             GenerateDeviceId(certificate),
             Environment.MachineName);
-        
+
+        // Ensure DeviceId is set (auto-generate from certificate if empty)
+        if (string.IsNullOrEmpty(syncConfig.DeviceId))
+        {
+            syncConfig.DeviceId = GenerateDeviceId(certificate);
+        }
+
         var port = syncConfig.Port;
         Console.WriteLine($"DEBUG: Using sync port={port}, deviceName={syncConfig.DeviceName}");
         
@@ -369,6 +376,23 @@ public static class SyncServiceExtensions
             return new UpgradeService(logger, httpClient, options);
         });
 
+        // P2P Upgrade Service - distributes updates via BEP protocol
+        services.AddSingleton<P2PUpgradeOptions>(provider =>
+        {
+            var config = provider.GetService<IConfiguration>();
+            var options = config?.GetSection("P2PUpgrade").Get<P2PUpgradeOptions>() ?? new P2PUpgradeOptions();
+            return options;
+        });
+        services.AddSingleton<IP2PUpgradeService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<P2PUpgradeService>>();
+            var options = provider.GetRequiredService<P2PUpgradeOptions>();
+            var syncProtocol = provider.GetService<ISyncProtocol>();
+            return new P2PUpgradeService(logger, options, syncProtocol);
+        });
+        services.AddHostedService<P2PUpgradeService>(provider =>
+            (P2PUpgradeService)provider.GetRequiredService<IP2PUpgradeService>());
+
         // FileSystem Services - Factories for folder-specific instances
         services.AddSingleton<CaseSensitiveFileSystemFactory>();
         services.AddSingleton<ExtendedAttributeProviderFactory>();
@@ -444,9 +468,10 @@ public static class SyncServiceExtensions
     private static string GenerateDeviceId(X509Certificate2 certificate)
     {
         // Syncthing uses SHA-256 hash of the certificate as device ID
+        // Format: base32 encoded with Luhn check digits (56 chars without dashes, 63 with dashes)
         using var sha256 = System.Security.Cryptography.SHA256.Create();
         var hash = sha256.ComputeHash(certificate.RawData);
-        return Convert.ToHexString(hash).ToLower();
+        return DiscoveryProtocol.FormatDeviceId(hash);
     }
 }
 

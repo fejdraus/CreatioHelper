@@ -1,9 +1,11 @@
 @page "/folders/{FolderId}/errors"
 @using CreatioHelper.WebUI.Models
 @using CreatioHelper.WebUI.Services
+@using Microsoft.Extensions.Localization
 @inject ApiClient Api
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 
 <PageTitle>Errors - @(_folderName ?? "Folder") - CreatioHelper</PageTitle>
 
@@ -14,13 +16,13 @@
         <div class="d-flex justify-space-between align-center mb-4">
             <MudText Typo="Typo.h5">
                 <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Color="Color.Error" />
-                Folder Errors
+                @L["FolderErrors_Title"]
             </MudText>
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="@LoadDataAsync">
-                Refresh
+                @L["Common_Refresh"]
             </MudButton>
         </div>
 
@@ -31,33 +33,33 @@
         else if (_errors == null || _errors.Length == 0)
         {
             <MudAlert Severity="Severity.Success" Class="mb-4">
-                <MudText>No errors found for this folder.</MudText>
+                <MudText>@L["FolderErrors_NoErrors"]</MudText>
             </MudAlert>
         }
         else
         {
             <MudAlert Severity="Severity.Warning" Class="mb-4">
-                <MudText>@_errors.Length error(s) found. These files failed to sync.</MudText>
+                <MudText>@L["FolderErrors_TotalErrors", _errors.Length]</MudText>
             </MudAlert>
 
             <MudTable Items="@_errors" Dense="true" Hover="true" Striped="true" Bordered="true">
                 <HeaderContent>
-                    <MudTh>File Path</MudTh>
-                    <MudTh>Error</MudTh>
-                    <MudTh>Time</MudTh>
+                    <MudTh>@L["FolderErrors_File"]</MudTh>
+                    <MudTh>@L["FolderErrors_Error"]</MudTh>
+                    <MudTh>@L["FolderErrors_Time"]</MudTh>
                 </HeaderContent>
                 <RowTemplate>
-                    <MudTd DataLabel="File Path">
+                    <MudTd DataLabel="@L["FolderErrors_File"]">
                         <MudText Typo="Typo.body2" Style="word-break: break-all; font-family: monospace;">
                             @context.Path
                         </MudText>
                     </MudTd>
-                    <MudTd DataLabel="Error">
+                    <MudTd DataLabel="@L["FolderErrors_Error"]">
                         <MudText Typo="Typo.body2" Color="Color.Error">
                             @context.Error
                         </MudText>
                     </MudTd>
-                    <MudTd DataLabel="Time">
+                    <MudTd DataLabel="@L["FolderErrors_Time"]">
                         <MudText Typo="Typo.body2">
                             @context.Time.ToString("g")
                         </MudText>
@@ -73,8 +75,7 @@
 
         <MudText Typo="Typo.body2" Color="Color.Secondary">
             <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
-            Errors usually resolve automatically when the underlying issue is fixed (e.g., file permissions, disk space).
-            You can also try rescanning the folder to clear resolved errors.
+            @L["FolderErrors_HelpText"]
         </MudText>
 
         <MudButton Variant="Variant.Text"
@@ -82,7 +83,7 @@
                    StartIcon="@Icons.Material.Filled.Sync"
                    OnClick="@RescanFolder"
                    Class="mt-3">
-            Rescan Folder
+            @L["FolderErrors_Rescan"]
         </MudButton>
     </MudPaper>
 </MudContainer>
@@ -114,14 +115,14 @@
 
             _breadcrumbs = new List<BreadcrumbItem>
             {
-                new("Folders", "/folders"),
+                new(L["Common_Folders"], "/folders"),
                 new(_folderName, $"/folders/{FolderId}"),
-                new("Errors", null, disabled: true)
+                new(L["FolderErrors_Title"], null, disabled: true)
             };
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load errors: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_FailedToLoadErrors", ex.Message], Severity.Error);
         }
         finally
         {
@@ -134,11 +135,11 @@
         try
         {
             await Api.ScanFolderAsync(FolderId);
-            Snackbar.Add("Rescan started", Severity.Success);
+            Snackbar.Add(L["Msg_RescanStarted"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to start rescan: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_FailedToStartRescan", ex.Message], Severity.Error);
         }
     }
 }

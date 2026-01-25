@@ -1,10 +1,11 @@
 @page "/settings/network"
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>Network Settings - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_Network_Title"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Network Settings</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Settings_Network_Title"]</MudText>
 
 @if (_isLoading)
 {
@@ -13,127 +14,285 @@
 else if (_config != null)
 {
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Listening Addresses</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_ListenAddresses"]</MudText>
 
-        <MudTextField @bind-Value="_syncProtocolListen"
-                      Label="Sync Protocol Listen Address"
-                      Variant="Variant.Outlined"
-                      HelperText="Format: tcp://0.0.0.0:22000 or dynamic" />
-
-        <MudTextField @bind-Value="_guiAddress"
-                      Label="GUI Listen Address"
-                      Variant="Variant.Outlined"
-                      Class="mt-3"
-                      HelperText="Format: 127.0.0.1:8384" />
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_syncProtocolListen"
+                              Label="@L["Settings_Network_SyncProtocol"]"
+                              Variant="Variant.Outlined"
+                              HelperText="@L["Settings_Network_SyncProtocolDesc"]" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudTextField @bind-Value="_guiAddress"
+                              Label="@L["Settings_Network_GuiAddress"]"
+                              Variant="Variant.Outlined"
+                              HelperText="@L["Settings_Network_GuiAddressDesc"]" />
+            </MudItem>
+        </MudGrid>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">NAT Traversal</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_NatSettings"]</MudText>
 
         <MudSwitch @bind-Value="_natEnabled"
                    Color="Color.Primary"
-                   Label="Enable NAT Traversal" />
+                   Label="@L["Settings_Network_NatEnabled"]" />
         <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            Automatically configure UPnP/NAT-PMP port forwarding
+            @L["Settings_Network_NatEnabledDesc"]
         </MudText>
 
-        <MudDivider Class="my-3" />
+        @if (_natEnabled)
+        {
+            <MudDivider Class="my-3" />
 
-        <MudSwitch @bind-Value="_relaysEnabled"
-                   Color="Color.Primary"
-                   Label="Enable Relaying" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            Use relay servers when direct connection is not possible
-        </MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatMethods"]</MudText>
 
-        <MudSwitch @bind-Value="_globalAnnounceEnabled"
-                   Color="Color.Primary"
-                   Label="Global Discovery" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            Announce to global discovery servers
-        </MudText>
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSwitch @bind-Value="_upnpEnabled"
+                               Color="Color.Secondary"
+                               Label="@L["Settings_Network_UpnpEnabled"]" />
+                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                        @L["Settings_Network_UpnpEnabledDesc"]
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSwitch @bind-Value="_natPmpEnabled"
+                               Color="Color.Secondary"
+                               Label="@L["Settings_Network_NatPmpEnabled"]" />
+                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                        @L["Settings_Network_NatPmpEnabledDesc"]
+                    </MudText>
+                </MudItem>
+            </MudGrid>
 
-        <MudSwitch @bind-Value="_localAnnounceEnabled"
-                   Color="Color.Primary"
-                   Label="Local Discovery" />
-        <MudText Typo="Typo.caption" Color="Color.Default">
-            Discover devices on local network
-        </MudText>
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatLeaseSettings"]</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_natLeaseMinutes"
+                                     Label="@L["Settings_Network_NatLeaseMins"]"
+                                     Variant="Variant.Outlined"
+                                     Min="5"
+                                     Max="1440"
+                                     HelperText="@L["Settings_Network_NatLeaseMinsDesc"]" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_natRenewalMinutes"
+                                     Label="@L["Settings_Network_NatRenewalMins"]"
+                                     Variant="Variant.Outlined"
+                                     Min="1"
+                                     Max="120"
+                                     HelperText="@L["Settings_Network_NatRenewalMinsDesc"]" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_natTimeoutSeconds"
+                                     Label="@L["Settings_Network_NatTimeoutSecs"]"
+                                     Variant="Variant.Outlined"
+                                     Min="5"
+                                     Max="60"
+                                     HelperText="@L["Settings_Network_NatTimeoutSecsDesc"]" />
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_StunConfig"]</MudText>
+
+            <MudTextField @bind-Value="_stunServers"
+                          Label="@L["Settings_Network_StunServers"]"
+                          Lines="3"
+                          Variant="Variant.Outlined"
+                          HelperText="@L["Settings_Network_StunServersDesc"]" />
+
+            <MudNumericField @bind-Value="_stunKeepaliveSeconds"
+                             Label="@L["Settings_Network_StunKeepalive"]"
+                             Variant="Variant.Outlined"
+                             Min="10"
+                             Max="300"
+                             Class="mt-3"
+                             HelperText="@L["Settings_Network_StunKeepaliveDesc"]" />
+        }
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Bandwidth Limits</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Discovery"]</MudText>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudSwitch @bind-Value="_globalAnnounceEnabled"
+                           Color="Color.Primary"
+                           Label="@L["Settings_Network_GlobalDiscovery"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+                    @L["Settings_Network_GlobalDiscoveryDesc"]
+                </MudText>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudSwitch @bind-Value="_localAnnounceEnabled"
+                           Color="Color.Primary"
+                           Label="@L["Settings_Network_LocalDiscovery"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+                    @L["Settings_Network_LocalDiscoveryDesc"]
+                </MudText>
+            </MudItem>
+        </MudGrid>
+
+        <MudDivider Class="my-3" />
+
+        @if (_globalAnnounceEnabled)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_GlobalDiscoveryServers"]</MudText>
+            <MudTextField @bind-Value="_globalAnnounceServers"
+                          Lines="3"
+                          Variant="Variant.Outlined"
+                          HelperText="@L["Settings_Network_GlobalDiscoveryServersDesc"]" />
+        }
+
+        @if (_localAnnounceEnabled)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">@L["Settings_Network_LocalDiscoverySettings"]</MudText>
+
+            <MudGrid>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_localAnnouncePort"
+                                     Label="@L["Settings_Network_LocalAnnouncePort"]"
+                                     Variant="Variant.Outlined"
+                                     Min="1024"
+                                     Max="65535"
+                                     HelperText="@L["Settings_Network_LocalAnnouncePortDesc"]" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudTextField @bind-Value="_localAnnounceMCAddr"
+                                  Label="@L["Settings_Network_MulticastAddress"]"
+                                  Variant="Variant.Outlined"
+                                  HelperText="@L["Settings_Network_MulticastAddressDesc"]" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudNumericField @bind-Value="_announceIntervalS"
+                                     Label="@L["Settings_Network_AnnounceInterval"]"
+                                     Variant="Variant.Outlined"
+                                     Min="10"
+                                     Max="3600"
+                                     HelperText="@L["Settings_Network_AnnounceIntervalDesc"]" />
+                </MudItem>
+            </MudGrid>
+        }
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Relay"]</MudText>
+
+        <MudSwitch @bind-Value="_relaysEnabled"
+                   Color="Color.Primary"
+                   Label="@L["Settings_Network_RelayEnabled"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_Network_RelayEnabledDesc"]
+        </MudText>
+
+        @if (_relaysEnabled)
+        {
+            <MudDivider Class="my-3" />
+
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudSwitch @bind-Value="_relaysOnly"
+                               Color="Color.Secondary"
+                               Label="@L["Settings_Network_RelayOnlyMode"]" />
+                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                        @L["Settings_Network_RelayOnlyModeDesc"]
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudSwitch @bind-Value="_relayWithoutGlobalAnn"
+                               Color="Color.Secondary"
+                               Label="@L["Settings_Network_RelayWithoutGlobalAnn"]" />
+                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                        @L["Settings_Network_RelayWithoutGlobalAnnDesc"]
+                    </MudText>
+                </MudItem>
+            </MudGrid>
+
+            <MudDivider Class="my-3" />
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_RelayServers"]</MudText>
+            <MudTextField @bind-Value="_relayServers"
+                          Lines="3"
+                          Variant="Variant.Outlined"
+                          HelperText="@L["Settings_Network_RelayServersDesc"]" />
+
+            <MudNumericField @bind-Value="_relayReconnectIntervalM"
+                             Label="@L["Settings_Network_RelayReconnectInterval"]"
+                             Variant="Variant.Outlined"
+                             Min="1"
+                             Max="60"
+                             Class="mt-3"
+                             HelperText="@L["Settings_Network_RelayReconnectIntervalDesc"]" />
+        }
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Bandwidth"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_maxSendKbps"
-                                 Label="Upload Limit (KB/s)"
+                                 Label="@L["Settings_Network_MaxSendKbps"]"
                                  Variant="Variant.Outlined"
                                  Min="0"
-                                 HelperText="0 = unlimited" />
+                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_maxRecvKbps"
-                                 Label="Download Limit (KB/s)"
+                                 Label="@L["Settings_Network_MaxRecvKbps"]"
                                  Variant="Variant.Outlined"
                                  Min="0"
-                                 HelperText="0 = unlimited" />
+                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
         </MudGrid>
 
         <MudSwitch @bind-Value="_limitBandwidthInLan"
                    Color="Color.Primary"
-                   Label="Apply Limits to LAN"
+                   Label="@L["Settings_Network_LimitBandwidthLan"]"
                    Class="mt-3" />
         <MudText Typo="Typo.caption" Color="Color.Default">
-            Also apply bandwidth limits on local network
+            @L["Settings_Network_LimitBandwidthLanDesc"]
         </MudText>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Discovery Servers</MudText>
-
-        <MudText Typo="Typo.subtitle2" Class="mb-2">Global Discovery Servers</MudText>
-        <MudTextField @bind-Value="_globalAnnounceServers"
-                      Lines="3"
-                      Variant="Variant.Outlined"
-                      HelperText="One server URL per line" />
-
-        <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">Relay Servers</MudText>
-        <MudTextField @bind-Value="_relayServers"
-                      Lines="3"
-                      Variant="Variant.Outlined"
-                      HelperText="One server URL per line (default = use default pool)" />
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Connection Limits</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_ConnectionLimits"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_maxConcurrentIncoming"
-                                 Label="Max Incoming Requests"
+                                 Label="@L["Settings_Network_MaxIncoming"]"
                                  Variant="Variant.Outlined"
-                                 Min="0" />
+                                 Min="0"
+                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_maxConcurrentOutgoing"
-                                 Label="Max Outgoing Requests"
+                                 Label="@L["Settings_Network_MaxOutgoing"]"
                                  Variant="Variant.Outlined"
-                                 Min="0" />
+                                 Min="0"
+                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_reconnectionIntervalS"
-                                 Label="Reconnect Interval (s)"
+                                 Label="@L["Settings_Network_ReconnectInterval"]"
                                  Variant="Variant.Outlined"
-                                 Min="10" />
+                                 Min="10"
+                                 HelperText="@L["Settings_Network_ReconnectIntervalDesc"]" />
             </MudItem>
         </MudGrid>
     </MudPaper>
 
     <div class="d-flex justify-end gap-2">
         <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
-            Reset to Defaults
+            @L["Common_ResetDefaults"]
         </MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -143,7 +302,7 @@ else if (_config != null)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            Save Changes
+            @L["Common_Save"]
         </MudButton>
     </div>
 }
@@ -153,18 +312,41 @@ else if (_config != null)
     private bool _isSaving;
     private SystemConfig? _config;
 
-    // Network settings
+    // Listening addresses
     private string _syncProtocolListen = "tcp://0.0.0.0:22000";
     private string _guiAddress = "127.0.0.1:8384";
+
+    // NAT settings
     private bool _natEnabled = true;
-    private bool _relaysEnabled = true;
+    private bool _upnpEnabled = true;
+    private bool _natPmpEnabled = true;
+    private int _natLeaseMinutes = 60;
+    private int _natRenewalMinutes = 30;
+    private int _natTimeoutSeconds = 10;
+    private string _stunServers = "stun.syncthing.net:3478\nstun.l.google.com:19302";
+    private int _stunKeepaliveSeconds = 30;
+
+    // Discovery settings
     private bool _globalAnnounceEnabled = true;
     private bool _localAnnounceEnabled = true;
+    private string _globalAnnounceServers = "default";
+    private int _localAnnouncePort = 21027;
+    private string _localAnnounceMCAddr = "[ff12::8384]:21027";
+    private int _announceIntervalS = 30;
+
+    // Relay settings
+    private bool _relaysEnabled = true;
+    private bool _relaysOnly;
+    private bool _relayWithoutGlobalAnn;
+    private string _relayServers = "default";
+    private int _relayReconnectIntervalM = 10;
+
+    // Bandwidth settings
     private int _maxSendKbps;
     private int _maxRecvKbps;
     private bool _limitBandwidthInLan;
-    private string _globalAnnounceServers = "default";
-    private string _relayServers = "default";
+
+    // Connection settings
     private int _maxConcurrentIncoming = 10;
     private int _maxConcurrentOutgoing = 10;
     private int _reconnectionIntervalS = 60;
@@ -184,16 +366,40 @@ else if (_config != null)
             _config = await ApiClient.GetConfigAsync();
             if (_config?.Options != null)
             {
+                // Listening addresses
                 _syncProtocolListen = _config.Options.ListenAddresses?.FirstOrDefault() ?? "tcp://0.0.0.0:22000";
+
+                // NAT settings
                 _natEnabled = _config.Options.NatEnabled ?? true;
-                _relaysEnabled = _config.Options.RelaysEnabled ?? true;
+                _upnpEnabled = _config.Options.UpnpEnabled ?? true;
+                _natPmpEnabled = _config.Options.NatPmpEnabled ?? true;
+                _natLeaseMinutes = _config.Options.NatLeaseMinutes ?? 60;
+                _natRenewalMinutes = _config.Options.NatRenewalMinutes ?? 30;
+                _natTimeoutSeconds = _config.Options.NatTimeoutSeconds ?? 10;
+                _stunServers = string.Join("\n", _config.Options.StunServers ?? ["stun.syncthing.net:3478", "stun.l.google.com:19302"]);
+                _stunKeepaliveSeconds = _config.Options.StunKeepaliveSeconds ?? 30;
+
+                // Discovery settings
                 _globalAnnounceEnabled = _config.Options.GlobalAnnounceEnabled ?? true;
                 _localAnnounceEnabled = _config.Options.LocalAnnounceEnabled ?? true;
+                _globalAnnounceServers = string.Join("\n", _config.Options.GlobalAnnounceServers ?? ["default"]);
+                _localAnnouncePort = _config.Options.LocalAnnouncePort ?? 21027;
+                _localAnnounceMCAddr = _config.Options.LocalAnnounceMCAddr ?? "[ff12::8384]:21027";
+                _announceIntervalS = _config.Options.AnnounceIntervalS ?? 30;
+
+                // Relay settings
+                _relaysEnabled = _config.Options.RelaysEnabled ?? true;
+                _relaysOnly = _config.Options.RelaysOnly ?? false;
+                _relayWithoutGlobalAnn = _config.Options.RelayWithoutGlobalAnn ?? false;
+                _relayServers = string.Join("\n", _config.Options.RelayServers ?? ["default"]);
+                _relayReconnectIntervalM = _config.Options.RelayReconnectIntervalM ?? 10;
+
+                // Bandwidth settings
                 _maxSendKbps = _config.Options.MaxSendKbps ?? 0;
                 _maxRecvKbps = _config.Options.MaxRecvKbps ?? 0;
                 _limitBandwidthInLan = _config.Options.LimitBandwidthInLan ?? false;
-                _globalAnnounceServers = string.Join("\n", _config.Options.GlobalAnnounceServers ?? ["default"]);
-                _relayServers = string.Join("\n", _config.Options.RelayServers ?? ["default"]);
+
+                // Connection settings
                 _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
             }
 
@@ -204,7 +410,7 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+            Snackbar.Add(string.Format(L["Msg_LoadFailed"], ex.Message), Severity.Error);
         }
         finally
         {
@@ -224,16 +430,40 @@ else if (_config != null)
         {
             if (_config.Options != null)
             {
+                // Listening addresses
                 _config.Options.ListenAddresses = [_syncProtocolListen];
+
+                // NAT settings
                 _config.Options.NatEnabled = _natEnabled;
-                _config.Options.RelaysEnabled = _relaysEnabled;
+                _config.Options.UpnpEnabled = _upnpEnabled;
+                _config.Options.NatPmpEnabled = _natPmpEnabled;
+                _config.Options.NatLeaseMinutes = _natLeaseMinutes;
+                _config.Options.NatRenewalMinutes = _natRenewalMinutes;
+                _config.Options.NatTimeoutSeconds = _natTimeoutSeconds;
+                _config.Options.StunServers = _stunServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                _config.Options.StunKeepaliveSeconds = _stunKeepaliveSeconds;
+
+                // Discovery settings
                 _config.Options.GlobalAnnounceEnabled = _globalAnnounceEnabled;
                 _config.Options.LocalAnnounceEnabled = _localAnnounceEnabled;
+                _config.Options.GlobalAnnounceServers = _globalAnnounceServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                _config.Options.LocalAnnouncePort = _localAnnouncePort;
+                _config.Options.LocalAnnounceMCAddr = _localAnnounceMCAddr;
+                _config.Options.AnnounceIntervalS = _announceIntervalS;
+
+                // Relay settings
+                _config.Options.RelaysEnabled = _relaysEnabled;
+                _config.Options.RelaysOnly = _relaysOnly;
+                _config.Options.RelayWithoutGlobalAnn = _relayWithoutGlobalAnn;
+                _config.Options.RelayServers = _relayServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                _config.Options.RelayReconnectIntervalM = _relayReconnectIntervalM;
+
+                // Bandwidth settings
                 _config.Options.MaxSendKbps = _maxSendKbps;
                 _config.Options.MaxRecvKbps = _maxRecvKbps;
                 _config.Options.LimitBandwidthInLan = _limitBandwidthInLan;
-                _config.Options.GlobalAnnounceServers = _globalAnnounceServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                _config.Options.RelayServers = _relayServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+                // Connection settings
                 _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
             }
 
@@ -243,11 +473,11 @@ else if (_config != null)
             }
 
             await ApiClient.UpdateConfigAsync(_config);
-            Snackbar.Add("Network settings saved. Some changes may require a restart.", Severity.Success);
+            Snackbar.Add(L["Msg_SaveSuccess"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+            Snackbar.Add(string.Format(L["Msg_SaveFailed"], ex.Message), Severity.Error);
         }
         finally
         {
@@ -258,21 +488,45 @@ else if (_config != null)
 
     private void ResetToDefaults()
     {
+        // Listening addresses
         _syncProtocolListen = "tcp://0.0.0.0:22000";
         _guiAddress = "127.0.0.1:8384";
+
+        // NAT settings
         _natEnabled = true;
-        _relaysEnabled = true;
+        _upnpEnabled = true;
+        _natPmpEnabled = true;
+        _natLeaseMinutes = 60;
+        _natRenewalMinutes = 30;
+        _natTimeoutSeconds = 10;
+        _stunServers = "stun.syncthing.net:3478\nstun.l.google.com:19302";
+        _stunKeepaliveSeconds = 30;
+
+        // Discovery settings
         _globalAnnounceEnabled = true;
         _localAnnounceEnabled = true;
+        _globalAnnounceServers = "default";
+        _localAnnouncePort = 21027;
+        _localAnnounceMCAddr = "[ff12::8384]:21027";
+        _announceIntervalS = 30;
+
+        // Relay settings
+        _relaysEnabled = true;
+        _relaysOnly = false;
+        _relayWithoutGlobalAnn = false;
+        _relayServers = "default";
+        _relayReconnectIntervalM = 10;
+
+        // Bandwidth settings
         _maxSendKbps = 0;
         _maxRecvKbps = 0;
         _limitBandwidthInLan = false;
-        _globalAnnounceServers = "default";
-        _relayServers = "default";
+
+        // Connection settings
         _maxConcurrentIncoming = 10;
         _maxConcurrentOutgoing = 10;
         _reconnectionIntervalS = 60;
 
-        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+        Snackbar.Add(L["Msg_ResetToDefaults"], Severity.Info);
     }
 }
