@@ -2,19 +2,20 @@
 @inject IApiClient ApiClient
 @inject ISignalRService SignalR
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>System Logs - CreatioHelper</PageTitle>
+<PageTitle>@L["SystemLog_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">System Logs</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["SystemLog_Title"]</MudText>
     <div class="d-flex gap-2">
         <MudSwitch @bind-Value="_autoScroll"
                    Color="Color.Primary"
-                   Label="Auto-scroll" />
+                   Label="@L["SystemLog_AutoScroll"]" />
         <MudSwitch @bind-Value="_liveTail"
                    Color="Color.Primary"
-                   Label="Live Tail" />
+                   Label="@L["SystemLog_TailMode"]" />
     </div>
 </div>
 
@@ -22,10 +23,10 @@
     <MudGrid>
         <MudItem xs="12" md="4">
             <MudSelect @bind-Value="_selectedLogLevel"
-                       Label="Log Level"
+                       Label="@L["SystemLog_Level"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
-                <MudSelectItem Value="@("all")">All Levels</MudSelectItem>
+                <MudSelectItem Value="@("all")">@L["SystemLog_AllLevels"]</MudSelectItem>
                 <MudSelectItem Value="@("error")">Error</MudSelectItem>
                 <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
                 <MudSelectItem Value="@("info")">Info</MudSelectItem>
@@ -48,7 +49,8 @@
         </MudItem>
         <MudItem xs="12" md="4">
             <MudTextField @bind-Value="_searchText"
-                          Label="Search"
+                          Label="@L["SystemLog_Search"]"
+                          Placeholder="@L["SystemLog_SearchPlaceholder"]"
                           Variant="Variant.Outlined"
                           Adornment="Adornment.End"
                           AdornmentIcon="@Icons.Material.Filled.Search"
@@ -68,15 +70,15 @@
         <MudIconButton Icon="@Icons.Material.Filled.Download"
                        Size="Size.Small"
                        OnClick="DownloadLogs"
-                       aria-label="Download logs" />
+                       aria-label="@L["SystemLog_Download"]" />
         <MudIconButton Icon="@Icons.Material.Filled.DeleteSweep"
                        Size="Size.Small"
                        OnClick="ClearLogs"
-                       aria-label="Clear display" />
+                       aria-label="@L["SystemLog_Clear"]" />
         <MudIconButton Icon="@Icons.Material.Filled.Refresh"
                        Size="Size.Small"
                        OnClick="RefreshLogs"
-                       aria-label="Refresh" />
+                       aria-label="@L["SystemLog_Refresh"]" />
     </div>
 
     <div class="log-viewer @(_autoScroll ? "auto-scroll" : "")" @ref="_logContainer">
@@ -89,7 +91,7 @@
         else if (_filteredLogs.Count == 0)
         {
             <div class="pa-4 text-center">
-                <MudText Color="Color.Default">No log entries match the filter</MudText>
+                <MudText Color="Color.Default">@L["SystemLog_NoLogs"]</MudText>
             </div>
         }
         else

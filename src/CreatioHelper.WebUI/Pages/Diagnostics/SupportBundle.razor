@@ -2,27 +2,27 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>Support Bundle - CreatioHelper</PageTitle>
+<PageTitle>@L["SupportBundle_Title"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Support Bundle</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["SupportBundle_Title"]</MudText>
 
 <MudAlert Severity="Severity.Info" Class="mb-4">
-    A support bundle contains diagnostic information that helps troubleshoot issues.
-    It includes configuration, logs, and system information but excludes sensitive data like API keys and passwords.
+    @L["SupportBundle_Description"]
 </MudAlert>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Bundle Contents</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["SupportBundle_IncludeOptions"]</MudText>
 
     <MudList T="string">
         <MudListItem Icon="@Icons.Material.Filled.Settings">
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeConfig" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>Configuration</MudText>
+                    <MudText>@L["SupportBundle_Configuration"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        Sanitized configuration without sensitive data
+                        @L["SupportBundle_ConfigurationDesc"]
                     </MudText>
                 </div>
             </div>
@@ -32,9 +32,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeLogs" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>System Logs</MudText>
+                    <MudText>@L["SupportBundle_Logs"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        Recent log entries (last @_logDays days)
+                        @L["SupportBundle_LogsDesc", _logDays]
                     </MudText>
                 </div>
                 <MudSpacer />
@@ -52,9 +52,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeSystem" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>System Information</MudText>
+                    <MudText>@L["SupportBundle_SystemInfo"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        OS version, architecture, environment
+                        @L["SupportBundle_SystemInfoDesc"]
                     </MudText>
                 </div>
             </div>
@@ -64,9 +64,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeMetrics" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>Performance Metrics</MudText>
+                    <MudText>@L["SupportBundle_DatabaseStats"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        CPU, memory, and I/O statistics
+                        @L["SupportBundle_DatabaseStatsDesc"]
                     </MudText>
                 </div>
             </div>
@@ -100,9 +100,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeNetwork" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>Network Diagnostics</MudText>
+                    <MudText>@L["SupportBundle_NetworkDiag"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        NAT type, discovery status, connections
+                        @L["SupportBundle_NetworkDiagDesc"]
                     </MudText>
                 </div>
             </div>
@@ -111,27 +111,10 @@
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Privacy Options</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["SupportBundle_PrivacyNote"]</MudText>
 
-    <MudSwitch @bind-Value="_redactPaths"
-               Color="Color.Primary"
-               Label="Redact File Paths" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Replace full paths with placeholders (e.g., /home/user/Sync -> [SYNC_FOLDER])
-    </MudText>
-
-    <MudSwitch @bind-Value="_redactDeviceIds"
-               Color="Color.Primary"
-               Label="Redact Device IDs" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Replace device IDs with anonymized identifiers
-    </MudText>
-
-    <MudSwitch @bind-Value="_redactIPs"
-               Color="Color.Primary"
-               Label="Redact IP Addresses" />
-    <MudText Typo="Typo.caption" Color="Color.Default">
-        Replace IP addresses with placeholders
+    <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+        @L["SupportBundle_PrivacyText"]
     </MudText>
 </MudPaper>
 
@@ -140,7 +123,7 @@
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <div class="d-flex align-center mb-2">
             <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Small" Class="mr-3" />
-            <MudText>Generating support bundle...</MudText>
+            <MudText>@L["SupportBundle_Generating"]</MudText>
         </div>
         <MudProgressLinear Value="@_progress" Color="Color.Primary" />
         <MudText Typo="Typo.caption" Color="Color.Default" Class="mt-1">@_currentStep</MudText>
@@ -159,7 +142,7 @@
                StartIcon="@Icons.Material.Filled.Download"
                OnClick="GenerateAndDownload"
                Disabled="@_isGenerating">
-        Generate & Download
+        @L["SupportBundle_Generate"]
     </MudButton>
 </div>
 

@@ -247,8 +247,9 @@ public static class DiscoveryProtocol
 
     /// <summary>
     /// Formats raw 32 device ID bytes to Syncthing string format (Luhnified base32)
+    /// Public for use in device ID generation from certificates
     /// </summary>
-    private static string FormatDeviceId(byte[] bytes)
+    public static string FormatDeviceId(byte[] bytes)
     {
         if (bytes.Length != RawDeviceIdLength)
         {

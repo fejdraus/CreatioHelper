@@ -3,10 +3,11 @@
 @inject IApiClient ApiClient
 @inject StateContainer State
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>General Settings - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_General"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">General Settings</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Settings_General"]</MudText>
 
 @if (_isLoading)
 {
@@ -15,18 +16,18 @@
 else if (_config != null)
 {
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Device Information</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_DeviceInfo"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_deviceName"
-                              Label="Device Name"
+                              Label="@L["Settings_General_DeviceName"]"
                               Variant="Variant.Outlined"
-                              HelperText="Friendly name for this device" />
+                              HelperText="@L["Settings_General_DeviceNameDesc"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudTextField Value="@State.SystemStatus?.MyId"
-                              Label="Device ID"
+                              Label="@L["Settings_General_DeviceId"]"
                               Variant="Variant.Outlined"
                               ReadOnly="true"
                               Adornment="Adornment.End"
@@ -37,23 +38,23 @@ else if (_config != null)
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Sync Defaults</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_SyncDefaults"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_defaultFolderPath"
-                              Label="Default Folder Path"
+                              Label="@L["Settings_General_DefaultFolderPath"]"
                               Variant="Variant.Outlined"
-                              HelperText="Default path for new folders" />
+                              HelperText="@L["Settings_General_DefaultFolderPathDesc"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudSelect @bind-Value="_folderType"
-                           Label="Default Folder Type"
+                           Label="@L["FolderEdit_FolderType"]"
                            Variant="Variant.Outlined">
-                    <MudSelectItem Value="@FolderType.SendReceive">Send & Receive</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.SendOnly">Send Only</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.ReceiveOnly">Receive Only</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.ReceiveEncrypted">Receive Encrypted</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.SendReceive">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.SendOnly">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.ReceiveOnly">@L["FolderEdit_Type_ReceiveOnly"]</MudSelectItem>
+                    <MudSelectItem Value="@FolderType.ReceiveEncrypted">@L["FolderEdit_Type_ReceiveEncrypted"]</MudSelectItem>
                 </MudSelect>
             </MudItem>
         </MudGrid>
@@ -62,26 +63,26 @@ else if (_config != null)
 
         <MudSwitch @bind-Value="_ignorePerms"
                    Color="Color.Primary"
-                   Label="Ignore Permissions" />
+                   Label="@L["Settings_Advanced_IgnorePerms"]" />
         <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-            File permission changes will not be synced
+            @L["Settings_Advanced_IgnorePermsDesc"]
         </MudText>
 
         <MudSwitch @bind-Value="_autoNormalize"
                    Color="Color.Primary"
-                   Label="Auto Normalize Unicode" />
+                   Label="@L["Folders_AutoNormalize"]" />
         <MudText Typo="Typo.caption" Color="Color.Default">
-            Automatically normalize unicode filenames (recommended)
+            @L["Folders_AutoNormalizeDesc"]
         </MudText>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">API</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_ApiSettings"]</MudText>
 
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_apiKey"
-                              Label="API Key"
+                              Label="@L["Settings_General_ApiKey"]"
                               Variant="Variant.Outlined"
                               InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
                               Adornment="Adornment.End"
@@ -93,33 +94,33 @@ else if (_config != null)
                            Color="Color.Primary"
                            OnClick="GenerateNewApiKey"
                            Class="mt-2">
-                    Generate New API Key
+                    @L["Settings_General_GenerateKey"]
                 </MudButton>
             </MudItem>
         </MudGrid>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">Startup</MudText>
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_Startup"]</MudText>
 
         <MudSwitch @bind-Value="_startMinimized"
                    Color="Color.Primary"
-                   Label="Start Minimized" />
+                   Label="@L["Settings_General_StartMinimized"]" />
         <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-            Start in system tray
+            @L["Settings_General_StartMinimizedDesc"]
         </MudText>
 
         <MudSwitch @bind-Value="_startAtLogin"
                    Color="Color.Primary"
-                   Label="Start at Login" />
+                   Label="@L["Settings_General_StartOnBoot"]" />
         <MudText Typo="Typo.caption" Color="Color.Default">
-            Automatically start when you log in
+            @L["Settings_General_StartOnBootDesc"]
         </MudText>
     </MudPaper>
 
     <div class="d-flex justify-end gap-2">
         <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
-            Reset to Defaults
+            @L["Common_ResetDefaults"]
         </MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -129,7 +130,7 @@ else if (_config != null)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            Save Changes
+            @L["Common_Save"]
         </MudButton>
     </div>
 }
@@ -179,7 +180,7 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load settings: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_LoadFailed", ex.Message], Severity.Error);
         }
         finally
         {
@@ -212,11 +213,11 @@ else if (_config != null)
             }
 
             await ApiClient.UpdateConfigAsync(_config);
-            Snackbar.Add("Settings saved successfully", Severity.Success);
+            Snackbar.Add(L["Msg_SaveSuccess"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_SaveFailed", ex.Message], Severity.Error);
         }
         finally
         {
@@ -232,11 +233,11 @@ else if (_config != null)
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", State.SystemStatus.MyId);
-            Snackbar.Add("Device ID copied to clipboard", Severity.Success);
+            Snackbar.Add(L["Settings_General_IdCopied"], Severity.Success);
         }
         catch
         {
-            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+            Snackbar.Add(L["Msg_CopyFailed"], Severity.Error);
         }
     }
 
@@ -248,7 +249,7 @@ else if (_config != null)
     private void GenerateNewApiKey()
     {
         _apiKey = Guid.NewGuid().ToString("N");
-        Snackbar.Add("New API key generated. Remember to save changes.", Severity.Info);
+        Snackbar.Add(L["Msg_ApiKeyGenerated"], Severity.Info);
     }
 
     private async Task ResetToDefaults()
@@ -261,7 +262,7 @@ else if (_config != null)
         _startMinimized = false;
         _startAtLogin = false;
 
-        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+        Snackbar.Add(L["Msg_ResetToDefaults"], Severity.Info);
         await Task.CompletedTask;
     }
 }

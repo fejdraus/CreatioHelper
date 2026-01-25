@@ -1,11 +1,13 @@
 @page "/folders/{FolderId}/edit"
 @using CreatioHelper.WebUI.Models
 @using CreatioHelper.WebUI.Services
+@using Microsoft.Extensions.Localization
 @inject ApiClient Api
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>Edit @(_folder?.DisplayName ?? "Folder") - CreatioHelper</PageTitle>
+<PageTitle>@L["FolderEdit_Title"] @(_folder?.DisplayName ?? "Folder") - CreatioHelper</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
     <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
@@ -16,52 +18,56 @@
     }
     else if (_folder == null)
     {
-        <MudAlert Severity="Severity.Error">Folder not found</MudAlert>
+        <MudAlert Severity="Severity.Error">@L["FolderEdit_NotFound"]</MudAlert>
     }
     else
     {
         <MudPaper Class="pa-4">
-            <MudText Typo="Typo.h5" Class="mb-4">Edit Folder</MudText>
+            <MudText Typo="Typo.h5" Class="mb-4">@L["FolderEdit_Title"]</MudText>
 
             <MudForm @ref="_form" @bind-IsValid="@_isValid">
                 <!-- General Settings -->
-                <MudText Typo="Typo.h6" Class="mb-3">General</MudText>
+                <MudText Typo="Typo.h6" Class="mb-3">@L["FolderEdit_General"]</MudText>
 
                 <MudTextField @bind-Value="_folder.Label"
-                              Label="Folder Label"
+                              Label="@L["FolderEdit_FolderLabel"]"
+                              HelperText="@L["FolderEdit_FolderLabelDesc"]"
                               Variant="Variant.Outlined"
                               Class="mb-3" />
 
                 <MudTextField @bind-Value="_folder.Path"
-                              Label="Folder Path"
+                              Label="@L["FolderEdit_FolderPath"]"
+                              HelperText="@L["FolderEdit_FolderPathDesc"]"
                               Variant="Variant.Outlined"
                               Required="true"
-                              RequiredError="Path is required"
+                              RequiredError="@L["FolderEdit_PathRequired"]"
                               Class="mb-3"
                               Disabled="true" />
 
                 <MudSelect @bind-Value="_folder.Type"
-                           Label="Folder Type"
+                           Label="@L["FolderEdit_FolderType"]"
+                           HelperText="@L["FolderEdit_FolderTypeDesc"]"
                            Variant="Variant.Outlined"
                            Class="mb-3">
-                    <MudSelectItem Value="@("sendreceive")">Send & Receive</MudSelectItem>
-                    <MudSelectItem Value="@("sendonly")">Send Only</MudSelectItem>
-                    <MudSelectItem Value="@("receiveonly")">Receive Only</MudSelectItem>
-                    <MudSelectItem Value="@("receiveencrypted")">Receive Encrypted</MudSelectItem>
+                    <MudSelectItem Value="@("sendreceive")">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
+                    <MudSelectItem Value="@("sendonly")">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
+                    <MudSelectItem Value="@("receiveonly")">@L["FolderEdit_Type_ReceiveOnly"]</MudSelectItem>
+                    <MudSelectItem Value="@("receiveencrypted")">@L["FolderEdit_Type_ReceiveEncrypted"]</MudSelectItem>
                 </MudSelect>
 
                 <MudDivider Class="my-4" />
 
                 <!-- File Watching -->
-                <MudText Typo="Typo.h6" Class="mb-3">File Watching</MudText>
+                <MudText Typo="Typo.h6" Class="mb-3">@L["FolderEdit_FileOptions"]</MudText>
 
                 <MudSwitch @bind-Value="_folder.FsWatcherEnabled"
-                           Label="Watch for Changes"
+                           Label="@L["FolderEdit_FsWatcher"]"
                            Color="Color.Primary"
                            Class="mb-3" />
 
                 <MudNumericField @bind-Value="_folder.FsWatcherDelayS"
-                                 Label="Watch Delay (seconds)"
+                                 Label="@L["FolderEdit_FsWatcherDelay"]"
+                                 HelperText="@L["FolderEdit_FsWatcherDelayDesc"]"
                                  Variant="Variant.Outlined"
                                  Min="0.1"
                                  Max="300"
@@ -69,52 +75,145 @@
                                  Disabled="@(!_folder.FsWatcherEnabled)" />
 
                 <MudNumericField @bind-Value="_folder.RescanIntervalS"
-                                 Label="Full Rescan Interval (seconds)"
+                                 Label="@L["FolderEdit_RescanInterval"]"
                                  Variant="Variant.Outlined"
                                  Min="0"
                                  Max="86400"
                                  Class="mb-3"
-                                 HelperText="0 to disable periodic rescans" />
+                                 HelperText="@L["FolderEdit_RescanIntervalDesc"]" />
 
                 <MudDivider Class="my-4" />
 
                 <!-- Advanced Settings -->
-                <MudText Typo="Typo.h6" Class="mb-3">Advanced</MudText>
+                <MudText Typo="Typo.h6" Class="mb-3">@L["FolderEdit_Advanced"]</MudText>
 
                 <MudSwitch @bind-Value="_folder.IgnorePerms"
-                           Label="Ignore Permissions"
+                           Label="@L["FolderEdit_IgnorePerms"]"
                            Color="Color.Primary"
                            Class="mb-3" />
 
                 <MudSwitch @bind-Value="_folder.IgnoreDelete"
-                           Label="Ignore Delete"
+                           Label="@L["FolderEdit_IgnoreDelete"]"
                            Color="Color.Primary"
                            Class="mb-3" />
 
                 <MudSwitch @bind-Value="_folder.AutoNormalize"
-                           Label="Auto Normalize Filenames"
+                           Label="@L["FolderEdit_AutoNormalize"]"
                            Color="Color.Primary"
                            Class="mb-3" />
 
                 <MudSelect @bind-Value="_folder.Order"
-                           Label="File Pull Order"
+                           Label="@L["FolderEdit_PullOrder"]"
+                           HelperText="@L["FolderEdit_PullOrderDesc"]"
                            Variant="Variant.Outlined"
                            Class="mb-3">
-                    <MudSelectItem Value="@("random")">Random</MudSelectItem>
-                    <MudSelectItem Value="@("alphabetic")">Alphabetic</MudSelectItem>
-                    <MudSelectItem Value="@("smallestFirst")">Smallest First</MudSelectItem>
-                    <MudSelectItem Value="@("largestFirst")">Largest First</MudSelectItem>
-                    <MudSelectItem Value="@("oldestFirst")">Oldest First</MudSelectItem>
-                    <MudSelectItem Value="@("newestFirst")">Newest First</MudSelectItem>
+                    <MudSelectItem Value="@("random")">@L["FolderEdit_PullOrder_Random"]</MudSelectItem>
+                    <MudSelectItem Value="@("alphabetic")">@L["FolderEdit_PullOrder_Alphabetic"]</MudSelectItem>
+                    <MudSelectItem Value="@("smallestFirst")">@L["FolderEdit_PullOrder_SmallestFirst"]</MudSelectItem>
+                    <MudSelectItem Value="@("largestFirst")">@L["FolderEdit_PullOrder_LargestFirst"]</MudSelectItem>
+                    <MudSelectItem Value="@("oldestFirst")">@L["FolderEdit_PullOrder_OldestFirst"]</MudSelectItem>
+                    <MudSelectItem Value="@("newestFirst")">@L["FolderEdit_PullOrder_NewestFirst"]</MudSelectItem>
                 </MudSelect>
 
                 <MudNumericField @bind-Value="_folder.MaxConflicts"
-                                 Label="Max Conflicts"
+                                 Label="@L["FolderEdit_MaxConflicts"]"
                                  Variant="Variant.Outlined"
                                  Min="-1"
                                  Max="1000"
                                  Class="mb-3"
-                                 HelperText="-1 for unlimited, 0 to disable" />
+                                 HelperText="@L["FolderEdit_MaxConflictsDesc"]" />
+
+                <MudDivider Class="my-4" />
+
+                <!-- Versioning Settings -->
+                <MudText Typo="Typo.h6" Class="mb-3">@L["FolderEdit_Versioning"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default" Class="mb-3">
+                    @L["FolderEdit_VersioningDesc"]
+                </MudText>
+
+                <MudSelect @bind-Value="_versioningType"
+                           Label="@L["FolderEdit_VersioningType"]"
+                           Variant="Variant.Outlined"
+                           Class="mb-3"
+                           HelperText="@L["FolderEdit_VersioningTypeDesc"]">
+                    <MudSelectItem Value="@("")">@L["FolderEdit_Versioning_None"]</MudSelectItem>
+                    <MudSelectItem Value="@("trashcan")">@L["FolderEdit_Versioning_Trashcan"]</MudSelectItem>
+                    <MudSelectItem Value="@("simple")">@L["FolderEdit_Versioning_Simple"]</MudSelectItem>
+                    <MudSelectItem Value="@("staggered")">@L["FolderEdit_Versioning_Staggered"]</MudSelectItem>
+                    <MudSelectItem Value="@("external")">@L["FolderEdit_Versioning_External"]</MudSelectItem>
+                </MudSelect>
+
+                @if (!string.IsNullOrEmpty(_versioningType))
+                {
+                    <!-- Common versioning options -->
+                    <MudTextField @bind-Value="_versioningPath"
+                                  Label="@L["FolderEdit_StaggeredPath"]"
+                                  Variant="Variant.Outlined"
+                                  Class="mb-3"
+                                  HelperText="@L["FolderEdit_StaggeredPathDesc"]" />
+
+                    @switch (_versioningType)
+                    {
+                        case "trashcan":
+                            <MudAlert Severity="Severity.Info" Class="mb-3">
+                                @L["FolderEdit_TrashcanInfo"]
+                            </MudAlert>
+                            <MudNumericField @bind-Value="_trashcanCleanoutDays"
+                                             Label="@L["FolderEdit_TrashcanDays"]"
+                                             Variant="Variant.Outlined"
+                                             Min="0"
+                                             Max="365"
+                                             Class="mb-3"
+                                             HelperText="@L["FolderEdit_TrashcanDaysDesc"]" />
+                            break;
+
+                        case "simple":
+                            <MudAlert Severity="Severity.Info" Class="mb-3">
+                                @L["FolderEdit_SimpleInfo"]
+                            </MudAlert>
+                            <MudNumericField @bind-Value="_simpleKeep"
+                                             Label="@L["FolderEdit_SimpleKeep"]"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Max="100"
+                                             Class="mb-3"
+                                             HelperText="@L["FolderEdit_SimpleKeepDesc"]" />
+                            <MudNumericField @bind-Value="_simpleCleanoutDays"
+                                             Label="@L["FolderEdit_SimpleCleanoutDays"]"
+                                             Variant="Variant.Outlined"
+                                             Min="0"
+                                             Max="365"
+                                             Class="mb-3"
+                                             HelperText="@L["FolderEdit_SimpleCleanoutDaysDesc"]" />
+                            break;
+
+                        case "staggered":
+                            <MudAlert Severity="Severity.Info" Class="mb-3">
+                                @L["FolderEdit_StaggeredInfo"]
+                            </MudAlert>
+                            <MudNumericField @bind-Value="_staggeredMaxAgeDays"
+                                             Label="@L["FolderEdit_StaggeredMaxAge"]"
+                                             Variant="Variant.Outlined"
+                                             Min="1"
+                                             Max="3650"
+                                             Class="mb-3"
+                                             HelperText="@L["FolderEdit_StaggeredMaxAgeDesc"]" />
+                            break;
+
+                        case "external":
+                            <MudAlert Severity="Severity.Warning" Class="mb-3">
+                                @L["FolderEdit_ExternalInfo"]
+                            </MudAlert>
+                            <MudTextField @bind-Value="_externalCommand"
+                                          Label="@L["FolderEdit_ExternalCommand"]"
+                                          Variant="Variant.Outlined"
+                                          Required="@(_versioningType == "external")"
+                                          RequiredError="@L["FolderEdit_ExternalCommandRequired"]"
+                                          Class="mb-3"
+                                          HelperText="@L["FolderEdit_ExternalCommandDesc"]" />
+                            break;
+                    }
+                }
 
                 <MudDivider Class="my-4" />
 
@@ -128,12 +227,12 @@
                         {
                             <MudProgressCircular Class="mr-2" Size="Size.Small" Indeterminate="true" />
                         }
-                        Save
+                        @L["FolderEdit_Save"]
                     </MudButton>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Default"
                                OnClick="@Cancel">
-                        Cancel
+                        @L["FolderEdit_Cancel"]
                     </MudButton>
 
                     <MudSpacer />
@@ -141,7 +240,7 @@
                     <MudButton Variant="Variant.Text"
                                Color="Color.Warning"
                                OnClick="@(() => _folder.Paused = !_folder.Paused)">
-                        @(_folder.Paused ? "Resume" : "Pause")
+                        @(_folder.Paused ? L["FolderEdit_Resume"] : L["FolderEdit_Paused"])
                     </MudButton>
                 </div>
             </MudForm>
@@ -159,6 +258,15 @@
     private bool _saving;
     private bool _isValid;
     private List<BreadcrumbItem> _breadcrumbs = new();
+
+    // Versioning configuration fields
+    private string _versioningType = string.Empty;
+    private string _versioningPath = string.Empty;
+    private int _trashcanCleanoutDays = 0;
+    private int _simpleKeep = 5;
+    private int _simpleCleanoutDays = 0;
+    private int _staggeredMaxAgeDays = 365;
+    private string _externalCommand = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -181,11 +289,14 @@
                     new(_folder.DisplayName, $"/folders/{FolderId}"),
                     new("Edit", null, disabled: true)
                 };
+
+                // Load versioning configuration
+                LoadVersioningConfig();
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load folder: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["FolderEdit_LoadError", ex.Message], Severity.Error);
         }
         finally
         {
@@ -193,20 +304,114 @@
         }
     }
 
+    private void LoadVersioningConfig()
+    {
+        if (_folder?.Versioning == null || string.IsNullOrEmpty(_folder.Versioning.Type))
+        {
+            _versioningType = string.Empty;
+            return;
+        }
+
+        _versioningType = _folder.Versioning.Type.ToLowerInvariant();
+        _versioningPath = GetParam("fsPath", string.Empty);
+
+        switch (_versioningType)
+        {
+            case "trashcan":
+                _trashcanCleanoutDays = GetIntParam("cleanoutDays", 0);
+                break;
+            case "simple":
+                _simpleKeep = GetIntParam("keep", 5);
+                _simpleCleanoutDays = GetIntParam("cleanoutDays", 0);
+                break;
+            case "staggered":
+                // maxAge is stored in seconds, convert to days for UI
+                var maxAgeSeconds = GetIntParam("maxAge", 365 * 24 * 3600);
+                _staggeredMaxAgeDays = maxAgeSeconds / (24 * 3600);
+                break;
+            case "external":
+                _externalCommand = GetParam("command", string.Empty);
+                break;
+        }
+    }
+
+    private string GetParam(string key, string defaultValue)
+    {
+        if (_folder?.Versioning?.Params == null)
+            return defaultValue;
+        return _folder.Versioning.Params.TryGetValue(key, out var value) ? value : defaultValue;
+    }
+
+    private int GetIntParam(string key, int defaultValue)
+    {
+        var strValue = GetParam(key, string.Empty);
+        return int.TryParse(strValue, out var result) ? result : defaultValue;
+    }
+
+    private void BuildVersioningConfig()
+    {
+        if (string.IsNullOrEmpty(_versioningType))
+        {
+            _folder!.Versioning = null;
+            return;
+        }
+
+        _folder!.Versioning = new VersioningConfig
+        {
+            Type = _versioningType,
+            Params = new Dictionary<string, string>()
+        };
+
+        // Add common path if specified
+        if (!string.IsNullOrWhiteSpace(_versioningPath))
+        {
+            _folder.Versioning.Params["fsPath"] = _versioningPath;
+        }
+
+        // Add type-specific parameters
+        switch (_versioningType)
+        {
+            case "trashcan":
+                _folder.Versioning.Params["cleanoutDays"] = _trashcanCleanoutDays.ToString();
+                break;
+            case "simple":
+                _folder.Versioning.Params["keep"] = _simpleKeep.ToString();
+                _folder.Versioning.Params["cleanoutDays"] = _simpleCleanoutDays.ToString();
+                break;
+            case "staggered":
+                // Convert days to seconds for storage
+                _folder.Versioning.Params["maxAge"] = (_staggeredMaxAgeDays * 24 * 3600).ToString();
+                break;
+            case "external":
+                _folder.Versioning.Params["command"] = _externalCommand;
+                break;
+        }
+    }
+
     private async Task SaveAsync()
     {
         if (_folder == null || !_isValid) return;
 
+        // Validate external versioning command
+        if (_versioningType == "external" && string.IsNullOrWhiteSpace(_externalCommand))
+        {
+            Snackbar.Add(L["FolderEdit_ExternalCommandRequired"], Severity.Warning);
+            return;
+        }
+
         _saving = true;
         try
         {
+            // Build versioning configuration from UI fields
+            BuildVersioningConfig();
+
             await Api.UpdateFolderAsync(_folder);
-            Snackbar.Add("Folder saved successfully", Severity.Success);
+            Snackbar.Add(L["FolderEdit_SaveSuccess"], Severity.Success);
             Navigation.NavigateTo($"/folders/{FolderId}");
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to save folder: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["FolderEdit_SaveError", ex.Message], Severity.Error);
         }
         finally
         {

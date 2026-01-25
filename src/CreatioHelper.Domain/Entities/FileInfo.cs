@@ -80,6 +80,11 @@ public class SyncFileInfo : Entity
         Type = FileType.Symlink;
     }
 
+    public void SetAsDirectory()
+    {
+        Type = FileType.Directory;
+    }
+
     public void UpdateVector(VectorClock vector)
     {
         Vector = vector;

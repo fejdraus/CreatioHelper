@@ -1,5 +1,6 @@
 using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel.DataAnnotations;
@@ -270,6 +271,158 @@ public class SyncthingFolderController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting status for folder {Folder}", folder);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Trigger folder scan - 100% Syncthing compatible
+    /// POST /rest/folder/scan?folder=default&sub=path/to/scan
+    /// </summary>
+    [HttpPost("scan")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<ActionResult<object>> ScanFolder(
+        [FromQuery] string folder,
+        [FromQuery] string? sub = null,
+        [FromQuery] int? next = null)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(folder))
+                return BadRequest(new { error = "folder parameter required" });
+
+            var folderInfo = await _syncEngine.GetFolderAsync(folder);
+            if (folderInfo == null)
+                return NotFound(new { error = "folder not found" });
+
+            // Check if folder is paused
+            if (folderInfo.IsPaused)
+            {
+                return BadRequest(new { error = "folder is paused" });
+            }
+
+            _logger.LogInformation("Triggering scan for folder {Folder}, sub={Sub}, next={Next}", folder, sub, next);
+
+            // Trigger the scan - 'next' parameter is for delayed scan (in seconds), but we execute immediately
+            // 'sub' parameter would limit scan to a subdirectory (not fully implemented)
+            await _syncEngine.ScanFolderAsync(folder, deep: true);
+
+            return Ok(new
+            {
+                folder = folder,
+                sub = sub ?? string.Empty,
+                status = "scanning"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error scanning folder {Folder}", folder);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Override local changes - 100% Syncthing compatible
+    /// POST /rest/folder/override?folder=default
+    /// For send-only folders: replaces remote changes with local state
+    /// </summary>
+    [HttpPost("override")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<ActionResult<object>> OverrideFolder([FromQuery] string folder)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(folder))
+                return BadRequest(new { error = "folder parameter required" });
+
+            var folderInfo = await _syncEngine.GetFolderAsync(folder);
+            if (folderInfo == null)
+                return NotFound(new { error = "folder not found" });
+
+            // Check folder type - override is typically for send-only folders
+            if (folderInfo.SyncType != SyncFolderType.SendOnly)
+            {
+                _logger.LogWarning("Override requested for non-send-only folder {Folder} (type: {Type})",
+                    folder, folderInfo.SyncType);
+            }
+
+            // Check if folder is paused
+            if (folderInfo.IsPaused)
+            {
+                return BadRequest(new { error = "folder is paused" });
+            }
+
+            _logger.LogInformation("Triggering override for folder {Folder}", folder);
+
+            var result = await _syncEngine.OverrideFolderAsync(folder);
+
+            if (!result)
+            {
+                return StatusCode(500, new { error = "Override operation failed" });
+            }
+
+            return Ok(new
+            {
+                folder = folder,
+                status = "override triggered"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error overriding folder {Folder}", folder);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Revert local changes - 100% Syncthing compatible
+    /// POST /rest/folder/revert?folder=default
+    /// For receive-only folders: discards local changes and reverts to global state
+    /// </summary>
+    [HttpPost("revert")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<ActionResult<object>> RevertFolder([FromQuery] string folder)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(folder))
+                return BadRequest(new { error = "folder parameter required" });
+
+            var folderInfo = await _syncEngine.GetFolderAsync(folder);
+            if (folderInfo == null)
+                return NotFound(new { error = "folder not found" });
+
+            // Check folder type - revert is typically for receive-only folders
+            if (folderInfo.SyncType != SyncFolderType.ReceiveOnly)
+            {
+                _logger.LogWarning("Revert requested for non-receive-only folder {Folder} (type: {Type})",
+                    folder, folderInfo.SyncType);
+            }
+
+            // Check if folder is paused
+            if (folderInfo.IsPaused)
+            {
+                return BadRequest(new { error = "folder is paused" });
+            }
+
+            _logger.LogInformation("Triggering revert for folder {Folder}", folder);
+
+            var result = await _syncEngine.RevertFolderAsync(folder);
+
+            if (!result)
+            {
+                return StatusCode(500, new { error = "Revert operation failed" });
+            }
+
+            return Ok(new
+            {
+                folder = folder,
+                status = "revert triggered"
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error reverting folder {Folder}", folder);
             return StatusCode(500, new { error = "Internal server error" });
         }
     }

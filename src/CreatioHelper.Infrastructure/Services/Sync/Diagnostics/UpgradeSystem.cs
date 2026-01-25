@@ -99,7 +99,7 @@ public class UpgradeOptions
     /// <summary>
     /// URL to check for releases
     /// </summary>
-    public string ReleaseUrl { get; set; } = "https://api.github.com/repos/anthropics/creatio-helper/releases";
+    public string ReleaseUrl { get; set; } = "https://api.github.com/repos/fejdraus/CreatioHelper/releases";
 
     /// <summary>
     /// Whether to check for updates automatically

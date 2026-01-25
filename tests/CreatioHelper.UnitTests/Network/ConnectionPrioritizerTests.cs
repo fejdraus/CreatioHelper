@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using CreatioHelper.Infrastructure.Services.Network.Connection;
 using Microsoft.Extensions.Logging;
 using Moq;

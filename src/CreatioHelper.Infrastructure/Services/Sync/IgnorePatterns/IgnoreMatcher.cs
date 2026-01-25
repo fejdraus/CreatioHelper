@@ -144,7 +144,13 @@ public class IgnoreMatcher : IDisposable
 
         // Normalize path separators
         var normalizedPath = NormalizePath(path);
-        
+
+        // The .stignore file itself is NEVER synced (per Syncthing spec)
+        if (IsStignoreFile(normalizedPath))
+        {
+            return IgnoreResult.IgnoreAndSkip;
+        }
+
         // Check cache first
         if (_cache?.TryGet(normalizedPath, out var cachedResult) == true)
         {
@@ -159,8 +165,69 @@ public class IgnoreMatcher : IDisposable
 
         // Cache the result
         _cache?.Set(normalizedPath, result);
-        
+
         return result;
+    }
+
+    /// <summary>
+    /// Tests if a directory path should be ignored.
+    /// Adds trailing slash to indicate directory context.
+    /// </summary>
+    public IgnoreResult MatchDirectory(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return IgnoreResult.NotIgnored;
+
+        var normalizedPath = NormalizePath(path);
+
+        // Ensure trailing slash for directory context
+        if (!normalizedPath.EndsWith('/'))
+        {
+            normalizedPath += '/';
+        }
+
+        return Match(normalizedPath);
+    }
+
+    /// <summary>
+    /// Tests if a path is an ignore file that should never be synced.
+    /// Per Syncthing spec, .stignore, .stglobalignore, and files included via #include are never synced.
+    /// </summary>
+    public static bool IsStignoreFile(string normalizedPath)
+    {
+        var filename = normalizedPath.Contains('/')
+            ? normalizedPath[(normalizedPath.LastIndexOf('/') + 1)..]
+            : normalizedPath;
+
+        return filename.Equals(".stignore", StringComparison.OrdinalIgnoreCase) ||
+               filename.Equals(".stglobalignore", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// Checks if any parent directory of the path is ignored.
+    /// This is useful for determining if a file should be skipped during traversal.
+    /// </summary>
+    public bool IsAnyParentIgnored(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            return false;
+
+        var normalizedPath = NormalizePath(path);
+        var parts = normalizedPath.Split('/');
+
+        var currentPath = string.Empty;
+        for (int i = 0; i < parts.Length - 1; i++) // Exclude the file itself
+        {
+            currentPath = currentPath.Length > 0 ? currentPath + "/" + parts[i] : parts[i];
+
+            var result = MatchDirectory(currentPath);
+            if (result.IsIgnored() && result.CanSkipDir())
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -175,7 +242,10 @@ public class IgnoreMatcher : IDisposable
         var parseContext = new ParseContext { EscapeChar = '\\' };
         var processedFiles = new HashSet<string>();
 
-        await ParseLinesRecursiveAsync(lines, baseDirectory, newPatterns, parseContext, processedFiles, cancellationToken).ConfigureAwait(false);
+        // Pre-process lines to handle line continuations
+        var processedLines = PreprocessLineContinuations(lines, parseContext.EscapeChar);
+
+        await ParseLinesRecursiveAsync(processedLines, baseDirectory, newPatterns, parseContext, processedFiles, cancellationToken).ConfigureAwait(false);
 
         lock (_lock)
         {
@@ -183,6 +253,70 @@ public class IgnoreMatcher : IDisposable
             _patterns = newPatterns;
             _escapeChar = parseContext.EscapeChar;
         }
+    }
+
+    /// <summary>
+    /// Preprocesses lines to handle line continuations (backslash at end of line).
+    /// Per Syncthing spec, a line ending with the escape character continues on the next line.
+    /// </summary>
+    private static string[] PreprocessLineContinuations(string[] lines, char escapeChar)
+    {
+        var result = new List<string>();
+        var currentLine = new StringBuilder();
+
+        foreach (var line in lines)
+        {
+            if (currentLine.Length > 0)
+            {
+                // Continuing from previous line - trim leading whitespace
+                currentLine.Append(line.TrimStart());
+            }
+            else
+            {
+                currentLine.Append(line);
+            }
+
+            // Check if line ends with escape char (and not escaped itself)
+            var trimmedLine = currentLine.ToString().TrimEnd();
+            if (trimmedLine.Length > 0 && trimmedLine[^1] == escapeChar &&
+                !IsLineEndEscaped(trimmedLine, escapeChar))
+            {
+                // Remove trailing escape char and continue to next line
+                currentLine.Clear();
+                currentLine.Append(trimmedLine[..^1]);
+                continue;
+            }
+
+            result.Add(currentLine.ToString());
+            currentLine.Clear();
+        }
+
+        // Handle case where file ends with continuation
+        if (currentLine.Length > 0)
+        {
+            result.Add(currentLine.ToString());
+        }
+
+        return result.ToArray();
+    }
+
+    /// <summary>
+    /// Checks if the trailing escape character is itself escaped (making it a literal).
+    /// </summary>
+    private static bool IsLineEndEscaped(string line, char escapeChar)
+    {
+        if (line.Length < 2)
+            return false;
+
+        // Count consecutive escape chars at the end
+        int count = 0;
+        for (int i = line.Length - 1; i >= 0 && line[i] == escapeChar; i--)
+        {
+            count++;
+        }
+
+        // If even number (including the trailing one), the last one is escaped
+        return count % 2 == 0;
     }
 
     private async Task ParseLinesRecursiveAsync(

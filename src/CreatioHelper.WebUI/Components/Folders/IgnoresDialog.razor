@@ -1,7 +1,7 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 
-<MudDialog Style="max-height: 90vh;">
+<MudDialog Style="max-height: 90vh; min-width: 600px;">
     <TitleContent>
         <MudText Typo="Typo.h6">
             <MudIcon Icon="@Icons.Material.Filled.FilterList" Class="mr-2" />
@@ -15,68 +15,330 @@
         }
         else
         {
-            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
-                Enter patterns to exclude files and folders from synchronization.
-                One pattern per line. Patterns use Syncthing ignore syntax.
-            </MudText>
-
-            <MudTextField @bind-Value="_ignoreText"
-                          Label="Ignore Patterns"
-                          Variant="Variant.Outlined"
-                          Lines="15"
-                          FullWidth="true"
-                          Placeholder="*.tmp&#10;~*&#10;.git&#10;**/node_modules"
-                          Class="mb-4"
-                          Style="font-family: monospace;" />
-
-            <MudExpansionPanels Elevation="0">
-                <MudExpansionPanel Text="Pattern Syntax Help" Expanded="false">
-                    <MudText Typo="Typo.body2">
-                        <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
-                            <thead>
-                                <tr>
-                                    <th>Pattern</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>*.tmp</code></td>
-                                    <td>Ignore all .tmp files</td>
-                                </tr>
-                                <tr>
-                                    <td><code>~*</code></td>
-                                    <td>Ignore files starting with ~</td>
-                                </tr>
-                                <tr>
-                                    <td><code>.git</code></td>
-                                    <td>Ignore .git folder anywhere</td>
-                                </tr>
-                                <tr>
-                                    <td><code>/Build</code></td>
-                                    <td>Ignore Build folder in root only</td>
-                                </tr>
-                                <tr>
-                                    <td><code>**/node_modules</code></td>
-                                    <td>Ignore node_modules at any depth</td>
-                                </tr>
-                                <tr>
-                                    <td><code>(?i)*.TMP</code></td>
-                                    <td>Case-insensitive match</td>
-                                </tr>
-                                <tr>
-                                    <td><code>// comment</code></td>
-                                    <td>Comment line (ignored)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>!important.txt</code></td>
-                                    <td>Do NOT ignore (override previous)</td>
-                                </tr>
-                            </tbody>
-                        </MudSimpleTable>
+            <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+                @* ===== PATTERNS TAB ===== *@
+                <MudTabPanel Text="Patterns" Icon="@Icons.Material.Filled.Edit">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        Enter patterns to exclude files and folders from synchronization.
+                        One pattern per line. Patterns use Syncthing ignore syntax.
                     </MudText>
-                </MudExpansionPanel>
-            </MudExpansionPanels>
+
+                    @* Quick Add Pattern Row *@
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="10">
+                            <MudTextField @bind-Value="_newPattern"
+                                          Label="Add Pattern"
+                                          Placeholder="*.tmp, .git, **/node_modules"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          OnKeyDown="@OnPatternKeyDown"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Add" />
+                        </MudItem>
+                        <MudItem xs="2" Class="d-flex align-center">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="AddPattern"
+                                       Disabled="@string.IsNullOrWhiteSpace(_newPattern)"
+                                       FullWidth="true">
+                                Add
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+
+                    @* Common Pattern Templates *@
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Quick Templates</MudText>
+                    <MudChipSet T="string" Class="mb-4">
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("*.tmp"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">*.tmp</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate(".git"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">.git</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("**/node_modules"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">node_modules</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("**/.DS_Store"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">.DS_Store</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("**/bin"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">bin</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("**/obj"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">obj</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("~*"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">~* (temp)</MudChip>
+                        <MudChip T="string" OnClick="@(() => AddPatternTemplate("*.bak"))" Size="Size.Small" Icon="@Icons.Material.Filled.Add">*.bak</MudChip>
+                    </MudChipSet>
+
+                    <MudDivider Class="my-4" />
+
+                    @* Pattern List *@
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">
+                        Current Patterns (@_patterns.Count)
+                    </MudText>
+
+                    @if (_patterns.Count == 0)
+                    {
+                        <MudAlert Severity="Severity.Info" Class="mb-4">
+                            No ignore patterns defined. All files will be synchronized.
+                        </MudAlert>
+                    }
+                    else
+                    {
+                        <MudList T="string" Dense="true" Class="mb-4" Style="max-height: 300px; overflow-y: auto;">
+                            @foreach (var pattern in _patterns.Select((p, i) => new { Pattern = p, Index = i }))
+                            {
+                                <MudListItem Class="@GetPatternClass(pattern.Pattern)">
+                                    <div class="d-flex align-center justify-space-between" style="width: 100%;">
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@GetPatternIcon(pattern.Pattern)"
+                                                     Size="Size.Small"
+                                                     Color="@GetPatternColor(pattern.Pattern)"
+                                                     Class="mr-2" />
+                                            <code style="font-family: monospace;">@pattern.Pattern</code>
+                                        </div>
+                                        <div>
+                                            @if (pattern.Index > 0)
+                                            {
+                                                <MudTooltip Text="Move up">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(() => MovePatternUp(pattern.Index))" />
+                                                </MudTooltip>
+                                            }
+                                            @if (pattern.Index < _patterns.Count - 1)
+                                            {
+                                                <MudTooltip Text="Move down">
+                                                    <MudIconButton Icon="@Icons.Material.Filled.ArrowDownward"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(() => MovePatternDown(pattern.Index))" />
+                                                </MudTooltip>
+                                            }
+                                            <MudTooltip Text="Remove pattern">
+                                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                               Size="Size.Small"
+                                                               Color="Color.Error"
+                                                               OnClick="@(() => RemovePattern(pattern.Index))" />
+                                            </MudTooltip>
+                                        </div>
+                                    </div>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+
+                    @* Raw Editor Toggle *@
+                    <MudSwitch @bind-Value="_showRawEditor"
+                               Label="Show Raw Editor"
+                               Color="Color.Primary"
+                               Class="mb-2" />
+
+                    @if (_showRawEditor)
+                    {
+                        <MudTextField @bind-Value="_ignoreText"
+                                      Label="Raw Ignore Patterns"
+                                      Variant="Variant.Outlined"
+                                      Lines="10"
+                                      FullWidth="true"
+                                      Placeholder="*.tmp&#10;~*&#10;.git&#10;**/node_modules"
+                                      Class="mb-4"
+                                      Style="font-family: monospace;"
+                                      OnBlur="SyncPatternsFromText" />
+                        <MudText Typo="Typo.caption" Color="Color.Warning">
+                            <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1" />
+                            Changes in raw editor will overwrite the pattern list above when you click outside the text area.
+                        </MudText>
+                    }
+                </MudTabPanel>
+
+                @* ===== PREVIEW TAB ===== *@
+                <MudTabPanel Text="Preview" Icon="@Icons.Material.Filled.Visibility">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mb-4">
+                        Preview how patterns will be processed and test specific file paths.
+                    </MudText>
+
+                    @* Pattern Test Input *@
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Test Pattern Match</MudText>
+                    <MudGrid Class="mb-4">
+                        <MudItem xs="10">
+                            <MudTextField @bind-Value="_testPath"
+                                          Label="Test File Path"
+                                          Placeholder="path/to/file.tmp"
+                                          Variant="Variant.Outlined"
+                                          Immediate="true"
+                                          OnKeyDown="@OnTestPathKeyDown"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search" />
+                        </MudItem>
+                        <MudItem xs="2" Class="d-flex align-center">
+                            <MudButton Variant="Variant.Filled"
+                                       Color="Color.Primary"
+                                       OnClick="TestPattern"
+                                       Disabled="@string.IsNullOrWhiteSpace(_testPath)"
+                                       FullWidth="true">
+                                Test
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+
+                    @if (_testResult != null)
+                    {
+                        <MudAlert Severity="@(_testResult.IsIgnored ? Severity.Warning : Severity.Success)" Class="mb-4">
+                            <div class="d-flex align-center">
+                                <MudIcon Icon="@(_testResult.IsIgnored ? Icons.Material.Filled.Block : Icons.Material.Filled.Check)" Class="mr-2" />
+                                <div>
+                                    <strong>@_testPath</strong> will be
+                                    <strong>@(_testResult.IsIgnored ? "IGNORED" : "SYNCED")</strong>
+                                    @if (_testResult.IsIgnored && !string.IsNullOrEmpty(_testResult.MatchedPattern))
+                                    {
+                                        <span> (matched by: <code>@_testResult.MatchedPattern</code>)</span>
+                                    }
+                                </div>
+                            </div>
+                        </MudAlert>
+                    }
+
+                    <MudDivider Class="my-4" />
+
+                    @* Pattern Statistics *@
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Pattern Statistics</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                        <tbody>
+                            <tr>
+                                <td><strong>Total Patterns</strong></td>
+                                <td>@_patterns.Count</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Ignore Patterns</strong></td>
+                                <td>@_patterns.Count(p => !p.StartsWith("!") && !p.StartsWith("//") && !p.StartsWith("#"))</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Include Patterns (!)</strong></td>
+                                <td>@_patterns.Count(p => p.StartsWith("!"))</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Comments</strong></td>
+                                <td>@_patterns.Count(p => p.StartsWith("//") || p.StartsWith("#"))</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Case-Insensitive (?i)</strong></td>
+                                <td>@_patterns.Count(p => p.Contains("(?i)"))</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Delete-if-empty (?d)</strong></td>
+                                <td>@_patterns.Count(p => p.Contains("(?d)"))</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    @* Expanded Patterns *@
+                    @if (_expandedPatterns != null && _expandedPatterns.Length > 0)
+                    {
+                        <MudText Typo="Typo.subtitle2" Class="mb-2">
+                            Expanded Patterns (@_expandedPatterns.Length)
+                            <MudTooltip Text="Patterns after processing #include directives">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="ml-1" />
+                            </MudTooltip>
+                        </MudText>
+                        <MudPaper Elevation="0" Class="pa-2" Style="max-height: 200px; overflow-y: auto; background: var(--mud-palette-background-grey); font-family: monospace; font-size: 0.85rem;">
+                            @foreach (var pattern in _expandedPatterns)
+                            {
+                                <div class="@GetPatternClass(pattern)" style="padding: 2px 4px;">
+                                    @pattern
+                                </div>
+                            }
+                        </MudPaper>
+                    }
+                </MudTabPanel>
+
+                @* ===== HELP TAB ===== *@
+                <MudTabPanel Text="Help" Icon="@Icons.Material.Filled.Help">
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Pattern Syntax</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                        <thead>
+                            <tr>
+                                <th>Pattern</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>*.tmp</code></td>
+                                <td>Ignore all .tmp files</td>
+                            </tr>
+                            <tr>
+                                <td><code>~*</code></td>
+                                <td>Ignore files starting with ~</td>
+                            </tr>
+                            <tr>
+                                <td><code>.git</code></td>
+                                <td>Ignore .git folder anywhere</td>
+                            </tr>
+                            <tr>
+                                <td><code>/Build</code></td>
+                                <td>Ignore Build folder in root only</td>
+                            </tr>
+                            <tr>
+                                <td><code>**/node_modules</code></td>
+                                <td>Ignore node_modules at any depth</td>
+                            </tr>
+                            <tr>
+                                <td><code>(?i)*.TMP</code></td>
+                                <td>Case-insensitive match</td>
+                            </tr>
+                            <tr>
+                                <td><code>(?d)empty/</code></td>
+                                <td>Delete directory if empty after sync</td>
+                            </tr>
+                            <tr>
+                                <td><code>// comment</code></td>
+                                <td>Comment line (ignored)</td>
+                            </tr>
+                            <tr>
+                                <td><code># comment</code></td>
+                                <td>Alternative comment syntax</td>
+                            </tr>
+                            <tr>
+                                <td><code>!important.txt</code></td>
+                                <td>Do NOT ignore (override previous)</td>
+                            </tr>
+                            <tr>
+                                <td><code>#include common</code></td>
+                                <td>Include patterns from another file</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">Wildcards</MudText>
+                    <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                        <thead>
+                            <tr>
+                                <th>Wildcard</th>
+                                <th>Meaning</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>*</code></td>
+                                <td>Match any characters except path separator (/)</td>
+                            </tr>
+                            <tr>
+                                <td><code>**</code></td>
+                                <td>Match any characters including path separator</td>
+                            </tr>
+                            <tr>
+                                <td><code>?</code></td>
+                                <td>Match any single character except path separator</td>
+                            </tr>
+                            <tr>
+                                <td><code>[abc]</code></td>
+                                <td>Match any character in the set</td>
+                            </tr>
+                            <tr>
+                                <td><code>[a-z]</code></td>
+                                <td>Match any character in the range</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudAlert Severity="Severity.Info" Class="mb-2">
+                        <strong>Order matters!</strong> The first matching pattern wins. Use <code>!</code> to override previous ignores.
+                    </MudAlert>
+
+                    <MudAlert Severity="Severity.Warning">
+                        <strong>Note:</strong> The <code>.stignore</code> file itself is never synced between devices.
+                    </MudAlert>
+                </MudTabPanel>
+            </MudTabs>
         }
     </DialogContent>
     <DialogActions>
@@ -107,6 +369,16 @@
     private bool _isLoading = true;
     private bool _isSaving;
     private string _ignoreText = string.Empty;
+    private List<string> _patterns = new();
+    private string[]? _expandedPatterns;
+
+    // Pattern editing
+    private string _newPattern = string.Empty;
+    private bool _showRawEditor;
+
+    // Pattern testing
+    private string _testPath = string.Empty;
+    private PatternTestResult? _testResult;
 
     protected override async Task OnInitializedAsync()
     {
@@ -121,7 +393,10 @@
         try
         {
             var ignores = await ApiClient.GetIgnoresInfoAsync(FolderId);
-            _ignoreText = string.Join("\n", ignores.Lines ?? ignores.Ignore ?? Array.Empty<string>());
+            var lines = ignores.Lines ?? ignores.Ignore ?? Array.Empty<string>();
+            _ignoreText = string.Join("\n", lines);
+            _patterns = lines.ToList();
+            _expandedPatterns = ignores.Expanded;
         }
         catch (Exception ex)
         {
@@ -134,6 +409,248 @@
         }
     }
 
+    private void SyncPatternsFromText()
+    {
+        _patterns = _ignoreText
+            .Split('\n', StringSplitOptions.None)
+            .Select(l => l.TrimEnd('\r'))
+            .Where(l => !string.IsNullOrEmpty(l))
+            .ToList();
+        StateHasChanged();
+    }
+
+    private void SyncTextFromPatterns()
+    {
+        _ignoreText = string.Join("\n", _patterns);
+    }
+
+    private void AddPattern()
+    {
+        if (string.IsNullOrWhiteSpace(_newPattern))
+            return;
+
+        var pattern = _newPattern.Trim();
+        if (!_patterns.Contains(pattern))
+        {
+            _patterns.Add(pattern);
+            SyncTextFromPatterns();
+        }
+        _newPattern = string.Empty;
+        StateHasChanged();
+    }
+
+    private void AddPatternTemplate(string pattern)
+    {
+        if (!_patterns.Contains(pattern))
+        {
+            _patterns.Add(pattern);
+            SyncTextFromPatterns();
+            Snackbar.Add($"Added pattern: {pattern}", Severity.Info);
+            StateHasChanged();
+        }
+        else
+        {
+            Snackbar.Add($"Pattern already exists: {pattern}", Severity.Warning);
+        }
+    }
+
+    private void RemovePattern(int index)
+    {
+        if (index >= 0 && index < _patterns.Count)
+        {
+            var removed = _patterns[index];
+            _patterns.RemoveAt(index);
+            SyncTextFromPatterns();
+            Snackbar.Add($"Removed pattern: {removed}", Severity.Info);
+            StateHasChanged();
+        }
+    }
+
+    private void MovePatternUp(int index)
+    {
+        if (index > 0 && index < _patterns.Count)
+        {
+            (_patterns[index], _patterns[index - 1]) = (_patterns[index - 1], _patterns[index]);
+            SyncTextFromPatterns();
+            StateHasChanged();
+        }
+    }
+
+    private void MovePatternDown(int index)
+    {
+        if (index >= 0 && index < _patterns.Count - 1)
+        {
+            (_patterns[index], _patterns[index + 1]) = (_patterns[index + 1], _patterns[index]);
+            SyncTextFromPatterns();
+            StateHasChanged();
+        }
+    }
+
+    private void OnPatternKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            AddPattern();
+        }
+    }
+
+    private void OnTestPathKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            TestPattern();
+        }
+    }
+
+    private void TestPattern()
+    {
+        if (string.IsNullOrWhiteSpace(_testPath))
+            return;
+
+        var path = _testPath.Trim().Replace('\\', '/');
+        _testResult = MatchPath(path);
+        StateHasChanged();
+    }
+
+    private PatternTestResult MatchPath(string path)
+    {
+        // Simple pattern matching for preview (client-side approximation)
+        // The actual matching is done by the server
+        foreach (var pattern in _patterns)
+        {
+            // Skip comments
+            if (pattern.StartsWith("//") || pattern.StartsWith("#"))
+                continue;
+
+            // Handle negation
+            var isNegation = pattern.StartsWith("!");
+            var actualPattern = isNegation ? pattern[1..] : pattern;
+
+            // Remove prefix modifiers for matching
+            actualPattern = actualPattern.Replace("(?i)", "").Replace("(?d)", "");
+
+            // Simple glob matching
+            if (SimpleGlobMatch(actualPattern, path))
+            {
+                return new PatternTestResult
+                {
+                    IsIgnored = !isNegation,
+                    MatchedPattern = pattern
+                };
+            }
+        }
+
+        return new PatternTestResult { IsIgnored = false, MatchedPattern = null };
+    }
+
+    private static bool SimpleGlobMatch(string pattern, string path)
+    {
+        // Handle ** (match any path)
+        if (pattern.StartsWith("**/"))
+        {
+            var rest = pattern[3..];
+            return path.EndsWith("/" + rest) || path == rest || path.Contains("/" + rest);
+        }
+
+        // Handle leading / (root only)
+        if (pattern.StartsWith("/"))
+        {
+            pattern = pattern[1..];
+            // Must match from root
+        }
+        else
+        {
+            // Can match at any level
+            var fileName = path.Contains('/') ? path[(path.LastIndexOf('/') + 1)..] : path;
+            if (GlobMatch(pattern, fileName))
+                return true;
+        }
+
+        return GlobMatch(pattern, path);
+    }
+
+    private static bool GlobMatch(string pattern, string text)
+    {
+        // Very simple glob matching - just handle * wildcard
+        if (pattern == text)
+            return true;
+
+        if (pattern == "*")
+            return true;
+
+        if (pattern.StartsWith("*."))
+        {
+            var ext = pattern[1..];
+            return text.EndsWith(ext, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (pattern.EndsWith("*"))
+        {
+            var prefix = pattern[..^1];
+            return text.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        if (pattern.StartsWith("*"))
+        {
+            var suffix = pattern[1..];
+            return text.EndsWith(suffix, StringComparison.OrdinalIgnoreCase);
+        }
+
+        // Simple contains check for patterns with * in middle
+        if (pattern.Contains('*'))
+        {
+            var parts = pattern.Split('*');
+            var idx = 0;
+            foreach (var part in parts)
+            {
+                if (string.IsNullOrEmpty(part))
+                    continue;
+                var found = text.IndexOf(part, idx, StringComparison.OrdinalIgnoreCase);
+                if (found < idx)
+                    return false;
+                idx = found + part.Length;
+            }
+            return true;
+        }
+
+        return string.Equals(pattern, text, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetPatternIcon(string pattern)
+    {
+        if (pattern.StartsWith("//") || pattern.StartsWith("#"))
+            return Icons.Material.Filled.Comment;
+        if (pattern.StartsWith("!"))
+            return Icons.Material.Filled.CheckCircle;
+        if (pattern.Contains("(?i)"))
+            return Icons.Material.Filled.TextFormat;
+        if (pattern.Contains("(?d)"))
+            return Icons.Material.Filled.DeleteSweep;
+        if (pattern.StartsWith("#include"))
+            return Icons.Material.Filled.Input;
+        return Icons.Material.Filled.Block;
+    }
+
+    private static Color GetPatternColor(string pattern)
+    {
+        if (pattern.StartsWith("//") || pattern.StartsWith("#") && !pattern.StartsWith("#include"))
+            return Color.Default;
+        if (pattern.StartsWith("!"))
+            return Color.Success;
+        if (pattern.Contains("(?d)"))
+            return Color.Warning;
+        return Color.Error;
+    }
+
+    private static string GetPatternClass(string pattern)
+    {
+        if (pattern.StartsWith("//") || (pattern.StartsWith("#") && !pattern.StartsWith("#include")))
+            return "mud-text-secondary";
+        if (pattern.StartsWith("!"))
+            return "mud-success-text";
+        return string.Empty;
+    }
+
     private async Task Save()
     {
         _isSaving = true;
@@ -141,10 +658,13 @@
 
         try
         {
-            var lines = _ignoreText
-                .Split('\n', StringSplitOptions.None)
-                .Select(l => l.TrimEnd('\r'))
-                .ToArray();
+            // Use patterns list if available, otherwise fall back to text
+            var lines = _patterns.Count > 0
+                ? _patterns.ToArray()
+                : _ignoreText
+                    .Split('\n', StringSplitOptions.None)
+                    .Select(l => l.TrimEnd('\r'))
+                    .ToArray();
 
             await ApiClient.SetIgnoresAsync(FolderId, lines);
             Snackbar.Add("Ignore patterns saved", Severity.Success);
@@ -162,4 +682,10 @@
     }
 
     private void Cancel() => MudDialog.Cancel();
+
+    private class PatternTestResult
+    {
+        public bool IsIgnored { get; set; }
+        public string? MatchedPattern { get; set; }
+    }
 }

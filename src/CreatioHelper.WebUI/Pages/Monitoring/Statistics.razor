@@ -2,11 +2,12 @@
 @inject IApiClient ApiClient
 @inject StateContainer State
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>Statistics - CreatioHelper</PageTitle>
+<PageTitle>@L["Statistics_Title"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Statistics</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Statistics_Title"]</MudText>
 
 <MudGrid>
     @* Overview Cards *@
@@ -15,7 +16,7 @@
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
                 <div>
-                    <MudText Typo="Typo.caption" Color="Color.Default">Total Folders</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Statistics_TotalFolders"]</MudText>
                     <MudText Typo="Typo.h4">@_totalFolders</MudText>
                 </div>
             </div>
@@ -27,7 +28,7 @@
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
                 <div>
-                    <MudText Typo="Typo.caption" Color="Color.Default">Total Files</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Statistics_TotalFiles"]</MudText>
                     <MudText Typo="Typo.h4">@_totalFiles.ToString("N0")</MudText>
                 </div>
             </div>
@@ -39,7 +40,7 @@
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Tertiary" Size="Size.Large" Class="mr-3" />
                 <div>
-                    <MudText Typo="Typo.caption" Color="Color.Default">Total Size</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Statistics_TotalData"]</MudText>
                     <MudText Typo="Typo.h4">@FormatBytes(_totalBytes)</MudText>
                 </div>
             </div>
@@ -51,7 +52,7 @@
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Devices" Color="Color.Info" Size="Size.Large" Class="mr-3" />
                 <div>
-                    <MudText Typo="Typo.caption" Color="Color.Default">Connected Devices</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Statistics_ConnectedDevices"]</MudText>
                     <MudText Typo="Typo.h4">@_connectedDevices / @_totalDevices</MudText>
                 </div>
             </div>
@@ -63,31 +64,31 @@
     @* Transfer Statistics *@
     <MudItem xs="12" md="6">
         <MudPaper Elevation="2" Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-4">Transfer Statistics</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4">@L["Statistics_TransferStats"]</MudText>
             <MudSimpleTable Dense="true" Bordered="true">
                 <tbody>
                     <tr>
-                        <td>Total Downloaded</td>
+                        <td>@L["Statistics_TotalDownloaded"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_totalDownloaded)</td>
                     </tr>
                     <tr>
-                        <td>Total Uploaded</td>
+                        <td>@L["Statistics_TotalUploaded"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_totalUploaded)</td>
                     </tr>
                     <tr>
-                        <td>Current Download Rate</td>
+                        <td>@L["Statistics_CurrentDownloadRate"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_downloadRate)/s</td>
                     </tr>
                     <tr>
-                        <td>Current Upload Rate</td>
+                        <td>@L["Statistics_CurrentUploadRate"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_uploadRate)/s</td>
                     </tr>
                     <tr>
-                        <td>Files Synced (Session)</td>
+                        <td>@L["Statistics_FilesSynced"]</td>
                         <td class="text-right font-weight-bold">@_filesSynced.ToString("N0")</td>
                     </tr>
                     <tr>
-                        <td>Bytes Synced (Session)</td>
+                        <td>@L["Statistics_BytesSynced"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_bytesSynced)</td>
                     </tr>
                 </tbody>
@@ -98,31 +99,31 @@
     @* System Statistics *@
     <MudItem xs="12" md="6">
         <MudPaper Elevation="2" Class="pa-4">
-            <MudText Typo="Typo.h6" Class="mb-4">System Statistics</MudText>
+            <MudText Typo="Typo.h6" Class="mb-4">@L["Statistics_SystemStats"]</MudText>
             <MudSimpleTable Dense="true" Bordered="true">
                 <tbody>
                     <tr>
-                        <td>Uptime</td>
+                        <td>@L["Statistics_Uptime"]</td>
                         <td class="text-right font-weight-bold">@FormatUptime(_uptime)</td>
                     </tr>
                     <tr>
-                        <td>Memory Usage</td>
+                        <td>@L["Statistics_MemoryUsage"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_memoryUsage)</td>
                     </tr>
                     <tr>
-                        <td>Database Size</td>
+                        <td>@L["Statistics_DatabaseSize"]</td>
                         <td class="text-right font-weight-bold">@FormatBytes(_databaseSize)</td>
                     </tr>
                     <tr>
-                        <td>Active Goroutines</td>
+                        <td>@L["Statistics_GoroutineCount"]</td>
                         <td class="text-right font-weight-bold">@_goroutines</td>
                     </tr>
                     <tr>
-                        <td>Version</td>
+                        <td>@L["Statistics_Version"]</td>
                         <td class="text-right font-weight-bold">@_version</td>
                     </tr>
                     <tr>
-                        <td>Started</td>
+                        <td>@L["Statistics_Started"]</td>
                         <td class="text-right font-weight-bold">@_startedAt.ToString("g")</td>
                     </tr>
                 </tbody>
@@ -133,7 +134,7 @@
 
 @* Folder Statistics *@
 <MudPaper Elevation="2" Class="pa-4 mt-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Folder Statistics</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Statistics_FolderStats"]</MudText>
 
     @if (_isLoading)
     {
@@ -143,21 +144,21 @@
     {
         <MudTable Items="@_folderStats" Dense="true" Hover="true">
             <HeaderContent>
-                <MudTh>Folder</MudTh>
-                <MudTh Style="text-align: right;">Files</MudTh>
-                <MudTh Style="text-align: right;">Directories</MudTh>
-                <MudTh Style="text-align: right;">Size</MudTh>
-                <MudTh Style="text-align: right;">Sync %</MudTh>
-                <MudTh>Status</MudTh>
+                <MudTh>@L["Statistics_Folder"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_LocalFiles"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_TotalDirs"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_TotalData"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_SyncPercent"]</MudTh>
+                <MudTh>@L["Statistics_State"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="Folder">
+                <MudTd DataLabel="@L["Statistics_Folder"]">
                     <MudLink Href="/folders">@context.Name</MudLink>
                 </MudTd>
-                <MudTd DataLabel="Files" Style="text-align: right;">@context.Files.ToString("N0")</MudTd>
-                <MudTd DataLabel="Directories" Style="text-align: right;">@context.Directories.ToString("N0")</MudTd>
-                <MudTd DataLabel="Size" Style="text-align: right;">@FormatBytes(context.Bytes)</MudTd>
-                <MudTd DataLabel="Sync %" Style="text-align: right;">
+                <MudTd DataLabel="@L["Statistics_LocalFiles"]" Style="text-align: right;">@context.Files.ToString("N0")</MudTd>
+                <MudTd DataLabel="@L["Statistics_TotalDirs"]" Style="text-align: right;">@context.Directories.ToString("N0")</MudTd>
+                <MudTd DataLabel="@L["Statistics_TotalData"]" Style="text-align: right;">@FormatBytes(context.Bytes)</MudTd>
+                <MudTd DataLabel="@L["Statistics_SyncPercent"]" Style="text-align: right;">
                     <div class="d-flex align-center justify-end">
                         <MudProgressLinear Value="@context.SyncPercent"
                                            Color="@(context.SyncPercent >= 100 ? Color.Success : Color.Primary)"
@@ -165,7 +166,7 @@
                         <span>@context.SyncPercent.ToString("F0")%</span>
                     </div>
                 </MudTd>
-                <MudTd DataLabel="Status">
+                <MudTd DataLabel="@L["Statistics_State"]">
                     <MudChip T="string"
                              Size="Size.Small"
                              Color="@GetStatusColor(context.State)"
@@ -180,7 +181,7 @@
 
 @* Device Statistics *@
 <MudPaper Elevation="2" Class="pa-4 mt-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Device Statistics</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Statistics_DeviceStats"]</MudText>
 
     @if (_isLoading)
     {
@@ -190,19 +191,19 @@
     {
         <MudTable Items="@_deviceStats" Dense="true" Hover="true">
             <HeaderContent>
-                <MudTh>Device</MudTh>
-                <MudTh Style="text-align: right;">Downloaded</MudTh>
-                <MudTh Style="text-align: right;">Uploaded</MudTh>
-                <MudTh Style="text-align: right;">Last Seen</MudTh>
-                <MudTh>Status</MudTh>
+                <MudTh>@L["Statistics_Device"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_BytesRecv"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_BytesSent"]</MudTh>
+                <MudTh Style="text-align: right;">@L["Statistics_LastSeen"]</MudTh>
+                <MudTh>@L["Statistics_Status"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="Device">
+                <MudTd DataLabel="@L["Statistics_Device"]">
                     <MudLink Href="@($"/devices/{context.DeviceId}")">@context.Name</MudLink>
                 </MudTd>
-                <MudTd DataLabel="Downloaded" Style="text-align: right;">@FormatBytes(context.Downloaded)</MudTd>
-                <MudTd DataLabel="Uploaded" Style="text-align: right;">@FormatBytes(context.Uploaded)</MudTd>
-                <MudTd DataLabel="Last Seen" Style="text-align: right;">
+                <MudTd DataLabel="@L["Statistics_BytesRecv"]" Style="text-align: right;">@FormatBytes(context.Downloaded)</MudTd>
+                <MudTd DataLabel="@L["Statistics_BytesSent"]" Style="text-align: right;">@FormatBytes(context.Uploaded)</MudTd>
+                <MudTd DataLabel="@L["Statistics_LastSeen"]" Style="text-align: right;">
                     @if (context.LastSeen.HasValue)
                     {
                         <MudTooltip Text="@context.LastSeen.Value.ToString("g")">
@@ -211,17 +212,17 @@
                     }
                     else
                     {
-                        <span>Never</span>
+                        <span>@L["Statistics_Never"]</span>
                     }
                 </MudTd>
-                <MudTd DataLabel="Status">
+                <MudTd DataLabel="@L["Statistics_Status"]">
                     @if (context.Connected)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Connected</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@L["Statistics_Connected"]</MudChip>
                     }
                     else
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disconnected</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["Statistics_Disconnected"]</MudChip>
                     }
                 </MudTd>
             </RowTemplate>

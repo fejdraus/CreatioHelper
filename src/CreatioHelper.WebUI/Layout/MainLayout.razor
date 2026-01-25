@@ -6,6 +6,7 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IStringLocalizer<Localization> L
 
 <MudLayout>
     <MudAppBar Elevation="1">
@@ -22,21 +23,21 @@
         <SyncStatusChip Status="@_syncStatus" />
 
         @* Connection Status *@
-        <MudTooltip Text="@(_isConnected ? "Connected to agent" : "Disconnected from agent")">
+        <MudTooltip Text="@(_isConnected ? L["Msg_Connected"] : L["Msg_Disconnected"])">
             <MudIconButton Icon="@(_isConnected ? Icons.Material.Filled.Cloud : Icons.Material.Filled.CloudOff)"
                            Color="@(_isConnected ? Color.Success : Color.Error)"
                            Size="Size.Small" />
         </MudTooltip>
 
         @* Theme Toggle *@
-        <MudTooltip Text="@(_isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")">
+        <MudTooltip Text="@(_isDarkMode ? L["Settings_ThemeLight"] : L["Settings_ThemeDark"])">
             <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
                            Color="Color.Inherit"
                            OnClick="@ToggleTheme" />
         </MudTooltip>
 
         @* Settings *@
-        <MudTooltip Text="Settings">
+        <MudTooltip Text="@L["Nav_Settings"]">
             <MudIconButton Icon="@Icons.Material.Filled.Settings"
                            Color="Color.Inherit"
                            Href="/settings" />
@@ -49,7 +50,7 @@
             </MudMenuItem>
             <MudDivider />
             <MudMenuItem OnClick="HandleLogout" Icon="@Icons.Material.Filled.Logout">
-                Logout
+                @L["Action_Logout"]
             </MudMenuItem>
         </MudMenu>
     </MudAppBar>

@@ -424,6 +424,11 @@ public class BepConnection : IDisposable, IConnectionLifecycle
                 (BepMessageConverter.ToProtoPing(), Proto.MessageType.Ping),
             BepMessageType.Close when message is BepClose close =>
                 (BepMessageConverter.ToProto(close), Proto.MessageType.Close),
+            // CreatioHelper P2P Upgrade Extensions
+            BepMessageType.AgentUpdateRequest when message is BepAgentUpdateRequest updateRequest =>
+                (BepMessageConverter.ToProto(updateRequest), Proto.MessageType.AgentUpdateRequest),
+            BepMessageType.AgentUpdateResponse when message is BepAgentUpdateResponse updateResponse =>
+                (BepMessageConverter.ToProto(updateResponse), Proto.MessageType.AgentUpdateResponse),
             _ => throw new InvalidOperationException($"Unsupported message type for Protobuf: {messageType}")
         };
     }
@@ -449,7 +454,7 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
         // Check if compression should be used
         var useCompression = messageData.Length >= CompressionThreshold;
-        var compression = useCompression ? BepCompression.Always : BepCompression.None;
+        var compression = useCompression ? BepCompression.Always : BepCompression.Never;
 
         // Compress if needed
         if (useCompression)
@@ -464,7 +469,7 @@ public class BepConnection : IDisposable, IConnectionLifecycle
             }
             else
             {
-                compression = BepCompression.None;
+                compression = BepCompression.Never;
             }
         }
 
@@ -502,7 +507,7 @@ public class BepConnection : IDisposable, IConnectionLifecycle
         IncrementBytesSent(totalBytesSent);
 
         _logger.LogDebug("Sent BEP {MessageType} (JSON) to device {DeviceId}, size: {Size}, compressed: {Compressed}",
-            messageType, _deviceId, messageData.Length, compression != BepCompression.None);
+            messageType, _deviceId, messageData.Length, compression != BepCompression.Never);
     }
 
     public async Task<BepResponse> RequestBlockAsync(BepRequest request)
@@ -711,6 +716,21 @@ public class BepConnection : IDisposable, IConnectionLifecycle
                     _logger.LogInformation("Received BEP close (Protobuf) from device {DeviceId}: {Reason}",
                         _deviceId, close.Reason);
                     await DisconnectAsync();
+                    break;
+
+                // CreatioHelper P2P Upgrade Extensions
+                case Proto.AgentUpdateRequest updateRequest:
+                    var bepUpdateRequest = BepMessageConverter.FromProto(updateRequest);
+                    _logger.LogInformation("Received agent update request (Protobuf) from device {DeviceId}: v{FromVersion} -> v{ToVersion}",
+                        _deviceId, bepUpdateRequest.FromVersion, bepUpdateRequest.ToVersion);
+                    MessageReceived?.Invoke(this, (BepMessageType.AgentUpdateRequest, bepUpdateRequest));
+                    break;
+
+                case Proto.AgentUpdateResponse updateResponse:
+                    var bepUpdateResponse = BepMessageConverter.FromProto(updateResponse);
+                    _logger.LogDebug("Received agent update response (Protobuf) from device {DeviceId}: chunk {Chunk}/{Total}",
+                        _deviceId, bepUpdateResponse.ChunkIndex + 1, bepUpdateResponse.TotalChunks);
+                    MessageReceived?.Invoke(this, (BepMessageType.AgentUpdateResponse, bepUpdateResponse));
                     break;
 
                 default:
@@ -953,6 +973,35 @@ public class BepConnection : IDisposable, IConnectionLifecycle
                     await DisconnectAsync();
                     break;
 
+                // CreatioHelper P2P Upgrade Extensions
+                case BepMessageType.AgentUpdateRequest:
+                    var updateRequest = JsonSerializer.Deserialize<BepAgentUpdateRequest>(json);
+                    if (updateRequest != null)
+                    {
+                        _logger.LogInformation("Received agent update request (JSON) from device {DeviceId}: v{FromVersion} -> v{ToVersion}",
+                            _deviceId, updateRequest.FromVersion, updateRequest.ToVersion);
+                        MessageReceived?.Invoke(this, (messageType, updateRequest));
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to deserialize agent update request (JSON) from device {DeviceId}", _deviceId);
+                    }
+                    break;
+
+                case BepMessageType.AgentUpdateResponse:
+                    var updateResponse = JsonSerializer.Deserialize<BepAgentUpdateResponse>(json);
+                    if (updateResponse != null)
+                    {
+                        _logger.LogDebug("Received agent update response (JSON) from device {DeviceId}: chunk {Chunk}/{Total}",
+                            _deviceId, updateResponse.ChunkIndex + 1, updateResponse.TotalChunks);
+                        MessageReceived?.Invoke(this, (messageType, updateResponse));
+                    }
+                    else
+                    {
+                        _logger.LogError("Failed to deserialize agent update response (JSON) from device {DeviceId}", _deviceId);
+                    }
+                    break;
+
                 default:
                     _logger.LogWarning("Unknown BEP message type {MessageType} from device {DeviceId}", messageType, _deviceId);
                     break;
@@ -1012,7 +1061,14 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     public void Dispose()
     {
-        _ = DisconnectAsync();
+        try
+        {
+            DisconnectAsync().Wait(TimeSpan.FromSeconds(5));
+        }
+        catch
+        {
+            // Ignore exceptions during disposal
+        }
         _cancellationTokenSource.Dispose();
         _sendSemaphore.Dispose();
     }

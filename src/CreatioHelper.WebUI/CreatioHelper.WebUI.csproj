@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <LangVersion>default</LangVersion>
+    <!-- Enable dynamic culture switching for localization -->
+    <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
   </PropertyGroup>
 
   <ItemGroup>

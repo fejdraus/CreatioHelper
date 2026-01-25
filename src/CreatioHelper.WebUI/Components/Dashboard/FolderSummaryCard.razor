@@ -1,4 +1,5 @@
 @* Folder Summary Card for Dashboard *@
+@inject IStringLocalizer<Localization> L
 
 <MudCard Elevation="2" Class="folder-card cursor-pointer" @onclick="OnClick">
     <MudCardContent>
@@ -35,7 +36,7 @@
         }
         else
         {
-            <MudText Typo="Typo.caption" Color="Color.Default">Loading...</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Default">@L["Common_Loading"]</MudText>
         }
     </MudCardContent>
 </MudCard>
@@ -82,17 +83,17 @@
 
     private string GetSyncStatus()
     {
-        if (Folder.Paused) return "Paused";
-        if (Status == null) return "Loading...";
+        if (Folder.Paused) return L["Devices_Paused"];
+        if (Status == null) return L["Common_Loading"];
 
         return Status.FolderState switch
         {
-            FolderState.Idle => Status.SyncPercentage >= 100 ? "Up to Date" : $"{Status.SyncPercentage:F0}% synced",
-            FolderState.Syncing => $"Syncing ({Status.SyncPercentage:F0}%)",
-            FolderState.SyncPreparing => "Preparing...",
-            FolderState.SyncWaiting => "Waiting...",
-            FolderState.Scanning => "Scanning...",
-            FolderState.Error => Status.Error ?? "Error",
+            FolderState.Idle => Status.SyncPercentage >= 100 ? L["Folders_UpToDate"] : $"{Status.SyncPercentage:F0}% {L["Status_Synced"]}",
+            FolderState.Syncing => $"{L["FolderState_Syncing"]} ({Status.SyncPercentage:F0}%)",
+            FolderState.SyncPreparing => L["Folders_Preparing"] + "...",
+            FolderState.SyncWaiting => L["Folders_Waiting"] + "...",
+            FolderState.Scanning => L["FolderState_Scanning"] + "...",
+            FolderState.Error => Status.Error ?? L["Common_Error"],
             _ => Status.State
         };
     }

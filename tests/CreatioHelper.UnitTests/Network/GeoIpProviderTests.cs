@@ -1,7 +1,9 @@
+using System;
 using CreatioHelper.Infrastructure.Services.Network.GeoIP;
 using Microsoft.Extensions.Logging;
 using Moq;
 using System.Net;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace CreatioHelper.UnitTests.Network;

@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Network.Connection;
 
 namespace CreatioHelper.Infrastructure.Services.Sync.Relay;
 
@@ -13,9 +14,11 @@ public class RelayConnectionManager : IDisposable
 {
     private readonly ILogger<RelayConnectionManager> _logger;
     private readonly X509Certificate2 _clientCertificate;
+    private readonly IConnectionPrioritizer? _connectionPrioritizer;
     private readonly ConcurrentDictionary<string, RelayClient> _relayClients = new();
     private readonly ConcurrentDictionary<string, List<string>> _deviceRelayMap = new();
     private readonly ConcurrentDictionary<string, RelayReconnectionState> _reconnectionStates = new();
+    private readonly ConcurrentDictionary<string, int> _relayPriorities = new();
     private readonly Timer _healthCheckTimer;
     private volatile bool _disposed;
 
@@ -34,14 +37,23 @@ public class RelayConnectionManager : IDisposable
         "relay://relay4.syncthing.net:22067"
     };
 
-    public RelayConnectionManager(ILogger<RelayConnectionManager> logger, X509Certificate2 clientCertificate)
+    public RelayConnectionManager(
+        ILogger<RelayConnectionManager> logger,
+        X509Certificate2 clientCertificate,
+        IConnectionPrioritizer? connectionPrioritizer = null)
     {
         _logger = logger;
         _clientCertificate = clientCertificate;
+        _connectionPrioritizer = connectionPrioritizer;
 
         // Setup periodic health checks
         _healthCheckTimer = new Timer(HealthCheckCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
     }
+
+    /// <summary>
+    /// Gets the connection prioritizer if available
+    /// </summary>
+    public IConnectionPrioritizer? ConnectionPrioritizer => _connectionPrioritizer;
 
     /// <summary>
     /// Event fired when a relay connection invitation is received
@@ -49,16 +61,45 @@ public class RelayConnectionManager : IDisposable
     public event EventHandler<RelayConnectionEventArgs>? RelayConnectionReceived;
 
     /// <summary>
-    /// Connect to the specified relay servers
+    /// Connect to the specified relay servers, optionally prioritized
     /// </summary>
     public async Task ConnectToRelaysAsync(List<string>? relayUris = null)
     {
         var uris = relayUris ?? _defaultRelayServers;
-        
+
         _logger.LogInformation("Connecting to {RelayCount} relay servers", uris.Count);
 
-        var connectTasks = uris.Select(uri => ConnectToRelayAsync(uri)).ToArray();
-        await Task.WhenAll(connectTasks);
+        // Use prioritization if available
+        if (_connectionPrioritizer != null)
+        {
+            var prioritizedRelays = _connectionPrioritizer.PrioritizeAddresses(uris);
+
+            _logger.LogDebug("Prioritized relay servers: {Relays}",
+                string.Join(", ", prioritizedRelays.Select(p => $"{p.Address}(p:{p.Priority})")));
+
+            // Connect to relays in priority order within buckets
+            var buckets = _connectionPrioritizer.GetPriorityBuckets(uris);
+            foreach (var bucket in buckets)
+            {
+                var bucketTasks = bucket.Select(async p =>
+                {
+                    var success = await ConnectToRelayAsync(p.Address);
+                    if (success)
+                    {
+                        _relayPriorities[p.Address] = p.Priority;
+                    }
+                    return success;
+                }).ToArray();
+
+                await Task.WhenAll(bucketTasks);
+            }
+        }
+        else
+        {
+            // Connect without prioritization
+            var connectTasks = uris.Select(uri => ConnectToRelayAsync(uri)).ToArray();
+            await Task.WhenAll(connectTasks);
+        }
 
         var connectedCount = _relayClients.Count(kvp => kvp.Value.IsConnected);
         _logger.LogInformation("Connected to {ConnectedCount}/{TotalCount} relay servers", connectedCount, uris.Count);
@@ -85,7 +126,7 @@ public class RelayConnectionManager : IDisposable
 
             var clientLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<RelayClient>.Instance;
             var relayClient = new RelayClient(clientLogger, uri, _clientCertificate, TimeSpan.FromSeconds(10));
-            
+
             // Subscribe to session invitations
             relayClient.SessionInvitationReceived += OnSessionInvitationReceived;
 
@@ -93,7 +134,19 @@ public class RelayConnectionManager : IDisposable
             if (connected)
             {
                 _relayClients[relayUri] = relayClient;
-                _logger.LogInformation("Connected to relay server: {RelayUri}", relayUri);
+
+                // Calculate and store priority for this relay
+                if (_connectionPrioritizer != null)
+                {
+                    var priority = _connectionPrioritizer.CalculatePriority(relayUri);
+                    _relayPriorities[relayUri] = priority;
+                    _logger.LogInformation("Connected to relay server: {RelayUri} (priority: {Priority})", relayUri, priority);
+                }
+                else
+                {
+                    _logger.LogInformation("Connected to relay server: {RelayUri}", relayUri);
+                }
+
                 return true;
             }
             else
@@ -189,8 +242,67 @@ public class RelayConnectionManager : IDisposable
         return _relayClients.Select(kvp => new RelayInfo
         {
             Uri = kvp.Key,
-            IsConnected = kvp.Value.IsConnected
+            IsConnected = kvp.Value.IsConnected,
+            Priority = _relayPriorities.TryGetValue(kvp.Key, out var priority) ? priority : null,
+            ConnectionType = _connectionPrioritizer?.GetConnectionType(kvp.Key)
         }).ToList();
+    }
+
+    /// <summary>
+    /// Get prioritized list of connected relay addresses
+    /// </summary>
+    public IEnumerable<PrioritizedAddress> GetPrioritizedRelayAddresses()
+    {
+        if (_connectionPrioritizer == null)
+        {
+            // Return addresses with default relay priority
+            return _relayClients
+                .Where(kvp => kvp.Value.IsConnected)
+                .Select(kvp => new PrioritizedAddress
+                {
+                    Address = kvp.Key,
+                    Priority = 90, // Default relay priority
+                    Type = ConnectionType.Relay,
+                    IsLan = false
+                });
+        }
+
+        var connectedRelays = _relayClients
+            .Where(kvp => kvp.Value.IsConnected)
+            .Select(kvp => kvp.Key);
+
+        return _connectionPrioritizer.PrioritizeAddresses(connectedRelays);
+    }
+
+    /// <summary>
+    /// Get the connection priority for a specific relay
+    /// </summary>
+    public int GetRelayPriority(string relayUri)
+    {
+        if (_relayPriorities.TryGetValue(relayUri, out var priority))
+        {
+            return priority;
+        }
+
+        return _connectionPrioritizer?.CalculatePriority(relayUri)
+            ?? 90; // Default relay priority
+    }
+
+    /// <summary>
+    /// Check if the current relay connection should be upgraded to a different connection type
+    /// </summary>
+    public bool ShouldUpgradeFromRelay(string newConnectionAddress)
+    {
+        if (_connectionPrioritizer == null)
+        {
+            return false;
+        }
+
+        var relayPriority = _connectionPrioritizer.Configuration.RelayPriority;
+        var newPriority = _connectionPrioritizer.CalculatePriority(newConnectionAddress);
+        var threshold = _connectionPrioritizer.Configuration.UpgradeThreshold;
+
+        return _connectionPrioritizer.ShouldUpgrade(relayPriority, newPriority, threshold);
     }
 
     private void OnSessionInvitationReceived(object? sender, SessionInvitation invitation)
@@ -281,6 +393,7 @@ public class RelayConnectionManager : IDisposable
                 removedClient.Dispose();
             }
             _reconnectionStates.TryRemove(relayUri, out _);
+            _relayPriorities.TryRemove(relayUri, out _);
             return;
         }
 
@@ -374,6 +487,7 @@ public class RelayConnectionManager : IDisposable
 
         _relayClients.Clear();
         _deviceRelayMap.Clear();
+        _relayPriorities.Clear();
 
         _logger.LogInformation("Disconnected from all relay servers");
     }
@@ -403,8 +517,25 @@ public class RelayConnectionManager : IDisposable
 /// </summary>
 public class RelayInfo
 {
+    /// <summary>
+    /// The relay server URI
+    /// </summary>
     public string Uri { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Whether the relay is currently connected
+    /// </summary>
     public bool IsConnected { get; set; }
+
+    /// <summary>
+    /// Connection priority (lower is better), null if not prioritized
+    /// </summary>
+    public int? Priority { get; set; }
+
+    /// <summary>
+    /// The connection type as determined by the prioritizer
+    /// </summary>
+    public ConnectionType? ConnectionType { get; set; }
 }
 
 /// <summary>

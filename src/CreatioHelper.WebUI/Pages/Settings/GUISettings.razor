@@ -1,57 +1,59 @@
 @page "/settings/gui"
 @inject IThemeService ThemeService
+@inject ILocalizationService LocalizationService
 @inject ISnackbar Snackbar
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>GUI Settings - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_GUI"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">GUI Settings</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Settings_GUI"]</MudText>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Appearance</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Appearance"]</MudText>
 
     <MudGrid>
         <MudItem xs="12" md="6">
-            <MudText Typo="Typo.subtitle2" Class="mb-2">Theme</MudText>
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Theme"]</MudText>
             <MudToggleGroup T="string" @bind-Value="_selectedTheme" SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary">
-                <MudToggleItem Value="@("light")" UnselectedIcon="@Icons.Material.Filled.LightMode" SelectedIcon="@Icons.Material.Filled.LightMode" Text="Light" />
-                <MudToggleItem Value="@("dark")" UnselectedIcon="@Icons.Material.Filled.DarkMode" SelectedIcon="@Icons.Material.Filled.DarkMode" Text="Dark" />
-                <MudToggleItem Value="@("system")" UnselectedIcon="@Icons.Material.Filled.SettingsBrightness" SelectedIcon="@Icons.Material.Filled.SettingsBrightness" Text="System" />
+                <MudToggleItem Value="@("light")" UnselectedIcon="@Icons.Material.Filled.LightMode" SelectedIcon="@Icons.Material.Filled.LightMode" Text="@L["Settings_ThemeLight"]" />
+                <MudToggleItem Value="@("dark")" UnselectedIcon="@Icons.Material.Filled.DarkMode" SelectedIcon="@Icons.Material.Filled.DarkMode" Text="@L["Settings_ThemeDark"]" />
+                <MudToggleItem Value="@("system")" UnselectedIcon="@Icons.Material.Filled.SettingsBrightness" SelectedIcon="@Icons.Material.Filled.SettingsBrightness" Text="@L["Settings_ThemeSystem"]" />
             </MudToggleGroup>
         </MudItem>
         <MudItem xs="12" md="6">
             <MudSelect @bind-Value="_language"
-                       Label="Language"
+                       Label="@L["Settings_Language"]"
                        Variant="Variant.Outlined">
                 <MudSelectItem Value="@("en")">English</MudSelectItem>
-                <MudSelectItem Value="@("ru")">Russian</MudSelectItem>
-                <MudSelectItem Value="@("de")">German</MudSelectItem>
-                <MudSelectItem Value="@("fr")">French</MudSelectItem>
-                <MudSelectItem Value="@("es")">Spanish</MudSelectItem>
+                <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
+                <MudSelectItem Value="@("de")">Deutsch</MudSelectItem>
+                <MudSelectItem Value="@("fr")">Français</MudSelectItem>
+                <MudSelectItem Value="@("es")">Español</MudSelectItem>
             </MudSelect>
         </MudItem>
     </MudGrid>
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Dashboard</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Nav_Dashboard"]</MudText>
 
     <MudSwitch @bind-Value="_showTransferChart"
                Color="Color.Primary"
-               Label="Show Transfer Rate Chart" />
+               Label="@L["Settings_ShowTransferChart"]" />
     <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Display network throughput graph on dashboard
+        @L["Settings_ShowTransferChartHint"]
     </MudText>
 
     <MudSwitch @bind-Value="_showRecentEvents"
                Color="Color.Primary"
-               Label="Show Recent Events" />
+               Label="@L["Settings_ShowRecentEvents"]" />
     <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Display recent sync events on dashboard
+        @L["Settings_ShowRecentEventsHint"]
     </MudText>
 
     <MudNumericField @bind-Value="_maxRecentEvents"
-                     Label="Maximum Recent Events"
+                     Label="@L["Settings_MaxRecentEvents"]"
                      Variant="Variant.Outlined"
                      Min="5"
                      Max="50"
@@ -60,61 +62,61 @@
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Notifications</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Notifications"]</MudText>
 
     <MudSwitch @bind-Value="_notifyOnSyncComplete"
                Color="Color.Primary"
-               Label="Sync Completion" />
+               Label="@L["Settings_NotifySyncComplete"]" />
     <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Notify when folder sync completes
+        @L["Settings_NotifySyncCompleteHint"]
     </MudText>
 
     <MudSwitch @bind-Value="_notifyOnDeviceConnect"
                Color="Color.Primary"
-               Label="Device Connection" />
+               Label="@L["Settings_NotifyDeviceConnect"]" />
     <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Notify when device connects or disconnects
+        @L["Settings_NotifyDeviceConnectHint"]
     </MudText>
 
     <MudSwitch @bind-Value="_notifyOnError"
                Color="Color.Primary"
-               Label="Sync Errors" />
+               Label="@L["Settings_NotifyError"]" />
     <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        Notify on sync errors
+        @L["Settings_NotifyErrorHint"]
     </MudText>
 
     <MudSwitch @bind-Value="_notifyOnPendingDevice"
                Color="Color.Primary"
-               Label="Pending Device Requests" />
+               Label="@L["Settings_NotifyPendingDevice"]" />
     <MudText Typo="Typo.caption" Color="Color.Default">
-        Notify when a new device wants to connect
+        @L["Settings_NotifyPendingDeviceHint"]
     </MudText>
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">Display Options</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_DisplayOptions"]</MudText>
 
     <MudSelect @bind-Value="_dateFormat"
-               Label="Date Format"
+               Label="@L["Settings_DateFormat"]"
                Variant="Variant.Outlined"
                Class="mb-3">
-        <MudSelectItem Value="@("short")">Short (01/20/26)</MudSelectItem>
-        <MudSelectItem Value="@("medium")">Medium (Jan 20, 2026)</MudSelectItem>
-        <MudSelectItem Value="@("long")">Long (January 20, 2026)</MudSelectItem>
+        <MudSelectItem Value="@("short")">@L["Settings_DateShort"] (01/20/26)</MudSelectItem>
+        <MudSelectItem Value="@("medium")">@L["Settings_DateMedium"] (Jan 20, 2026)</MudSelectItem>
+        <MudSelectItem Value="@("long")">@L["Settings_DateLong"] (January 20, 2026)</MudSelectItem>
         <MudSelectItem Value="@("iso")">ISO (2026-01-20)</MudSelectItem>
     </MudSelect>
 
     <MudSelect @bind-Value="_sizeFormat"
-               Label="Size Format"
+               Label="@L["Settings_SizeFormat"]"
                Variant="Variant.Outlined">
-        <MudSelectItem Value="@("binary")">Binary (KiB, MiB, GiB)</MudSelectItem>
-        <MudSelectItem Value="@("decimal")">Decimal (KB, MB, GB)</MudSelectItem>
+        <MudSelectItem Value="@("binary")">@L["Settings_SizeBinary"] (KiB, MiB, GiB)</MudSelectItem>
+        <MudSelectItem Value="@("decimal")">@L["Settings_SizeDecimal"] (KB, MB, GB)</MudSelectItem>
     </MudSelect>
 </MudPaper>
 
 <div class="d-flex justify-end gap-2">
     <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
-        Reset to Defaults
+        @L["Settings_ResetDefaults"]
     </MudButton>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
@@ -124,12 +126,13 @@
         {
             <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
         }
-        Save Changes
+        @L["Settings_Save"]
     </MudButton>
 </div>
 
 @code {
     private bool _isSaving;
+    private string _initialLanguage = "en";
 
     // Appearance
     private string _selectedTheme = "system";
@@ -159,6 +162,7 @@
     {
         _selectedTheme = await LocalStorage.GetItemAsync<string>("gui_theme") ?? "system";
         _language = await LocalStorage.GetItemAsync<string>("gui_language") ?? "en";
+        _initialLanguage = _language;
         _showTransferChart = await LocalStorage.GetItemAsync<bool?>("gui_showTransferChart") ?? true;
         _showRecentEvents = await LocalStorage.GetItemAsync<bool?>("gui_showRecentEvents") ?? true;
         _maxRecentEvents = await LocalStorage.GetItemAsync<int?>("gui_maxRecentEvents") ?? 10;
@@ -201,11 +205,20 @@
                 // "system" would need to check system preference
             }
 
-            Snackbar.Add("GUI settings saved", Severity.Success);
+            // Apply language change (requires page reload)
+            if (_language != _initialLanguage)
+            {
+                Snackbar.Add(L["Settings_ApplyingLanguage"], Severity.Info);
+                await LocalizationService.SetLanguageAsync(_language);
+                // SetLanguageAsync will reload the page, code below won't execute
+                return;
+            }
+
+            Snackbar.Add(L["Msg_SaveSuccess"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to save settings: {ex.Message}", Severity.Error);
+            Snackbar.Add($"{L["Msg_SaveFailed", ex.Message]}", Severity.Error);
         }
         finally
         {
@@ -228,7 +241,7 @@
         _dateFormat = "medium";
         _sizeFormat = "binary";
 
-        Snackbar.Add("Settings reset to defaults. Remember to save changes.", Severity.Info);
+        Snackbar.Add(L["Settings_ResetToDefaultsHint"], Severity.Info);
         await Task.CompletedTask;
     }
 }

@@ -1,3 +1,6 @@
+using System;
+using System.IO;
+using System.Linq;
 using CreatioHelper.Infrastructure.Services.Security;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -38,8 +41,8 @@ public class SignatureServiceTests
         var (privateKey2, publicKey2) = _signatureService.GenerateKeys();
 
         // Assert
-        Assert.False(privateKey1.SequenceEqual(privateKey2));
-        Assert.False(publicKey1.SequenceEqual(publicKey2));
+        Assert.False(Enumerable.SequenceEqual(privateKey1, privateKey2));
+        Assert.False(Enumerable.SequenceEqual(publicKey1, publicKey2));
     }
 
     [Fact]
@@ -70,7 +73,7 @@ public class SignatureServiceTests
         var signature2 = _signatureService.Sign(privateKey, data2);
 
         // Assert
-        Assert.False(signature1.SequenceEqual(signature2));
+        Assert.False(Enumerable.SequenceEqual(signature1, signature2));
     }
 
     [Fact]
@@ -199,7 +202,7 @@ public class SignatureServiceTests
         var importedPublicKey = _signatureService.ImportPublicKeyPem(pem);
 
         // Assert
-        Assert.True(publicKey.SequenceEqual(importedPublicKey));
+        Assert.True(Enumerable.SequenceEqual(publicKey, importedPublicKey));
     }
 
     [Fact]

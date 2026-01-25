@@ -3,17 +3,18 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
+@inject IStringLocalizer<Localization> L
 @implements IDisposable
 
-<PageTitle>Devices - CreatioHelper</PageTitle>
+<PageTitle>@L["Devices_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Devices</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Devices_Title"]</MudText>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Add"
                OnClick="@AddDevice">
-        Add Device
+        @L["Devices_AddDevice"]
     </MudButton>
 </div>
 
@@ -26,7 +27,7 @@ else
     @* This Device *@
     @if (_thisDevice != null)
     {
-        <MudText Typo="Typo.h6" Class="mb-2">This Device</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@L["Devices_ThisDevice"]</MudText>
         <MudPaper Elevation="2" Class="mb-4">
             @* Header row - always visible *@
             <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => _thisDeviceExpanded = !_thisDeviceExpanded)">
@@ -35,7 +36,7 @@ else
                     <MudText Typo="Typo.subtitle1">@_thisDevice.DisplayName</MudText>
                 </div>
                 <MudText Typo="Typo.body2" Color="Color.Success" Class="mr-2">
-                    Running
+                    @L["Devices_Running"]
                 </MudText>
                 @if (State.SystemStatus != null)
                 {
@@ -55,16 +56,16 @@ else
                     <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
                         <tbody>
                             <tr>
-                                <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Device ID</MudText></td>
+                                <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_DeviceId"]</MudText></td>
                                 <td>
                                     <div class="d-flex align-center">
                                         <MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.7rem;">@_thisDevice.DeviceId</MudText>
-                                        <MudTooltip Text="Copy Device ID">
+                                        <MudTooltip Text="@L["Action_Copy"]">
                                             <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
                                                            Size="Size.Small"
                                                            OnClick="@(() => CopyDeviceId(_thisDevice.DeviceId))" />
                                         </MudTooltip>
-                                        <MudTooltip Text="Show QR Code">
+                                        <MudTooltip Text="@L["Action_ShowQR"]">
                                             <MudIconButton Icon="@Icons.Material.Filled.QrCode"
                                                            Size="Size.Small"
                                                            OnClick="@(() => ShowQrCode(_thisDevice.DeviceId))" />
@@ -75,26 +76,26 @@ else
                             @if (State.SystemStatus != null)
                             {
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Uptime</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_Uptime"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText></td>
                                 </tr>
                                 @if (State.SystemStatus.AppMemory.HasValue)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Memory Usage</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_MemoryUsage"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@FormatBytes(State.SystemStatus.AppMemory.Value)</MudText></td>
                                     </tr>
                                 }
                                 @if (State.SystemStatus.CpuPercent.HasValue)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">CPU Usage</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_CpuUsage"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@State.SystemStatus.CpuPercent.Value.ToString("F1")%</MudText></td>
                                     </tr>
                                 }
                             }
                             <tr>
-                                <td><MudText Typo="Typo.body2" Color="Color.Default">Global State</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_GlobalState"]</MudText></td>
                                 <td>
                                     @{
                                         var (globalFiles, globalDirs, globalBytes) = GetTotalGlobalState();
@@ -107,7 +108,7 @@ else
                                 </td>
                             </tr>
                             <tr>
-                                <td><MudText Typo="Typo.body2" Color="Color.Default">Local State</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_LocalState"]</MudText></td>
                                 <td>
                                     @{
                                         var (localFiles, localDirs, localBytes) = GetTotalLocalState();
@@ -120,16 +121,16 @@ else
                                 </td>
                             </tr>
                             <tr>
-                                <td><MudText Typo="Typo.body2" Color="Color.Default">Listeners</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Listeners"]</MudText></td>
                                 <td><MudText Typo="Typo.body2">@GetListenersDisplay()</MudText></td>
                             </tr>
                             <tr>
-                                <td><MudText Typo="Typo.body2" Color="Color.Default">Discovery</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Discovery"]</MudText></td>
                                 <td><MudText Typo="Typo.body2">@GetDiscoveryDisplay()</MudText></td>
                             </tr>
                             <tr>
-                                <td><MudText Typo="Typo.body2" Color="Color.Default">Connected Devices</MudText></td>
-                                <td><MudText Typo="Typo.body2">@GetConnectedDevicesCount() / @_remoteDevices.Length devices</MudText></td>
+                                <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_ConnectedDevices"]</MudText></td>
+                                <td><MudText Typo="Typo.body2">@GetConnectedDevicesCount() / @_remoteDevices.Length</MudText></td>
                             </tr>
                         </tbody>
                     </MudSimpleTable>
@@ -139,7 +140,7 @@ else
     }
 
     @* Remote Devices *@
-    <MudText Typo="Typo.h6" Class="mb-2">Remote Devices</MudText>
+    <MudText Typo="Typo.h6" Class="mb-2">@L["Devices_RemoteDevices"]</MudText>
 
     @if (_remoteDevices.Length == 0)
     {
@@ -148,15 +149,15 @@ else
                      Size="Size.Large"
                      Color="Color.Default"
                      Class="mb-4" />
-            <MudText Typo="Typo.h6" Class="mb-2">No remote devices</MudText>
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Devices_NoRemoteDevices"]</MudText>
             <MudText Color="Color.Default" Class="mb-4">
-                Add a device to start synchronizing files.
+                @L["Devices_AddDeviceHint"]
             </MudText>
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add"
                        OnClick="@AddDevice">
-                Add Device
+                @L["Devices_AddDevice"]
             </MudButton>
         </MudPaper>
     }
@@ -166,22 +167,38 @@ else
         {
             var connection = GetConnection(device.DeviceId);
             var isExpanded = _expandedDevices.Contains(device.DeviceId);
+            var isSyncing = IsSyncingWithDevice(device.DeviceId);
+            var hasActiveTransfer = connection?.Connected == true && (connection.InBytesPerSec > 0 || connection.OutBytesPerSec > 0);
             <MudPaper Elevation="2" Class="mb-3">
                 @* Header row - always visible *@
                 <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => ToggleDeviceExpand(device.DeviceId))">
-                    <span class="connection-dot @(GetConnectionStatusClass(device, connection)) mr-3"></span>
+                    <MudTooltip Text="@GetConnectionTooltip(device, connection)" Placement="Placement.Right">
+                        <span class="connection-dot @(GetConnectionStatusClass(device, connection, isSyncing, hasActiveTransfer)) mr-3"></span>
+                    </MudTooltip>
                     <div class="flex-grow-1">
                         <MudText Typo="Typo.subtitle1">@device.DisplayName</MudText>
+                        @if (connection?.Connected != true && !device.Paused)
+                        {
+                            <MudText Typo="Typo.caption" Class="last-seen">
+                                @GetLastSeenText(device.DeviceId)
+                            </MudText>
+                        }
                     </div>
-                    <MudText Typo="Typo.body2" Color="@GetStatusColor(device, connection)" Class="mr-2">
+                    <span class="connection-status-badge @(GetConnectionStatusClass(device, connection, isSyncing, hasActiveTransfer)) mr-2">
                         @GetStatusText(device, connection)
-                    </MudText>
+                        @if (connection?.IsRelay == true)
+                        {
+                            <MudIcon Icon="@Icons.Material.Filled.CloudQueue" Size="Size.Small" Class="ml-1" />
+                        }
+                    </span>
                     @if (connection?.Connected == true)
                     {
-                        <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-2">
-                            <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Style="vertical-align: middle;" />@FormatRate(connection.InBytesPerSec)
-                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Class="ml-1" Style="vertical-align: middle;" />@FormatRate(connection.OutBytesPerSec)
-                        </MudText>
+                        <span class="transfer-indicator @(hasActiveTransfer ? "active" : "") mr-2">
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Color="@(connection.InBytesPerSec > 0 ? Color.Info : Color.Default)" />
+                            <span class="rate-down">@FormatRate(connection.InBytesPerSec)</span>
+                            <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Class="ml-1" Color="@(connection.OutBytesPerSec > 0 ? Color.Success : Color.Default)" />
+                            <span class="rate-up">@FormatRate(connection.OutBytesPerSec)</span>
+                        </span>
                     }
                     <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
                                    Size="Size.Small" />
@@ -194,34 +211,34 @@ else
                         <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
                             <tbody>
                                 <tr>
-                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">Device ID</MudText></td>
+                                    <td style="width: 40%;"><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_DeviceId"]</MudText></td>
                                     <td><MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.75rem;">@device.DeviceId</MudText></td>
                                 </tr>
                                 @if (connection?.Connected == true)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Address</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Address"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@connection.Address (@GetConnectionTypeDisplay(connection.Type))</MudText></td>
                                     </tr>
                                     @if (!string.IsNullOrEmpty(connection.ClientVersion))
                                     {
                                         <tr>
-                                            <td><MudText Typo="Typo.body2" Color="Color.Default">Version</MudText></td>
+                                            <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_Version"]</MudText></td>
                                             <td><MudText Typo="Typo.body2">@connection.ClientVersion</MudText></td>
                                         </tr>
                                     }
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Download Rate</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_DownloadRate"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@FormatRate(connection.InBytesPerSec) (@FormatBytes(connection.InBytesTotal) total)</MudText></td>
                                     </tr>
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Upload Rate</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_UploadRate"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@FormatRate(connection.OutBytesPerSec) (@FormatBytes(connection.OutBytesTotal) total)</MudText></td>
                                     </tr>
                                     @if (connection.ConnectedAt.HasValue)
                                     {
                                         <tr>
-                                            <td><MudText Typo="Typo.body2" Color="Color.Default">Connected Since</MudText></td>
+                                            <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_ConnectedSince"]</MudText></td>
                                             <td><MudText Typo="Typo.body2">@connection.ConnectedAt.Value.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss") (@FormatDuration(connection.ConnectionDuration))</MudText></td>
                                         </tr>
                                     }
@@ -229,20 +246,20 @@ else
                                 else
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Addresses</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Addresses"]</MudText></td>
                                         <td><MudText Typo="Typo.body2">@string.Join(", ", device.Addresses)</MudText></td>
                                     </tr>
                                 }
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Compression</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Compression"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@GetCompressionDisplay(device.Compression)</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Sync Status</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_SyncStatus"]</MudText></td>
                                     <td><MudText Typo="Typo.body2">@GetSyncStatus(device.DeviceId)</MudText></td>
                                 </tr>
                                 <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Default">Shared Folders</MudText></td>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_SharedFolders"]</MudText></td>
                                     <td>
                                         @{
                                             var sharedFolders = GetSharedFolders(device.DeviceId);
@@ -256,22 +273,22 @@ else
                                         }
                                         else
                                         {
-                                            <MudText Typo="Typo.body2" Color="Color.Default">None</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_None"]</MudText>
                                         }
                                     </td>
                                 </tr>
                                 @if (device.Introducer)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Introducer</MudText></td>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Info">Yes</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_Introducer"]</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Info">@L["Common_Yes"]</MudText></td>
                                     </tr>
                                 }
                                 @if (device.AutoAcceptFolders)
                                 {
                                     <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Default">Auto Accept</MudText></td>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Warning">Enabled</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Devices_AutoAccept"]</MudText></td>
+                                        <td><MudText Typo="Typo.body2" Color="Color.Warning">@L["Common_Enabled"]</MudText></td>
                                     </tr>
                                 }
                             </tbody>
@@ -284,20 +301,20 @@ else
                                        Color="@(device.Paused ? Color.Success : Color.Warning)"
                                        StartIcon="@(device.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                                        OnClick="@(() => TogglePause(device))">
-                                @(device.Paused ? "Resume" : "Pause")
+                                @(device.Paused ? L["Action_Resume"] : L["Action_Pause"])
                             </MudButton>
                             <MudButton Variant="Variant.Outlined"
                                        Size="Size.Small"
                                        StartIcon="@Icons.Material.Filled.Edit"
                                        OnClick="@(() => EditDevice(device))">
-                                Edit
+                                @L["Action_Edit"]
                             </MudButton>
                             <MudButton Variant="Variant.Outlined"
                                        Size="Size.Small"
                                        Color="Color.Error"
                                        StartIcon="@Icons.Material.Filled.Delete"
                                        OnClick="@(() => DeleteDevice(device))">
-                                Remove
+                                @L["Action_Delete"]
                             </MudButton>
                         </div>
                     </div>
@@ -309,7 +326,7 @@ else
     @* Pending Devices *@
     @if (_pendingDevices.Length > 0)
     {
-        <MudText Typo="Typo.h6" Class="mt-6 mb-2">Pending Devices</MudText>
+        <MudText Typo="Typo.h6" Class="mt-6 mb-2">@L["Devices_PendingDevices"]</MudText>
         <MudPaper Elevation="2" Class="pa-4">
             @foreach (var pending in _pendingDevices)
             {
@@ -324,13 +341,13 @@ else
                                Size="Size.Small"
                                Class="mr-2"
                                OnClick="@(() => AcceptDevice(pending))">
-                        Accept
+                        @L["Common_Confirm"]
                     </MudButton>
                     <MudButton Variant="Variant.Outlined"
                                Color="Color.Error"
                                Size="Size.Small"
                                OnClick="@(() => RejectDevice(pending))">
-                        Reject
+                        @L["Action_Delete"]
                     </MudButton>
                 </div>
                 <MudDivider />
@@ -350,6 +367,7 @@ else
     private HashSet<string> _expandedDevices = new();
     private bool _thisDeviceExpanded;
     private System.Threading.Timer? _refreshTimer;
+    private Dictionary<string, DateTime> _lastSeenTimes = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -370,13 +388,24 @@ else
                     var connections = await ApiClient.GetConnectionsAsync();
                     foreach (var conn in connections)
                     {
+                        var wasConnected = State.Connections.TryGetValue(conn.DeviceId, out var prevConn) && prevConn.Connected;
+                        var isConnected = conn.Connected;
+
+                        if (isConnected)
+                        {
+                            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
+                        }
+                        else if (wasConnected && !isConnected)
+                        {
+                            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
+                        }
+
                         State.UpdateConnection(conn);
                     }
                     StateHasChanged();
                 }
                 catch
                 {
-                    // Ignore errors during auto-refresh
                 }
             });
         }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
@@ -399,6 +428,10 @@ else
             foreach (var conn in connections)
             {
                 State.UpdateConnection(conn);
+                if (conn.Connected)
+                {
+                    _lastSeenTimes[conn.DeviceId] = conn.ConnectedAt ?? DateTime.UtcNow;
+                }
             }
 
             _pendingDevices = await ApiClient.GetPendingDevicesAsync();
@@ -406,7 +439,7 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load devices: {ex.Message}", Severity.Warning);
+            Snackbar.Add($"{L["Msg_LoadFailed", ex.Message]}", Severity.Warning);
         }
         finally
         {
@@ -432,22 +465,21 @@ else
         try
         {
             await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", deviceId);
-            Snackbar.Add("Device ID copied to clipboard", Severity.Success);
+            Snackbar.Add(L["Msg_DeviceIdCopied"], Severity.Success);
         }
         catch
         {
-            Snackbar.Add("Failed to copy to clipboard", Severity.Error);
+            Snackbar.Add(L["Msg_CopyFailed"], Severity.Error);
         }
     }
 
     private async Task ShowQrCode(string deviceId)
     {
-        // Show QR code dialog
         var parameters = new DialogParameters<QrCodeDialog>
         {
             { x => x.DeviceId, deviceId }
         };
-        await DialogService.ShowAsync<QrCodeDialog>("Device ID QR Code", parameters);
+        await DialogService.ShowAsync<QrCodeDialog>(L["Devices_QrCodeTitle"], parameters);
     }
 
     private async Task TogglePause(DeviceConfig device)
@@ -456,23 +488,23 @@ else
         {
             device.Paused = !device.Paused;
             await ApiClient.UpdateDeviceAsync(device);
-            Snackbar.Add(device.Paused ? "Device paused" : "Device resumed", Severity.Success);
+            Snackbar.Add(device.Paused ? L["Msg_DevicePaused"] : L["Msg_DeviceResumed"], Severity.Success);
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            device.Paused = !device.Paused; // Revert
-            Snackbar.Add($"Failed to toggle pause: {ex.Message}", Severity.Error);
+            device.Paused = !device.Paused;
+            Snackbar.Add($"{L["Msg_TogglePauseFailed", ex.Message]}", Severity.Error);
         }
     }
 
     private async Task DeleteDevice(DeviceConfig device)
     {
         var confirmed = await DialogService.ShowMessageBox(
-            "Remove Device",
-            $"Are you sure you want to remove '{device.DisplayName}'?",
-            yesText: "Remove",
-            cancelText: "Cancel");
+            L["Devices_RemoveDevice"],
+            L["Msg_DeleteDeviceConfirm", device.DisplayName],
+            yesText: L["Action_Delete"],
+            cancelText: L["Settings_Cancel"]);
 
         if (confirmed == true)
         {
@@ -481,11 +513,11 @@ else
                 await ApiClient.DeleteDeviceAsync(device.DeviceId);
                 State.Devices = State.Devices.Where(d => d.DeviceId != device.DeviceId).ToArray();
                 UpdateDeviceLists();
-                Snackbar.Add("Device removed", Severity.Success);
+                Snackbar.Add(L["Msg_DeviceRemoved"], Severity.Success);
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Failed to remove device: {ex.Message}", Severity.Error);
+                Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
             }
         }
     }
@@ -496,12 +528,12 @@ else
         {
             await ApiClient.AcceptDeviceAsync(pending.DeviceId);
             _pendingDevices = _pendingDevices.Where(p => p.DeviceId != pending.DeviceId).ToArray();
-            Snackbar.Add("Device accepted", Severity.Success);
+            Snackbar.Add(L["Msg_DeviceAccepted"], Severity.Success);
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to accept device: {ex.Message}", Severity.Error);
+            Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
         }
     }
 
@@ -511,12 +543,12 @@ else
         {
             await ApiClient.RejectDeviceAsync(pending.DeviceId);
             _pendingDevices = _pendingDevices.Where(p => p.DeviceId != pending.DeviceId).ToArray();
-            Snackbar.Add("Device rejected", Severity.Success);
+            Snackbar.Add(L["Msg_DeviceRejected"], Severity.Success);
             StateHasChanged();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to reject device: {ex.Message}", Severity.Error);
+            Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
         }
     }
 
@@ -529,7 +561,7 @@ else
             FullWidth = true
         };
 
-        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Add Device", options);
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>(L["Devices_AddDevice"], options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false, Data: DeviceConfig newDevice })
@@ -554,7 +586,7 @@ else
             { x => x.Device, device }
         };
 
-        var dialog = await DialogService.ShowAsync<AddDeviceDialog>("Edit Device", parameters, options);
+        var dialog = await DialogService.ShowAsync<AddDeviceDialog>(L["Devices_EditDevice"], parameters, options);
         var result = await dialog.Result;
 
         if (result is { Canceled: false, Data: DeviceConfig updatedDevice })
@@ -605,11 +637,70 @@ else
             _expandedDevices.Add(deviceId);
     }
 
-    private string GetConnectionStatusClass(DeviceConfig device, ConnectionInfo? connection)
+    private string GetConnectionStatusClass(DeviceConfig device, ConnectionInfo? connection, bool isSyncing = false, bool hasActiveTransfer = false)
     {
         if (device.Paused) return "paused";
-        if (connection?.Connected == true) return "connected";
+        if (connection?.Connected == true)
+        {
+            var classes = new List<string> { "connected" };
+            if (connection.IsRelay) classes.Add("relay");
+            if (isSyncing) classes.Add("syncing");
+            else if (hasActiveTransfer) classes.Add("active-transfer");
+            return string.Join(" ", classes);
+        }
         return "disconnected";
+    }
+
+    private bool IsSyncingWithDevice(string deviceId)
+    {
+        var sharedFolderIds = State.Folders
+            .Where(f => f.Devices?.Any(d => d.DeviceId == deviceId) == true)
+            .Select(f => f.Id)
+            .ToList();
+
+        foreach (var folderId in sharedFolderIds)
+        {
+            if (State.FolderStatuses.TryGetValue(folderId, out var status))
+            {
+                if (status.State == "syncing" || status.State == "sync-preparing" || status.NeedBytes > 0)
+                    return true;
+            }
+        }
+        return false;
+    }
+
+    private string GetConnectionTooltip(DeviceConfig device, ConnectionInfo? connection)
+    {
+        if (device.Paused)
+            return L["Devices_Paused"];
+
+        if (connection?.Connected == true)
+        {
+            var parts = new List<string>();
+            parts.Add($"{L["Devices_Connected"]} ({GetConnectionTypeDisplay(connection.Type)})");
+            if (connection.IsRelay)
+                parts.Add("Relay");
+            if (!string.IsNullOrEmpty(connection.Address))
+                parts.Add($"{L["Devices_Address"]}: {connection.Address}");
+            if (connection.ConnectedAt.HasValue)
+                parts.Add($"{FormatDuration(connection.ConnectionDuration)}");
+            return string.Join("\n", parts);
+        }
+
+        return L["Devices_Disconnected"];
+    }
+
+    private string GetLastSeenText(string deviceId)
+    {
+        if (_lastSeenTimes.TryGetValue(deviceId, out var lastSeen))
+        {
+            var elapsed = DateTime.UtcNow - lastSeen;
+            if (elapsed.TotalMinutes < 1) return $"{L["Devices_LastSeen"]}: {L["Time_JustNow"]}";
+            if (elapsed.TotalHours < 1) return $"{L["Devices_LastSeen"]}: {L["Time_MinutesAgo", (int)elapsed.TotalMinutes]}";
+            if (elapsed.TotalDays < 1) return $"{L["Devices_LastSeen"]}: {L["Time_HoursAgo", (int)elapsed.TotalHours]}";
+            return $"{L["Devices_LastSeen"]}: {L["Time_DaysAgo", (int)elapsed.TotalDays]}";
+        }
+        return L["Devices_NeverConnected"];
     }
 
     private Color GetStatusColor(DeviceConfig device, ConnectionInfo? connection)
@@ -621,24 +712,24 @@ else
 
     private string GetStatusText(DeviceConfig device, ConnectionInfo? connection)
     {
-        if (device.Paused) return "Paused";
+        if (device.Paused) return L["Devices_Paused"];
         if (connection?.Connected == true)
         {
-            return connection.IsRelay ? "Connected (Relay)" : "Connected";
+            return connection.IsRelay ? L["Devices_ConnectedRelay"] : L["Devices_Connected"];
         }
-        return "Disconnected";
+        return L["Devices_Disconnected"];
     }
 
     private string GetConnectionTypeDisplay(string type)
     {
         return type switch
         {
-            "tcp-client" => "TCP Client",
-            "tcp-server" => "TCP Server",
-            "quic-client" => "QUIC Client",
-            "quic-server" => "QUIC Server",
-            "relay-client" => "Relay Client",
-            "relay-server" => "Relay Server",
+            "tcp-client" => L["ConnectionType_TcpClient"],
+            "tcp-server" => L["ConnectionType_TcpServer"],
+            "quic-client" => L["ConnectionType_QuicClient"],
+            "quic-server" => L["ConnectionType_QuicServer"],
+            "relay-client" => L["ConnectionType_RelayClient"],
+            "relay-server" => L["ConnectionType_RelayServer"],
             _ => type
         };
     }
@@ -647,22 +738,21 @@ else
     {
         return compression switch
         {
-            "metadata" => "Metadata Only",
-            "always" => "Always",
-            "never" => "Never",
+            "metadata" => L["Compression_Metadata"],
+            "always" => L["Compression_Always"],
+            "never" => L["Compression_Never"],
             _ => compression
         };
     }
 
     private string GetSyncStatus(string deviceId)
     {
-        // Calculate sync status based on folder completions for this device
         var sharedFolderIds = State.Folders
             .Where(f => f.Devices?.Any(d => d.DeviceId == deviceId) == true)
             .Select(f => f.Id)
             .ToList();
 
-        if (!sharedFolderIds.Any()) return "No shared folders";
+        if (!sharedFolderIds.Any()) return L["Devices_NoSharedFolders"];
 
         var allSynced = true;
         var totalBytes = 0L;
@@ -678,13 +768,13 @@ else
             }
         }
 
-        if (allSynced) return "Up to Date";
+        if (allSynced) return L["Folders_UpToDate"];
         if (totalBytes > 0)
         {
             var percent = (syncedBytes * 100.0 / totalBytes);
-            return $"{percent:F0}% synced";
+            return $"{percent:F0}% {L["FolderState_Syncing"].ToString().ToLower()}";
         }
-        return "Syncing";
+        return L["FolderState_Syncing"];
     }
 
     private IEnumerable<string> GetSharedFolders(string deviceId)
@@ -729,7 +819,6 @@ else
 
     private string GetListenersDisplay()
     {
-        // This would need to come from the API - for now show placeholder
         return "TCP, QUIC, Relay";
     }
 
@@ -737,9 +826,9 @@ else
     {
         var parts = new List<string>();
         if (State.SystemStatus?.DiscoveryEnabled == true)
-            parts.Add("Global");
-        parts.Add("Local"); // Local is typically always enabled
-        return parts.Count > 0 ? string.Join(", ", parts) : "Disabled";
+            parts.Add(L["Settings_GlobalDiscovery"]);
+        parts.Add(L["Settings_LocalDiscovery"]);
+        return parts.Count > 0 ? string.Join(", ", parts) : L["Common_Disabled"];
     }
 
     private int GetConnectedDevicesCount()

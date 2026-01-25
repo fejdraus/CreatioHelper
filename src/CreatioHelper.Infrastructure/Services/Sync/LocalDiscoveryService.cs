@@ -87,8 +87,9 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
         _instanceId = Random.Shared.NextInt64();
 
         // Get device ID from sync configuration
-        _currentDeviceId = _syncConfig.DeviceId
-            ?? throw new InvalidOperationException("SyncConfiguration.DeviceId is required");
+        _currentDeviceId = string.IsNullOrEmpty(_syncConfig.DeviceId)
+            ? throw new InvalidOperationException("SyncConfiguration.DeviceId is required")
+            : _syncConfig.DeviceId;
 
         // Get port from sync configuration
         _currentPort = _syncConfig.Port > 0 ? _syncConfig.Port : 22000;

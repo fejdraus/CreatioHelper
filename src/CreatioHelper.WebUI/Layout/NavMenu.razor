@@ -1,18 +1,19 @@
 @inject StateContainer State
+@inject IStringLocalizer<Localization> L
 
 <MudNavMenu>
     <MudNavLink Href="/"
                 Match="NavLinkMatch.All"
                 Icon="@Icons.Material.Filled.Dashboard">
-        Dashboard
+        @L["Nav_Dashboard"]
     </MudNavLink>
 
-    <MudNavGroup Title="Sync"
+    <MudNavGroup Title="@L["Nav_Sync"]"
                  Icon="@Icons.Material.Filled.Sync"
                  Expanded="true">
         <MudNavLink Href="/folders"
                     Icon="@Icons.Material.Filled.Folder">
-            Folders
+            @L["Nav_Folders"]
             @if (State.Folders.Length > 0)
             {
                 <MudChip T="string" Size="Size.Small" Color="Color.Default" Class="ml-2">
@@ -22,7 +23,7 @@
         </MudNavLink>
         <MudNavLink Href="/devices"
                     Icon="@Icons.Material.Filled.Devices">
-            Devices
+            @L["Nav_Devices"]
             @if (_connectedDevices > 0)
             {
                 <MudChip T="string" Size="Size.Small" Color="Color.Success" Class="ml-2">
@@ -32,7 +33,7 @@
         </MudNavLink>
         <MudNavLink Href="/pending"
                     Icon="@Icons.Material.Filled.Pending">
-            Pending
+            @L["Nav_Pending"]
             @if (_pendingCount > 0)
             {
                 <MudBadge Content="@_pendingCount" Color="Color.Warning" Overlap="true">
@@ -42,58 +43,58 @@
         </MudNavLink>
     </MudNavGroup>
 
-    <MudNavGroup Title="Monitor"
+    <MudNavGroup Title="@L["Nav_Monitor"]"
                  Icon="@Icons.Material.Filled.MonitorHeart"
                  Expanded="false">
         <MudNavLink Href="/monitoring/events"
                     Icon="@Icons.Material.Filled.History">
-            Events
+            @L["Nav_Events"]
         </MudNavLink>
         <MudNavLink Href="/monitoring/connections"
                     Icon="@Icons.Material.Filled.Cable">
-            Connections
+            @L["Nav_Connections"]
         </MudNavLink>
         <MudNavLink Href="/monitoring/statistics"
                     Icon="@Icons.Material.Filled.BarChart">
-            Statistics
+            @L["Nav_Statistics"]
         </MudNavLink>
     </MudNavGroup>
 
-    <MudNavGroup Title="Settings"
+    <MudNavGroup Title="@L["Nav_Settings"]"
                  Icon="@Icons.Material.Filled.Settings"
                  Expanded="false">
         <MudNavLink Href="/settings/general"
                     Icon="@Icons.Material.Filled.Tune">
-            General
+            @L["Settings_General"]
         </MudNavLink>
         <MudNavLink Href="/settings/network"
                     Icon="@Icons.Material.Filled.Wifi">
-            Network
+            @L["Settings_Network"]
         </MudNavLink>
         <MudNavLink Href="/settings/gui"
                     Icon="@Icons.Material.Filled.Palette">
-            Interface
+            @L["Settings_GUI"]
         </MudNavLink>
         <MudNavLink Href="/settings/advanced"
                     Icon="@Icons.Material.Filled.SettingsApplications">
-            Advanced
+            @L["Settings_Advanced"]
         </MudNavLink>
     </MudNavGroup>
 
-    <MudNavGroup Title="Diagnostics"
+    <MudNavGroup Title="@L["Nav_Diagnostics"]"
                  Icon="@Icons.Material.Filled.BugReport"
                  Expanded="false">
         <MudNavLink Href="/diagnostics/logs"
                     Icon="@Icons.Material.Filled.Article">
-            System Logs
+            @L["Diagnostics_SystemLog"]
         </MudNavLink>
         <MudNavLink Href="/diagnostics/profiling"
                     Icon="@Icons.Material.Filled.Speed">
-            Profiling
+            @L["Diagnostics_Profiling"]
         </MudNavLink>
         <MudNavLink Href="/diagnostics/support"
                     Icon="@Icons.Material.Filled.SupportAgent">
-            Support Bundle
+            @L["Diagnostics_SupportBundle"]
         </MudNavLink>
     </MudNavGroup>
 
@@ -101,7 +102,7 @@
 
     <MudNavLink Href="/about"
                 Icon="@Icons.Material.Filled.Info">
-        About
+        @L["Nav_About"]
     </MudNavLink>
 </MudNavMenu>
 

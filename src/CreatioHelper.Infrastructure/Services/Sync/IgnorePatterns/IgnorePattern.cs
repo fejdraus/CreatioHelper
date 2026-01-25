@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -357,7 +358,30 @@ public static class IgnorePatternFactory
 {
     private static readonly Regex EscapeCharPattern = new(@"^#escape=(.)", RegexOptions.Compiled);
     private static readonly Regex IncludePattern = new(@"^#include\s+(.+)$", RegexOptions.Compiled | RegexOptions.IgnoreCase);
-    
+
+    /// <summary>
+    /// Checks if a line is a comment (starts with // or # but not #include/#escape)
+    /// </summary>
+    private static bool IsComment(string line)
+    {
+        if (line.StartsWith("//"))
+            return true;
+
+        // # is a comment unless followed by specific directives
+        if (line.StartsWith('#'))
+        {
+            // Not a comment if it's a directive
+            if (line.StartsWith("#include", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("#escape="))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        return false;
+    }
+
     /// <summary>
     /// Parses a single line from .stignore file into ignore patterns
     /// Handles prefixes: !, (?i), (?d) and creates appropriate patterns
@@ -366,28 +390,84 @@ public static class IgnorePatternFactory
     {
         if (string.IsNullOrEmpty(line))
             return new ParsedLine();
-            
+
         var trimmedLine = line.Trim();
-        
+
         // Skip empty lines and comments
-        if (string.IsNullOrEmpty(trimmedLine) || trimmedLine.StartsWith("//"))
+        if (string.IsNullOrEmpty(trimmedLine) || IsComment(trimmedLine))
             return new ParsedLine();
-        
+
         // Handle escape character definition
         var escapeMatch = EscapeCharPattern.Match(trimmedLine);
         if (escapeMatch.Success)
         {
             return new ParsedLine(newEscapeChar: escapeMatch.Groups[1].Value[0]);
         }
-        
+
         // Handle include directive
         var includeMatch = IncludePattern.Match(trimmedLine);
         if (includeMatch.Success)
         {
             return new ParsedLine(includeFile: includeMatch.Groups[1].Value.Trim());
         }
-        
+
         return ParsePattern(trimmedLine, escapeChar);
+    }
+
+    /// <summary>
+    /// Unescapes a pattern string using the specified escape character.
+    /// Handles escaped special characters like *, ?, [, and the escape char itself.
+    /// </summary>
+    public static string UnescapePattern(string pattern, char escapeChar)
+    {
+        if (string.IsNullOrEmpty(pattern) || !pattern.Contains(escapeChar))
+            return pattern;
+
+        var result = new StringBuilder(pattern.Length);
+        var i = 0;
+
+        while (i < pattern.Length)
+        {
+            if (pattern[i] == escapeChar && i + 1 < pattern.Length)
+            {
+                var nextChar = pattern[i + 1];
+                // Unescape special glob characters and the escape char itself
+                if (nextChar == '*' || nextChar == '?' || nextChar == '[' ||
+                    nextChar == ']' || nextChar == escapeChar || nextChar == '!' ||
+                    nextChar == '{' || nextChar == '}' || nextChar == '#')
+                {
+                    result.Append(nextChar);
+                    i += 2;
+                    continue;
+                }
+            }
+
+            result.Append(pattern[i]);
+            i++;
+        }
+
+        return result.ToString();
+    }
+
+    /// <summary>
+    /// Checks if a character at the given position is escaped.
+    /// </summary>
+    public static bool IsEscaped(string pattern, int index, char escapeChar)
+    {
+        if (index <= 0)
+            return false;
+
+        // Count consecutive escape characters before this position
+        int escapeCount = 0;
+        int pos = index - 1;
+        while (pos >= 0 && pattern[pos] == escapeChar)
+        {
+            escapeCount++;
+            pos--;
+        }
+
+        // If odd number of escape chars, the character is escaped
+        return escapeCount % 2 == 1;
     }
     
     private static ParsedLine ParsePattern(string line, char escapeChar)

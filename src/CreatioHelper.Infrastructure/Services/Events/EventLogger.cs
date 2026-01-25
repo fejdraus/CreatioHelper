@@ -27,6 +27,11 @@ public class EventLogger : BackgroundService, IEventLogger
     private int _nextSubscriptionId = 1;
     private const int DefaultChannelCapacity = 10000;
     private const int EventLogTimeoutMs = 15;
+    private const int GlobalEventBufferSize = 1000;
+
+    // Global event buffer for REST API queries
+    private readonly List<SyncEvent> _globalEventBuffer = new();
+    private readonly object _bufferLock = new();
 
     public EventLogger(ILogger<EventLogger> logger)
     {
@@ -160,11 +165,34 @@ public class EventLogger : BackgroundService, IEventLogger
     /// <summary>
     /// Получить последние события начиная с указанного ID
     /// </summary>
-    public async Task<List<SyncEvent>> GetEventsSinceAsync(int sinceId, EventType eventMask = EventType.DefaultEventMask, 
+    public async Task<List<SyncEvent>> GetEventsSinceAsync(int sinceId, EventType eventMask = EventType.DefaultEventMask,
         int limit = 100, TimeSpan? timeout = null, CancellationToken cancellationToken = default)
     {
-        using var bufferedSubscription = CreateBufferedSubscription(eventMask);
-        return await bufferedSubscription.GetEventsSinceAsync(sinceId, limit, timeout, cancellationToken);
+        // Сначала проверяем глобальный буфер
+        List<SyncEvent> result;
+        lock (_bufferLock)
+        {
+            result = _globalEventBuffer
+                .Where(e => e.GlobalId > sinceId && e.Type.MatchesMask(eventMask))
+                .OrderBy(e => e.GlobalId)
+                .Take(limit)
+                .ToList();
+        }
+
+        // Если нашли события в буфере - возвращаем
+        if (result.Count > 0)
+        {
+            return result;
+        }
+
+        // Если буфер пуст и есть timeout - ждём новых событий через подписку
+        if (timeout.HasValue && timeout.Value > TimeSpan.Zero)
+        {
+            using var bufferedSubscription = CreateBufferedSubscription(eventMask);
+            return await bufferedSubscription.GetEventsSinceAsync(sinceId, limit, timeout, cancellationToken);
+        }
+
+        return result;
     }
 
     /// <summary>
@@ -203,18 +231,30 @@ public class EventLogger : BackgroundService, IEventLogger
     /// </summary>
     private async Task ProcessEventAsync(SyncEvent syncEvent)
     {
+        // Добавляем в глобальный буфер для REST API запросов
+        lock (_bufferLock)
+        {
+            _globalEventBuffer.Add(syncEvent);
+
+            // Удаляем старые события если буфер переполнен
+            while (_globalEventBuffer.Count > GlobalEventBufferSize)
+            {
+                _globalEventBuffer.RemoveAt(0);
+            }
+        }
+
         // Обновляем статистику
         lock (_statsLock)
         {
             _statistics.TotalEvents++;
             _statistics.EventsByType.TryGetValue(syncEvent.Type, out var typeCount);
             _statistics.EventsByType[syncEvent.Type] = typeCount + 1;
-            
+
             _statistics.EventsByPriority.TryGetValue(syncEvent.Priority, out var priorityCount);
             _statistics.EventsByPriority[syncEvent.Priority] = priorityCount + 1;
-            
+
             _statistics.LastEventTime = syncEvent.Time;
-            
+
             // Простой расчет events per second (скользящее среднее можно добавить позже)
             var now = DateTime.UtcNow;
             if (_statistics.LastEventTime.HasValue)
