@@ -46,5 +46,4 @@ public class SyncConfigurationRequest
     public int? MaxSendKbps { get; set; }
     public int? MaxRecvKbps { get; set; }
     public bool? AutoUpgradeEnabled { get; set; }
-    public bool? UsageReportingAccepted { get; set; }
 }

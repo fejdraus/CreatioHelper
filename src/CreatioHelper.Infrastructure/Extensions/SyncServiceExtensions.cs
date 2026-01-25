@@ -355,20 +355,6 @@ public static class SyncServiceExtensions
         // Diagnostics Services
         services.AddSingleton<IDebugFacilities, DebugFacilities>();
 
-        services.AddSingleton<UsageReportingOptions>(provider =>
-        {
-            var config = provider.GetService<IConfiguration>();
-            var options = config?.GetSection("UsageReporting").Get<UsageReportingOptions>() ?? new UsageReportingOptions();
-            return options;
-        });
-        services.AddSingleton<IUsageReportingService>(provider =>
-        {
-            var logger = provider.GetRequiredService<ILogger<UsageReportingService>>();
-            var httpClient = new HttpClient();
-            var options = provider.GetRequiredService<UsageReportingOptions>();
-            return new UsageReportingService(logger, httpClient, options);
-        });
-
         services.AddSingleton<UpgradeOptions>(provider =>
         {
             var config = provider.GetService<IConfiguration>();
