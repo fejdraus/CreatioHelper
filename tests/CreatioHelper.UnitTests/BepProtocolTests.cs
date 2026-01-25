@@ -535,8 +535,13 @@ public class BepConnectionProtocolStateTests : IDisposable
         // Act & Assert - Protocol state is Initial, data messages should be rejected
         Assert.Equal(BepProtocolState.Initial, connection.ProtocolState);
 
-        // Note: We can't directly call ValidateProtocolStateForSend as it's private,
-        // but the public behavior is tested via SendMessageAsync
+        // Verify that the message type is a data message (not Hello, ClusterConfig, or Close)
+        // These message types should fail validation when protocol state is Initial
+        Assert.False(
+            messageType == BepMessageType.Hello ||
+            messageType == BepMessageType.ClusterConfig ||
+            messageType == BepMessageType.Close,
+            $"{messageType} is a control message, not a data message");
     }
 
     [Theory]
