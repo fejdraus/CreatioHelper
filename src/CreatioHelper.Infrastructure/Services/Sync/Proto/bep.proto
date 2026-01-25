@@ -1,6 +1,11 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at https://mozilla.org/MPL/2.0/.
+//
 // Syncthing Block Exchange Protocol (BEP) v1
 // Wire-compatible with native Syncthing clients
 // Based on: https://github.com/syncthing/syncthing/blob/main/proto/bep/bep.proto
+// Original work Copyright (C) 2014-2024 The Syncthing Authors.
 
 syntax = "proto3";
 
@@ -18,6 +23,7 @@ message Hello {
     string client_version  = 3;
     int32  num_connections = 4;
     int64  timestamp       = 5;
+    HelloExtensions extensions = 6;  // CreatioHelper P2P Upgrade extensions (ignored by Syncthing)
 }
 
 // ============================================================================
@@ -38,6 +44,10 @@ enum MessageType {
     MESSAGE_TYPE_DOWNLOAD_PROGRESS = 5;
     MESSAGE_TYPE_PING              = 6;
     MESSAGE_TYPE_CLOSE             = 7;
+
+    // CreatioHelper Extensions (100+ to avoid conflicts)
+    MESSAGE_TYPE_AGENT_UPDATE_REQUEST  = 100;
+    MESSAGE_TYPE_AGENT_UPDATE_RESPONSE = 101;
 }
 
 enum MessageCompression {
@@ -275,4 +285,37 @@ message Ping {}
 
 message Close {
     string reason = 1;
+}
+
+// ============================================================================
+// CreatioHelper Extensions (fields 100+ to avoid conflicts with Syncthing)
+// These extensions are ignored by native Syncthing clients
+// ============================================================================
+
+// Extended Hello message fields for P2P agent upgrades
+// These are added as optional fields that Syncthing clients will ignore
+message HelloExtensions {
+    string agent_binary_hash = 1;  // SHA256 hash of agent binary
+    int64  agent_binary_size = 2;  // Size of agent binary in bytes
+    string agent_platform    = 3;  // Platform identifier: "windows-x64", "linux-x64", etc.
+}
+
+// Agent update request - sent by agent wanting to receive update
+message AgentUpdateRequest {
+    string from_version = 1;  // Current version of requesting agent
+    string to_version   = 2;  // Requested version
+    string platform     = 3;  // Platform of requesting agent
+}
+
+// Agent update response - sent by agent providing the update
+message AgentUpdateResponse {
+    string version      = 1;  // Version being sent
+    string platform     = 2;  // Platform of binary
+    bytes  data         = 3;  // Binary data (may be chunked)
+    string hash         = 4;  // SHA256 hash for verification
+    int64  total_size   = 5;  // Total size of binary
+    int32  chunk_index  = 6;  // Current chunk index (0-based)
+    int32  total_chunks = 7;  // Total number of chunks
+    bool   is_complete  = 8;  // True if this is the final chunk
+    ErrorCode error     = 9;  // Error code if request failed
 }

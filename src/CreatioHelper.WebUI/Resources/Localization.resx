@@ -42,20 +42,38 @@
   <data name="Nav_Dashboard" xml:space="preserve">
     <value>Dashboard</value>
   </data>
+  <data name="Nav_Sync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
   <data name="Nav_Folders" xml:space="preserve">
     <value>Folders</value>
   </data>
   <data name="Nav_Devices" xml:space="preserve">
     <value>Devices</value>
   </data>
-  <data name="Nav_Settings" xml:space="preserve">
-    <value>Settings</value>
+  <data name="Nav_Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="Nav_Monitor" xml:space="preserve">
+    <value>Monitor</value>
   </data>
   <data name="Nav_Events" xml:space="preserve">
     <value>Events</value>
   </data>
+  <data name="Nav_Connections" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Nav_Statistics" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="Nav_Diagnostics" xml:space="preserve">
     <value>Diagnostics</value>
+  </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>About</value>
   </data>
 
   <!-- Dashboard -->
@@ -148,6 +166,108 @@
   <data name="Folders_Errors" xml:space="preserve">
     <value>Errors</value>
   </data>
+  <data name="Folders_Id" xml:space="preserve">
+    <value>Folder ID</value>
+  </data>
+  <data name="Folders_GlobalState" xml:space="preserve">
+    <value>Global State</value>
+  </data>
+  <data name="Folders_LocalState" xml:space="preserve">
+    <value>Local State</value>
+  </data>
+  <data name="Folders_Files" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="Folders_WatchEnabled" xml:space="preserve">
+    <value>Watch Enabled</value>
+  </data>
+  <data name="Folders_WatchDisabled" xml:space="preserve">
+    <value>Watch Disabled</value>
+  </data>
+  <data name="Folders_PullOrder" xml:space="preserve">
+    <value>Pull Order</value>
+  </data>
+  <data name="Folders_NotShared" xml:space="preserve">
+    <value>Not shared with any device</value>
+  </data>
+  <data name="Folders_LastStateChange" xml:space="preserve">
+    <value>Last State Change</value>
+  </data>
+  <data name="Folders_UpToDate" xml:space="preserve">
+    <value>Up to Date</value>
+  </data>
+  <data name="Folders_Preparing" xml:space="preserve">
+    <value>Preparing</value>
+  </data>
+  <data name="Folders_Waiting" xml:space="preserve">
+    <value>Waiting</value>
+  </data>
+  <data name="Folders_EditFolder" xml:space="preserve">
+    <value>Edit Folder</value>
+  </data>
+  <data name="Folders_RemoveFolder" xml:space="preserve">
+    <value>Remove Folder</value>
+  </data>
+  <data name="Folders_Ignores" xml:space="preserve">
+    <value>Ignores</value>
+  </data>
+  <data name="Folders_AddFolderHint" xml:space="preserve">
+    <value>Click "Add Folder" to configure your first folder</value>
+  </data>
+
+  <!-- Folder Types -->
+  <data name="FolderType_SendReceive" xml:space="preserve">
+    <value>Send &amp; Receive</value>
+  </data>
+  <data name="FolderType_SendOnly" xml:space="preserve">
+    <value>Send Only</value>
+  </data>
+  <data name="FolderType_ReceiveOnly" xml:space="preserve">
+    <value>Receive Only</value>
+  </data>
+  <data name="FolderType_ReceiveEncrypted" xml:space="preserve">
+    <value>Receive Encrypted</value>
+  </data>
+
+  <!-- Pull Order -->
+  <data name="PullOrder_Random" xml:space="preserve">
+    <value>Random</value>
+  </data>
+  <data name="PullOrder_Alphabetic" xml:space="preserve">
+    <value>Alphabetic</value>
+  </data>
+  <data name="PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Smallest First</value>
+  </data>
+  <data name="PullOrder_LargestFirst" xml:space="preserve">
+    <value>Largest First</value>
+  </data>
+  <data name="PullOrder_OldestFirst" xml:space="preserve">
+    <value>Oldest First</value>
+  </data>
+  <data name="PullOrder_NewestFirst" xml:space="preserve">
+    <value>Newest First</value>
+  </data>
+
+  <!-- Scan Phases -->
+  <data name="ScanPhase_Enumerating" xml:space="preserve">
+    <value>Enumerating</value>
+  </data>
+  <data name="ScanPhase_Scanning" xml:space="preserve">
+    <value>Scanning</value>
+  </data>
+  <data name="ScanPhase_Updating" xml:space="preserve">
+    <value>Updating</value>
+  </data>
+  <data name="ScanPhase_Completed" xml:space="preserve">
+    <value>Completed</value>
+  </data>
+  <data name="ScanPhase_Cancelled" xml:space="preserve">
+    <value>Cancelled</value>
+  </data>
+  <data name="ScanPhase_Failed" xml:space="preserve">
+    <value>Failed</value>
+  </data>
 
   <!-- Folder States -->
   <data name="FolderState_Idle" xml:space="preserve">
@@ -215,6 +335,121 @@
   <data name="Devices_Paused" xml:space="preserve">
     <value>Paused</value>
   </data>
+  <data name="Devices_Running" xml:space="preserve">
+    <value>Running</value>
+  </data>
+  <data name="Devices_RemoteDevices" xml:space="preserve">
+    <value>Remote Devices</value>
+  </data>
+  <data name="Devices_NoRemoteDevices" xml:space="preserve">
+    <value>No remote devices</value>
+  </data>
+  <data name="Devices_AddDeviceHint" xml:space="preserve">
+    <value>Add a device to start synchronizing files.</value>
+  </data>
+  <data name="Devices_PendingDevices" xml:space="preserve">
+    <value>Pending Devices</value>
+  </data>
+  <data name="Devices_MemoryUsage" xml:space="preserve">
+    <value>Memory Usage</value>
+  </data>
+  <data name="Devices_CpuUsage" xml:space="preserve">
+    <value>CPU Usage</value>
+  </data>
+  <data name="Devices_Listeners" xml:space="preserve">
+    <value>Listeners</value>
+  </data>
+  <data name="Devices_Discovery" xml:space="preserve">
+    <value>Discovery</value>
+  </data>
+  <data name="Devices_DownloadRate" xml:space="preserve">
+    <value>Download Rate</value>
+  </data>
+  <data name="Devices_UploadRate" xml:space="preserve">
+    <value>Upload Rate</value>
+  </data>
+  <data name="Devices_ConnectedSince" xml:space="preserve">
+    <value>Connected Since</value>
+  </data>
+  <data name="Devices_Addresses" xml:space="preserve">
+    <value>Addresses</value>
+  </data>
+  <data name="Devices_SyncStatus" xml:space="preserve">
+    <value>Sync Status</value>
+  </data>
+  <data name="Devices_AutoAccept" xml:space="preserve">
+    <value>Auto Accept</value>
+  </data>
+  <data name="Devices_RemoveDevice" xml:space="preserve">
+    <value>Remove Device</value>
+  </data>
+  <data name="Devices_EditDevice" xml:space="preserve">
+    <value>Edit Device</value>
+  </data>
+  <data name="Devices_NoSharedFolders" xml:space="preserve">
+    <value>No shared folders</value>
+  </data>
+  <data name="Devices_NeverConnected" xml:space="preserve">
+    <value>Never connected</value>
+  </data>
+  <data name="Devices_ConnectedRelay" xml:space="preserve">
+    <value>Connected (Relay)</value>
+  </data>
+  <data name="Devices_QrCodeTitle" xml:space="preserve">
+    <value>Device ID QR Code</value>
+  </data>
+  <data name="Msg_DevicePaused" xml:space="preserve">
+    <value>Device paused</value>
+  </data>
+  <data name="Msg_DeviceResumed" xml:space="preserve">
+    <value>Device resumed</value>
+  </data>
+  <data name="Msg_DeviceRemoved" xml:space="preserve">
+    <value>Device removed</value>
+  </data>
+  <data name="Msg_DeviceAccepted" xml:space="preserve">
+    <value>Device accepted</value>
+  </data>
+  <data name="Msg_DeviceRejected" xml:space="preserve">
+    <value>Device rejected</value>
+  </data>
+  <data name="Msg_DeleteDeviceConfirm" xml:space="preserve">
+    <value>Are you sure you want to remove "{0}"?</value>
+  </data>
+  <data name="Msg_TogglePauseFailed" xml:space="preserve">
+    <value>Failed to toggle pause: {0}</value>
+  </data>
+
+  <!-- Compression -->
+  <data name="Compression_Metadata" xml:space="preserve">
+    <value>Metadata Only</value>
+  </data>
+  <data name="Compression_Always" xml:space="preserve">
+    <value>Always</value>
+  </data>
+  <data name="Compression_Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+
+  <!-- Connection Types -->
+  <data name="ConnectionType_TcpClient" xml:space="preserve">
+    <value>TCP Client</value>
+  </data>
+  <data name="ConnectionType_TcpServer" xml:space="preserve">
+    <value>TCP Server</value>
+  </data>
+  <data name="ConnectionType_QuicClient" xml:space="preserve">
+    <value>QUIC Client</value>
+  </data>
+  <data name="ConnectionType_QuicServer" xml:space="preserve">
+    <value>QUIC Server</value>
+  </data>
+  <data name="ConnectionType_RelayClient" xml:space="preserve">
+    <value>Relay Client</value>
+  </data>
+  <data name="ConnectionType_RelayServer" xml:space="preserve">
+    <value>Relay Server</value>
+  </data>
 
   <!-- Settings -->
   <data name="Settings_Title" xml:space="preserve">
@@ -227,7 +462,7 @@
     <value>Network</value>
   </data>
   <data name="Settings_GUI" xml:space="preserve">
-    <value>GUI</value>
+    <value>GUI Settings</value>
   </data>
   <data name="Settings_Advanced" xml:space="preserve">
     <value>Advanced</value>
@@ -270,6 +505,84 @@
   </data>
   <data name="Settings_Cancel" xml:space="preserve">
     <value>Cancel</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Appearance</value>
+  </data>
+  <data name="Settings_ShowTransferChart" xml:space="preserve">
+    <value>Show Transfer Rate Chart</value>
+  </data>
+  <data name="Settings_ShowTransferChartHint" xml:space="preserve">
+    <value>Display network throughput graph on dashboard</value>
+  </data>
+  <data name="Settings_ShowRecentEvents" xml:space="preserve">
+    <value>Show Recent Events</value>
+  </data>
+  <data name="Settings_ShowRecentEventsHint" xml:space="preserve">
+    <value>Display recent sync events on dashboard</value>
+  </data>
+  <data name="Settings_MaxRecentEvents" xml:space="preserve">
+    <value>Maximum Recent Events</value>
+  </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Notifications</value>
+  </data>
+  <data name="Settings_NotifySyncComplete" xml:space="preserve">
+    <value>Sync Completion</value>
+  </data>
+  <data name="Settings_NotifySyncCompleteHint" xml:space="preserve">
+    <value>Notify when folder sync completes</value>
+  </data>
+  <data name="Settings_NotifyDeviceConnect" xml:space="preserve">
+    <value>Device Connection</value>
+  </data>
+  <data name="Settings_NotifyDeviceConnectHint" xml:space="preserve">
+    <value>Notify when device connects or disconnects</value>
+  </data>
+  <data name="Settings_NotifyError" xml:space="preserve">
+    <value>Sync Errors</value>
+  </data>
+  <data name="Settings_NotifyErrorHint" xml:space="preserve">
+    <value>Notify on sync errors</value>
+  </data>
+  <data name="Settings_NotifyPendingDevice" xml:space="preserve">
+    <value>Pending Device Requests</value>
+  </data>
+  <data name="Settings_NotifyPendingDeviceHint" xml:space="preserve">
+    <value>Notify when a new device wants to connect</value>
+  </data>
+  <data name="Settings_DisplayOptions" xml:space="preserve">
+    <value>Display Options</value>
+  </data>
+  <data name="Settings_DateFormat" xml:space="preserve">
+    <value>Date Format</value>
+  </data>
+  <data name="Settings_DateShort" xml:space="preserve">
+    <value>Short</value>
+  </data>
+  <data name="Settings_DateMedium" xml:space="preserve">
+    <value>Medium</value>
+  </data>
+  <data name="Settings_DateLong" xml:space="preserve">
+    <value>Long</value>
+  </data>
+  <data name="Settings_SizeFormat" xml:space="preserve">
+    <value>Size Format</value>
+  </data>
+  <data name="Settings_SizeBinary" xml:space="preserve">
+    <value>Binary</value>
+  </data>
+  <data name="Settings_SizeDecimal" xml:space="preserve">
+    <value>Decimal</value>
+  </data>
+  <data name="Settings_ResetDefaults" xml:space="preserve">
+    <value>Reset to Defaults</value>
+  </data>
+  <data name="Settings_ResetToDefaultsHint" xml:space="preserve">
+    <value>Settings reset to defaults. Remember to save changes.</value>
+  </data>
+  <data name="Settings_ApplyingLanguage" xml:space="preserve">
+    <value>Applying language change...</value>
   </data>
 
   <!-- Events -->
@@ -334,6 +647,9 @@
   <data name="Action_ShowQR" xml:space="preserve">
     <value>Show QR Code</value>
   </data>
+  <data name="Action_Logout" xml:space="preserve">
+    <value>Logout</value>
+  </data>
 
   <!-- Common -->
   <data name="Common_Yes" xml:space="preserve">
@@ -390,8 +706,87 @@
   <data name="Common_ViewAll" xml:space="preserve">
     <value>View All</value>
   </data>
+  <data name="Common_Never" xml:space="preserve">
+    <value>Never</value>
+  </data>
+  <data name="Common_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Common_Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+
+  <!-- Login -->
+  <data name="Login_Title" xml:space="preserve">
+    <value>Login</value>
+  </data>
+  <data name="Login_SignIn" xml:space="preserve">
+    <value>Sign In</value>
+  </data>
+  <data name="Login_SigningIn" xml:space="preserve">
+    <value>Signing in...</value>
+  </data>
+  <data name="Login_SignInToContinue" xml:space="preserve">
+    <value>Sign in to continue</value>
+  </data>
+  <data name="Login_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Login_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Login_UsernameRequired" xml:space="preserve">
+    <value>Username is required</value>
+  </data>
+  <data name="Login_PasswordRequired" xml:space="preserve">
+    <value>Password is required</value>
+  </data>
+  <data name="Login_ApiKey" xml:space="preserve">
+    <value>API Key</value>
+  </data>
+  <data name="Login_LoginWithApiKey" xml:space="preserve">
+    <value>Login with API Key</value>
+  </data>
+  <data name="Login_DefaultCredentials" xml:space="preserve">
+    <value>Default credentials: admin / admin123</value>
+  </data>
+  <data name="Login_Welcome" xml:space="preserve">
+    <value>Welcome, {0}!</value>
+  </data>
+  <data name="Login_AuthenticatedWithApiKey" xml:space="preserve">
+    <value>Authenticated with API key</value>
+  </data>
+  <data name="Login_Failed" xml:space="preserve">
+    <value>Login failed</value>
+  </data>
+  <data name="Login_ApiKeyFailed" xml:space="preserve">
+    <value>API key authentication failed</value>
+  </data>
+
+  <!-- Status -->
+  <data name="Status_Online" xml:space="preserve">
+    <value>Online</value>
+  </data>
+  <data name="Status_Offline" xml:space="preserve">
+    <value>Offline</value>
+  </data>
+  <data name="Status_Synced" xml:space="preserve">
+    <value>synced</value>
+  </data>
+  <data name="Status_ConnectedFor" xml:space="preserve">
+    <value>Connected {0}</value>
+  </data>
+  <data name="Status_ConnectedPaused" xml:space="preserve">
+    <value>Connected (Paused)</value>
+  </data>
 
   <!-- Messages -->
+  <data name="Msg_Connected" xml:space="preserve">
+    <value>Connected to agent</value>
+  </data>
+  <data name="Msg_Disconnected" xml:space="preserve">
+    <value>Disconnected from agent</value>
+  </data>
   <data name="Msg_DeviceIdCopied" xml:space="preserve">
     <value>Device ID copied to clipboard</value>
   </data>
@@ -431,6 +826,18 @@
   <data name="Msg_DeviceNotFound" xml:space="preserve">
     <value>Device not found</value>
   </data>
+  <data name="Msg_FolderPaused" xml:space="preserve">
+    <value>Folder paused</value>
+  </data>
+  <data name="Msg_FolderResumed" xml:space="preserve">
+    <value>Folder resumed</value>
+  </data>
+  <data name="Msg_FolderRemoved" xml:space="preserve">
+    <value>Folder removed</value>
+  </data>
+  <data name="Msg_DeleteFolderConfirm" xml:space="preserve">
+    <value>Are you sure you want to remove folder "{0}"?</value>
+  </data>
 
   <!-- Time Formats -->
   <data name="Time_Days" xml:space="preserve">
@@ -453,5 +860,1411 @@
   </data>
   <data name="Time_DaysAgo" xml:space="preserve">
     <value>{0} days ago</value>
+  </data>
+
+  <!-- General Settings -->
+  <data name="Settings_DeviceInformation" xml:space="preserve">
+    <value>Device Information</value>
+  </data>
+  <data name="Settings_DeviceNameHint" xml:space="preserve">
+    <value>Friendly name for this device</value>
+  </data>
+  <data name="Settings_DeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="Settings_SyncDefaults" xml:space="preserve">
+    <value>Sync Defaults</value>
+  </data>
+  <data name="Settings_DefaultFolderPath" xml:space="preserve">
+    <value>Default Folder Path</value>
+  </data>
+  <data name="Settings_DefaultFolderPathHint" xml:space="preserve">
+    <value>Default path for new folders</value>
+  </data>
+  <data name="Settings_DefaultFolderType" xml:space="preserve">
+    <value>Default Folder Type</value>
+  </data>
+  <data name="Settings_IgnorePermissions" xml:space="preserve">
+    <value>Ignore Permissions</value>
+  </data>
+  <data name="Settings_IgnorePermissionsHint" xml:space="preserve">
+    <value>File permission changes will not be synced</value>
+  </data>
+  <data name="Settings_AutoNormalizeUnicode" xml:space="preserve">
+    <value>Auto Normalize Unicode</value>
+  </data>
+  <data name="Settings_AutoNormalizeUnicodeHint" xml:space="preserve">
+    <value>Automatically normalize unicode filenames (recommended)</value>
+  </data>
+  <data name="Settings_API" xml:space="preserve">
+    <value>API</value>
+  </data>
+  <data name="Settings_ApiKey" xml:space="preserve">
+    <value>API Key</value>
+  </data>
+  <data name="Settings_GenerateNewApiKey" xml:space="preserve">
+    <value>Generate New API Key</value>
+  </data>
+  <data name="Settings_Startup" xml:space="preserve">
+    <value>Startup</value>
+  </data>
+  <data name="Settings_StartMinimized" xml:space="preserve">
+    <value>Start Minimized</value>
+  </data>
+  <data name="Settings_StartMinimizedHint" xml:space="preserve">
+    <value>Start in system tray</value>
+  </data>
+  <data name="Settings_StartAtLogin" xml:space="preserve">
+    <value>Start at Login</value>
+  </data>
+  <data name="Settings_StartAtLoginHint" xml:space="preserve">
+    <value>Automatically start when you log in</value>
+  </data>
+  <data name="Settings_SaveChanges" xml:space="preserve">
+    <value>Save Changes</value>
+  </data>
+  <data name="Msg_ApiKeyGenerated" xml:space="preserve">
+    <value>New API key generated. Remember to save changes.</value>
+  </data>
+
+  <!-- Network Settings -->
+  <data name="Network_Title" xml:space="preserve">
+    <value>Network Settings</value>
+  </data>
+  <data name="Network_ListeningAddresses" xml:space="preserve">
+    <value>Listening Addresses</value>
+  </data>
+  <data name="Network_SyncProtocolListen" xml:space="preserve">
+    <value>Sync Protocol Listen Address</value>
+  </data>
+  <data name="Network_SyncProtocolListenHint" xml:space="preserve">
+    <value>Format: tcp://0.0.0.0:22000 or dynamic</value>
+  </data>
+  <data name="Network_GUIListenAddress" xml:space="preserve">
+    <value>GUI Listen Address</value>
+  </data>
+  <data name="Network_GUIListenAddressHint" xml:space="preserve">
+    <value>Format: 127.0.0.1:8384</value>
+  </data>
+  <data name="Network_NATTraversal" xml:space="preserve">
+    <value>NAT Traversal</value>
+  </data>
+  <data name="Network_EnableNATTraversal" xml:space="preserve">
+    <value>Enable NAT Traversal</value>
+  </data>
+  <data name="Network_NATTraversalHint" xml:space="preserve">
+    <value>Automatically configure port forwarding for better connectivity</value>
+  </data>
+  <data name="Network_NATMethods" xml:space="preserve">
+    <value>NAT Methods</value>
+  </data>
+  <data name="Network_EnableUPnP" xml:space="preserve">
+    <value>Enable UPnP</value>
+  </data>
+  <data name="Network_UPnPHint" xml:space="preserve">
+    <value>Universal Plug and Play port forwarding</value>
+  </data>
+  <data name="Network_EnableNATPMP" xml:space="preserve">
+    <value>Enable NAT-PMP</value>
+  </data>
+  <data name="Network_NATPMPHint" xml:space="preserve">
+    <value>NAT Port Mapping Protocol (Apple routers)</value>
+  </data>
+  <data name="Network_NATLeaseSettings" xml:space="preserve">
+    <value>NAT Lease Settings</value>
+  </data>
+  <data name="Network_LeaseDuration" xml:space="preserve">
+    <value>Lease Duration (minutes)</value>
+  </data>
+  <data name="Network_LeaseDurationHint" xml:space="preserve">
+    <value>Port mapping lease time</value>
+  </data>
+  <data name="Network_RenewalInterval" xml:space="preserve">
+    <value>Renewal Interval (minutes)</value>
+  </data>
+  <data name="Network_RenewalIntervalHint" xml:space="preserve">
+    <value>Time before lease expires to renew</value>
+  </data>
+  <data name="Network_Timeout" xml:space="preserve">
+    <value>Timeout (seconds)</value>
+  </data>
+  <data name="Network_TimeoutHint" xml:space="preserve">
+    <value>Discovery timeout</value>
+  </data>
+  <data name="Network_STUNConfiguration" xml:space="preserve">
+    <value>STUN Configuration</value>
+  </data>
+  <data name="Network_STUNServers" xml:space="preserve">
+    <value>STUN Servers</value>
+  </data>
+  <data name="Network_STUNServersHint" xml:space="preserve">
+    <value>One server per line (e.g., stun.syncthing.net:3478)</value>
+  </data>
+  <data name="Network_STUNKeepalive" xml:space="preserve">
+    <value>STUN Keepalive Interval (seconds)</value>
+  </data>
+  <data name="Network_STUNKeepaliveHint" xml:space="preserve">
+    <value>Interval between STUN keepalive requests</value>
+  </data>
+  <data name="Network_DeviceDiscovery" xml:space="preserve">
+    <value>Device Discovery</value>
+  </data>
+  <data name="Network_GlobalDiscovery" xml:space="preserve">
+    <value>Global Discovery</value>
+  </data>
+  <data name="Network_GlobalDiscoveryHint" xml:space="preserve">
+    <value>Announce to global discovery servers for internet-wide device discovery</value>
+  </data>
+  <data name="Network_LocalDiscovery" xml:space="preserve">
+    <value>Local Discovery</value>
+  </data>
+  <data name="Network_LocalDiscoveryHint" xml:space="preserve">
+    <value>Discover devices on local network via broadcast/multicast</value>
+  </data>
+  <data name="Network_GlobalDiscoveryServers" xml:space="preserve">
+    <value>Global Discovery Servers</value>
+  </data>
+  <data name="Network_GlobalDiscoveryServersHint" xml:space="preserve">
+    <value>One server URL per line (default = use Syncthing servers)</value>
+  </data>
+  <data name="Network_LocalDiscoverySettings" xml:space="preserve">
+    <value>Local Discovery Settings</value>
+  </data>
+  <data name="Network_LocalAnnouncePort" xml:space="preserve">
+    <value>Local Announce Port</value>
+  </data>
+  <data name="Network_LocalAnnouncePortHint" xml:space="preserve">
+    <value>UDP port for local announcements</value>
+  </data>
+  <data name="Network_MulticastAddress" xml:space="preserve">
+    <value>Multicast Address</value>
+  </data>
+  <data name="Network_MulticastAddressHint" xml:space="preserve">
+    <value>IPv6 multicast address for discovery</value>
+  </data>
+  <data name="Network_AnnounceInterval" xml:space="preserve">
+    <value>Announce Interval (s)</value>
+  </data>
+  <data name="Network_AnnounceIntervalHint" xml:space="preserve">
+    <value>Seconds between announcements</value>
+  </data>
+  <data name="Network_RelayConfiguration" xml:space="preserve">
+    <value>Relay Configuration</value>
+  </data>
+  <data name="Network_EnableRelaying" xml:space="preserve">
+    <value>Enable Relaying</value>
+  </data>
+  <data name="Network_RelayingHint" xml:space="preserve">
+    <value>Use relay servers when direct connection is not possible</value>
+  </data>
+  <data name="Network_RelayOnlyMode" xml:space="preserve">
+    <value>Relay Only Mode</value>
+  </data>
+  <data name="Network_RelayOnlyModeHint" xml:space="preserve">
+    <value>Only connect through relay servers (no direct connections)</value>
+  </data>
+  <data name="Network_RelayWithoutGlobalAnnounce" xml:space="preserve">
+    <value>Relay Without Global Announce</value>
+  </data>
+  <data name="Network_RelayWithoutGlobalAnnounceHint" xml:space="preserve">
+    <value>Use relays even when global discovery is disabled</value>
+  </data>
+  <data name="Network_RelayServers" xml:space="preserve">
+    <value>Relay Servers</value>
+  </data>
+  <data name="Network_RelayServersHint" xml:space="preserve">
+    <value>One server URL per line (default = use default relay pool)</value>
+  </data>
+  <data name="Network_RelayReconnectInterval" xml:space="preserve">
+    <value>Relay Reconnect Interval (minutes)</value>
+  </data>
+  <data name="Network_RelayReconnectIntervalHint" xml:space="preserve">
+    <value>Minutes between relay reconnection attempts</value>
+  </data>
+  <data name="Network_BandwidthLimits" xml:space="preserve">
+    <value>Bandwidth Limits</value>
+  </data>
+  <data name="Network_UploadLimit" xml:space="preserve">
+    <value>Upload Limit (KB/s)</value>
+  </data>
+  <data name="Network_DownloadLimit" xml:space="preserve">
+    <value>Download Limit (KB/s)</value>
+  </data>
+  <data name="Network_UnlimitedHint" xml:space="preserve">
+    <value>0 = unlimited</value>
+  </data>
+  <data name="Network_ApplyLimitsToLAN" xml:space="preserve">
+    <value>Apply Limits to LAN</value>
+  </data>
+  <data name="Network_ApplyLimitsToLANHint" xml:space="preserve">
+    <value>Also apply bandwidth limits on local network connections</value>
+  </data>
+  <data name="Network_ConnectionLimits" xml:space="preserve">
+    <value>Connection Limits</value>
+  </data>
+  <data name="Network_MaxIncomingRequests" xml:space="preserve">
+    <value>Max Incoming Requests</value>
+  </data>
+  <data name="Network_MaxOutgoingRequests" xml:space="preserve">
+    <value>Max Outgoing Requests</value>
+  </data>
+  <data name="Network_ReconnectInterval" xml:space="preserve">
+    <value>Reconnect Interval (s)</value>
+  </data>
+  <data name="Network_ReconnectIntervalHint" xml:space="preserve">
+    <value>Seconds between reconnection attempts</value>
+  </data>
+  <data name="Msg_NetworkSettingsSaved" xml:space="preserve">
+    <value>Network settings saved. Some changes may require a restart.</value>
+  </data>
+
+  <!-- Advanced Settings -->
+  <data name="Advanced_Title" xml:space="preserve">
+    <value>Advanced Settings</value>
+  </data>
+  <data name="Advanced_Warning" xml:space="preserve">
+    <value>These settings are for advanced users. Incorrect configuration may affect performance or cause sync issues.</value>
+  </data>
+  <data name="Advanced_SyncDefaults" xml:space="preserve">
+    <value>Sync Defaults</value>
+  </data>
+  <data name="Advanced_DefaultFolderPathHint" xml:space="preserve">
+    <value>Default path for new synced folders</value>
+  </data>
+  <data name="Advanced_IgnorePermissionsHint" xml:space="preserve">
+    <value>Don't sync file permissions (useful for cross-platform syncing)</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Auto Normalize Filenames</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenamesHint" xml:space="preserve">
+    <value>Automatically convert filenames to NFC Unicode normalization</value>
+  </data>
+  <data name="Advanced_FileHandling" xml:space="preserve">
+    <value>File Handling</value>
+  </data>
+  <data name="Advanced_ConcurrentHashers" xml:space="preserve">
+    <value>Concurrent Hashers</value>
+  </data>
+  <data name="Advanced_ConcurrentHashersHint" xml:space="preserve">
+    <value>Number of parallel hashing threads</value>
+  </data>
+  <data name="Advanced_MaxFolderConcurrency" xml:space="preserve">
+    <value>Max Folder Concurrency</value>
+  </data>
+  <data name="Advanced_MaxFolderConcurrencyHint" xml:space="preserve">
+    <value>Max folders syncing simultaneously</value>
+  </data>
+  <data name="Advanced_LowPriorityProcess" xml:space="preserve">
+    <value>Low Priority Process</value>
+  </data>
+  <data name="Advanced_LowPriorityProcessHint" xml:space="preserve">
+    <value>Run with lower CPU priority (reduces system impact)</value>
+  </data>
+  <data name="Advanced_ReduceProgressUpdates" xml:space="preserve">
+    <value>Reduce Progress Updates</value>
+  </data>
+  <data name="Advanced_ReduceProgressUpdatesHint" xml:space="preserve">
+    <value>Less frequent UI updates (saves bandwidth on slow connections)</value>
+  </data>
+  <data name="Advanced_Database" xml:space="preserve">
+    <value>Database</value>
+  </data>
+  <data name="Advanced_DatabaseBlockSize" xml:space="preserve">
+    <value>Database Block Size (bytes)</value>
+  </data>
+  <data name="Advanced_CompressionLevel" xml:space="preserve">
+    <value>Compression Level</value>
+  </data>
+  <data name="Advanced_CompressionNone" xml:space="preserve">
+    <value>None (Fastest)</value>
+  </data>
+  <data name="Advanced_CompressionLZ4" xml:space="preserve">
+    <value>LZ4 (Fast)</value>
+  </data>
+  <data name="Advanced_CompressionZstd" xml:space="preserve">
+    <value>Zstandard (Balanced)</value>
+  </data>
+  <data name="Advanced_ProtocolOptions" xml:space="preserve">
+    <value>Protocol Options</value>
+  </data>
+  <data name="Advanced_PingTimeout" xml:space="preserve">
+    <value>Ping Timeout (seconds)</value>
+  </data>
+  <data name="Advanced_PingTimeoutHint" xml:space="preserve">
+    <value>Timeout for keepalive pings</value>
+  </data>
+  <data name="Advanced_ReconnectionInterval" xml:space="preserve">
+    <value>Reconnection Interval (seconds)</value>
+  </data>
+  <data name="Advanced_ReconnectionIntervalHint" xml:space="preserve">
+    <value>Time between reconnection attempts</value>
+  </data>
+  <data name="Advanced_MaxPendingData" xml:space="preserve">
+    <value>Max Pending Data (KiB)</value>
+  </data>
+  <data name="Advanced_MaxPendingDataHint" xml:space="preserve">
+    <value>Max data waiting for response</value>
+  </data>
+  <data name="Advanced_KeepTemporaryFiles" xml:space="preserve">
+    <value>Keep Temporary Files</value>
+  </data>
+  <data name="Advanced_KeepTemporaryFilesHint" xml:space="preserve">
+    <value>Don't delete temp files on error (for debugging)</value>
+  </data>
+  <data name="Advanced_CopyOwnershipFromParent" xml:space="preserve">
+    <value>Copy Ownership from Parent</value>
+  </data>
+  <data name="Advanced_CopyOwnershipFromParentHint" xml:space="preserve">
+    <value>New files inherit ownership from parent directory</value>
+  </data>
+  <data name="Advanced_StartupBehavior" xml:space="preserve">
+    <value>Startup &amp; Behavior</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStart" xml:space="preserve">
+    <value>Open Browser on Start</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStartHint" xml:space="preserve">
+    <value>Automatically open the web GUI when the application starts</value>
+  </data>
+  <data name="Advanced_Debugging" xml:space="preserve">
+    <value>Debugging</value>
+  </data>
+  <data name="Advanced_EnableCrashReporting" xml:space="preserve">
+    <value>Enable Crash Reporting</value>
+  </data>
+  <data name="Advanced_EnableCrashReportingHint" xml:space="preserve">
+    <value>Send anonymous crash reports to help improve the software</value>
+  </data>
+  <data name="Advanced_LogLevel" xml:space="preserve">
+    <value>Log Level</value>
+  </data>
+  <data name="Advanced_DangerZone" xml:space="preserve">
+    <value>Danger Zone</value>
+  </data>
+  <data name="Advanced_DangerZoneWarning" xml:space="preserve">
+    <value>These actions cannot be undone.</value>
+  </data>
+  <data name="Advanced_ResetDatabase" xml:space="preserve">
+    <value>Reset Database</value>
+  </data>
+  <data name="Advanced_FactoryReset" xml:space="preserve">
+    <value>Factory Reset</value>
+  </data>
+  <data name="Msg_ResetDatabaseConfirm" xml:space="preserve">
+    <value>This will reset the sync database. All folders will need to rescan. Continue?</value>
+  </data>
+  <data name="Msg_DatabaseResetInitiated" xml:space="preserve">
+    <value>Database reset initiated. Folders will rescan.</value>
+  </data>
+  <data name="Msg_FactoryResetConfirm" xml:space="preserve">
+    <value>This will delete ALL settings and data. This action cannot be undone. Are you absolutely sure?</value>
+  </data>
+  <data name="Msg_FactoryResetTypeConfirm" xml:space="preserve">
+    <value>Type 'RESET' to confirm you want to delete all data.</value>
+  </data>
+  <data name="Msg_FactoryResetComplete" xml:space="preserve">
+    <value>Factory reset complete. Application will restart.</value>
+  </data>
+  <data name="Msg_AdvancedSettingsSaved" xml:space="preserve">
+    <value>Advanced settings saved. Some changes require a restart.</value>
+  </data>
+
+  <!-- About Page -->
+  <data name="About_Title" xml:space="preserve">
+    <value>About</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>Syncthing-compatible file synchronization with Creatio management</value>
+  </data>
+  <data name="About_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="About_DeviceID" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="About_Uptime" xml:space="preserve">
+    <value>Uptime</value>
+  </data>
+  <data name="About_Platform" xml:space="preserve">
+    <value>Platform</value>
+  </data>
+  <data name="About_Architecture" xml:space="preserve">
+    <value>Architecture</value>
+  </data>
+  <data name="About_MemoryUsage" xml:space="preserve">
+    <value>Memory Usage</value>
+  </data>
+  <data name="About_Features" xml:space="preserve">
+    <value>Features</value>
+  </data>
+  <data name="About_Feature_Sync" xml:space="preserve">
+    <value>Syncthing-compatible file synchronization</value>
+  </data>
+  <data name="About_Feature_Encryption" xml:space="preserve">
+    <value>End-to-end encryption</value>
+  </data>
+  <data name="About_Feature_NAT" xml:space="preserve">
+    <value>NAT traversal (UPnP, NAT-PMP, STUN)</value>
+  </data>
+  <data name="About_Feature_Creatio" xml:space="preserve">
+    <value>Creatio CRM integration</value>
+  </data>
+  <data name="About_Feature_WebUI" xml:space="preserve">
+    <value>Web-based management interface</value>
+  </data>
+  <data name="About_Links" xml:space="preserve">
+    <value>Links</value>
+  </data>
+  <data name="About_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="About_SyncthingDocs" xml:space="preserve">
+    <value>Syncthing Docs</value>
+  </data>
+  <data name="About_Documentation" xml:space="preserve">
+    <value>Documentation</value>
+  </data>
+  <data name="About_ReportIssue" xml:space="preserve">
+    <value>Report Issue</value>
+  </data>
+  <data name="About_License" xml:space="preserve">
+    <value>License</value>
+  </data>
+  <data name="About_LicenseText" xml:space="preserve">
+    <value>Licensed under GPL-3.0. Protocol files derived from Syncthing (MPL-2.0).</value>
+  </data>
+  <data name="About_Os" xml:space="preserve">
+    <value>Operating System</value>
+  </data>
+  <data name="About_FeaturesList" xml:space="preserve">
+    <value>Syncthing-compatible file sync|End-to-end encryption|NAT traversal &amp; relay support|Creatio platform integration|Modern Web UI</value>
+  </data>
+
+  <!-- Connections Page -->
+  <data name="Connections_Title" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Connections_Summary" xml:space="preserve">
+    <value>Summary</value>
+  </data>
+  <data name="Connections_TotalDevices" xml:space="preserve">
+    <value>Total Devices</value>
+  </data>
+  <data name="Connections_Connected" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Connections_Disconnected" xml:space="preserve">
+    <value>Disconnected</value>
+  </data>
+  <data name="Connections_DirectConnections" xml:space="preserve">
+    <value>Direct Connections</value>
+  </data>
+  <data name="Connections_RelayConnections" xml:space="preserve">
+    <value>Relay Connections</value>
+  </data>
+  <data name="Connections_Bandwidth" xml:space="preserve">
+    <value>Bandwidth</value>
+  </data>
+  <data name="Connections_DownloadRate" xml:space="preserve">
+    <value>Download Rate</value>
+  </data>
+  <data name="Connections_UploadRate" xml:space="preserve">
+    <value>Upload Rate</value>
+  </data>
+  <data name="Connections_TotalDownloaded" xml:space="preserve">
+    <value>Total Downloaded</value>
+  </data>
+  <data name="Connections_TotalUploaded" xml:space="preserve">
+    <value>Total Uploaded</value>
+  </data>
+  <data name="Connections_Device" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="Connections_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Connections_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Connections_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Connections_Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="Connections_Upload" xml:space="preserve">
+    <value>Upload</value>
+  </data>
+  <data name="Connections_ConnectedTime" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Connections_Direct" xml:space="preserve">
+    <value>Direct</value>
+  </data>
+  <data name="Connections_Relay" xml:space="preserve">
+    <value>Relay</value>
+  </data>
+  <data name="Connections_DiscoveryStatus" xml:space="preserve">
+    <value>Discovery Status</value>
+  </data>
+  <data name="Connections_LocalDiscovery" xml:space="preserve">
+    <value>Local Discovery</value>
+  </data>
+  <data name="Connections_GlobalDiscovery" xml:space="preserve">
+    <value>Global Discovery</value>
+  </data>
+  <data name="Connections_ExternalAddresses" xml:space="preserve">
+    <value>External Addresses</value>
+  </data>
+  <data name="Connections_Servers" xml:space="preserve">
+    <value>servers</value>
+  </data>
+
+  <!-- Events Page -->
+  <data name="Events_LiveUpdates" xml:space="preserve">
+    <value>Live Updates</value>
+  </data>
+  <data name="Events_EventType" xml:space="preserve">
+    <value>Event Type</value>
+  </data>
+  <data name="Events_AllEvents" xml:space="preserve">
+    <value>All Events</value>
+  </data>
+  <data name="Events_StateChanged" xml:space="preserve">
+    <value>State Changed</value>
+  </data>
+  <data name="Events_ItemStarted" xml:space="preserve">
+    <value>Item Started</value>
+  </data>
+  <data name="Events_ItemFinished" xml:space="preserve">
+    <value>Item Finished</value>
+  </data>
+  <data name="Events_FolderCompletion" xml:space="preserve">
+    <value>Folder Completion</value>
+  </data>
+  <data name="Events_DeviceConnected" xml:space="preserve">
+    <value>Device Connected</value>
+  </data>
+  <data name="Events_DeviceDisconnected" xml:space="preserve">
+    <value>Device Disconnected</value>
+  </data>
+  <data name="Events_FolderErrors" xml:space="preserve">
+    <value>Folder Errors</value>
+  </data>
+  <data name="Events_Folder" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="Events_AllFolders" xml:space="preserve">
+    <value>All Folders</value>
+  </data>
+  <data name="Events_Device" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="Events_AllDevices" xml:space="preserve">
+    <value>All Devices</value>
+  </data>
+  <data name="Events_NoEventsMatch" xml:space="preserve">
+    <value>No events match the current filter criteria</value>
+  </data>
+  <data name="Events_Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="Events_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="Events_Details" xml:space="preserve">
+    <value>Details</value>
+  </data>
+  <data name="Events_LoadMore" xml:space="preserve">
+    <value>Load More</value>
+  </data>
+
+  <!-- Statistics Page -->
+  <data name="Statistics_Title" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="Statistics_TotalFolders" xml:space="preserve">
+    <value>Total Folders</value>
+  </data>
+  <data name="Statistics_TotalFiles" xml:space="preserve">
+    <value>Total Files</value>
+  </data>
+  <data name="Statistics_TotalSize" xml:space="preserve">
+    <value>Total Size</value>
+  </data>
+  <data name="Statistics_ConnectedDevices" xml:space="preserve">
+    <value>Connected Devices</value>
+  </data>
+  <data name="Statistics_TransferStatistics" xml:space="preserve">
+    <value>Transfer Statistics</value>
+  </data>
+  <data name="Statistics_TotalDownloaded" xml:space="preserve">
+    <value>Total Downloaded</value>
+  </data>
+  <data name="Statistics_TotalUploaded" xml:space="preserve">
+    <value>Total Uploaded</value>
+  </data>
+  <data name="Statistics_CurrentDownloadRate" xml:space="preserve">
+    <value>Current Download Rate</value>
+  </data>
+  <data name="Statistics_CurrentUploadRate" xml:space="preserve">
+    <value>Current Upload Rate</value>
+  </data>
+  <data name="Statistics_FilesSyncedSession" xml:space="preserve">
+    <value>Files Synced (Session)</value>
+  </data>
+  <data name="Statistics_BytesSyncedSession" xml:space="preserve">
+    <value>Bytes Synced (Session)</value>
+  </data>
+  <data name="Statistics_SystemStatistics" xml:space="preserve">
+    <value>System Statistics</value>
+  </data>
+  <data name="Statistics_Uptime" xml:space="preserve">
+    <value>Uptime</value>
+  </data>
+  <data name="Statistics_MemoryUsage" xml:space="preserve">
+    <value>Memory Usage</value>
+  </data>
+  <data name="Statistics_DatabaseSize" xml:space="preserve">
+    <value>Database Size</value>
+  </data>
+  <data name="Statistics_ActiveGoroutines" xml:space="preserve">
+    <value>Active Goroutines</value>
+  </data>
+  <data name="Statistics_Version" xml:space="preserve">
+    <value>Version</value>
+  </data>
+  <data name="Statistics_Started" xml:space="preserve">
+    <value>Started</value>
+  </data>
+  <data name="Statistics_FolderStatistics" xml:space="preserve">
+    <value>Folder Statistics</value>
+  </data>
+  <data name="Statistics_Folder" xml:space="preserve">
+    <value>Folder</value>
+  </data>
+  <data name="Statistics_Files" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="Statistics_Directories" xml:space="preserve">
+    <value>Directories</value>
+  </data>
+  <data name="Statistics_Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="Statistics_SyncPercent" xml:space="preserve">
+    <value>Sync %</value>
+  </data>
+  <data name="Statistics_Status" xml:space="preserve">
+    <value>Status</value>
+  </data>
+  <data name="Statistics_DeviceStatistics" xml:space="preserve">
+    <value>Device Statistics</value>
+  </data>
+  <data name="Statistics_Device" xml:space="preserve">
+    <value>Device</value>
+  </data>
+  <data name="Statistics_Downloaded" xml:space="preserve">
+    <value>Downloaded</value>
+  </data>
+  <data name="Statistics_Uploaded" xml:space="preserve">
+    <value>Uploaded</value>
+  </data>
+  <data name="Statistics_LastSeen" xml:space="preserve">
+    <value>Last Seen</value>
+  </data>
+
+  <!-- Profiling Page -->
+  <data name="Profiling_Title" xml:space="preserve">
+    <value>Performance Profiling</value>
+  </data>
+  <data name="Profiling_CPUUsage" xml:space="preserve">
+    <value>CPU Usage</value>
+  </data>
+  <data name="Profiling_AppMemory" xml:space="preserve">
+    <value>App Memory</value>
+  </data>
+  <data name="Profiling_OSMemory" xml:space="preserve">
+    <value>OS</value>
+  </data>
+  <data name="Profiling_Goroutines" xml:space="preserve">
+    <value>Goroutines</value>
+  </data>
+  <data name="Profiling_Uptime" xml:space="preserve">
+    <value>Uptime</value>
+  </data>
+  <data name="Profiling_ResourceHistory" xml:space="preserve">
+    <value>Resource History</value>
+  </data>
+  <data name="Profiling_CollectingData" xml:space="preserve">
+    <value>Collecting data...</value>
+  </data>
+  <data name="Profiling_CPU" xml:space="preserve">
+    <value>CPU</value>
+  </data>
+  <data name="Profiling_Memory" xml:space="preserve">
+    <value>Memory</value>
+  </data>
+  <data name="Profiling_HeapStatistics" xml:space="preserve">
+    <value>Heap Statistics</value>
+  </data>
+  <data name="Profiling_HeapAllocated" xml:space="preserve">
+    <value>Heap Allocated</value>
+  </data>
+  <data name="Profiling_HeapInUse" xml:space="preserve">
+    <value>Heap In Use</value>
+  </data>
+  <data name="Profiling_HeapObjects" xml:space="preserve">
+    <value>Heap Objects</value>
+  </data>
+  <data name="Profiling_StackInUse" xml:space="preserve">
+    <value>Stack In Use</value>
+  </data>
+  <data name="Profiling_GCCollections" xml:space="preserve">
+    <value>GC Collections</value>
+  </data>
+  <data name="Profiling_GCPauseTotal" xml:space="preserve">
+    <value>GC Pause Total</value>
+  </data>
+  <data name="Profiling_IOStatistics" xml:space="preserve">
+    <value>I/O Statistics</value>
+  </data>
+  <data name="Profiling_FilesOpen" xml:space="preserve">
+    <value>Files Open</value>
+  </data>
+  <data name="Profiling_NetworkConnections" xml:space="preserve">
+    <value>Network Connections</value>
+  </data>
+  <data name="Profiling_TotalRead" xml:space="preserve">
+    <value>Total Read</value>
+  </data>
+  <data name="Profiling_TotalWritten" xml:space="preserve">
+    <value>Total Written</value>
+  </data>
+  <data name="Profiling_ReadRate" xml:space="preserve">
+    <value>Read Rate</value>
+  </data>
+  <data name="Profiling_WriteRate" xml:space="preserve">
+    <value>Write Rate</value>
+  </data>
+  <data name="Profiling_DebugActions" xml:space="preserve">
+    <value>Debug Actions</value>
+  </data>
+  <data name="Profiling_ForceGC" xml:space="preserve">
+    <value>Force GC</value>
+  </data>
+  <data name="Profiling_DownloadHeapDump" xml:space="preserve">
+    <value>Download Heap Dump</value>
+  </data>
+  <data name="Profiling_DownloadGoroutineDump" xml:space="preserve">
+    <value>Download Goroutine Dump</value>
+  </data>
+  <data name="Msg_GCTriggered" xml:space="preserve">
+    <value>Garbage collection triggered</value>
+  </data>
+  <data name="Msg_HeapDumpDownloading" xml:space="preserve">
+    <value>Heap dump downloading...</value>
+  </data>
+  <data name="Msg_GoroutineDumpDownloading" xml:space="preserve">
+    <value>Goroutine dump downloading...</value>
+  </data>
+
+  <!-- Support Bundle Page -->
+  <data name="Support_Title" xml:space="preserve">
+    <value>Support Bundle</value>
+  </data>
+  <data name="Support_Description" xml:space="preserve">
+    <value>A support bundle contains diagnostic information that helps troubleshoot issues. It includes configuration, logs, and system information but excludes sensitive data like API keys and passwords.</value>
+  </data>
+  <data name="Support_BundleContents" xml:space="preserve">
+    <value>Bundle Contents</value>
+  </data>
+  <data name="Support_Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="Support_ConfigurationHint" xml:space="preserve">
+    <value>Sanitized configuration without sensitive data</value>
+  </data>
+  <data name="Support_SystemLogs" xml:space="preserve">
+    <value>System Logs</value>
+  </data>
+  <data name="Support_SystemLogsHint" xml:space="preserve">
+    <value>Recent log entries (last {0} days)</value>
+  </data>
+  <data name="Support_SystemInformation" xml:space="preserve">
+    <value>System Information</value>
+  </data>
+  <data name="Support_SystemInformationHint" xml:space="preserve">
+    <value>OS version, architecture, environment</value>
+  </data>
+  <data name="Support_PerformanceMetrics" xml:space="preserve">
+    <value>Performance Metrics</value>
+  </data>
+  <data name="Support_PerformanceMetricsHint" xml:space="preserve">
+    <value>CPU, memory, and I/O statistics</value>
+  </data>
+  <data name="Support_FolderStatus" xml:space="preserve">
+    <value>Folder Status</value>
+  </data>
+  <data name="Support_FolderStatusHint" xml:space="preserve">
+    <value>Sync status of all folders (paths redacted)</value>
+  </data>
+  <data name="Support_DeviceStatus" xml:space="preserve">
+    <value>Device Status</value>
+  </data>
+  <data name="Support_DeviceStatusHint" xml:space="preserve">
+    <value>Connection status of all devices</value>
+  </data>
+  <data name="Support_NetworkDiagnostics" xml:space="preserve">
+    <value>Network Diagnostics</value>
+  </data>
+  <data name="Support_NetworkDiagnosticsHint" xml:space="preserve">
+    <value>NAT type, discovery status, connections</value>
+  </data>
+  <data name="Support_PrivacyOptions" xml:space="preserve">
+    <value>Privacy Options</value>
+  </data>
+  <data name="Support_RedactPaths" xml:space="preserve">
+    <value>Redact File Paths</value>
+  </data>
+  <data name="Support_RedactPathsHint" xml:space="preserve">
+    <value>Replace full paths with placeholders (e.g., /home/user/Sync -&gt; [SYNC_FOLDER])</value>
+  </data>
+  <data name="Support_RedactDeviceIds" xml:space="preserve">
+    <value>Redact Device IDs</value>
+  </data>
+  <data name="Support_RedactDeviceIdsHint" xml:space="preserve">
+    <value>Replace device IDs with anonymized identifiers</value>
+  </data>
+  <data name="Support_RedactIPs" xml:space="preserve">
+    <value>Redact IP Addresses</value>
+  </data>
+  <data name="Support_RedactIPsHint" xml:space="preserve">
+    <value>Replace IP addresses with placeholders</value>
+  </data>
+  <data name="Support_Generating" xml:space="preserve">
+    <value>Generating support bundle...</value>
+  </data>
+  <data name="Support_Preview" xml:space="preserve">
+    <value>Preview</value>
+  </data>
+  <data name="Support_GenerateAndDownload" xml:space="preserve">
+    <value>Generate &amp; Download</value>
+  </data>
+  <data name="Msg_SupportBundleDownloaded" xml:space="preserve">
+    <value>Support bundle downloaded successfully</value>
+  </data>
+
+  <!-- System Log Page -->
+  <data name="Log_Title" xml:space="preserve">
+    <value>System Logs</value>
+  </data>
+  <data name="Log_AutoScroll" xml:space="preserve">
+    <value>Auto-scroll</value>
+  </data>
+  <data name="Log_LiveTail" xml:space="preserve">
+    <value>Live Tail</value>
+  </data>
+  <data name="Log_Level" xml:space="preserve">
+    <value>Log Level</value>
+  </data>
+  <data name="Log_AllLevels" xml:space="preserve">
+    <value>All Levels</value>
+  </data>
+  <data name="Log_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="Log_Warning" xml:space="preserve">
+    <value>Warning</value>
+  </data>
+  <data name="Log_Info" xml:space="preserve">
+    <value>Info</value>
+  </data>
+  <data name="Log_Debug" xml:space="preserve">
+    <value>Debug</value>
+  </data>
+  <data name="Log_Verbose" xml:space="preserve">
+    <value>Verbose</value>
+  </data>
+  <data name="Log_Facility" xml:space="preserve">
+    <value>Facility</value>
+  </data>
+  <data name="Log_AllFacilities" xml:space="preserve">
+    <value>All Facilities</value>
+  </data>
+  <data name="Log_Sync" xml:space="preserve">
+    <value>Sync</value>
+  </data>
+  <data name="Log_Model" xml:space="preserve">
+    <value>Model</value>
+  </data>
+  <data name="Log_Scanner" xml:space="preserve">
+    <value>Scanner</value>
+  </data>
+  <data name="Log_Connections" xml:space="preserve">
+    <value>Connections</value>
+  </data>
+  <data name="Log_Discovery" xml:space="preserve">
+    <value>Discovery</value>
+  </data>
+  <data name="Log_UPnPNAT" xml:space="preserve">
+    <value>UPnP/NAT</value>
+  </data>
+  <data name="Log_Entries" xml:space="preserve">
+    <value>{0} of {1} entries</value>
+  </data>
+  <data name="Log_NoEntriesMatch" xml:space="preserve">
+    <value>No log entries match the filter</value>
+  </data>
+  <data name="Msg_LogsDownloaded" xml:space="preserve">
+    <value>Logs downloaded</value>
+  </data>
+
+  <!-- Device Details Page -->
+  <data name="DeviceDetails_Connection" xml:space="preserve">
+    <value>Connection</value>
+  </data>
+  <data name="DeviceDetails_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="DeviceDetails_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="DeviceDetails_Encryption" xml:space="preserve">
+    <value>Encryption</value>
+  </data>
+  <data name="DeviceDetails_ClientVersion" xml:space="preserve">
+    <value>Client Version</value>
+  </data>
+  <data name="DeviceDetails_ConnectedSince" xml:space="preserve">
+    <value>Connected Since</value>
+  </data>
+  <data name="DeviceDetails_Duration" xml:space="preserve">
+    <value>Duration</value>
+  </data>
+  <data name="DeviceDetails_Transfer" xml:space="preserve">
+    <value>Transfer</value>
+  </data>
+  <data name="DeviceDetails_DownloadRate" xml:space="preserve">
+    <value>Download Rate</value>
+  </data>
+  <data name="DeviceDetails_UploadRate" xml:space="preserve">
+    <value>Upload Rate</value>
+  </data>
+  <data name="DeviceDetails_TotalDownloaded" xml:space="preserve">
+    <value>Total Downloaded</value>
+  </data>
+  <data name="DeviceDetails_TotalUploaded" xml:space="preserve">
+    <value>Total Uploaded</value>
+  </data>
+  <data name="DeviceDetails_Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="DeviceDetails_Compression" xml:space="preserve">
+    <value>Compression</value>
+  </data>
+  <data name="DeviceDetails_Introducer" xml:space="preserve">
+    <value>Introducer</value>
+  </data>
+  <data name="DeviceDetails_AutoAcceptFolders" xml:space="preserve">
+    <value>Auto Accept Folders</value>
+  </data>
+  <data name="DeviceDetails_Untrusted" xml:space="preserve">
+    <value>Untrusted</value>
+  </data>
+  <data name="DeviceDetails_MaxSendRate" xml:space="preserve">
+    <value>Max Send Rate</value>
+  </data>
+  <data name="DeviceDetails_MaxRecvRate" xml:space="preserve">
+    <value>Max Recv Rate</value>
+  </data>
+  <data name="DeviceDetails_ConfiguredAddresses" xml:space="preserve">
+    <value>Configured Addresses</value>
+  </data>
+  <data name="DeviceDetails_NoAddresses" xml:space="preserve">
+    <value>No addresses configured (dynamic only)</value>
+  </data>
+  <data name="DeviceDetails_Statistics" xml:space="preserve">
+    <value>Statistics</value>
+  </data>
+  <data name="DeviceDetails_LastSeen" xml:space="preserve">
+    <value>Last Seen</value>
+  </data>
+  <data name="DeviceDetails_LastConnectionDuration" xml:space="preserve">
+    <value>Last Connection Duration</value>
+  </data>
+
+  <!-- Pending Devices Page -->
+  <data name="Pending_Title" xml:space="preserve">
+    <value>Pending Devices</value>
+  </data>
+  <data name="Pending_AutoAcceptConfiguration" xml:space="preserve">
+    <value>Auto-Accept Configuration</value>
+  </data>
+  <data name="Pending_DevicesWithAutoAccept" xml:space="preserve">
+    <value>{0} device(s) with auto-accept enabled</value>
+  </data>
+  <data name="Pending_NoDevicesAutoAccept" xml:space="preserve">
+    <value>No devices have auto-accept enabled</value>
+  </data>
+  <data name="Pending_AutoAcceptDescription" xml:space="preserve">
+    <value>Auto-Accept allows devices to automatically accept folder share requests. Enable this on individual devices via Device Settings or when accepting a pending device below.</value>
+  </data>
+  <data name="Pending_DefaultFolderPath" xml:space="preserve">
+    <value>Default Folder Path</value>
+  </data>
+  <data name="Pending_DefaultFolderPathPlaceholder" xml:space="preserve">
+    <value>Leave empty for default location</value>
+  </data>
+  <data name="Pending_DefaultFolderPathHint" xml:space="preserve">
+    <value>Base path for auto-accepted folders</value>
+  </data>
+  <data name="Pending_DevicesWithAutoAcceptLabel" xml:space="preserve">
+    <value>Devices with Auto-Accept</value>
+  </data>
+  <data name="Pending_More" xml:space="preserve">
+    <value>+{0} more</value>
+  </data>
+  <data name="Pending_SaveSettings" xml:space="preserve">
+    <value>Save Settings</value>
+  </data>
+  <data name="Pending_NoPendingDevices" xml:space="preserve">
+    <value>No pending devices</value>
+  </data>
+  <data name="Pending_AllRequestsProcessed" xml:space="preserve">
+    <value>All device connection requests have been processed.</value>
+  </data>
+  <data name="Pending_ViewAllDevices" xml:space="preserve">
+    <value>View All Devices</value>
+  </data>
+  <data name="Pending_PendingRequests" xml:space="preserve">
+    <value>{0} Pending Request</value>
+  </data>
+  <data name="Pending_PendingRequestsPlural" xml:space="preserve">
+    <value>{0} Pending Requests</value>
+  </data>
+  <data name="Pending_Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="Pending_AcceptWithAutoAccept" xml:space="preserve">
+    <value>Accept with Auto-Accept</value>
+  </data>
+  <data name="Pending_AcceptAndShareFolders" xml:space="preserve">
+    <value>Accept and Share Folders...</value>
+  </data>
+  <data name="Pending_Reject" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="Pending_DeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="Pending_AnnouncedName" xml:space="preserve">
+    <value>Announced Name</value>
+  </data>
+  <data name="Pending_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="Pending_Discovered" xml:space="preserve">
+    <value>Discovered</value>
+  </data>
+  <data name="Pending_AcceptOptions" xml:space="preserve">
+    <value>Accept Options</value>
+  </data>
+  <data name="Pending_SimpleAccept" xml:space="preserve">
+    <value>Simple Accept</value>
+  </data>
+  <data name="Pending_SimpleAcceptHint" xml:space="preserve">
+    <value>Accept device with default settings</value>
+  </data>
+  <data name="Pending_AcceptAutoAccept" xml:space="preserve">
+    <value>Accept + Auto-Accept</value>
+  </data>
+  <data name="Pending_AcceptAutoAcceptHint" xml:space="preserve">
+    <value>Auto-accept folders from this device</value>
+  </data>
+  <data name="Pending_AcceptShareFolders" xml:space="preserve">
+    <value>Accept + Share Folders</value>
+  </data>
+  <data name="Pending_AcceptShareFoldersHint" xml:space="preserve">
+    <value>Select folders to share immediately</value>
+  </data>
+  <data name="Msg_AutoAcceptSettingsSaved" xml:space="preserve">
+    <value>Auto-accept settings saved</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithAutoAccept" xml:space="preserve">
+    <value>Device '{0}' accepted with auto-accept enabled</value>
+  </data>
+  <data name="Msg_DeviceAcceptedAutoAcceptFailed" xml:space="preserve">
+    <value>Device '{0}' accepted (auto-accept could not be enabled)</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithFolders" xml:space="preserve">
+    <value>Device '{0}' accepted and sharing {1} folder(s)</value>
+  </data>
+  <data name="Msg_RejectDeviceConfirm" xml:space="preserve">
+    <value>Are you sure you want to reject '{0}'? This device will need to request connection again.</value>
+  </data>
+  <data name="Msg_NoFoldersAvailable" xml:space="preserve">
+    <value>No Folders Available</value>
+  </data>
+  <data name="Msg_NoFoldersConfigured" xml:space="preserve">
+    <value>There are no folders configured. Accept the device first, then add folders later.</value>
+  </data>
+  <data name="Pending_AcceptAnyway" xml:space="preserve">
+    <value>Accept Anyway</value>
+  </data>
+  <data name="Pending_SelectFoldersToShare" xml:space="preserve">
+    <value>Select Folders to Share</value>
+  </data>
+
+  <!-- Folder Details Page -->
+  <data name="FolderDetails_SyncProgress" xml:space="preserve">
+    <value>Sync Progress</value>
+  </data>
+  <data name="FolderDetails_Synced" xml:space="preserve">
+    <value>synced</value>
+  </data>
+  <data name="FolderDetails_GlobalFiles" xml:space="preserve">
+    <value>Global Files</value>
+  </data>
+  <data name="FolderDetails_LocalFiles" xml:space="preserve">
+    <value>Local Files</value>
+  </data>
+  <data name="FolderDetails_GlobalSize" xml:space="preserve">
+    <value>Global Size</value>
+  </data>
+  <data name="FolderDetails_LocalSize" xml:space="preserve">
+    <value>Local Size</value>
+  </data>
+  <data name="FolderDetails_OutOfSync" xml:space="preserve">
+    <value>Out of Sync</value>
+  </data>
+  <data name="FolderDetails_NeedSyncing" xml:space="preserve">
+    <value>{0} files ({1}) need syncing</value>
+  </data>
+  <data name="FolderDetails_Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="FolderDetails_Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="FolderDetails_FolderId" xml:space="preserve">
+    <value>Folder ID</value>
+  </data>
+  <data name="FolderDetails_RescanInterval" xml:space="preserve">
+    <value>Rescan Interval</value>
+  </data>
+  <data name="FolderDetails_FileWatcher" xml:space="preserve">
+    <value>File Watcher</value>
+  </data>
+  <data name="FolderDetails_IgnorePermissions" xml:space="preserve">
+    <value>Ignore Permissions</value>
+  </data>
+  <data name="FolderDetails_SharedWith" xml:space="preserve">
+    <value>Shared With</value>
+  </data>
+  <data name="FolderDetails_Devices" xml:space="preserve">
+    <value>devices</value>
+  </data>
+  <data name="FolderDetails_Errors" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="FolderDetails_NotShared" xml:space="preserve">
+    <value>Not shared with any devices</value>
+  </data>
+
+  <!-- Folder Errors Page -->
+  <data name="FolderErrors_Title" xml:space="preserve">
+    <value>Folder Errors</value>
+  </data>
+  <data name="FolderErrors_NoErrors" xml:space="preserve">
+    <value>No errors found for this folder.</value>
+  </data>
+  <data name="FolderErrors_ErrorsFound" xml:space="preserve">
+    <value>{0} error(s) found. These files failed to sync.</value>
+  </data>
+  <data name="FolderErrors_FilePath" xml:space="preserve">
+    <value>File Path</value>
+  </data>
+  <data name="FolderErrors_Error" xml:space="preserve">
+    <value>Error</value>
+  </data>
+  <data name="FolderErrors_Time" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="FolderErrors_HelpText" xml:space="preserve">
+    <value>Errors usually resolve automatically when the underlying issue is fixed (e.g., file permissions, disk space). You can also try rescanning the folder to clear resolved errors.</value>
+  </data>
+  <data name="FolderErrors_RescanFolder" xml:space="preserve">
+    <value>Rescan Folder</value>
+  </data>
+  <data name="Msg_RescanStarted" xml:space="preserve">
+    <value>Rescan started</value>
+  </data>
+
+  <!-- Folder Edit Page -->
+  <data name="FolderEdit_Title" xml:space="preserve">
+    <value>Edit Folder</value>
+  </data>
+  <data name="FolderEdit_General" xml:space="preserve">
+    <value>General</value>
+  </data>
+  <data name="FolderEdit_FolderLabel" xml:space="preserve">
+    <value>Folder Label</value>
+  </data>
+  <data name="FolderEdit_FolderPath" xml:space="preserve">
+    <value>Folder Path</value>
+  </data>
+  <data name="FolderEdit_PathRequired" xml:space="preserve">
+    <value>Path is required</value>
+  </data>
+  <data name="FolderEdit_FolderType" xml:space="preserve">
+    <value>Folder Type</value>
+  </data>
+  <data name="FolderEdit_FileWatching" xml:space="preserve">
+    <value>File Watching</value>
+  </data>
+  <data name="FolderEdit_WatchForChanges" xml:space="preserve">
+    <value>Watch for Changes</value>
+  </data>
+  <data name="FolderEdit_WatchDelay" xml:space="preserve">
+    <value>Watch Delay (seconds)</value>
+  </data>
+  <data name="FolderEdit_FullRescanInterval" xml:space="preserve">
+    <value>Full Rescan Interval (seconds)</value>
+  </data>
+  <data name="FolderEdit_FullRescanIntervalHint" xml:space="preserve">
+    <value>0 to disable periodic rescans</value>
+  </data>
+  <data name="FolderEdit_Advanced" xml:space="preserve">
+    <value>Advanced</value>
+  </data>
+  <data name="FolderEdit_IgnorePermissions" xml:space="preserve">
+    <value>Ignore Permissions</value>
+  </data>
+  <data name="FolderEdit_IgnoreDelete" xml:space="preserve">
+    <value>Ignore Delete</value>
+  </data>
+  <data name="FolderEdit_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Auto Normalize Filenames</value>
+  </data>
+  <data name="FolderEdit_FilePullOrder" xml:space="preserve">
+    <value>File Pull Order</value>
+  </data>
+  <data name="FolderEdit_MaxConflicts" xml:space="preserve">
+    <value>Max Conflicts</value>
+  </data>
+  <data name="FolderEdit_MaxConflictsHint" xml:space="preserve">
+    <value>-1 for unlimited, 0 to disable</value>
+  </data>
+  <data name="FolderEdit_FileVersioning" xml:space="preserve">
+    <value>File Versioning</value>
+  </data>
+  <data name="FolderEdit_FileVersioningDescription" xml:space="preserve">
+    <value>File versioning keeps old copies of files when they are replaced or deleted by other devices.</value>
+  </data>
+  <data name="FolderEdit_VersioningType" xml:space="preserve">
+    <value>Versioning Type</value>
+  </data>
+  <data name="FolderEdit_VersioningTypeHint" xml:space="preserve">
+    <value>Select how old file versions should be retained</value>
+  </data>
+  <data name="FolderEdit_NoVersioning" xml:space="preserve">
+    <value>No File Versioning</value>
+  </data>
+  <data name="FolderEdit_TrashCan" xml:space="preserve">
+    <value>Trash Can</value>
+  </data>
+  <data name="FolderEdit_Simple" xml:space="preserve">
+    <value>Simple</value>
+  </data>
+  <data name="FolderEdit_Staggered" xml:space="preserve">
+    <value>Staggered</value>
+  </data>
+  <data name="FolderEdit_External" xml:space="preserve">
+    <value>External</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPath" xml:space="preserve">
+    <value>Custom Versions Path</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPathHint" xml:space="preserve">
+    <value>Leave empty to use default (.stversions folder)</value>
+  </data>
+  <data name="FolderEdit_TrashCanDescription" xml:space="preserve">
+    <value>Trash Can: Moves files to a trash folder when replaced or deleted. Files are kept until cleaned out.</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfter" xml:space="preserve">
+    <value>Clean Out After (days)</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfterHint" xml:space="preserve">
+    <value>0 to keep versions forever</value>
+  </data>
+  <data name="FolderEdit_SimpleDescription" xml:space="preserve">
+    <value>Simple: Keeps a specified number of old versions for each file.</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeep" xml:space="preserve">
+    <value>Versions to Keep</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeepHint" xml:space="preserve">
+    <value>Number of old versions to retain</value>
+  </data>
+  <data name="FolderEdit_StaggeredDescription" xml:space="preserve">
+    <value>Staggered: Keeps versions with decreasing frequency over time. Recent changes keep more versions, older changes keep fewer.</value>
+  </data>
+  <data name="FolderEdit_MaximumAge" xml:space="preserve">
+    <value>Maximum Age (days)</value>
+  </data>
+  <data name="FolderEdit_MaximumAgeHint" xml:space="preserve">
+    <value>Maximum age of versions to keep (default: 365 days)</value>
+  </data>
+  <data name="FolderEdit_ExternalDescription" xml:space="preserve">
+    <value>External: Runs an external command when a file is about to be replaced. The command receives the file path as an argument.</value>
+  </data>
+  <data name="FolderEdit_Command" xml:space="preserve">
+    <value>Command</value>
+  </data>
+  <data name="FolderEdit_CommandRequired" xml:space="preserve">
+    <value>Command is required for external versioning</value>
+  </data>
+  <data name="FolderEdit_CommandHint" xml:space="preserve">
+    <value>Command to execute (e.g., /path/to/script.sh)</value>
+  </data>
+  <data name="Msg_FolderSaved" xml:space="preserve">
+    <value>Folder saved successfully</value>
+  </data>
+  <data name="Msg_ExternalVersioningCommandRequired" xml:space="preserve">
+    <value>External versioning requires a command</value>
+  </data>
+
+  <!-- Additional Missing Keys -->
+  <data name="Msg_ResetToDefaults" xml:space="preserve">
+    <value>Settings reset to defaults. Remember to save changes.</value>
+  </data>
+  <data name="Folders_AutoNormalize" xml:space="preserve">
+    <value>Auto Normalize Unicode</value>
+  </data>
+  <data name="Folders_AutoNormalizeDesc" xml:space="preserve">
+    <value>Automatically normalize unicode filenames (recommended)</value>
+  </data>
+  <data name="Settings_Network_NatMethods" xml:space="preserve">
+    <value>NAT Methods</value>
+  </data>
+  <data name="Settings_Network_UpnpEnabled" xml:space="preserve">
+    <value>Enable UPnP</value>
+  </data>
+  <data name="Settings_Network_UpnpEnabledDesc" xml:space="preserve">
+    <value>Universal Plug and Play port forwarding</value>
+  </data>
+  <data name="Settings_Network_NatPmpEnabled" xml:space="preserve">
+    <value>Enable NAT-PMP</value>
+  </data>
+  <data name="Settings_Network_NatPmpEnabledDesc" xml:space="preserve">
+    <value>NAT Port Mapping Protocol (Apple routers)</value>
+  </data>
+  <data name="Settings_Advanced_Warning" xml:space="preserve">
+    <value>These settings are for advanced users. Incorrect configuration may affect performance or cause sync issues.</value>
+  </data>
+  <data name="Settings_Advanced_SyncDefaults" xml:space="preserve">
+    <value>Sync Defaults</value>
   </data>
 </root>

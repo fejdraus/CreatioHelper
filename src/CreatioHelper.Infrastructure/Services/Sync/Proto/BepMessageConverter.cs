@@ -10,14 +10,25 @@ public static class BepMessageConverter
 {
     #region Hello
 
-    public static Hello ToProto(BepHello hello) => new()
+    public static Hello ToProto(BepHello hello)
     {
-        DeviceName = hello.DeviceName ?? string.Empty,
-        ClientName = hello.ClientName ?? string.Empty,
-        ClientVersion = hello.ClientVersion ?? string.Empty,
-        NumConnections = hello.NumConnections,
-        Timestamp = hello.Timestamp
-    };
+        var proto = new Hello
+        {
+            DeviceName = hello.DeviceName ?? string.Empty,
+            ClientName = hello.ClientName ?? string.Empty,
+            ClientVersion = hello.ClientVersion ?? string.Empty,
+            NumConnections = hello.NumConnections,
+            Timestamp = hello.Timestamp
+        };
+
+        // Add P2P Upgrade extensions if present
+        if (hello.Extensions != null)
+        {
+            proto.Extensions = ToProto(hello.Extensions);
+        }
+
+        return proto;
+    }
 
     public static BepHello FromProto(Hello hello) => new()
     {
@@ -26,7 +37,8 @@ public static class BepMessageConverter
         ClientName = hello.ClientName,
         ClientVersion = hello.ClientVersion,
         NumConnections = hello.NumConnections,
-        Timestamp = hello.Timestamp
+        Timestamp = hello.Timestamp,
+        Extensions = hello.Extensions != null ? FromProto(hello.Extensions) : null
     };
 
     #endregion
@@ -37,7 +49,7 @@ public static class BepMessageConverter
     {
         var proto = new ClusterConfig();
 
-        foreach (var folder in config.Folders)
+        foreach (var folder in config.Folders ?? [])
         {
             // Map boolean folder flags to the new enum-based approach
             // ReadOnly maps to SEND_ONLY type
@@ -52,7 +64,7 @@ public static class BepMessageConverter
                 StopReason = stopReason
             };
 
-            foreach (var device in folder.Devices)
+            foreach (var device in folder.Devices ?? [])
             {
                 var protoDevice = new Device
                 {
@@ -517,6 +529,64 @@ public static class BepMessageConverter
     public static BepClose FromProto(Close close) => new()
     {
         Reason = close.Reason
+    };
+
+    #endregion
+
+    #region P2P Upgrade Extensions
+
+    public static HelloExtensions ToProto(BepHelloExtensions extensions) => new()
+    {
+        AgentBinaryHash = extensions.AgentBinaryHash ?? string.Empty,
+        AgentBinarySize = extensions.AgentBinarySize,
+        AgentPlatform = extensions.AgentPlatform ?? string.Empty
+    };
+
+    public static BepHelloExtensions FromProto(HelloExtensions extensions) => new()
+    {
+        AgentBinaryHash = extensions.AgentBinaryHash,
+        AgentBinarySize = extensions.AgentBinarySize,
+        AgentPlatform = extensions.AgentPlatform
+    };
+
+    public static AgentUpdateRequest ToProto(BepAgentUpdateRequest request) => new()
+    {
+        FromVersion = request.FromVersion ?? string.Empty,
+        ToVersion = request.ToVersion ?? string.Empty,
+        Platform = request.Platform ?? string.Empty
+    };
+
+    public static BepAgentUpdateRequest FromProto(AgentUpdateRequest request) => new()
+    {
+        FromVersion = request.FromVersion,
+        ToVersion = request.ToVersion,
+        Platform = request.Platform
+    };
+
+    public static AgentUpdateResponse ToProto(BepAgentUpdateResponse response) => new()
+    {
+        Version = response.Version ?? string.Empty,
+        Platform = response.Platform ?? string.Empty,
+        Data = response.Data != null ? ByteString.CopyFrom(response.Data) : ByteString.Empty,
+        Hash = response.Hash ?? string.Empty,
+        TotalSize = response.TotalSize,
+        ChunkIndex = response.ChunkIndex,
+        TotalChunks = response.TotalChunks,
+        IsComplete = response.IsComplete,
+        Error = (ErrorCode)(int)response.Error
+    };
+
+    public static BepAgentUpdateResponse FromProto(AgentUpdateResponse response) => new()
+    {
+        Version = response.Version,
+        Platform = response.Platform,
+        Data = response.Data?.ToByteArray() ?? Array.Empty<byte>(),
+        Hash = response.Hash,
+        TotalSize = response.TotalSize,
+        ChunkIndex = response.ChunkIndex,
+        TotalChunks = response.TotalChunks,
+        IsComplete = response.IsComplete,
+        Error = (BepErrorCode)(int)response.Error
     };
 
     #endregion

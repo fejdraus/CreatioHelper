@@ -1,3 +1,4 @@
+using System.Globalization;
 using Blazored.LocalStorage;
 using CreatioHelper.WebUI;
 using CreatioHelper.WebUI.Services;
@@ -9,6 +10,9 @@ using MudBlazor.Services;
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
+
+// Add localization services
+builder.Services.AddLocalization();
 
 // Configure HttpClient for API calls
 builder.Services.AddScoped(sp =>
@@ -42,6 +46,50 @@ builder.Services.AddScoped<IApiClient, ApiClient>();
 builder.Services.AddScoped<ISignalRService, SignalRService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<ILocalizationService, LocalizationService>();
 builder.Services.AddScoped<StateContainer>();
 
-await builder.Build().RunAsync();
+var host = builder.Build();
+
+// Initialize localization from saved settings before app runs
+await SetCultureFromStorageAsync(host.Services);
+
+await host.RunAsync();
+
+// Helper method to set culture from LocalStorage before app starts
+static async Task SetCultureFromStorageAsync(IServiceProvider services)
+{
+    var jsRuntime = services.GetRequiredService<Microsoft.JSInterop.IJSRuntime>();
+
+    try
+    {
+        // Read language from localStorage using JS interop
+        var savedLanguage = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", new object[] { "gui_language" });
+
+        if (!string.IsNullOrEmpty(savedLanguage))
+        {
+            // Remove quotes if JSON serialized
+            savedLanguage = savedLanguage.Trim('"');
+
+            var cultureMap = new Dictionary<string, string>
+            {
+                { "en", "en-US" },
+                { "ru", "ru-RU" },
+                { "de", "de-DE" },
+                { "fr", "fr-FR" },
+                { "es", "es-ES" }
+            };
+
+            if (cultureMap.TryGetValue(savedLanguage, out var fullCulture))
+            {
+                var culture = new CultureInfo(fullCulture);
+                CultureInfo.DefaultThreadCurrentCulture = culture;
+                CultureInfo.DefaultThreadCurrentUICulture = culture;
+            }
+        }
+    }
+    catch
+    {
+        // Use default culture if localStorage is not available
+    }
+}

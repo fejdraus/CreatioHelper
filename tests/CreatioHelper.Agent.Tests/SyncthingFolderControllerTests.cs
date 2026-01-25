@@ -227,6 +227,198 @@ public class SyncthingFolderControllerTests
 
     #endregion
 
+    #region ScanFolder Tests
+
+    [Fact]
+    public async Task ScanFolder_ReturnsBadRequest_WhenFolderIsEmpty()
+    {
+        var result = await _controller.ScanFolder(string.Empty);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder parameter required", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task ScanFolder_ReturnsNotFound_WhenFolderNotExists()
+    {
+        _syncEngineMock.Setup(s => s.GetFolderAsync("unknown"))
+            .ReturnsAsync((SyncFolder?)null);
+
+        var result = await _controller.ScanFolder("unknown");
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task ScanFolder_ReturnsBadRequest_WhenFolderIsPaused()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        folder.SetPaused(true);
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+
+        var result = await _controller.ScanFolder("test-folder");
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder is paused", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task ScanFolder_ReturnsOk_WhenFolderExists()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.ScanFolderAsync("test-folder", true))
+            .Returns(Task.CompletedTask);
+
+        var result = await _controller.ScanFolder("test-folder");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+        _syncEngineMock.Verify(s => s.ScanFolderAsync("test-folder", true), Times.Once);
+    }
+
+    #endregion
+
+    #region OverrideFolder Tests
+
+    [Fact]
+    public async Task OverrideFolder_ReturnsBadRequest_WhenFolderIsEmpty()
+    {
+        var result = await _controller.OverrideFolder(string.Empty);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder parameter required", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task OverrideFolder_ReturnsNotFound_WhenFolderNotExists()
+    {
+        _syncEngineMock.Setup(s => s.GetFolderAsync("unknown"))
+            .ReturnsAsync((SyncFolder?)null);
+
+        var result = await _controller.OverrideFolder("unknown");
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task OverrideFolder_ReturnsBadRequest_WhenFolderIsPaused()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        folder.SetPaused(true);
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+
+        var result = await _controller.OverrideFolder("test-folder");
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder is paused", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task OverrideFolder_ReturnsOk_WhenOverrideSucceeds()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.OverrideFolderAsync("test-folder", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _controller.OverrideFolder("test-folder");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+        _syncEngineMock.Verify(s => s.OverrideFolderAsync("test-folder", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task OverrideFolder_ReturnsServerError_WhenOverrideFails()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.OverrideFolderAsync("test-folder", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.OverrideFolder("test-folder");
+
+        var statusCode = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCode.StatusCode);
+    }
+
+    #endregion
+
+    #region RevertFolder Tests
+
+    [Fact]
+    public async Task RevertFolder_ReturnsBadRequest_WhenFolderIsEmpty()
+    {
+        var result = await _controller.RevertFolder(string.Empty);
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder parameter required", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task RevertFolder_ReturnsNotFound_WhenFolderNotExists()
+    {
+        _syncEngineMock.Setup(s => s.GetFolderAsync("unknown"))
+            .ReturnsAsync((SyncFolder?)null);
+
+        var result = await _controller.RevertFolder("unknown");
+
+        Assert.IsType<NotFoundObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task RevertFolder_ReturnsBadRequest_WhenFolderIsPaused()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        folder.SetPaused(true);
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+
+        var result = await _controller.RevertFolder("test-folder");
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        Assert.Contains("folder is paused", badRequest.Value?.ToString());
+    }
+
+    [Fact]
+    public async Task RevertFolder_ReturnsOk_WhenRevertSucceeds()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.RevertFolderAsync("test-folder", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var result = await _controller.RevertFolder("test-folder");
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.NotNull(ok.Value);
+        _syncEngineMock.Verify(s => s.RevertFolderAsync("test-folder", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task RevertFolder_ReturnsServerError_WhenRevertFails()
+    {
+        var folder = CreateTestFolder("test-folder", "/path");
+        _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
+            .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.RevertFolderAsync("test-folder", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+
+        var result = await _controller.RevertFolder("test-folder");
+
+        var statusCode = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(500, statusCode.StatusCode);
+    }
+
+    #endregion
+
     private static SyncFolder CreateTestFolder(string id, string path)
     {
         return new SyncFolder(id, id, path);

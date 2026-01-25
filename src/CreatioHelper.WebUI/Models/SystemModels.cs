@@ -154,6 +154,48 @@ public class OptionsConfig
 
     [JsonPropertyName("progressUpdateIntervalS")]
     public int? ProgressUpdateIntervalS { get; set; }
+
+    // NAT Configuration
+    [JsonPropertyName("natLeaseMinutes")]
+    public int? NatLeaseMinutes { get; set; }
+
+    [JsonPropertyName("natRenewalMinutes")]
+    public int? NatRenewalMinutes { get; set; }
+
+    [JsonPropertyName("natTimeoutSeconds")]
+    public int? NatTimeoutSeconds { get; set; }
+
+    [JsonPropertyName("stunServers")]
+    public string[]? StunServers { get; set; }
+
+    [JsonPropertyName("stunKeepaliveSeconds")]
+    public int? StunKeepaliveSeconds { get; set; }
+
+    [JsonPropertyName("upnpEnabled")]
+    public bool? UpnpEnabled { get; set; }
+
+    [JsonPropertyName("natPmpEnabled")]
+    public bool? NatPmpEnabled { get; set; }
+
+    // Discovery Configuration
+    [JsonPropertyName("localAnnouncePort")]
+    public int? LocalAnnouncePort { get; set; }
+
+    [JsonPropertyName("localAnnounceMCAddr")]
+    public string? LocalAnnounceMCAddr { get; set; }
+
+    [JsonPropertyName("announceIntervalS")]
+    public int? AnnounceIntervalS { get; set; }
+
+    // Relay Configuration
+    [JsonPropertyName("relayReconnectIntervalM")]
+    public int? RelayReconnectIntervalM { get; set; }
+
+    [JsonPropertyName("relayWithoutGlobalAnn")]
+    public bool? RelayWithoutGlobalAnn { get; set; }
+
+    [JsonPropertyName("relaysOnly")]
+    public bool? RelaysOnly { get; set; }
 }
 
 /// <summary>

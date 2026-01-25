@@ -7,6 +7,7 @@ using CreatioHelper.Domain.Entities.Events;
 using Microsoft.Extensions.Logging;
 using CreatioHelper.Infrastructure.Services.Sync.Relay;
 using CreatioHelper.Infrastructure.Services.Sync.Scanning;
+using CreatioHelper.Infrastructure.Services.Sync.Versioning;
 using CreatioHelper.Infrastructure.Services.Network;
 using CreatioHelper.Infrastructure.Services.Metrics;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
@@ -41,6 +42,8 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly ICertificateManager _certificateManager;
     private readonly SyncFolderHandlerFactory _syncFolderHandlerFactory;
     private readonly IScanProgressService? _scanProgressService;
+    private readonly IVersionerFactory? _versionerFactory;
+    private readonly ConcurrentDictionary<string, IVersioner> _folderVersioners = new();
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
     private readonly ConcurrentDictionary<string, SyncStatus> _folderStatuses = new();
@@ -82,7 +85,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         SyncthingGlobalDiscovery globalDiscovery,
         ICombinedNatService? natService = null,
         X509Certificate2? clientCertificate = null,
-        IScanProgressService? scanProgressService = null)
+        IScanProgressService? scanProgressService = null,
+        IVersionerFactory? versionerFactory = null)
     {
         _logger = logger;
         _protocol = protocol;
@@ -106,7 +110,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         _syncFolderHandlerFactory = syncFolderHandlerFactory;
         _natService = natService;
         _scanProgressService = scanProgressService;
-        
+        _versionerFactory = versionerFactory;
+
         // Initialize relay manager if certificate is provided and relays are enabled
         if (clientCertificate != null && _configuration.RelaysEnabled)
         {
@@ -503,21 +508,38 @@ public class SyncEngine : ISyncEngine, IDisposable
         existingFolder.MarkerName = config.MarkerName;
         existingFolder.IgnoreDelete = config.IgnoreDelete;
 
-        // Update versioning
+        // Update versioning - invalidate cached versioner when config changes
+        var versioningChanged = false;
         if (config.Versioning?.IsEnabled == true)
         {
-            existingFolder.SetVersioning(new VersioningConfiguration
+            var oldConfig = existingFolder.Versioning;
+            var newConfig = new VersioningConfiguration
             {
                 Type = config.Versioning.Type,
                 Params = config.Versioning.Params,
                 CleanupIntervalS = config.Versioning.CleanupIntervalS,
                 FSPath = config.Versioning.FsPath,
                 FSType = config.Versioning.FsType
-            });
+            };
+
+            // Check if versioning config has changed
+            versioningChanged = oldConfig == null || !oldConfig.IsEnabled ||
+                               oldConfig.Type != newConfig.Type ||
+                               oldConfig.FSPath != newConfig.FSPath;
+
+            existingFolder.SetVersioning(newConfig);
         }
         else
         {
+            versioningChanged = existingFolder.Versioning?.IsEnabled == true;
             existingFolder.SetVersioning(new VersioningConfiguration { Type = string.Empty });
+        }
+
+        // Invalidate cached versioner if versioning config changed
+        if (versioningChanged && _folderVersioners.TryRemove(config.Id, out var oldVersioner))
+        {
+            _logger.LogDebug("Versioning configuration changed for folder {FolderId}, disposing old versioner", config.Id);
+            try { oldVersioner?.Dispose(); } catch { /* ignore disposal errors */ }
         }
 
         // Update pull order
@@ -800,8 +822,15 @@ public class SyncEngine : ISyncEngine, IDisposable
             {
                 status.State = SyncState.Idle;
                 status.LastScan = DateTime.UtcNow;
-                status.LocalFiles = files.Count;
+                var fileCount = files.Count(f => !f.IsDirectory);
+                var dirCount = files.Count(f => f.IsDirectory);
+                status.LocalFiles = fileCount;
+                status.LocalDirectories = dirCount;
                 status.LocalBytes = files.Sum(f => f.Size);
+                // Also set global state to match local (we're the source of truth)
+                status.TotalFiles = fileCount;
+                status.TotalDirectories = dirCount;
+                status.TotalBytes = status.LocalBytes;
             }
 
             // Complete progress tracking
@@ -1433,6 +1462,70 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
     }
 
+    /// <summary>
+    /// Gets or creates a versioner for the specified folder.
+    /// Versioners are cached to avoid recreating them for each file operation.
+    /// Based on Syncthing's versioning model where versioning only triggers on REMOTE changes.
+    /// </summary>
+    private IVersioner? GetOrCreateVersioner(SyncFolder folder)
+    {
+        if (_versionerFactory == null || folder.Versioning == null || !folder.Versioning.IsEnabled)
+        {
+            return null;
+        }
+
+        return _folderVersioners.GetOrAdd(folder.Id, _ =>
+        {
+            _logger.LogDebug("Creating versioner for folder {FolderId}: {VersionerType}",
+                folder.Id, folder.Versioning.Type);
+            return _versionerFactory.CreateVersioner(folder.Path, folder.Versioning);
+        });
+    }
+
+    /// <summary>
+    /// Archives a file before it's overwritten by a remote change.
+    /// This implements Syncthing's versioning behavior where versioning only triggers on REMOTE changes.
+    /// </summary>
+    private async Task ArchiveFileBeforeOverwriteAsync(SyncFolder folder, string relativePath, CancellationToken cancellationToken)
+    {
+        var versioner = GetOrCreateVersioner(folder);
+        if (versioner == null)
+        {
+            return; // Versioning not enabled for this folder
+        }
+
+        var fullPath = Path.Combine(folder.Path, relativePath.Replace('/', Path.DirectorySeparatorChar));
+        if (!File.Exists(fullPath))
+        {
+            return; // No existing file to archive
+        }
+
+        try
+        {
+            _logger.LogDebug("Archiving file before remote overwrite: {FilePath} (versioner: {VersionerType})",
+                relativePath, versioner.VersionerType);
+            await versioner.ArchiveAsync(relativePath, cancellationToken);
+            _logger.LogInformation("Archived file {FilePath} before remote update", relativePath);
+
+            // Log versioning event
+            _eventLogger.LogFileEvent(EventType.FileVersioned, folder.Id, relativePath,
+                $"File archived before remote update: {relativePath}",
+                new
+                {
+                    FolderId = folder.Id,
+                    FilePath = relativePath,
+                    VersionerType = versioner.VersionerType,
+                    VersionsPath = versioner.VersionsPath,
+                    ArchivedAt = DateTime.UtcNow
+                });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to archive file {FilePath} before remote overwrite", relativePath);
+            // Don't fail the sync operation if versioning fails - log and continue
+        }
+    }
+
     private async Task DownloadFileFromPlanAsync(SyncFolder folder, string deviceId, FileAction downloadAction)
     {
         if (downloadAction.FileInfo == null)
@@ -1442,14 +1535,17 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
 
         var localFilePath = Path.Combine(folder.Path, downloadAction.FileName.Replace('/', Path.DirectorySeparatorChar));
-        
+
+        // Archive existing file before overwriting (versioning only on REMOTE changes per Syncthing spec)
+        await ArchiveFileBeforeOverwriteAsync(folder, downloadAction.FileName, _cancellationTokenSource.Token);
+
         _logger.LogInformation("Downloading {FileName} to {LocalPath}", downloadAction.FileName, localFilePath);
 
         var result = await _fileDownloader.DownloadFileAsync(
-            deviceId, 
-            folder.Id, 
-            downloadAction.FileInfo, 
-            localFilePath, 
+            deviceId,
+            folder.Id,
+            downloadAction.FileInfo,
+            localFilePath,
             _cancellationTokenSource.Token);
 
         if (result.Success)
@@ -1696,14 +1792,17 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             var localFilePath = Path.Combine(folder.Path, remoteFile.RelativePath);
             var localDir = Path.GetDirectoryName(localFilePath);
-            
+
             if (!string.IsNullOrEmpty(localDir) && !Directory.Exists(localDir))
             {
                 Directory.CreateDirectory(localDir);
             }
 
+            // Archive existing file before overwriting (versioning only on REMOTE changes per Syncthing spec)
+            await ArchiveFileBeforeOverwriteAsync(folder, remoteFile.RelativePath, _cancellationTokenSource.Token);
+
             using var fileStream = File.Create(localFilePath);
-            
+
             foreach (var block in remoteFile.Blocks)
             {
                 var blockData = await _protocol.RequestBlockAsync(deviceId, folder.Id, remoteFile.Name, block.Offset, block.Size, block.Hash);
@@ -1712,7 +1811,7 @@ public class SyncEngine : ISyncEngine, IDisposable
 
             // Set file modification time
             File.SetLastWriteTimeUtc(localFilePath, remoteFile.ModifiedTime);
-            
+
             _logger.LogDebug("Downloaded file {FileName} from device {DeviceId}", remoteFile.Name, deviceId);
         }
         catch (Exception ex)
@@ -1783,9 +1882,16 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         if (_folderStatuses.TryGetValue(e.FolderId, out var status))
         {
-            status.LocalFiles = e.Files.Count;
+            var fileCount = e.Files.Count(f => !f.IsDirectory);
+            var dirCount = e.Files.Count(f => f.IsDirectory);
+            status.LocalFiles = fileCount;
+            status.LocalDirectories = dirCount;
             status.LocalBytes = totalSize;
             status.LastScan = DateTime.UtcNow;
+            // Also set global state to match local (we're the source of truth)
+            status.TotalFiles = fileCount;
+            status.TotalDirectories = dirCount;
+            status.TotalBytes = totalSize;
         }
     }
 
@@ -2266,6 +2372,12 @@ public class SyncEngine : ISyncEngine, IDisposable
             if (_folderSyncSemaphores.TryRemove(folderId, out var semaphore))
             {
                 semaphore.Dispose();
+            }
+
+            // Dispose and remove cached versioner
+            if (_folderVersioners.TryRemove(folderId, out var versioner))
+            {
+                try { versioner?.Dispose(); } catch { /* ignore disposal errors */ }
             }
 
             // Remove from config manager
@@ -2880,6 +2992,14 @@ public class SyncEngine : ISyncEngine, IDisposable
         _relayManager?.Dispose();
         _natService?.Dispose();
         _database?.Dispose();
+
+        // Dispose all cached versioners
+        foreach (var versioner in _folderVersioners.Values)
+        {
+            try { versioner?.Dispose(); } catch { /* ignore disposal errors */ }
+        }
+        _folderVersioners.Clear();
+
         try { _cancellationTokenSource.Dispose(); } catch (ObjectDisposedException) { }
     }
 

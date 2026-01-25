@@ -1,7 +1,8 @@
 @page "/about"
 @inject IApiClient ApiClient
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>About - CreatioHelper</PageTitle>
+<PageTitle>@L["About_Title"] - CreatioHelper</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium">
     <MudPaper Elevation="2" Class="pa-6">
@@ -28,7 +29,7 @@
             <MudSimpleTable Dense="true" Hover="true">
                 <tbody>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Version</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_Version"]</MudText></td>
                         <td><MudText Typo="Typo.body2">@(_version ?? "Unknown")</MudText></td>
                     </tr>
                     <tr>
@@ -51,11 +52,11 @@
                         <td><MudText Typo="Typo.body2">@FormatUptime(_uptime)</MudText></td>
                     </tr>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Platform</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_Os"]</MudText></td>
                         <td><MudText Typo="Typo.body2">@(_os ?? "Unknown")</MudText></td>
                     </tr>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Architecture</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_Architecture"]</MudText></td>
                         <td><MudText Typo="Typo.body2">@(_arch ?? "Unknown")</MudText></td>
                     </tr>
                     <tr>
@@ -68,44 +69,42 @@
 
         <MudDivider Class="my-4" />
 
-        <MudText Typo="Typo.h6" Class="mb-2">Features</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@L["About_Features"]</MudText>
         <MudList T="string">
-            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
-                Syncthing-compatible file synchronization
-            </MudListItem>
-            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
-                End-to-end encryption
-            </MudListItem>
-            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
-                NAT traversal (UPnP, NAT-PMP, STUN)
-            </MudListItem>
-            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
-                Creatio CRM integration
-            </MudListItem>
-            <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
-                Web-based management interface
-            </MudListItem>
+            @foreach (var feature in L["About_FeaturesList"].Value.Split('|'))
+            {
+                <MudListItem Icon="@Icons.Material.Filled.Check" IconColor="Color.Success">
+                    @feature
+                </MudListItem>
+            }
         </MudList>
 
         <MudDivider Class="my-4" />
 
-        <MudText Typo="Typo.h6" Class="mb-2">Links</MudText>
+        <MudText Typo="Typo.h6" Class="mb-2">@L["About_Links"]</MudText>
         <MudStack Row="true" Spacing="2">
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Code"
-                       Href="https://github.com/anthropics/creatio-helper"
+                       Href="https://github.com/fejdraus/CreatioHelper"
                        Target="_blank">
                 GitHub
             </MudButton>
             <MudButton Variant="Variant.Outlined"
                        Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Description"
-                       Href="https://docs.syncthing.net/"
+                       StartIcon="@Icons.Material.Filled.BugReport"
+                       Href="https://github.com/fejdraus/CreatioHelper/issues"
                        Target="_blank">
-                Syncthing Docs
+                @L["About_ReportIssue"]
             </MudButton>
         </MudStack>
+
+        <MudDivider Class="my-4" />
+
+        <MudText Typo="Typo.h6" Class="mb-2">@L["About_License"]</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">
+            @L["About_LicenseText"]
+        </MudText>
     </MudPaper>
 </MudContainer>
 

@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using CreatioHelper.Infrastructure.Services.FileSystem;
 using System.Runtime.InteropServices;
 using Xunit;

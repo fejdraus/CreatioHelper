@@ -1,0 +1,102 @@
+@* Dialog for selecting folders to share with a device *@
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FolderShared" Class="mr-2" />
+            Select Folders to Share
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-4">
+            Select folders to share with <strong>@DeviceName</strong>:
+        </MudText>
+
+        @if (Folders.Length == 0)
+        {
+            <MudAlert Severity="Severity.Warning">
+                No folders configured. Add folders first to share them with devices.
+            </MudAlert>
+        }
+        else
+        {
+            <MudList T="string" Dense="true">
+                @foreach (var folder in Folders)
+                {
+                    <MudListItem>
+                        <div class="d-flex align-center">
+                            <MudCheckBox T="bool"
+                                         Value="@_selectedFolders.Contains(folder.Id)"
+                                         ValueChanged="@(v => ToggleFolder(folder.Id, v))"
+                                         Color="Color.Primary" />
+                            <MudIcon Icon="@Icons.Material.Filled.Folder" Color="Color.Primary" Class="mr-2" />
+                            <div class="flex-grow-1">
+                                <MudText Typo="Typo.body1">@folder.DisplayName</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">@folder.Path</MudText>
+                            </div>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+
+            <MudDivider Class="my-3" />
+
+            <div class="d-flex justify-space-between align-center">
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @_selectedFolders.Count of @Folders.Length folder(s) selected
+                </MudText>
+                <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
+                    <MudButton OnClick="SelectAll">Select All</MudButton>
+                    <MudButton OnClick="SelectNone">Select None</MudButton>
+                </MudButtonGroup>
+            </div>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary"
+                   Variant="Variant.Filled"
+                   OnClick="Submit"
+                   Disabled="@(_selectedFolders.Count == 0)">
+            Share @(_selectedFolders.Count > 0 ? $"{_selectedFolders.Count} Folder(s)" : "")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public FolderConfig[] Folders { get; set; } = [];
+
+    [Parameter]
+    public string DeviceName { get; set; } = string.Empty;
+
+    private HashSet<string> _selectedFolders = new();
+
+    private void ToggleFolder(string folderId, bool selected)
+    {
+        if (selected)
+            _selectedFolders.Add(folderId);
+        else
+            _selectedFolders.Remove(folderId);
+    }
+
+    private void SelectAll()
+    {
+        _selectedFolders = Folders.Select(f => f.Id).ToHashSet();
+    }
+
+    private void SelectNone()
+    {
+        _selectedFolders.Clear();
+    }
+
+    private void Submit()
+    {
+        MudDialog.Close(DialogResult.Ok(_selectedFolders));
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

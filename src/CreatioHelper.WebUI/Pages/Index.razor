@@ -2,10 +2,11 @@
 @inject IApiClient ApiClient
 @inject StateContainer State
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
 
-<PageTitle>Dashboard - CreatioHelper</PageTitle>
+<PageTitle>@L["Dashboard_Title"] - CreatioHelper</PageTitle>
 
-<MudText Typo="Typo.h4" Class="mb-4">Dashboard</MudText>
+<MudText Typo="Typo.h4" Class="mb-4">@L["Dashboard_Title"]</MudText>
 
 @* System Status Cards *@
 <MudGrid>
@@ -18,7 +19,7 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@GetStatusText()</div>
-                <div class="label">System Status</div>
+                <div class="label">@L["Dashboard_SystemStatus"]</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -32,7 +33,7 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@State.Folders.Length</div>
-                <div class="label">Synced Folders</div>
+                <div class="label">@L["Dashboard_TotalFolders"]</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -46,7 +47,7 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@_connectedDevices / @_remoteDevicesCount</div>
-                <div class="label">Connected Devices</div>
+                <div class="label">@L["Dashboard_ConnectedDevices"]</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -64,20 +65,20 @@
                     /
                     <span class="down">@FormatRate(State.TransferStats.CurrentRateIn)</span>
                 </div>
-                <div class="label">Upload / Download</div>
+                <div class="label">@L["Devices_Upload"] / @L["Devices_Download"]</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
 </MudGrid>
 
 @* Folders Summary *@
-<MudText Typo="Typo.h5" Class="mt-6 mb-3">Folders</MudText>
+<MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["Nav_Folders"]</MudText>
 <MudGrid>
     @if (State.Folders.Length == 0)
     {
         <MudItem xs="12">
             <MudAlert Severity="Severity.Info">
-                No folders configured. <MudLink Href="/folders">Add a folder</MudLink> to get started.
+                @L["Folders_NoFolders"]. <MudLink Href="/folders">@L["Folders_AddFolder"]</MudLink>
             </MudAlert>
         </MudItem>
     }
@@ -95,7 +96,7 @@
         {
             <MudItem xs="12">
                 <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/folders">
-                    View all @State.Folders.Length folders
+                    @L["Common_ViewAll"] (@State.Folders.Length)
                 </MudButton>
             </MudItem>
         }
@@ -103,11 +104,11 @@
 </MudGrid>
 
 @* Recent Activity *@
-<MudText Typo="Typo.h5" Class="mt-6 mb-3">Recent Activity</MudText>
+<MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["Nav_Events"]</MudText>
 <MudPaper Elevation="2" Class="pa-4">
     @if (State.RecentEvents.Count == 0)
     {
-        <MudText Color="Color.Default" Typo="Typo.body2">No recent activity</MudText>
+        <MudText Color="Color.Default" Typo="Typo.body2">@L["Events_NoEvents"]</MudText>
     }
     else
     {
@@ -131,7 +132,7 @@
             }
         </MudList>
         <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/events" Class="mt-2">
-            View all events
+            @L["Common_ViewAll"]
         </MudButton>
     }
 </MudPaper>
@@ -139,23 +140,23 @@
 @* System Info *@
 @if (State.SystemStatus != null)
 {
-    <MudText Typo="Typo.h5" Class="mt-6 mb-3">System Information</MudText>
+    <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["Dashboard_SystemStatus"]</MudText>
     <MudPaper Elevation="2" Class="pa-4">
         <MudGrid>
             <MudItem xs="12" sm="6" md="3">
-                <MudText Typo="Typo.caption" Color="Color.Default">Device ID</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_DeviceId"]</MudText>
                 <MudText Typo="Typo.body2" Class="device-id">@(State.SystemStatus.MyId?.Length > 20 ? State.SystemStatus.MyId[..20] + "..." : State.SystemStatus.MyId)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
-                <MudText Typo="Typo.caption" Color="Color.Default">Uptime</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Uptime"]</MudText>
                 <MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
-                <MudText Typo="Typo.caption" Color="Color.Default">Memory Usage</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Memory"]</MudText>
                 <MudText Typo="Typo.body2">@FormatBytes(State.SystemStatus.Alloc ?? 0)</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
-                <MudText Typo="Typo.caption" Color="Color.Default">CPU Usage</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_CPU"]</MudText>
                 <MudText Typo="Typo.body2">@((State.SystemStatus.CpuPercent ?? 0).ToString("F1"))%</MudText>
             </MudItem>
         </MudGrid>
@@ -168,11 +169,27 @@
 
     private int _connectedDevices;
     private int _remoteDevicesCount;
+    private Timer? _refreshTimer;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
         UpdateCounts();
+        await LoadFolderStatusesAsync();
+
+        // Auto-refresh folder statuses every 2 seconds
+        _refreshTimer = new Timer(async _ =>
+        {
+            try
+            {
+                await LoadFolderStatusesAsync();
+                await InvokeAsync(StateHasChanged);
+            }
+            catch
+            {
+                // Ignore errors during auto-refresh
+            }
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
     }
 
     private void OnStateChanged()
@@ -186,6 +203,25 @@
         _connectedDevices = State.Connections.Values.Count(c => c.Connected);
         var myId = State.SystemStatus?.MyId;
         _remoteDevicesCount = State.Devices.Count(d => d.DeviceId != myId);
+    }
+
+    private async Task LoadFolderStatusesAsync()
+    {
+        try
+        {
+            foreach (var folder in State.Folders)
+            {
+                var status = await ApiClient.GetFolderStatusAsync(folder.Id);
+                if (status != null)
+                {
+                    State.UpdateFolderStatus(status);
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors during load
+        }
     }
 
     private FolderStatus? GetFolderStatus(string folderId)
@@ -203,10 +239,10 @@
 
     private string GetStatusText()
     {
-        if (!State.IsConnected) return "Offline";
-        if (State.FolderStatuses.Values.Any(s => s.State == "error")) return "Error";
-        if (State.FolderStatuses.Values.Any(s => s.State == "syncing")) return "Syncing";
-        return "Online";
+        if (!State.IsConnected) return L["Status_Offline"];
+        if (State.FolderStatuses.Values.Any(s => s.State == "error")) return L["Common_Error"];
+        if (State.FolderStatuses.Values.Any(s => s.State == "syncing")) return L["FolderState_Syncing"];
+        return L["Status_Online"];
     }
 
     private string GetEventIcon(SyncEvent evt) => evt.Severity switch
@@ -257,6 +293,7 @@
 
     public void Dispose()
     {
+        _refreshTimer?.Dispose();
         State.OnChange -= OnStateChanged;
     }
 }

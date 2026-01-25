@@ -271,6 +271,9 @@ public class BepProtobufSerializer
             MessageType.DownloadProgress => DownloadProgress.Parser.ParseFrom(messageBytes),
             MessageType.Ping => Ping.Parser.ParseFrom(messageBytes),
             MessageType.Close => Close.Parser.ParseFrom(messageBytes),
+            // CreatioHelper P2P Upgrade Extensions
+            MessageType.AgentUpdateRequest => AgentUpdateRequest.Parser.ParseFrom(messageBytes),
+            MessageType.AgentUpdateResponse => AgentUpdateResponse.Parser.ParseFrom(messageBytes),
             _ => throw new InvalidDataException($"Unknown message type: {header.Type}")
         };
     }

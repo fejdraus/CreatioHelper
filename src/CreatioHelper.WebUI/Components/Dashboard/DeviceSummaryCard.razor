@@ -1,81 +1,141 @@
-@* DeviceSummaryCard - Dashboard card showing device statistics *@
-@using CreatioHelper.WebUI.Models
+@* Device Summary Card for Dashboard *@
+@inject IStringLocalizer<Localization> L
 
-<MudPaper Class="pa-4" Elevation="2">
-    <div class="d-flex justify-space-between align-center mb-3">
-        <MudText Typo="Typo.h6">
-            <MudIcon Icon="@Icons.Material.Filled.Devices" Class="mr-2" />
-            Devices
+<MudCard Elevation="2" Class="device-card cursor-pointer" @onclick="OnClick">
+    <MudCardContent>
+        <div class="d-flex align-center mb-2">
+            <MudIcon Icon="@Icons.Material.Filled.Devices"
+                     Color="@GetStatusColor()"
+                     Class="mr-2" />
+            <MudText Typo="Typo.subtitle1" Class="flex-grow-1 text-truncate">
+                @Device.DisplayName
+            </MudText>
+            <MudIcon Icon="@GetStatusIcon()"
+                     Color="@GetStatusColor()"
+                     Size="Size.Small" />
+        </div>
+
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="text-truncate mb-2">
+            @Device.ShortId
         </MudText>
-        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/devices" Size="Size.Small">
-            View All
-        </MudButton>
-    </div>
 
-    @if (Loading)
-    {
-        <MudSkeleton Width="100%" Height="80px" />
-    }
-    else
-    {
-        <MudGrid>
-            <MudItem xs="4">
-                <div class="text-center">
-                    <MudText Typo="Typo.h4" Color="Color.Success">@ConnectedCount</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Connected</MudText>
-                </div>
-            </MudItem>
-            <MudItem xs="4">
-                <div class="text-center">
-                    <MudText Typo="Typo.h4" Color="Color.Warning">@PausedCount</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Paused</MudText>
-                </div>
-            </MudItem>
-            <MudItem xs="4">
-                <div class="text-center">
-                    <MudText Typo="Typo.h4">@TotalCount</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Secondary">Total</MudText>
-                </div>
-            </MudItem>
-        </MudGrid>
-
-        @if (Devices?.Any() == true)
+        @if (Connection != null && Connection.Connected)
         {
-            <MudDivider Class="my-3" />
+            <div class="d-flex justify-space-between mb-1">
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowDownward" Size="Size.Small" Class="mr-1" />
+                    @FormatSpeed(Connection.InBytesPerSec)
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    <MudIcon Icon="@Icons.Material.Filled.ArrowUpward" Size="Size.Small" Class="mr-1" />
+                    @FormatSpeed(Connection.OutBytesPerSec)
+                </MudText>
+            </div>
 
-            <MudList T="DeviceConfig" Dense="true" Class="py-0">
-                @foreach (var device in Devices.Take(5))
-                {
-                    var isConnected = Connections?.Any(c => c.DeviceId == device.DeviceId && c.Connected) ?? false;
-                    <MudListItem Href="@($"/devices/{device.DeviceId}")" Class="py-1">
-                        <div class="d-flex align-center gap-2">
-                            <MudIcon Icon="@Icons.Material.Filled.Circle"
-                                     Size="Size.Small"
-                                     Color="@(isConnected ? Color.Success : Color.Default)" />
-                            <MudText Typo="Typo.body2">@device.DisplayName</MudText>
-                            @if (device.Paused)
-                            {
-                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Class="ml-auto">Paused</MudChip>
-                            }
-                        </div>
-                    </MudListItem>
-                }
-            </MudList>
+            <div class="d-flex justify-space-between">
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    @GetConnectionStatus()
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">
+                    @GetConnectionType()
+                </MudText>
+            </div>
         }
-    }
-</MudPaper>
+        else
+        {
+            <MudText Typo="Typo.caption" Color="Color.Default">
+                @GetConnectionStatus()
+            </MudText>
+        }
+    </MudCardContent>
+</MudCard>
 
 @code {
     [Parameter]
-    public IEnumerable<DeviceConfig>? Devices { get; set; }
+    public DeviceConfig Device { get; set; } = null!;
 
     [Parameter]
-    public IEnumerable<ConnectionInfo>? Connections { get; set; }
+    public ConnectionInfo? Connection { get; set; }
 
     [Parameter]
-    public bool Loading { get; set; }
+    public EventCallback OnClick { get; set; }
 
-    private int TotalCount => Devices?.Count() ?? 0;
-    private int ConnectedCount => Connections?.Count(c => c.Connected) ?? 0;
-    private int PausedCount => Devices?.Count(d => d.Paused) ?? 0;
+    private Color GetStatusColor()
+    {
+        if (Device.Paused) return Color.Warning;
+        if (Connection == null) return Color.Default;
+
+        if (Connection.Connected)
+        {
+            if (Connection.Paused) return Color.Warning;
+            if (Connection.IsRelay) return Color.Info;
+            return Color.Success;
+        }
+
+        return Color.Default;
+    }
+
+    private string GetStatusIcon()
+    {
+        if (Device.Paused) return Icons.Material.Filled.Pause;
+        if (Connection == null) return Icons.Material.Filled.HourglassEmpty;
+
+        if (Connection.Connected)
+        {
+            if (Connection.Paused) return Icons.Material.Filled.PauseCircle;
+            if (Connection.IsRelay) return Icons.Material.Filled.Cloud;
+            return Icons.Material.Filled.CheckCircle;
+        }
+
+        return Icons.Material.Filled.CloudOff;
+    }
+
+    private string GetConnectionStatus()
+    {
+        if (Device.Paused) return L["Devices_Paused"];
+        if (Connection == null) return L["Common_Loading"];
+
+        if (Connection.Connected)
+        {
+            if (Connection.Paused) return L["Status_ConnectedPaused"];
+
+            var duration = Connection.ConnectionDuration;
+            if (duration.HasValue)
+            {
+                return L["Status_ConnectedFor", FormatDuration(duration.Value)];
+            }
+            return L["Devices_Connected"];
+        }
+
+        return L["Devices_Disconnected"];
+    }
+
+    private string GetConnectionType()
+    {
+        if (Connection == null || !Connection.Connected) return string.Empty;
+
+        return Connection.ConnectionType switch
+        {
+            ConnectionType.TcpClient or ConnectionType.TcpServer => "TCP",
+            ConnectionType.QuicClient or ConnectionType.QuicServer => "QUIC",
+            ConnectionType.RelayClient or ConnectionType.RelayServer => "Relay",
+            _ => Connection.Type
+        };
+    }
+
+    private string FormatSpeed(long bytesPerSec)
+    {
+        if (bytesPerSec < 1024) return $"{bytesPerSec} B/s";
+        if (bytesPerSec < 1024 * 1024) return $"{bytesPerSec / 1024.0:F1} KB/s";
+        if (bytesPerSec < 1024 * 1024 * 1024) return $"{bytesPerSec / (1024.0 * 1024):F1} MB/s";
+        return $"{bytesPerSec / (1024.0 * 1024 * 1024):F2} GB/s";
+    }
+
+    private string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalDays >= 1) return $"{(int)duration.TotalDays}d {duration.Hours}h";
+        if (duration.TotalHours >= 1) return $"{(int)duration.TotalHours}h {duration.Minutes}m";
+        if (duration.TotalMinutes >= 1) return $"{(int)duration.TotalMinutes}m";
+        return $"{(int)duration.TotalSeconds}s";
+    }
 }

@@ -1,19 +1,121 @@
 @page "/pending"
 @inject IApiClient ApiClient
+@inject StateContainer State
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
+@inject IStringLocalizer<Localization> L
+@implements IDisposable
 
-<PageTitle>Pending Devices - CreatioHelper</PageTitle>
+<PageTitle>@L["PendingDevices_Title"] - CreatioHelper</PageTitle>
+
+<style>
+    .pending-device-card {
+        transition: border-color 0.2s ease;
+    }
+    .pending-device-card:hover {
+        border-left: 3px solid var(--mud-palette-warning);
+    }
+    .time-ago {
+        color: var(--mud-palette-text-secondary);
+        font-size: 0.75rem;
+    }
+</style>
 
 <div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">Pending Devices</MudText>
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["PendingDevices_Title"]</MudText>
     <MudButton Variant="Variant.Outlined"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
-               OnClick="LoadPendingDevicesAsync">
-        Refresh
+               OnClick="LoadPendingDevicesAsync"
+               Disabled="@_isLoading">
+        @L["Common_Refresh"]
     </MudButton>
 </div>
+
+@* Auto-Accept Configuration Panel *@
+<MudPaper Elevation="2" Class="pa-4 mb-4">
+    <div class="d-flex align-center cursor-pointer" @onclick="@(() => _autoAcceptExpanded = !_autoAcceptExpanded)">
+        <MudIcon Icon="@Icons.Material.Filled.Security" Color="Color.Primary" Class="mr-3" />
+        <div class="flex-grow-1">
+            <MudText Typo="Typo.h6">@L["PendingDevices_AutoAcceptConfig"]</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @if (_autoAcceptDevices.Count > 0)
+                {
+                    <span>@L["PendingDevices_AutoAcceptEnabled", _autoAcceptDevices.Count]</span>
+                }
+                else
+                {
+                    <span>@L["PendingDevices_AutoAcceptEnabledDesc"]</span>
+                }
+            </MudText>
+        </div>
+        <MudIconButton Icon="@(_autoAcceptExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                       Size="Size.Small" />
+    </div>
+
+    <MudCollapse Expanded="@_autoAcceptExpanded">
+        <MudDivider Class="my-3" />
+
+        <MudAlert Severity="Severity.Info" Class="mb-3" Variant="Variant.Outlined" Dense="true">
+            @L["PendingDevices_AutoAcceptIntroducedDesc"]
+        </MudAlert>
+
+        <MudGrid>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AutoAcceptDefaultFolders"]</MudText>
+                <MudTextField @bind-Value="_defaultFolderPath"
+                              Placeholder="@L["PendingDevices_AutoAcceptDefaultFoldersDesc"]"
+                              Variant="Variant.Outlined"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Folder"
+                              HelperText="@L["PendingDevices_AutoAcceptAllowListDesc"]"
+                              Disabled="@_isSavingConfig" />
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AutoAcceptAllowList"]</MudText>
+                @if (_autoAcceptDevices.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="mt-2">
+                        @L["PendingDevices_AutoAcceptEnabledDesc"]
+                    </MudText>
+                }
+                else
+                {
+                    <div class="d-flex flex-wrap gap-1 mt-2">
+                        @foreach (var device in _autoAcceptDevices.Take(5))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">
+                                @device.DisplayName
+                            </MudChip>
+                        }
+                        @if (_autoAcceptDevices.Count > 5)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Text">
+                                +@(_autoAcceptDevices.Count - 5) more
+                            </MudChip>
+                        }
+                    </div>
+                }
+            </MudItem>
+        </MudGrid>
+
+        <div class="d-flex justify-end mt-3">
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       Size="Size.Small"
+                       StartIcon="@Icons.Material.Filled.Save"
+                       OnClick="SaveConfigAsync"
+                       Disabled="@_isSavingConfig">
+                @if (_isSavingConfig)
+                {
+                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                }
+                @L["Common_Save"]
+            </MudButton>
+        </div>
+    </MudCollapse>
+</MudPaper>
 
 @if (_isLoading)
 {
@@ -26,88 +128,239 @@ else if (_pendingDevices.Length == 0)
                  Size="Size.Large"
                  Color="Color.Success"
                  Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">No pending devices</MudText>
-        <MudText Color="Color.Secondary">
-            All device connection requests have been processed.
+        <MudText Typo="Typo.h6" Class="mb-2">@L["PendingDevices_NoPending"]</MudText>
+        <MudText Color="Color.Secondary" Class="mb-4">
+            @L["PendingDevices_NoHistory"]
         </MudText>
+        <MudButton Variant="Variant.Outlined"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Devices"
+                   Href="/devices">
+            @L["Common_ViewAll"]
+        </MudButton>
     </MudPaper>
 }
 else
 {
-    <MudGrid>
-        @foreach (var device in _pendingDevices)
-        {
-            <MudItem xs="12" md="6" lg="4">
-                <MudCard Elevation="2">
-                    <MudCardHeader>
-                        <CardHeaderAvatar>
-                            <MudAvatar Color="Color.Warning">
-                                <MudIcon Icon="@Icons.Material.Filled.DeviceUnknown" />
-                            </MudAvatar>
-                        </CardHeaderAvatar>
-                        <CardHeaderContent>
-                            <MudText Typo="Typo.h6">@(device.Name ?? "Unknown Device")</MudText>
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                @device.DeviceId[..Math.Min(12, device.DeviceId.Length)]...
-                            </MudText>
-                        </CardHeaderContent>
-                    </MudCardHeader>
-                    <MudCardContent>
-                        <MudSimpleTable Dense="true" Hover="false" Bordered="false">
-                            <tbody>
-                                <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Device ID</MudText></td>
-                                    <td>
-                                        <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">
-                                            @device.DeviceId
-                                        </MudText>
-                                    </td>
-                                </tr>
-                                @if (!string.IsNullOrEmpty(device.Address))
-                                {
-                                    <tr>
-                                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Address</MudText></td>
-                                        <td><MudText Typo="Typo.body2">@device.Address</MudText></td>
-                                    </tr>
-                                }
-                                <tr>
-                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">Discovered</MudText></td>
-                                    <td><MudText Typo="Typo.body2">@device.Time.ToLocalTime().ToString("g")</MudText></td>
-                                </tr>
-                            </tbody>
-                        </MudSimpleTable>
-                    </MudCardContent>
-                    <MudCardActions>
+    <MudText Typo="Typo.h6" Class="mb-2">
+        @L["PendingDevices_PendingList", _pendingDevices.Length]
+    </MudText>
+
+    @foreach (var device in _pendingDevices)
+    {
+        var isExpanded = _expandedDevices.Contains(device.DeviceId);
+        var isProcessing = _processingDevices.Contains(device.DeviceId);
+
+        <MudPaper Elevation="2" Class="mb-3 pending-device-card">
+            @* Header row - always visible *@
+            <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => ToggleDeviceExpand(device.DeviceId))">
+                <MudAvatar Color="Color.Warning" Class="mr-3">
+                    <MudIcon Icon="@Icons.Material.Filled.DeviceUnknown" />
+                </MudAvatar>
+                <div class="flex-grow-1">
+                    <MudText Typo="Typo.subtitle1">@device.DisplayName</MudText>
+                    <MudText Typo="Typo.caption" Class="time-ago">
+                        <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="vertical-align: middle;" />
+                        @FormatTimeAgo(device.Time)
+                        @if (!string.IsNullOrEmpty(device.Address))
+                        {
+                            <span> • @device.Address</span>
+                        }
+                    </MudText>
+                </div>
+
+                @* Quick action buttons - wrapped to stop event propagation *@
+                <div @onclick:stopPropagation="true" class="d-flex align-center">
+                    <MudButtonGroup OverrideStyles="false" Class="mr-2">
                         <MudButton Variant="Variant.Filled"
                                    Color="Color.Success"
+                                   Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.Check"
                                    OnClick="@(() => AcceptDeviceAsync(device))"
-                                   Disabled="@_processingDevices.Contains(device.DeviceId)">
-                            Accept
+                                   Disabled="@isProcessing">
+                            @if (isProcessing)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-1" />
+                            }
+                            @L["PendingDevices_Accept"]
                         </MudButton>
-                        <MudButton Variant="Variant.Outlined"
-                                   Color="Color.Error"
-                                   StartIcon="@Icons.Material.Filled.Close"
-                                   OnClick="@(() => RejectDeviceAsync(device))"
-                                   Disabled="@_processingDevices.Contains(device.DeviceId)"
-                                   Class="ml-2">
-                            Reject
-                        </MudButton>
-                    </MudCardActions>
-                </MudCard>
-            </MudItem>
-        }
-    </MudGrid>
+                        <MudMenu Icon="@Icons.Material.Filled.ArrowDropDown"
+                                 Variant="Variant.Filled"
+                                 Color="Color.Success"
+                                 Size="Size.Small"
+                                 AnchorOrigin="Origin.BottomRight"
+                                 TransformOrigin="Origin.TopRight"
+                                 Disabled="@isProcessing">
+                            <MudMenuItem OnClick="@(() => AcceptWithAutoAcceptAsync(device))"
+                                         Icon="@Icons.Material.Filled.AutoAwesome">
+                                @L["PendingDevices_AcceptWithFolders"]
+                            </MudMenuItem>
+                            <MudMenuItem OnClick="@(() => AcceptWithFoldersAsync(device))"
+                                         Icon="@Icons.Material.Filled.FolderShared">
+                                @L["PendingDevices_SelectFolders"]
+                            </MudMenuItem>
+                        </MudMenu>
+                    </MudButtonGroup>
+
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               Size="Size.Small"
+                               StartIcon="@Icons.Material.Filled.Close"
+                               OnClick="@(() => RejectDeviceAsync(device))"
+                               Disabled="@isProcessing"
+                               Class="mr-2">
+                        @L["PendingDevices_Reject"]
+                    </MudButton>
+                </div>
+
+                <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                               Size="Size.Small" />
+            </div>
+
+            @* Expandable details *@
+            <MudCollapse Expanded="@isExpanded">
+                <MudDivider />
+                <div class="pa-3">
+                    <MudSimpleTable Dense="true" Hover="true" Style="background: transparent;">
+                        <tbody>
+                            <tr>
+                                <td style="width: 30%;"><MudText Typo="Typo.body2" Color="Color.Secondary">@L["PendingDevices_DeviceId"]</MudText></td>
+                                <td>
+                                    <div class="d-flex align-center">
+                                        <MudText Typo="Typo.body2" Style="font-family: monospace; font-size: 0.7rem; word-break: break-all;">
+                                            @device.DeviceId
+                                        </MudText>
+                                        <MudTooltip Text="@L["Common_Copy"]">
+                                            <MudIconButton Icon="@Icons.Material.Filled.ContentCopy"
+                                                           Size="Size.Small"
+                                                           OnClick="@(() => CopyDeviceIdAsync(device.DeviceId))" />
+                                        </MudTooltip>
+                                    </div>
+                                </td>
+                            </tr>
+                            @if (!string.IsNullOrEmpty(device.Name))
+                            {
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["PendingDevices_DeviceName"]</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@device.Name</MudText></td>
+                                </tr>
+                            }
+                            @if (!string.IsNullOrEmpty(device.Address))
+                            {
+                                <tr>
+                                    <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["PendingDevices_Address"]</MudText></td>
+                                    <td><MudText Typo="Typo.body2">@device.Address</MudText></td>
+                                </tr>
+                            }
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["PendingDevices_FirstSeen"]</MudText></td>
+                                <td><MudText Typo="Typo.body2">@device.Time.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")</MudText></td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+
+                    <MudDivider Class="my-3" />
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AcceptDevice"]</MudText>
+                    <MudGrid>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Success"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Check"
+                                       OnClick="@(() => AcceptDeviceAsync(device))"
+                                       Disabled="@isProcessing">
+                                @L["PendingDevices_Accept"]
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                @L["PendingDevices_Accepted"]
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Info"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.AutoAwesome"
+                                       OnClick="@(() => AcceptWithAutoAcceptAsync(device))"
+                                       Disabled="@isProcessing">
+                                @L["PendingDevices_AcceptWithFolders"]
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                @L["PendingDevices_AutoAcceptIntroduced"]
+                            </MudText>
+                        </MudItem>
+                        <MudItem xs="12" sm="6" md="4">
+                            <MudButton Variant="Variant.Outlined"
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.FolderShared"
+                                       OnClick="@(() => AcceptWithFoldersAsync(device))"
+                                       Disabled="@isProcessing">
+                                @L["PendingDevices_SelectFolders"]
+                            </MudButton>
+                            <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mt-1">
+                                @L["PendingDevices_RecentlyAccepted"]
+                            </MudText>
+                        </MudItem>
+                    </MudGrid>
+                </div>
+            </MudCollapse>
+        </MudPaper>
+    }
 }
 
 @code {
+    [Inject]
+    private IJSRuntime JSRuntime { get; set; } = null!;
+
     private PendingDevice[] _pendingDevices = [];
     private bool _isLoading = true;
     private HashSet<string> _processingDevices = new();
+    private HashSet<string> _expandedDevices = new();
+    private System.Threading.Timer? _refreshTimer;
+
+    // Auto-accept configuration
+    private bool _autoAcceptExpanded;
+    private string _defaultFolderPath = string.Empty;
+    private List<DeviceConfig> _autoAcceptDevices = new();
+    private bool _isSavingConfig;
 
     protected override async Task OnInitializedAsync()
     {
+        State.OnChange += OnStateChanged;
         await LoadPendingDevicesAsync();
+        StartAutoRefresh();
+    }
+
+    private void StartAutoRefresh()
+    {
+        _refreshTimer?.Dispose();
+        _refreshTimer = new System.Threading.Timer(async _ =>
+        {
+            await InvokeAsync(async () =>
+            {
+                try
+                {
+                    var pendingDevices = await ApiClient.GetPendingDevicesAsync();
+                    if (pendingDevices.Length != _pendingDevices.Length ||
+                        !pendingDevices.Select(p => p.DeviceId).SequenceEqual(_pendingDevices.Select(p => p.DeviceId)))
+                    {
+                        _pendingDevices = pendingDevices;
+                        StateHasChanged();
+                    }
+                }
+                catch
+                {
+                    // Ignore errors during auto-refresh
+                }
+            });
+        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+    }
+
+    private void OnStateChanged()
+    {
+        UpdateAutoAcceptDevices();
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadPendingDevicesAsync()
@@ -118,10 +371,19 @@ else
         try
         {
             _pendingDevices = await ApiClient.GetPendingDevicesAsync();
+
+            // Load config for default folder path
+            var config = await ApiClient.GetConfigAsync();
+            if (config?.Options != null)
+            {
+                _defaultFolderPath = config.Options.DefaultFolderPath ?? string.Empty;
+            }
+
+            UpdateAutoAcceptDevices();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load pending devices: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_FailedToLoad", ex.Message], Severity.Error);
         }
         finally
         {
@@ -130,20 +392,62 @@ else
         }
     }
 
-    private async Task AcceptDeviceAsync(PendingDevice device)
+    private void UpdateAutoAcceptDevices()
+    {
+        _autoAcceptDevices = State.Devices
+            .Where(d => d.AutoAcceptFolders)
+            .ToList();
+    }
+
+    private void ToggleDeviceExpand(string deviceId)
+    {
+        if (_expandedDevices.Contains(deviceId))
+            _expandedDevices.Remove(deviceId);
+        else
+            _expandedDevices.Add(deviceId);
+    }
+
+    private async Task AcceptDeviceAsync(PendingDevice device, bool enableAutoAccept = false)
     {
         _processingDevices.Add(device.DeviceId);
         StateHasChanged();
 
         try
         {
+            // First accept the device
             await ApiClient.AcceptDeviceAsync(device.DeviceId);
-            Snackbar.Add($"Device '{device.Name ?? device.DeviceId}' accepted", Severity.Success);
+
+            // If auto-accept is requested, update the device config
+            if (enableAutoAccept)
+            {
+                // Give the API a moment to create the device
+                await Task.Delay(200);
+
+                // Fetch the newly created device and update it
+                var devices = await ApiClient.GetDevicesAsync();
+                var newDevice = devices.FirstOrDefault(d => d.DeviceId == device.DeviceId);
+                if (newDevice != null)
+                {
+                    newDevice.AutoAcceptFolders = true;
+                    await ApiClient.UpdateDeviceAsync(newDevice);
+                    Snackbar.Add(L["Msg_DeviceAcceptedWithAutoAccept", device.DisplayName], Severity.Success);
+                }
+                else
+                {
+                    Snackbar.Add(L["Msg_DeviceAcceptedAutoAcceptFailed", device.DisplayName], Severity.Warning);
+                }
+            }
+            else
+            {
+                Snackbar.Add(L["Msg_DeviceAccepted", device.DisplayName], Severity.Success);
+            }
+
+            // Refresh the pending devices list
             await LoadPendingDevicesAsync();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to accept device: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_FailedToAcceptDevice", ex.Message], Severity.Error);
         }
         finally
         {
@@ -152,25 +456,174 @@ else
         }
     }
 
+    private Task AcceptWithAutoAcceptAsync(PendingDevice device)
+    {
+        return AcceptDeviceAsync(device, enableAutoAccept: true);
+    }
+
+    private async Task AcceptWithFoldersAsync(PendingDevice device)
+    {
+        // Show folder selection dialog
+        var folders = State.Folders;
+        if (folders.Length == 0)
+        {
+            var confirmed = await DialogService.ShowMessageBox(
+                L["PendingDevices_SelectFolders"],
+                L["Msg_NoFoldersConfigured"],
+                yesText: L["PendingDevices_Accept"],
+                cancelText: L["Common_Cancel"]);
+
+            if (confirmed == true)
+            {
+                await AcceptDeviceAsync(device);
+            }
+            return;
+        }
+
+        // Build folder selection dialog
+        var parameters = new DialogParameters<SelectFoldersDialog>
+        {
+            { x => x.Folders, folders },
+            { x => x.DeviceName, device.DisplayName }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseOnEscapeKey = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<SelectFoldersDialog>(L["PendingDevices_SelectFolders"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: HashSet<string> selectedFolderIds } && selectedFolderIds.Count > 0)
+        {
+            _processingDevices.Add(device.DeviceId);
+            StateHasChanged();
+
+            try
+            {
+                // Accept the device first
+                await ApiClient.AcceptDeviceAsync(device.DeviceId);
+
+                // Give the API a moment to create the device
+                await Task.Delay(200);
+
+                // Now update each selected folder to include this device
+                foreach (var folderId in selectedFolderIds)
+                {
+                    var folder = folders.FirstOrDefault(f => f.Id == folderId);
+                    if (folder != null)
+                    {
+                        var deviceList = folder.Devices?.ToList() ?? new List<FolderDevice>();
+                        if (!deviceList.Any(d => d.DeviceId == device.DeviceId))
+                        {
+                            deviceList.Add(new FolderDevice { DeviceId = device.DeviceId });
+                            folder.Devices = deviceList.ToArray();
+                            await ApiClient.UpdateFolderAsync(folder);
+                        }
+                    }
+                }
+
+                Snackbar.Add(L["Msg_DeviceAcceptedWithFolders", device.DisplayName, selectedFolderIds.Count], Severity.Success);
+                await LoadPendingDevicesAsync();
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(L["Msg_FailedToAcceptDevice", ex.Message], Severity.Error);
+            }
+            finally
+            {
+                _processingDevices.Remove(device.DeviceId);
+                StateHasChanged();
+            }
+        }
+    }
+
     private async Task RejectDeviceAsync(PendingDevice device)
     {
+        var confirmed = await DialogService.ShowMessageBox(
+            L["PendingDevices_Reject"],
+            L["Msg_ConfirmRejectDevice", device.DisplayName],
+            yesText: L["PendingDevices_Reject"],
+            cancelText: L["Common_Cancel"]);
+
+        if (confirmed != true) return;
+
         _processingDevices.Add(device.DeviceId);
         StateHasChanged();
 
         try
         {
             await ApiClient.RejectDeviceAsync(device.DeviceId);
-            Snackbar.Add($"Device '{device.Name ?? device.DeviceId}' rejected", Severity.Info);
+            Snackbar.Add(L["Msg_DeviceRejected", device.DisplayName], Severity.Info);
             await LoadPendingDevicesAsync();
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to reject device: {ex.Message}", Severity.Error);
+            Snackbar.Add(L["Msg_FailedToRejectDevice", ex.Message], Severity.Error);
         }
         finally
         {
             _processingDevices.Remove(device.DeviceId);
             StateHasChanged();
         }
+    }
+
+    private async Task SaveConfigAsync()
+    {
+        _isSavingConfig = true;
+        StateHasChanged();
+
+        try
+        {
+            var config = await ApiClient.GetConfigAsync();
+            if (config != null)
+            {
+                config.Options ??= new OptionsConfig();
+                config.Options.DefaultFolderPath = string.IsNullOrWhiteSpace(_defaultFolderPath) ? null : _defaultFolderPath;
+                await ApiClient.UpdateConfigAsync(config);
+                Snackbar.Add(L["Msg_SettingsSaved"], Severity.Success);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(L["Msg_FailedToSave", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _isSavingConfig = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task CopyDeviceIdAsync(string deviceId)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", deviceId);
+            Snackbar.Add(L["Msg_CopiedToClipboard"], Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add(L["Msg_FailedToCopy"], Severity.Error);
+        }
+    }
+
+    private string FormatTimeAgo(DateTime time)
+    {
+        var elapsed = DateTime.UtcNow - time.ToUniversalTime();
+        if (elapsed.TotalSeconds < 60) return "Just now";
+        if (elapsed.TotalMinutes < 60) return $"{(int)elapsed.TotalMinutes}m ago";
+        if (elapsed.TotalHours < 24) return $"{(int)elapsed.TotalHours}h ago";
+        if (elapsed.TotalDays < 7) return $"{(int)elapsed.TotalDays}d ago";
+        return time.ToLocalTime().ToString("MMM d");
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
+        _refreshTimer?.Dispose();
     }
 }
