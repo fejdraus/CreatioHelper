@@ -77,7 +77,6 @@ public class SyncConfiguration : AggregateRoot
     public int NatRenewalMinutes { get; set; } = 30;
     public int NatTimeoutSeconds { get; set; } = 10;
     public bool CrashReportingEnabled { get; private set; } = false; // Telemetry disabled
-    public bool UsageReportingAccepted { get; private set; } = false;
     public bool AutoUpgradeEnabled { get; set; } = true;
     public int AutoUpgradeIntervalHours { get; set; } = 12;
     public bool UpgradeToPreReleases { get; set; } = false;
@@ -90,8 +89,7 @@ public class SyncConfiguration : AggregateRoot
     public bool SetLowPriority { get; set; } = true;
     public int MaxFolderConcurrency { get; set; } = 0; // 0 = unlimited
     public int DatabaseTuning { get; private set; } = 0; // 0 = auto, 1 = small, 2 = large
-    public int RawUsageReportingUniqueID { get; private set; } = 0;
-    
+
     // Delta sync configuration
     public bool EnableDeltaSync { get; private set; } = true;
     public bool EnableAdvancedDeltaSync { get; private set; } = false; // Rolling hash, more CPU intensive
@@ -176,11 +174,6 @@ public class SyncConfiguration : AggregateRoot
         AutoUpgradeEnabled = enabled;
         AutoUpgradeIntervalHours = intervalHours;
         UpgradeToPreReleases = preReleases;
-    }
-
-    public void SetUsageReporting(bool accepted)
-    {
-        UsageReportingAccepted = accepted;
     }
 
     public void SetDefaultFolderPath(string path)
