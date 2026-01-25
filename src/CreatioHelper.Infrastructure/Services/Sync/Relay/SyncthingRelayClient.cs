@@ -159,19 +159,10 @@ public class SyncthingRelayClient : IDisposable
         await _sslStream.AuthenticateAsClientAsync(clientAuthOptions, combinedCts.Token);
 
         // Verify ALPN negotiation (following Syncthing pattern from lib/relay/client/static.go)
-        var negotiatedProtocol = _sslStream.NegotiatedApplicationProtocol;
-        var expectedProtocolBytes = System.Text.Encoding.UTF8.GetBytes(RelayProtocol.ProtocolName);
-
-        if (negotiatedProtocol == default ||
-            !negotiatedProtocol.Protocol.Span.SequenceEqual(expectedProtocolBytes))
-        {
-            var actualProtocol = negotiatedProtocol == default
-                ? "<none>"
-                : System.Text.Encoding.UTF8.GetString(negotiatedProtocol.Protocol.Span);
-            _logger.LogError("ALPN protocol negotiation error: expected '{Expected}', got '{Actual}'",
-                RelayProtocol.ProtocolName, actualProtocol);
-            throw new InvalidOperationException("protocol negotiation error");
-        }
+        // The TLS handshake is initiated by us (client) so we always start with TLS.
+        // On the wire, TLS connections are identified by first byte 0x16 (TlsHandshakeRecordType).
+        // For client connections, we always use TLS - the server detects TLS mode by first byte.
+        VerifyAlpnNegotiation();
 
         _logger.LogDebug("TLS connection established with ALPN protocol: {Protocol}", RelayProtocol.ProtocolName);
 
@@ -773,6 +764,27 @@ public class SyncthingRelayClient : IDisposable
         {
             _logger.LogWarning(ex, "Failed to send ping to relay server");
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Verify ALPN protocol negotiation succeeded with the expected "bep-relay" protocol.
+    /// Following Syncthing pattern from lib/relay/client/static.go performHandshakeAndValidation().
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown when ALPN negotiation fails</exception>
+    private void VerifyAlpnNegotiation()
+    {
+        var negotiatedProtocol = _sslStream!.NegotiatedApplicationProtocol;
+
+        if (!RelayProtocol.ValidateAlpnProtocol(negotiatedProtocol))
+        {
+            var actualProtocol = negotiatedProtocol == default
+                ? "<none>"
+                : System.Text.Encoding.UTF8.GetString(negotiatedProtocol.Protocol.Span);
+            _logger.LogError("ALPN protocol negotiation error: expected '{Expected}', got '{Actual}'",
+                RelayProtocol.ProtocolName, actualProtocol);
+            throw new InvalidOperationException(
+                $"protocol negotiation error: expected '{RelayProtocol.ProtocolName}', got '{actualProtocol}'");
         }
     }
 
