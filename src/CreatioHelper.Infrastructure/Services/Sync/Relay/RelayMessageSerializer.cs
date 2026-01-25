@@ -8,6 +8,28 @@ namespace CreatioHelper.Infrastructure.Services.Sync.Relay;
 /// Relay message serializer/deserializer 100% compatible with Syncthing's XDR protocol
 /// Implements exact XDR (External Data Representation) format used by syncthing-relay
 /// </summary>
+/// <remarks>
+/// XDR Encoding Format (per RFC 4506 and Syncthing lib/relay/protocol/packets_xdr.go):
+///
+/// Header format:
+///  0                   1                   2                   3
+///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                             magic                             |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                         message Type                          |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+/// |                        message Length                         |
+/// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+///
+/// XDR String/Bytes format: [4B length][data][0-3B padding to 4-byte boundary]
+/// XDR uint16: [2B zeros][2B value] (4 bytes total, big-endian)
+/// XDR bool: [4B value] where value is 0 or 1
+///
+/// All multi-byte integers are BIG-ENDIAN.
+/// All variable-length data is padded to 4-byte alignment with zero bytes.
+/// Padding formula: (4 - (length % 4)) % 4
+/// </remarks>
 public static class RelayMessageSerializer
 {
 
@@ -197,35 +219,55 @@ public static class RelayMessageSerializer
         return new ConnectRequest(id);
     }
 
+    /// <remarks>
+    /// SessionInvitation wire format (per Syncthing lib/relay/protocol/packets_xdr.go):
+    ///  0                   1                   2                   3
+    ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// /                  From (length + padded data)                  /
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// /                  Key (length + padded data)                   /
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// /                Address (length + padded data)                 /
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |         16 zero bits          |             Port              |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |                  Server Socket (V=0 or 1)                   |V|
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// </remarks>
     private static byte[] SerializeSessionInvitation(SessionInvitation invitation)
     {
         if (invitation.From.Length > 32 || invitation.Key.Length > 32 || invitation.Address.Length > 32)
             throw new ArgumentException("Field lengths cannot exceed 32 bytes");
-        
+
         using var stream = new MemoryStream();
-        
-        // From (XDR bytes with max 32)
+
+        // From (XDR opaque<32> - length + padded data)
         var fromBytes = SerializeXDRBytes(invitation.From);
         stream.Write(fromBytes);
-        
-        // Key (XDR bytes with max 32)  
+
+        // Key (XDR opaque<32> - length + padded data)
         var keyBytes = SerializeXDRBytes(invitation.Key);
         stream.Write(keyBytes);
-        
-        // Address (XDR bytes with max 32)
+
+        // Address (XDR opaque<32> - length + padded data)
         var addressBytes = SerializeXDRBytes(invitation.Address);
         stream.Write(addressBytes);
-        
-        // Port (uint16 in XDR format - becomes uint32 with zero padding)
+
+        // Port (XDR uint16 - stored as uint32 with 16 zero bits prefix)
+        // Wire format: [2 zero bytes][2 port bytes] big-endian
+        // Matches xdr.MarshalUint16() which writes 4 bytes total
         var portBytes = new byte[4];
         BinaryPrimitives.WriteUInt32BigEndian(portBytes, invitation.Port);
         stream.Write(portBytes);
-        
-        // ServerSocket (bool in XDR format - becomes uint32)
+
+        // ServerSocket (XDR bool - stored as uint32 with value 0 or 1)
+        // Wire format: [4 bytes] where value is 0 (false) or 1 (true)
+        // Matches xdr.MarshalBool()
         var serverSocketBytes = new byte[4];
         BinaryPrimitives.WriteUInt32BigEndian(serverSocketBytes, invitation.ServerSocket ? 1u : 0u);
         stream.Write(serverSocketBytes);
-        
+
         return stream.ToArray();
     }
 
@@ -279,16 +321,32 @@ public static class RelayMessageSerializer
     /// <summary>
     /// Serialize string in XDR format (length + padded data)
     /// </summary>
+    /// <remarks>
+    /// XDR String wire format (per RFC 4506 Section 4.11):
+    ///  0                   1                   2                   3
+    ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |                        length (4 bytes)                       |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// /                   string data (n bytes)                       /
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |                  zero padding (0-3 bytes)                     |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ///
+    /// Matches Syncthing's github.com/calmh/xdr.MarshalString()
+    /// </remarks>
     private static byte[] SerializeXDRString(string value)
     {
         var stringBytes = Encoding.UTF8.GetBytes(value);
         var padding = CalculateXDRPadding(stringBytes.Length);
         var buffer = new byte[4 + stringBytes.Length + padding];
-        
+
+        // Write length as 4-byte big-endian unsigned integer
         BinaryPrimitives.WriteUInt32BigEndian(buffer.AsSpan(0, 4), (uint)stringBytes.Length);
+        // Write string data
         stringBytes.CopyTo(buffer.AsSpan(4));
-        // Padding bytes are already zero-initialized
-        
+        // Padding bytes are already zero-initialized (C# default)
+
         return buffer;
     }
 
@@ -313,15 +371,31 @@ public static class RelayMessageSerializer
     /// <summary>
     /// Serialize bytes in XDR format (length + padded data)
     /// </summary>
+    /// <remarks>
+    /// XDR Opaque (variable-length) wire format (per RFC 4506 Section 4.10):
+    ///  0                   1                   2                   3
+    ///  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |                        length (4 bytes)                       |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// /                    opaque data (n bytes)                      /
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    /// |                  zero padding (0-3 bytes)                     |
+    /// +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    ///
+    /// Matches Syncthing's github.com/calmh/xdr.MarshalBytes()
+    /// </remarks>
     private static byte[] SerializeXDRBytes(byte[] value)
     {
         var padding = CalculateXDRPadding(value.Length);
         var buffer = new byte[4 + value.Length + padding];
-        
+
+        // Write length as 4-byte big-endian unsigned integer
         BinaryPrimitives.WriteUInt32BigEndian(buffer.AsSpan(0, 4), (uint)value.Length);
+        // Write opaque data
         value.CopyTo(buffer.AsSpan(4));
-        // Padding bytes are already zero-initialized
-        
+        // Padding bytes are already zero-initialized (C# default)
+
         return buffer;
     }
 
@@ -349,8 +423,29 @@ public static class RelayMessageSerializer
     /// <summary>
     /// Calculate XDR padding for 4-byte alignment
     /// </summary>
+    /// <remarks>
+    /// Per RFC 4506 and Syncthing's github.com/calmh/xdr package:
+    /// - All variable-length data must be padded to 4-byte boundary
+    /// - Padding bytes are always zero
+    /// - Padding formula: (4 - (length % 4)) % 4
+    ///
+    /// Examples:
+    /// - length=0: padding=0 (already aligned)
+    /// - length=1: padding=3 (need 3 zeros to reach 4)
+    /// - length=2: padding=2 (need 2 zeros to reach 4)
+    /// - length=3: padding=1 (need 1 zero to reach 4)
+    /// - length=4: padding=0 (already aligned)
+    /// - length=5: padding=3 (need 3 zeros to reach 8)
+    ///
+    /// Verified against Syncthing lib/relay/protocol/packets_xdr.go:
+    /// - JoinRelayRequest.XDRSize(): 4 + len(o.Token) + xdr.Padding(len(o.Token))
+    /// - JoinSessionRequest.XDRSize(): 4 + len(o.Key) + xdr.Padding(len(o.Key))
+    /// - Response.XDRSize(): 4 + 4 + len(o.Message) + xdr.Padding(len(o.Message))
+    /// </remarks>
     private static int CalculateXDRPadding(int length)
     {
+        // XDR padding formula: (4 - (length % 4)) % 4
+        // This matches github.com/calmh/xdr.Padding() function
         return (4 - (length % 4)) % 4;
     }
 }

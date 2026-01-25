@@ -270,16 +270,19 @@ public static class SyncthingRelayMethods
 
     /// <summary>
     /// Validate relay handshake and certificates (Syncthing protocol)
+    /// Verifies ALPN negotiation and optional relay ID verification.
     /// </summary>
     private static void ValidateRelayHandshake(SslStream sslStream, Uri relayUri)
     {
-        var connectionState = sslStream.RemoteCertificate;
-        
-        // Verify ALPN protocol negotiation
-        if (sslStream.NegotiatedApplicationProtocol.Protocol.ToArray() !=
-            System.Text.Encoding.UTF8.GetBytes(RelayProtocol.ProtocolName))
+        // Verify ALPN protocol negotiation using the centralized validation method
+        // This fixes the bug where byte array comparison used != (reference comparison)
+        if (!RelayProtocol.ValidateAlpnProtocol(sslStream.NegotiatedApplicationProtocol))
         {
-            throw new InvalidOperationException("Protocol negotiation error");
+            var actualProtocol = sslStream.NegotiatedApplicationProtocol == default
+                ? "<none>"
+                : System.Text.Encoding.UTF8.GetString(sslStream.NegotiatedApplicationProtocol.Protocol.Span);
+            throw new InvalidOperationException(
+                $"Protocol negotiation error: expected '{RelayProtocol.ProtocolName}', got '{actualProtocol}'");
         }
 
         // Check for relay ID verification (optional in Syncthing)
@@ -288,17 +291,13 @@ public static class SyncthingRelayMethods
 
         if (!string.IsNullOrEmpty(expectedRelayId))
         {
-            if (connectionState == null)
+            var remoteCertificate = sslStream.RemoteCertificate;
+            if (remoteCertificate == null)
                 throw new InvalidOperationException("No server certificate provided");
 
-            var certificates = sslStream.RemoteCertificate != null 
-                ? new[] { new X509Certificate2(sslStream.RemoteCertificate) }
-                : Array.Empty<X509Certificate2>();
+            using var x509Cert = new X509Certificate2(remoteCertificate);
+            var actualRelayId = Convert.ToHexString(GetDeviceIdFromCertificate(x509Cert));
 
-            if (certificates.Length != 1)
-                throw new InvalidOperationException($"Unexpected certificate count: {certificates.Length}");
-
-            var actualRelayId = Convert.ToHexString(GetDeviceIdFromCertificate(certificates[0]));
             if (!string.Equals(actualRelayId, expectedRelayId, StringComparison.OrdinalIgnoreCase))
             {
                 throw new InvalidOperationException($"Relay ID does not match. Expected {expectedRelayId} got {actualRelayId}");
