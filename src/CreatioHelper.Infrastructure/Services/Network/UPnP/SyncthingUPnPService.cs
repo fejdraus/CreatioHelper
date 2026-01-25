@@ -20,8 +20,6 @@ public class SyncthingUPnPService : IUPnPService, IDisposable
     private readonly object _lock = new();
     private bool _disposed = false;
     private DateTime _lastDiscovery = DateTime.MinValue;
-    private string? _cachedExternalIPv4;
-    private string? _cachedExternalIPv6;
 
     // UPnP constants matching Syncthing implementation
     private const string SsdpMulticastAddress = "239.255.255.250";
@@ -594,8 +592,8 @@ public class SyncthingUPnPService : IUPnPService, IDisposable
                 Ipv6DeviceCount = ipv6Count,
                 ActiveMappingCount = _activeMappings.Count,
                 ActivePinholeCount = _activePinholes.Count,
-                ExternalIPv4 = _cachedExternalIPv4,
-                ExternalIPv6 = _cachedExternalIPv6,
+                ExternalIPv4 = null,
+                ExternalIPv6 = null,
                 LastDiscovery = _lastDiscovery,
                 Devices = _discoveredDevices.Select(d => new UPnPDeviceStatus
                 {
