@@ -7,6 +7,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
 
 <MudLayout>
     <MudAppBar Elevation="1">
@@ -127,7 +128,7 @@
     private async Task HandleLogout()
     {
         await AuthService.LogoutAsync();
-        Snackbar.Add("You have been logged out", Severity.Info);
+        Snackbar.Add(L["Msg_LoggedOut"], Severity.Info);
         Navigation.NavigateTo("/login");
     }
 
@@ -146,7 +147,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to connect to agent: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToConnectAgent", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
             _isConnected = false;
         }
     }
@@ -173,7 +179,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load data: {ex.Message}", Severity.Warning);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadData", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -238,11 +249,11 @@
 
         if (!connected)
         {
-            Snackbar.Add("Lost connection to agent", Severity.Warning);
+            Snackbar.Add(L["Msg_LostConnectionToAgent"], Severity.Warning);
         }
         else
         {
-            Snackbar.Add("Reconnected to agent", Severity.Success);
+            Snackbar.Add(L["Msg_ReconnectedToAgent"], Severity.Success);
         }
 
         InvokeAsync(StateHasChanged);

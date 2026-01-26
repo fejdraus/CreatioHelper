@@ -285,10 +285,10 @@
     private string FormatUptime(TimeSpan uptime)
     {
         if (uptime.TotalDays >= 1)
-            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
         if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}h {uptime.Minutes}m";
-        return $"{uptime.Minutes}m {uptime.Seconds}s";
+            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
+        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
     }
 
     public void Dispose()

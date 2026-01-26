@@ -1,5 +1,6 @@
 @* SyncProgressBar - Shows folder sync progress with status *@
 @using CreatioHelper.WebUI.Models
+@inject IStringLocalizer<Localization> L
 
 <div class="sync-progress @Class">
     <div class="d-flex justify-space-between align-center mb-1">
@@ -34,7 +35,7 @@
     {
         <div class="d-flex justify-space-between mt-1">
             <MudText Typo="Typo.caption" Color="Color.Secondary">
-                @Status.InSyncFiles files syncing
+                @L["SyncProgress_FilesSyncing", Status.InSyncFiles]
             </MudText>
             <MudText Typo="Typo.caption" Color="Color.Secondary">
                 @FormatBytes(Status.InSyncBytes)
@@ -60,15 +61,15 @@
     {
         return Status.State switch
         {
-            "idle" => "Up to Date",
-            "syncing" => "Syncing...",
-            "scanning" => "Scanning...",
-            "error" => "Error",
-            "sync-preparing" => "Preparing...",
-            "sync-waiting" => "Waiting...",
-            "cleaning" => "Cleaning...",
-            "clean-waiting" => "Clean Waiting...",
-            _ => Status.State ?? "Unknown"
+            "idle" => L["Status_UpToDate"],
+            "syncing" => L["SyncProgress_Syncing"],
+            "scanning" => L["SyncProgress_Scanning"],
+            "error" => L["Common_Error"],
+            "sync-preparing" => L["SyncProgress_Preparing"],
+            "sync-waiting" => L["SyncProgress_Waiting"],
+            "cleaning" => L["SyncProgress_Cleaning"],
+            "clean-waiting" => L["SyncProgress_CleanWaiting"],
+            _ => Status.State ?? L["Status_Unknown"]
         };
     }
 
@@ -76,7 +77,7 @@
     {
         if (Status.State == "idle")
         {
-            return $"{Status.GlobalFiles:N0} files, {FormatBytes(Status.GlobalBytes)}";
+            return $"{Status.GlobalFiles:N0} {L["SyncProgress_Files"]}, {FormatBytes(Status.GlobalBytes)}";
         }
 
         if (Status.State == "syncing" && Status.NeedBytes > 0)
@@ -89,7 +90,7 @@
 
         if (Status.State == "scanning")
         {
-            return $"{Status.LocalFiles:N0} files scanned";
+            return L["SyncProgress_FilesScanned", Status.LocalFiles];
         }
 
         return string.Empty;

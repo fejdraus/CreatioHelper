@@ -67,9 +67,13 @@ public class SyncEvent
 
     // Helper properties to get data from the event
     [JsonIgnore]
-    public string? FolderId => GetDataValue("folder");
+    public string? FolderId => GetDataValue("folder") is { Length: > 0 } f ? f : GetDataValue("folderId");
     [JsonIgnore]
-    public string? DeviceId => GetDataValue("device");
+    public string? DeviceId => GetDataValue("device") is { Length: > 0 } d ? d : GetDataValue("id") is { Length: > 0 } i ? i : GetDataValue("deviceId");
+
+    // Debug: get all keys in Data dictionary
+    [JsonIgnore]
+    public string DataKeys => Data != null ? string.Join(", ", Data.Keys) : "(no data)";
     [JsonIgnore]
     public string? FileName => GetDataValue("item") ?? GetDataValue("path");
     [JsonIgnore]
@@ -94,6 +98,21 @@ public class SyncEvent
     {
         if (Data == null || !Data.TryGetValue(key, out var value))
             return string.Empty;
+
+        // Handle JsonElement from System.Text.Json deserialization
+        if (value is System.Text.Json.JsonElement jsonElement)
+        {
+            return jsonElement.ValueKind switch
+            {
+                System.Text.Json.JsonValueKind.String => jsonElement.GetString() ?? string.Empty,
+                System.Text.Json.JsonValueKind.Number => jsonElement.GetRawText(),
+                System.Text.Json.JsonValueKind.True => "true",
+                System.Text.Json.JsonValueKind.False => "false",
+                System.Text.Json.JsonValueKind.Null => string.Empty,
+                _ => jsonElement.GetRawText()
+            };
+        }
+
         return value?.ToString() ?? string.Empty;
     }
 
