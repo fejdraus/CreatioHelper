@@ -3,6 +3,8 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <PageTitle>@L["Settings_Advanced_Title"] - CreatioHelper</PageTitle>
 
@@ -303,7 +305,12 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_LoadSettingsFailed"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_LoadSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
         finally
         {
@@ -349,7 +356,12 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_SaveSettingsFailed"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_SaveSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
         finally
         {
@@ -375,7 +387,12 @@ else if (_config != null)
             }
             catch (Exception ex)
             {
-                Snackbar.Add(string.Format(L["Msg_ResetDatabaseFailed"], ex.Message), Severity.Error);
+                if (ErrorHelper.IsAuthenticationError(ex))
+                {
+                    Navigation.NavigateTo("/login", forceLoad: true);
+                    return;
+                }
+                Snackbar.Add(string.Format(L["Msg_ResetDatabaseFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
             }
         }
     }
@@ -406,7 +423,12 @@ else if (_config != null)
                 }
                 catch (Exception ex)
                 {
-                    Snackbar.Add(string.Format(L["Msg_FactoryResetFailed"], ex.Message), Severity.Error);
+                    if (ErrorHelper.IsAuthenticationError(ex))
+                    {
+                        Navigation.NavigateTo("/login", forceLoad: true);
+                        return;
+                    }
+                    Snackbar.Add(string.Format(L["Msg_FactoryResetFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
                 }
             }
         }

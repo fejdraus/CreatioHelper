@@ -4,6 +4,8 @@
 @inject ISnackbar Snackbar
 @inject IDialogService DialogService
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>@L["Devices_Title"] - CreatioHelper</PageTitle>
@@ -439,7 +441,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"{L["Msg_LoadFailed", ex.Message]}", Severity.Warning);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Msg_LoadFailed", ErrorHelper.GetUserFriendlyMessage(ex)]}", Severity.Warning);
         }
         finally
         {
@@ -494,7 +501,12 @@ else
         catch (Exception ex)
         {
             device.Paused = !device.Paused;
-            Snackbar.Add($"{L["Msg_TogglePauseFailed", ex.Message]}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Msg_TogglePauseFailed", ErrorHelper.GetUserFriendlyMessage(ex)]}", Severity.Error);
         }
     }
 
@@ -517,7 +529,12 @@ else
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
+                if (ErrorHelper.IsAuthenticationError(ex))
+                {
+                    Navigation.NavigateTo("/login", forceLoad: true);
+                    return;
+                }
+                Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
             }
         }
     }
@@ -533,7 +550,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
         }
     }
 
@@ -548,7 +570,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"{L["Common_Error"]}: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
         }
     }
 
@@ -624,9 +651,9 @@ else
     {
         if (!duration.HasValue) return "";
         var d = duration.Value;
-        if (d.TotalDays >= 1) return $"{(int)d.TotalDays}d {d.Hours}h";
-        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}h {d.Minutes}m";
-        return $"{(int)d.TotalMinutes}m";
+        if (d.TotalDays >= 1) return $"{(int)d.TotalDays}{L["Time_Days"]} {d.Hours}{L["Time_Hours"]}";
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}{L["Time_Hours"]} {d.Minutes}{L["Time_Minutes"]}";
+        return $"{(int)d.TotalMinutes}{L["Time_Minutes"]}";
     }
 
     private void ToggleDeviceExpand(string deviceId)
@@ -787,10 +814,10 @@ else
     private string FormatUptime(TimeSpan uptime)
     {
         if (uptime.TotalDays >= 1)
-            return $"{(int)uptime.TotalDays}d {uptime.Hours}h {uptime.Minutes}m";
+            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
         if (uptime.TotalHours >= 1)
-            return $"{(int)uptime.TotalHours}h {uptime.Minutes}m";
-        return $"{(int)uptime.TotalMinutes}m {uptime.Seconds}s";
+            return $"{(int)uptime.TotalHours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
+        return $"{(int)uptime.TotalMinutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
     }
 
     private (long files, long dirs, long bytes) GetTotalGlobalState()

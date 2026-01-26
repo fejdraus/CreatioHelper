@@ -1,5 +1,8 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <MudDialog Style="max-height: 90vh; min-width: 600px;">
     <TitleContent>
@@ -400,7 +403,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load ignores: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadIgnores", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -445,12 +453,12 @@
         {
             _patterns.Add(pattern);
             SyncTextFromPatterns();
-            Snackbar.Add($"Added pattern: {pattern}", Severity.Info);
+            Snackbar.Add(L["Msg_PatternAdded", pattern], Severity.Info);
             StateHasChanged();
         }
         else
         {
-            Snackbar.Add($"Pattern already exists: {pattern}", Severity.Warning);
+            Snackbar.Add(L["Msg_PatternExists", pattern], Severity.Warning);
         }
     }
 
@@ -461,7 +469,7 @@
             var removed = _patterns[index];
             _patterns.RemoveAt(index);
             SyncTextFromPatterns();
-            Snackbar.Add($"Removed pattern: {removed}", Severity.Info);
+            Snackbar.Add(L["Msg_PatternRemoved", removed], Severity.Info);
             StateHasChanged();
         }
     }
@@ -667,12 +675,17 @@
                     .ToArray();
 
             await ApiClient.SetIgnoresAsync(FolderId, lines);
-            Snackbar.Add("Ignore patterns saved", Severity.Success);
+            Snackbar.Add(L["Msg_IgnoresSaved"], Severity.Success);
             MudDialog.Close(DialogResult.Ok(true));
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to save ignores: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToSaveIgnores", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
