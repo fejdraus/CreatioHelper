@@ -1,6 +1,8 @@
 @page "/about"
 @inject IApiClient ApiClient
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <PageTitle>@L["About_Title"] - CreatioHelper</PageTitle>
 
@@ -10,7 +12,7 @@
             <MudIcon Icon="@Icons.Material.Filled.Sync" Size="Size.Large" Color="Color.Primary" />
             <MudText Typo="Typo.h4" Class="mt-2">CreatioHelper</MudText>
             <MudText Typo="Typo.body2" Color="Color.Secondary">
-                Syncthing-compatible file synchronization with Creatio management
+                @L["About_Subtitle"]
             </MudText>
         </div>
 
@@ -33,7 +35,7 @@
                         <td><MudText Typo="Typo.body2">@(_version ?? "Unknown")</MudText></td>
                     </tr>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Device ID</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_DeviceId"]</MudText></td>
                         <td>
                             <MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">
                                 @(_deviceId ?? "Unknown")
@@ -48,7 +50,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Uptime</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_Uptime"]</MudText></td>
                         <td><MudText Typo="Typo.body2">@FormatUptime(_uptime)</MudText></td>
                     </tr>
                     <tr>
@@ -60,7 +62,7 @@
                         <td><MudText Typo="Typo.body2">@(_arch ?? "Unknown")</MudText></td>
                     </tr>
                     <tr>
-                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">Memory Usage</MudText></td>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["About_MemoryUsage"]</MudText></td>
                         <td><MudText Typo="Typo.body2">@FormatBytes(_memoryUsage)</MudText></td>
                     </tr>
                 </tbody>
@@ -152,11 +154,21 @@
         }
         catch (HttpRequestException ex)
         {
-            _errorMessage = $"Failed to connect to the server: {ex.Message}";
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            _errorMessage = ErrorHelper.GetUserFriendlyMessage(ex);
         }
         catch (Exception ex)
         {
-            _errorMessage = $"Error loading system info: {ex.Message}";
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            _errorMessage = ErrorHelper.GetUserFriendlyMessage(ex);
         }
         finally
         {
@@ -173,16 +185,16 @@
         }
     }
 
-    private static string FormatUptime(int seconds)
+    private string FormatUptime(int seconds)
     {
         var ts = TimeSpan.FromSeconds(seconds);
         if (ts.TotalDays >= 1)
-            return $"{(int)ts.TotalDays}d {ts.Hours}h {ts.Minutes}m";
+            return $"{(int)ts.TotalDays}{L["Time_Days"]} {ts.Hours}{L["Time_Hours"]} {ts.Minutes}{L["Time_Minutes"]}";
         if (ts.TotalHours >= 1)
-            return $"{ts.Hours}h {ts.Minutes}m {ts.Seconds}s";
+            return $"{ts.Hours}{L["Time_Hours"]} {ts.Minutes}{L["Time_Minutes"]} {ts.Seconds}{L["Time_Seconds"]}";
         if (ts.TotalMinutes >= 1)
-            return $"{ts.Minutes}m {ts.Seconds}s";
-        return $"{ts.Seconds}s";
+            return $"{ts.Minutes}{L["Time_Minutes"]} {ts.Seconds}{L["Time_Seconds"]}";
+        return $"{ts.Seconds}{L["Time_Seconds"]}";
     }
 
     private static string FormatBytes(long bytes)

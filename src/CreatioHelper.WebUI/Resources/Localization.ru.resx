@@ -601,6 +601,12 @@
   <data name="Events_Resume" xml:space="preserve">
     <value>Продолжить</value>
   </data>
+  <data name="Events_AllFolders" xml:space="preserve">
+    <value>Все папки</value>
+  </data>
+  <data name="Events_AllDevices" xml:space="preserve">
+    <value>Все устройства</value>
+  </data>
 
   <!-- Diagnostics -->
   <data name="Diagnostics_Title" xml:space="preserve">
@@ -658,6 +664,9 @@
   <data name="Common_No" xml:space="preserve">
     <value>Нет</value>
   </data>
+  <data name="Common_Or" xml:space="preserve">
+    <value>или</value>
+  </data>
   <data name="Common_Enabled" xml:space="preserve">
     <value>Включено</value>
   </data>
@@ -703,6 +712,15 @@
   <data name="Common_Confirm" xml:space="preserve">
     <value>Подтвердить</value>
   </data>
+  <data name="Common_Folder" xml:space="preserve">
+    <value>Папка</value>
+  </data>
+  <data name="Common_Device" xml:space="preserve">
+    <value>Устройство</value>
+  </data>
+  <data name="Common_LoadMore" xml:space="preserve">
+    <value>Загрузить ещё</value>
+  </data>
   <data name="Common_ViewAll" xml:space="preserve">
     <value>Показать все</value>
   </data>
@@ -714,6 +732,73 @@
   </data>
   <data name="Common_Actions" xml:space="preserve">
     <value>Действия</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="Common_SaveChanges" xml:space="preserve">
+    <value>Сохранить изменения</value>
+  </data>
+  <data name="Common_ResetDefaults" xml:space="preserve">
+    <value>Сбросить по умолчанию</value>
+  </data>
+  <data name="Common_ResetToDefaults" xml:space="preserve">
+    <value>Сбросить по умолчанию</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+
+  <!-- Status Messages -->
+  <data name="Status_UpToDate" xml:space="preserve">
+    <value>Актуально</value>
+  </data>
+  <data name="Status_Syncing" xml:space="preserve">
+    <value>Синхронизация</value>
+  </data>
+  <data name="Status_Scanning" xml:space="preserve">
+    <value>Сканирование</value>
+  </data>
+  <data name="Status_Error" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="Status_Paused" xml:space="preserve">
+    <value>Приостановлено</value>
+  </data>
+  <data name="Status_Unknown" xml:space="preserve">
+    <value>Неизвестно</value>
+  </data>
+  <data name="Status_AllFoldersSynced" xml:space="preserve">
+    <value>Все папки синхронизированы</value>
+  </data>
+  <data name="Status_SyncingFiles" xml:space="preserve">
+    <value>Синхронизация файлов с удалёнными устройствами</value>
+  </data>
+  <data name="Status_ScanningFolders" xml:space="preserve">
+    <value>Сканирование локальных папок на наличие изменений</value>
+  </data>
+  <data name="Status_FoldersHaveErrors" xml:space="preserve">
+    <value>Одна или несколько папок содержат ошибки</value>
+  </data>
+  <data name="Status_SyncPaused" xml:space="preserve">
+    <value>Синхронизация приостановлена</value>
+  </data>
+  <data name="Status_StatusUnknown" xml:space="preserve">
+    <value>Статус неизвестен</value>
+  </data>
+
+  <!-- Time Format -->
+  <data name="Time_Days" xml:space="preserve">
+    <value>д</value>
+  </data>
+  <data name="Time_Hours" xml:space="preserve">
+    <value>ч</value>
+  </data>
+  <data name="Time_Minutes" xml:space="preserve">
+    <value>м</value>
+  </data>
+  <data name="Time_Seconds" xml:space="preserve">
+    <value>с</value>
   </data>
 
   <!-- Login -->
@@ -839,16 +924,6 @@
     <value>Вы уверены, что хотите удалить папку "{0}"?</value>
   </data>
 
-  <!-- Time Formats -->
-  <data name="Time_Days" xml:space="preserve">
-    <value>{0}д {1}ч</value>
-  </data>
-  <data name="Time_Hours" xml:space="preserve">
-    <value>{0}ч {1}м</value>
-  </data>
-  <data name="Time_Minutes" xml:space="preserve">
-    <value>{0}м {1}с</value>
-  </data>
   <data name="Time_JustNow" xml:space="preserve">
     <value>Только что</value>
   </data>
@@ -1226,8 +1301,20 @@
   <data name="About_Title" xml:space="preserve">
     <value>О программе</value>
   </data>
+  <data name="About_Subtitle" xml:space="preserve">
+    <value>Syncthing-совместимая синхронизация файлов с управлением Creatio</value>
+  </data>
   <data name="About_Version" xml:space="preserve">
     <value>Версия</value>
+  </data>
+  <data name="About_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="About_Uptime" xml:space="preserve">
+    <value>Время работы</value>
+  </data>
+  <data name="About_MemoryUsage" xml:space="preserve">
+    <value>Использование памяти</value>
   </data>
   <data name="About_BuildDate" xml:space="preserve">
     <value>Дата сборки</value>
@@ -1302,6 +1389,9 @@
   </data>
   <data name="Connections_GlobalDiscovery" xml:space="preserve">
     <value>Глобальное обнаружение</value>
+  </data>
+  <data name="Connections_Servers" xml:space="preserve">
+    <value>серверов</value>
   </data>
   <data name="Connections_NatType" xml:space="preserve">
     <value>Тип NAT</value>
@@ -1436,6 +1526,57 @@
   <data name="Statistics_BytesSent" xml:space="preserve">
     <value>Отправлено байт</value>
   </data>
+  <data name="Statistics_TotalFolders" xml:space="preserve">
+    <value>Всего папок</value>
+  </data>
+  <data name="Statistics_ConnectedDevices" xml:space="preserve">
+    <value>Подключённых устройств</value>
+  </data>
+  <data name="Statistics_TotalDownloaded" xml:space="preserve">
+    <value>Всего загружено</value>
+  </data>
+  <data name="Statistics_TotalUploaded" xml:space="preserve">
+    <value>Всего отправлено</value>
+  </data>
+  <data name="Statistics_CurrentDownloadRate" xml:space="preserve">
+    <value>Скорость загрузки</value>
+  </data>
+  <data name="Statistics_CurrentUploadRate" xml:space="preserve">
+    <value>Скорость отправки</value>
+  </data>
+  <data name="Statistics_FilesSynced" xml:space="preserve">
+    <value>Синхронизировано файлов</value>
+  </data>
+  <data name="Statistics_BytesSynced" xml:space="preserve">
+    <value>Синхронизировано данных</value>
+  </data>
+  <data name="Statistics_SyncPercent" xml:space="preserve">
+    <value>Sync %</value>
+  </data>
+  <data name="Statistics_Device" xml:space="preserve">
+    <value>Устройство</value>
+  </data>
+  <data name="Statistics_Status" xml:space="preserve">
+    <value>Статус</value>
+  </data>
+  <data name="Statistics_Connected" xml:space="preserve">
+    <value>Подключён</value>
+  </data>
+  <data name="Statistics_Disconnected" xml:space="preserve">
+    <value>Отключён</value>
+  </data>
+  <data name="Statistics_Never" xml:space="preserve">
+    <value>Никогда</value>
+  </data>
+  <data name="Statistics_Version" xml:space="preserve">
+    <value>Версия</value>
+  </data>
+  <data name="Statistics_Started" xml:space="preserve">
+    <value>Запущен</value>
+  </data>
+  <data name="Statistics_DatabaseSize" xml:space="preserve">
+    <value>Размер БД</value>
+  </data>
 
   <!-- Profiling Page -->
   <data name="Profiling_Title" xml:space="preserve">
@@ -1528,6 +1669,63 @@
   <data name="Profiling_ReloadConfigDesc" xml:space="preserve">
     <value>Перезагрузить конфигурацию с диска</value>
   </data>
+  <data name="Profiling_ResourceHistory" xml:space="preserve">
+    <value>История ресурсов</value>
+  </data>
+  <data name="Profiling_CollectingData" xml:space="preserve">
+    <value>Сбор данных...</value>
+  </data>
+  <data name="Profiling_HeapAllocated" xml:space="preserve">
+    <value>Выделено в куче</value>
+  </data>
+  <data name="Profiling_HeapObjects" xml:space="preserve">
+    <value>Объектов в куче</value>
+  </data>
+  <data name="Profiling_StackInUse" xml:space="preserve">
+    <value>Используется стека</value>
+  </data>
+  <data name="Profiling_GcPauseTotal" xml:space="preserve">
+    <value>Общая пауза GC</value>
+  </data>
+  <data name="Profiling_NetworkConnections" xml:space="preserve">
+    <value>Сетевых соединений</value>
+  </data>
+  <data name="Profiling_TotalRead" xml:space="preserve">
+    <value>Всего прочитано</value>
+  </data>
+  <data name="Profiling_TotalWritten" xml:space="preserve">
+    <value>Всего записано</value>
+  </data>
+  <data name="Profiling_ReadRate" xml:space="preserve">
+    <value>Скорость чтения</value>
+  </data>
+  <data name="Profiling_WriteRate" xml:space="preserve">
+    <value>Скорость записи</value>
+  </data>
+  <data name="Profiling_DownloadHeapDump" xml:space="preserve">
+    <value>Скачать дамп кучи</value>
+  </data>
+  <data name="Profiling_DownloadGoroutineDump" xml:space="preserve">
+    <value>Скачать дамп горутин</value>
+  </data>
+  <data name="Profiling_GcTriggered" xml:space="preserve">
+    <value>Сборка мусора запущена</value>
+  </data>
+  <data name="Profiling_GcFailed" xml:space="preserve">
+    <value>Ошибка запуска сборки мусора: {0}</value>
+  </data>
+  <data name="Profiling_HeapDumpDownloading" xml:space="preserve">
+    <value>Загрузка дампа кучи...</value>
+  </data>
+  <data name="Profiling_HeapDumpFailed" xml:space="preserve">
+    <value>Ошибка получения дампа кучи: {0}</value>
+  </data>
+  <data name="Profiling_GoroutineDumpDownloading" xml:space="preserve">
+    <value>Загрузка дампа горутин...</value>
+  </data>
+  <data name="Profiling_GoroutineDumpFailed" xml:space="preserve">
+    <value>Ошибка получения дампа горутин: {0}</value>
+  </data>
 
   <!-- Support Bundle Page -->
   <data name="SupportBundle_Title" xml:space="preserve">
@@ -1590,6 +1788,21 @@
   <data name="SupportBundle_Size" xml:space="preserve">
     <value>Размер: {0}</value>
   </data>
+  <data name="SupportBundle_FolderStatus" xml:space="preserve">
+    <value>Состояние папок</value>
+  </data>
+  <data name="SupportBundle_FolderStatusDesc" xml:space="preserve">
+    <value>Состояние синхронизации всех папок (пути скрыты)</value>
+  </data>
+  <data name="SupportBundle_DeviceStatus" xml:space="preserve">
+    <value>Состояние устройств</value>
+  </data>
+  <data name="SupportBundle_DeviceStatusDesc" xml:space="preserve">
+    <value>Состояние подключения всех устройств</value>
+  </data>
+  <data name="SupportBundle_Preview" xml:space="preserve">
+    <value>Предпросмотр</value>
+  </data>
 
   <!-- System Log Page -->
   <data name="SystemLog_Title" xml:space="preserve">
@@ -1636,6 +1849,45 @@
   </data>
   <data name="SystemLog_TailMode" xml:space="preserve">
     <value>Режим слежения</value>
+  </data>
+  <data name="SystemLog_LevelError" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="SystemLog_LevelWarning" xml:space="preserve">
+    <value>Предупреждение</value>
+  </data>
+  <data name="SystemLog_LevelInfo" xml:space="preserve">
+    <value>Инфо</value>
+  </data>
+  <data name="SystemLog_LevelDebug" xml:space="preserve">
+    <value>Отладка</value>
+  </data>
+  <data name="SystemLog_Facility" xml:space="preserve">
+    <value>Источник</value>
+  </data>
+  <data name="SystemLog_AllFacilities" xml:space="preserve">
+    <value>Все источники</value>
+  </data>
+  <data name="SystemLog_FacilitySync" xml:space="preserve">
+    <value>Синхронизация</value>
+  </data>
+  <data name="SystemLog_FacilityModel" xml:space="preserve">
+    <value>Модель</value>
+  </data>
+  <data name="SystemLog_FacilityScanner" xml:space="preserve">
+    <value>Сканер</value>
+  </data>
+  <data name="SystemLog_FacilityConnections" xml:space="preserve">
+    <value>Соединения</value>
+  </data>
+  <data name="SystemLog_FacilityDiscovery" xml:space="preserve">
+    <value>Обнаружение</value>
+  </data>
+  <data name="SystemLog_FacilityUpnp" xml:space="preserve">
+    <value>UPnP/NAT</value>
+  </data>
+  <data name="SystemLog_EntriesCount" xml:space="preserve">
+    <value>{0} из {1} записей</value>
   </data>
 
   <!-- Device Details Page -->
@@ -2096,6 +2348,63 @@
   <data name="Msg_ResetToDefaults" xml:space="preserve">
     <value>Настройки сброшены к значениям по умолчанию. Не забудьте сохранить изменения.</value>
   </data>
+  <data name="Msg_LoggedOut" xml:space="preserve">
+    <value>Вы вышли из системы</value>
+  </data>
+  <data name="Msg_FailedToConnectAgent" xml:space="preserve">
+    <value>Не удалось подключиться к агенту: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadData" xml:space="preserve">
+    <value>Не удалось загрузить данные: {0}</value>
+  </data>
+  <data name="Msg_LostConnectionToAgent" xml:space="preserve">
+    <value>Потеряно соединение с агентом</value>
+  </data>
+  <data name="Msg_ReconnectedToAgent" xml:space="preserve">
+    <value>Соединение с агентом восстановлено</value>
+  </data>
+  <data name="Msg_FailedToLoadIgnores" xml:space="preserve">
+    <value>Не удалось загрузить исключения: {0}</value>
+  </data>
+  <data name="Msg_PatternAdded" xml:space="preserve">
+    <value>Добавлен шаблон: {0}</value>
+  </data>
+  <data name="Msg_PatternExists" xml:space="preserve">
+    <value>Шаблон уже существует: {0}</value>
+  </data>
+  <data name="Msg_PatternRemoved" xml:space="preserve">
+    <value>Удалён шаблон: {0}</value>
+  </data>
+  <data name="Msg_IgnoresSaved" xml:space="preserve">
+    <value>Шаблоны исключений сохранены</value>
+  </data>
+  <data name="Msg_FailedToSaveIgnores" xml:space="preserve">
+    <value>Не удалось сохранить исключения: {0}</value>
+  </data>
+  <data name="Msg_FailedToRefreshConnections" xml:space="preserve">
+    <value>Не удалось обновить подключения: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadEvents" xml:space="preserve">
+    <value>Не удалось загрузить события: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadMoreEvents" xml:space="preserve">
+    <value>Не удалось загрузить больше событий: {0}</value>
+  </data>
+  <data name="Msg_FailedToRefreshStatistics" xml:space="preserve">
+    <value>Не удалось обновить статистику: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadLogs" xml:space="preserve">
+    <value>Не удалось загрузить логи: {0}</value>
+  </data>
+  <data name="Msg_FailedToDownloadLogs" xml:space="preserve">
+    <value>Не удалось скачать логи: {0}</value>
+  </data>
+  <data name="Msg_FailedToGeneratePreview" xml:space="preserve">
+    <value>Не удалось сгенерировать предпросмотр: {0}</value>
+  </data>
+  <data name="Msg_FailedToGenerateBundle" xml:space="preserve">
+    <value>Не удалось сгенерировать пакет поддержки: {0}</value>
+  </data>
   <data name="Folders_AutoNormalize" xml:space="preserve">
     <value>Автонормализация Unicode</value>
   </data>
@@ -2122,5 +2431,591 @@
   </data>
   <data name="Settings_Advanced_SyncDefaults" xml:space="preserve">
     <value>Настройки синхронизации по умолчанию</value>
+  </data>
+
+  <!-- Device Dialog -->
+  <data name="DeviceDialog_EditDevice" xml:space="preserve">
+    <value>Редактировать устройство</value>
+  </data>
+  <data name="DeviceDialog_AddDevice" xml:space="preserve">
+    <value>Добавить устройство</value>
+  </data>
+  <data name="DeviceDialog_TabGeneral" xml:space="preserve">
+    <value>Основные</value>
+  </data>
+  <data name="DeviceDialog_TabSharing" xml:space="preserve">
+    <value>Общий доступ</value>
+  </data>
+  <data name="DeviceDialog_TabAdvanced" xml:space="preserve">
+    <value>Дополнительно</value>
+  </data>
+  <data name="DeviceDialog_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdHelper" xml:space="preserve">
+    <value>ID удалённого устройства (например, XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX)</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdCannotChange" xml:space="preserve">
+    <value>ID устройства нельзя изменить</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdRequired" xml:space="preserve">
+    <value>Требуется ID устройства</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdTooShort" xml:space="preserve">
+    <value>ID устройства слишком короткий</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdInvalidChars" xml:space="preserve">
+    <value>ID устройства содержит недопустимые символы</value>
+  </data>
+  <data name="DeviceDialog_DeviceName" xml:space="preserve">
+    <value>Имя устройства</value>
+  </data>
+  <data name="DeviceDialog_DeviceNameHelper" xml:space="preserve">
+    <value>Понятное имя для этого устройства</value>
+  </data>
+  <data name="DeviceDialog_Addresses" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="DeviceDialog_AddressesHelper" xml:space="preserve">
+    <value>Адреса через запятую (например, tcp://192.168.1.100:22000, dynamic)</value>
+  </data>
+  <data name="DeviceDialog_SelectFolders" xml:space="preserve">
+    <value>Выберите папки для общего доступа с этим устройством:</value>
+  </data>
+  <data name="DeviceDialog_NoFoldersConfigured" xml:space="preserve">
+    <value>Папки не настроены. Сначала добавьте папки, чтобы предоставить к ним общий доступ.</value>
+  </data>
+  <data name="DeviceDialog_Compression" xml:space="preserve">
+    <value>Сжатие</value>
+  </data>
+  <data name="DeviceDialog_CompressionHelper" xml:space="preserve">
+    <value>Сжатие данных при передаче</value>
+  </data>
+  <data name="DeviceDialog_CompressionMetadata" xml:space="preserve">
+    <value>Только метаданные (рекомендуется)</value>
+  </data>
+  <data name="DeviceDialog_CompressionAlways" xml:space="preserve">
+    <value>Всегда</value>
+  </data>
+  <data name="DeviceDialog_CompressionNever" xml:space="preserve">
+    <value>Никогда</value>
+  </data>
+  <data name="DeviceDialog_Introducer" xml:space="preserve">
+    <value>Посредник</value>
+  </data>
+  <data name="DeviceDialog_IntroducerDesc" xml:space="preserve">
+    <value>Это устройство будет представлять нам другие устройства</value>
+  </data>
+  <data name="DeviceDialog_SkipIntroductionRemovals" xml:space="preserve">
+    <value>Не удалять представленные устройства</value>
+  </data>
+  <data name="DeviceDialog_SkipIntroductionRemovalsDesc" xml:space="preserve">
+    <value>Не удалять устройства, представленные этим устройством</value>
+  </data>
+  <data name="DeviceDialog_AutoAcceptFolders" xml:space="preserve">
+    <value>Автоприём папок</value>
+  </data>
+  <data name="DeviceDialog_AutoAcceptFoldersDesc" xml:space="preserve">
+    <value>Автоматически принимать запросы на общий доступ к папкам от этого устройства</value>
+  </data>
+  <data name="DeviceDialog_AllowedNetworks" xml:space="preserve">
+    <value>Разрешённые сети</value>
+  </data>
+  <data name="DeviceDialog_AllowedNetworksHelper" xml:space="preserve">
+    <value>Сети через запятую (пусто = все сети разрешены)</value>
+  </data>
+  <data name="DeviceDialog_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="DeviceDialog_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="DeviceDialog_DeviceSaved" xml:space="preserve">
+    <value>Устройство «{0}» сохранено</value>
+  </data>
+  <data name="DeviceDialog_DeviceAdded" xml:space="preserve">
+    <value>Устройство «{0}» добавлено</value>
+  </data>
+  <data name="DeviceDialog_FailedToSave" xml:space="preserve">
+    <value>Не удалось сохранить устройство: {0}</value>
+  </data>
+  <data name="DeviceDialog_FailedToAdd" xml:space="preserve">
+    <value>Не удалось добавить устройство: {0}</value>
+  </data>
+  <data name="DeviceDialog_FailedToUpdateFolder" xml:space="preserve">
+    <value>Не удалось обновить папку «{0}»: {1}</value>
+  </data>
+
+  <!-- Add Folder Dialog -->
+  <data name="FolderDialog_EditFolder" xml:space="preserve">
+    <value>Редактировать папку</value>
+  </data>
+  <data name="FolderDialog_AddFolder" xml:space="preserve">
+    <value>Добавить папку</value>
+  </data>
+  <data name="FolderDialog_TabGeneral" xml:space="preserve">
+    <value>Основные</value>
+  </data>
+  <data name="FolderDialog_TabSharing" xml:space="preserve">
+    <value>Общий доступ</value>
+  </data>
+  <data name="FolderDialog_TabVersioning" xml:space="preserve">
+    <value>Версионирование</value>
+  </data>
+  <data name="FolderDialog_TabAdvanced" xml:space="preserve">
+    <value>Дополнительно</value>
+  </data>
+  <data name="FolderDialog_FolderId" xml:space="preserve">
+    <value>ID папки</value>
+  </data>
+  <data name="FolderDialog_FolderIdHint" xml:space="preserve">
+    <value>Автогенерируемый уникальный ID. Должен совпадать на всех устройствах.</value>
+  </data>
+  <data name="FolderDialog_FolderIdHintEdit" xml:space="preserve">
+    <value>ID папки нельзя изменить</value>
+  </data>
+  <data name="FolderDialog_FolderIdRequired" xml:space="preserve">
+    <value>Требуется ID папки</value>
+  </data>
+  <data name="FolderDialog_FolderIdNoSpaces" xml:space="preserve">
+    <value>ID папки не может содержать пробелы</value>
+  </data>
+  <data name="FolderDialog_FolderIdInvalidChars" xml:space="preserve">
+    <value>ID папки может содержать только буквы, цифры, подчёркивания, дефисы и точки</value>
+  </data>
+  <data name="FolderDialog_FolderLabel" xml:space="preserve">
+    <value>Метка папки</value>
+  </data>
+  <data name="FolderDialog_FolderLabelHint" xml:space="preserve">
+    <value>Необязательное описательное имя (может отличаться на разных устройствах)</value>
+  </data>
+  <data name="FolderDialog_FolderPath" xml:space="preserve">
+    <value>Путь к папке</value>
+  </data>
+  <data name="FolderDialog_FolderPathHint" xml:space="preserve">
+    <value>Путь к папке на локальном диске</value>
+  </data>
+  <data name="FolderDialog_FolderPathRequired" xml:space="preserve">
+    <value>Требуется путь к папке</value>
+  </data>
+  <data name="FolderDialog_SelectDevices" xml:space="preserve">
+    <value>Выберите устройства для общего доступа к этой папке:</value>
+  </data>
+  <data name="FolderDialog_NoDevices" xml:space="preserve">
+    <value>Удалённые устройства не настроены. Сначала добавьте устройства для общего доступа к папкам.</value>
+  </data>
+  <data name="FolderDialog_VersioningType" xml:space="preserve">
+    <value>Тип версионирования</value>
+  </data>
+  <data name="FolderDialog_VersioningTypeHint" xml:space="preserve">
+    <value>Как обрабатывать заменённые/удалённые файлы</value>
+  </data>
+  <data name="FolderDialog_VersioningNone" xml:space="preserve">
+    <value>Без версионирования</value>
+  </data>
+  <data name="FolderDialog_VersioningTrashcan" xml:space="preserve">
+    <value>Корзина</value>
+  </data>
+  <data name="FolderDialog_VersioningSimple" xml:space="preserve">
+    <value>Простое версионирование</value>
+  </data>
+  <data name="FolderDialog_VersioningStaggered" xml:space="preserve">
+    <value>Ступенчатое версионирование</value>
+  </data>
+  <data name="FolderDialog_VersioningExternal" xml:space="preserve">
+    <value>Внешнее версионирование</value>
+  </data>
+  <data name="FolderDialog_VersionsPath" xml:space="preserve">
+    <value>Путь к версиям</value>
+  </data>
+  <data name="FolderDialog_VersionsPathHint" xml:space="preserve">
+    <value>Где хранить версии (пусто = .stversions в папке)</value>
+  </data>
+  <data name="FolderDialog_CleanupInterval" xml:space="preserve">
+    <value>Интервал очистки (секунды)</value>
+  </data>
+  <data name="FolderDialog_CleanupIntervalHint" xml:space="preserve">
+    <value>Как часто очищать старые версии (0 = отключено)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfter" xml:space="preserve">
+    <value>Очищать через (дни)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfterHint" xml:space="preserve">
+    <value>Дней хранения файлов в корзине (0 = бессрочно)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfterHintSimple" xml:space="preserve">
+    <value>Дней хранения версий (0 = бессрочно)</value>
+  </data>
+  <data name="FolderDialog_KeepVersions" xml:space="preserve">
+    <value>Хранить версий</value>
+  </data>
+  <data name="FolderDialog_KeepVersionsHint" xml:space="preserve">
+    <value>Количество старых версий для каждого файла</value>
+  </data>
+  <data name="FolderDialog_MaxAge" xml:space="preserve">
+    <value>Максимальный возраст (дни)</value>
+  </data>
+  <data name="FolderDialog_MaxAgeHint" xml:space="preserve">
+    <value>Максимальное время хранения версии</value>
+  </data>
+  <data name="FolderDialog_Command" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderDialog_CommandHint" xml:space="preserve">
+    <value>Внешняя команда для версионирования</value>
+  </data>
+  <data name="FolderDialog_FolderType" xml:space="preserve">
+    <value>Тип папки</value>
+  </data>
+  <data name="FolderDialog_FolderTypeHint" xml:space="preserve">
+    <value>Как эта папка синхронизируется</value>
+  </data>
+  <data name="FolderDialog_TypeSendReceive" xml:space="preserve">
+    <value>Отправка и получение</value>
+  </data>
+  <data name="FolderDialog_TypeSendOnly" xml:space="preserve">
+    <value>Только отправка</value>
+  </data>
+  <data name="FolderDialog_TypeReceiveOnly" xml:space="preserve">
+    <value>Только получение</value>
+  </data>
+  <data name="FolderDialog_TypeReceiveEncrypted" xml:space="preserve">
+    <value>Получение зашифрованных</value>
+  </data>
+  <data name="FolderDialog_PullOrder" xml:space="preserve">
+    <value>Порядок загрузки файлов</value>
+  </data>
+  <data name="FolderDialog_PullOrderHint" xml:space="preserve">
+    <value>Порядок загрузки файлов</value>
+  </data>
+  <data name="FolderDialog_OrderRandom" xml:space="preserve">
+    <value>Случайный</value>
+  </data>
+  <data name="FolderDialog_OrderAlphabetic" xml:space="preserve">
+    <value>По алфавиту</value>
+  </data>
+  <data name="FolderDialog_OrderSmallestFirst" xml:space="preserve">
+    <value>Сначала маленькие</value>
+  </data>
+  <data name="FolderDialog_OrderLargestFirst" xml:space="preserve">
+    <value>Сначала большие</value>
+  </data>
+  <data name="FolderDialog_OrderOldestFirst" xml:space="preserve">
+    <value>Сначала старые</value>
+  </data>
+  <data name="FolderDialog_OrderNewestFirst" xml:space="preserve">
+    <value>Сначала новые</value>
+  </data>
+  <data name="FolderDialog_Scanning" xml:space="preserve">
+    <value>Сканирование</value>
+  </data>
+  <data name="FolderDialog_WatchForChanges" xml:space="preserve">
+    <value>Отслеживать изменения</value>
+  </data>
+  <data name="FolderDialog_WatchForChangesHint" xml:space="preserve">
+    <value>Использовать уведомления файловой системы для обнаружения изменений</value>
+  </data>
+  <data name="FolderDialog_FsWatcherDelay" xml:space="preserve">
+    <value>Задержка отслеживания (секунды)</value>
+  </data>
+  <data name="FolderDialog_FsWatcherDelayHint" xml:space="preserve">
+    <value>Задержка перед реакцией на изменения</value>
+  </data>
+  <data name="FolderDialog_RescanInterval" xml:space="preserve">
+    <value>Интервал полного сканирования (секунды)</value>
+  </data>
+  <data name="FolderDialog_RescanIntervalHint" xml:space="preserve">
+    <value>Периодическое полное сканирование папки (0 = отключено)</value>
+  </data>
+  <data name="FolderDialog_DiskPermissions" xml:space="preserve">
+    <value>Дисковое пространство и права</value>
+  </data>
+  <data name="FolderDialog_MinDiskFree" xml:space="preserve">
+    <value>Минимум свободного места</value>
+  </data>
+  <data name="FolderDialog_Unit" xml:space="preserve">
+    <value>Единица</value>
+  </data>
+  <data name="FolderDialog_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права</value>
+  </data>
+  <data name="FolderDialog_IgnoreDeletes" xml:space="preserve">
+    <value>Игнорировать удаления</value>
+  </data>
+  <data name="FolderDialog_IgnoreDeletesHint" xml:space="preserve">
+    <value>Не удалять файлы, удалённые на других устройствах</value>
+  </data>
+  <data name="FolderDialog_OtherOptions" xml:space="preserve">
+    <value>Другие параметры</value>
+  </data>
+  <data name="FolderDialog_AutoNormalize" xml:space="preserve">
+    <value>Автонормализация</value>
+  </data>
+  <data name="FolderDialog_AutoNormalizeHint" xml:space="preserve">
+    <value>Автоматически нормализовать кодировку имён файлов</value>
+  </data>
+  <data name="FolderDialog_MaxConflicts" xml:space="preserve">
+    <value>Макс. конфликтов</value>
+  </data>
+  <data name="FolderDialog_MaxConflictsHint" xml:space="preserve">
+    <value>Максимум конфликтующих файлов (-1 = без ограничений)</value>
+  </data>
+  <data name="FolderDialog_MaxConcurrentWrites" xml:space="preserve">
+    <value>Макс. параллельных записей</value>
+  </data>
+  <data name="FolderDialog_MaxConcurrentWritesHint" xml:space="preserve">
+    <value>Максимум параллельных операций записи файлов</value>
+  </data>
+  <data name="FolderDialog_CaseSensitiveFS" xml:space="preserve">
+    <value>Регистрозависимая ФС</value>
+  </data>
+  <data name="FolderDialog_JunctionsAsDirs" xml:space="preserve">
+    <value>Связи как папки</value>
+  </data>
+  <data name="FolderDialog_JunctionsAsDirsHint" xml:space="preserve">
+    <value>Обрабатывать связи/точки повторной обработки как папки (Windows)</value>
+  </data>
+  <data name="FolderDialog_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="FolderDialog_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="FolderDialog_AddFolderButton" xml:space="preserve">
+    <value>Добавить папку</value>
+  </data>
+  <data name="FolderDialog_SavedMessage" xml:space="preserve">
+    <value>Папка «{0}» сохранена</value>
+  </data>
+  <data name="FolderDialog_AddedMessage" xml:space="preserve">
+    <value>Папка «{0}» добавлена</value>
+  </data>
+  <data name="FolderDialog_ActionSave" xml:space="preserve">
+    <value>сохранить</value>
+  </data>
+  <data name="FolderDialog_ActionAdd" xml:space="preserve">
+    <value>добавить</value>
+  </data>
+  <data name="FolderDialog_ErrorMessage" xml:space="preserve">
+    <value>Не удалось {0} папку: {1}</value>
+  </data>
+
+  <!-- System Status Card -->
+  <data name="SystemStatus_SystemMemory" xml:space="preserve">
+    <value>Системная память</value>
+  </data>
+  <data name="SystemStatus_Goroutines" xml:space="preserve">
+    <value>Горутины</value>
+  </data>
+  <data name="SystemStatus_UnableToRetrieve" xml:space="preserve">
+    <value>Не удалось получить статус системы</value>
+  </data>
+
+  <!-- Sync Progress -->
+  <data name="SyncProgress_Syncing" xml:space="preserve">
+    <value>Синхронизация...</value>
+  </data>
+  <data name="SyncProgress_Scanning" xml:space="preserve">
+    <value>Сканирование...</value>
+  </data>
+  <data name="SyncProgress_Preparing" xml:space="preserve">
+    <value>Подготовка...</value>
+  </data>
+  <data name="SyncProgress_Waiting" xml:space="preserve">
+    <value>Ожидание...</value>
+  </data>
+  <data name="SyncProgress_Cleaning" xml:space="preserve">
+    <value>Очистка...</value>
+  </data>
+  <data name="SyncProgress_CleanWaiting" xml:space="preserve">
+    <value>Ожидание очистки...</value>
+  </data>
+  <data name="SyncProgress_Files" xml:space="preserve">
+    <value>файлов</value>
+  </data>
+  <data name="SyncProgress_FilesSyncing" xml:space="preserve">
+    <value>{0} файлов синхронизируется</value>
+  </data>
+  <data name="SyncProgress_FilesScanned" xml:space="preserve">
+    <value>{0} файлов просканировано</value>
+  </data>
+
+  <!-- Event Types - Filter dropdown -->
+  <data name="EventType_StateChanged" xml:space="preserve">
+    <value>Изменение состояния</value>
+  </data>
+  <data name="EventType_ItemStarted" xml:space="preserve">
+    <value>Начало синхронизации</value>
+  </data>
+  <data name="EventType_ItemFinished" xml:space="preserve">
+    <value>Завершение синхронизации</value>
+  </data>
+  <data name="EventType_FolderCompletion" xml:space="preserve">
+    <value>Завершение папки</value>
+  </data>
+  <data name="EventType_DeviceConnected" xml:space="preserve">
+    <value>Устройство подключено</value>
+  </data>
+  <data name="EventType_DeviceDisconnected" xml:space="preserve">
+    <value>Устройство отключено</value>
+  </data>
+  <data name="EventType_FolderErrors" xml:space="preserve">
+    <value>Ошибки папки</value>
+  </data>
+
+  <!-- Event Types - Short display in table -->
+  <data name="EventType_State" xml:space="preserve">
+    <value>Состояние</value>
+  </data>
+  <data name="EventType_Started" xml:space="preserve">
+    <value>Начато</value>
+  </data>
+  <data name="EventType_Finished" xml:space="preserve">
+    <value>Завершено</value>
+  </data>
+  <data name="EventType_Complete" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="EventType_Connected" xml:space="preserve">
+    <value>Подключено</value>
+  </data>
+  <data name="EventType_Disconnected" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="EventType_Error" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="EventType_Unknown" xml:space="preserve">
+    <value>Неизвестно</value>
+  </data>
+  <data name="EventType_Starting" xml:space="preserve">
+    <value>Запуск</value>
+  </data>
+  <data name="EventType_StartupComplete" xml:space="preserve">
+    <value>Запущено</value>
+  </data>
+  <data name="EventType_WatchState" xml:space="preserve">
+    <value>Монитор</value>
+  </data>
+  <data name="EventType_ConfigSaved" xml:space="preserve">
+    <value>Конфиг</value>
+  </data>
+  <data name="EventType_Paused" xml:space="preserve">
+    <value>Пауза</value>
+  </data>
+  <data name="EventType_Resumed" xml:space="preserve">
+    <value>Возобновлено</value>
+  </data>
+  <data name="EventType_LocalChange" xml:space="preserve">
+    <value>Локальное</value>
+  </data>
+  <data name="EventType_RemoteChange" xml:space="preserve">
+    <value>Удалённое</value>
+  </data>
+  <data name="EventType_Downloading" xml:space="preserve">
+    <value>Загрузка</value>
+  </data>
+  <data name="EventType_Scanning" xml:space="preserve">
+    <value>Сканирование</value>
+  </data>
+
+  <!-- Event Descriptions -->
+  <data name="EventDesc_FolderCompletion" xml:space="preserve">
+    <value>Папка '{0}' синхронизирована с устройством '{1}'</value>
+  </data>
+  <data name="EventDesc_ItemFinished" xml:space="preserve">
+    <value>Файл '{0}' синхронизирован в '{1}'</value>
+  </data>
+  <data name="EventDesc_ItemStarted" xml:space="preserve">
+    <value>Начата синхронизация '{0}' в '{1}'</value>
+  </data>
+  <data name="EventDesc_DeviceConnected" xml:space="preserve">
+    <value>Устройство '{0}' подключено</value>
+  </data>
+  <data name="EventDesc_DeviceDisconnected" xml:space="preserve">
+    <value>Устройство '{0}' отключено</value>
+  </data>
+  <data name="EventDesc_FolderErrors" xml:space="preserve">
+    <value>Ошибка в папке '{0}': {1}</value>
+  </data>
+  <data name="EventDesc_StateChanged" xml:space="preserve">
+    <value>Состояние изменено: {0} → {1}</value>
+  </data>
+  <data name="EventDesc_Starting" xml:space="preserve">
+    <value>Агент запускается...</value>
+  </data>
+  <data name="EventDesc_StartupComplete" xml:space="preserve">
+    <value>Агент запущен, готов к синхронизации</value>
+  </data>
+  <data name="EventDesc_WatchStateChanged" xml:space="preserve">
+    <value>Состояние монитора файлов изменилось для '{0}'</value>
+  </data>
+  <data name="EventDesc_DevicePaused" xml:space="preserve">
+    <value>Устройство '{0}' приостановлено</value>
+  </data>
+  <data name="EventDesc_DeviceResumed" xml:space="preserve">
+    <value>Устройство '{0}' возобновлено</value>
+  </data>
+  <data name="EventDesc_FolderPaused" xml:space="preserve">
+    <value>Папка '{0}' приостановлена</value>
+  </data>
+  <data name="EventDesc_FolderResumed" xml:space="preserve">
+    <value>Папка '{0}' возобновлена</value>
+  </data>
+  <data name="EventDesc_LocalChange" xml:space="preserve">
+    <value>Локальное изменение: {0}</value>
+  </data>
+  <data name="EventDesc_RemoteChange" xml:space="preserve">
+    <value>Удалённое изменение от '{1}': {0}</value>
+  </data>
+  <data name="EventDesc_ConfigSaved" xml:space="preserve">
+    <value>Конфигурация сохранена</value>
+  </data>
+  <data name="EventDesc_UnknownEvent" xml:space="preserve">
+    <value>Неизвестное событие</value>
+  </data>
+
+  <!-- Error Messages -->
+  <data name="Error_Http401" xml:space="preserve">
+    <value>Требуется авторизация. Проверьте учётные данные.</value>
+  </data>
+  <data name="Error_Http403" xml:space="preserve">
+    <value>Доступ запрещён. У вас нет прав для доступа к этому ресурсу.</value>
+  </data>
+  <data name="Error_Http404" xml:space="preserve">
+    <value>Ресурс не найден.</value>
+  </data>
+  <data name="Error_Http500" xml:space="preserve">
+    <value>Ошибка сервера. Попробуйте позже.</value>
+  </data>
+  <data name="Error_Http502" xml:space="preserve">
+    <value>Сервер временно недоступен.</value>
+  </data>
+  <data name="Error_Http503" xml:space="preserve">
+    <value>Сервис временно недоступен. Попробуйте позже.</value>
+  </data>
+  <data name="Error_HttpGeneric" xml:space="preserve">
+    <value>Сервер вернул код ошибки {0}.</value>
+  </data>
+  <data name="Error_Timeout" xml:space="preserve">
+    <value>Время ожидания истекло. Проверьте соединение и попробуйте снова.</value>
+  </data>
+  <data name="Error_Cancelled" xml:space="preserve">
+    <value>Операция отменена.</value>
+  </data>
+  <data name="Error_ConnectionFailed" xml:space="preserve">
+    <value>Не удалось подключиться к серверу. Проверьте, запущен ли агент.</value>
+  </data>
+  <data name="Error_NetworkUnreachable" xml:space="preserve">
+    <value>Сеть недоступна. Проверьте подключение к интернету.</value>
+  </data>
+  <data name="Error_HostNotFound" xml:space="preserve">
+    <value>Не удалось определить адрес сервера. Проверьте адрес.</value>
+  </data>
+  <data name="Error_SslError" xml:space="preserve">
+    <value>Ошибка безопасного соединения. Проверьте настройки сертификата.</value>
+  </data>
+  <data name="Error_Unknown" xml:space="preserve">
+    <value>Произошла непредвиденная ошибка. Попробуйте снова.</value>
   </data>
 </root>

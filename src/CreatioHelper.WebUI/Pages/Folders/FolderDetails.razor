@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
 
 <PageTitle>@(_folder?.DisplayName ?? L["FolderDetails_Title"]) - CreatioHelper</PageTitle>
 
@@ -203,7 +204,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_FailedToLoadFolder"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_FailedToLoadFolder"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
         finally
         {
@@ -226,7 +232,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_FailedToStartScan"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_FailedToStartScan"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
     }
 

@@ -1,24 +1,27 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject StateContainer State
+@inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <MudDialog Style="max-height: 90vh;">
     <TitleContent>
         <MudText Typo="Typo.h6">
             <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.DevicesOther)" Class="mr-2" />
-            @(IsEditMode ? "Edit Device" : "Add Device")
+            @(IsEditMode ? L["DeviceDialog_EditDevice"] : L["DeviceDialog_AddDevice"])
         </MudText>
     </TitleContent>
     <DialogContent>
         <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
             @* ===== GENERAL TAB ===== *@
-            <MudTabPanel Text="General" Icon="@Icons.Material.Filled.Info">
+            <MudTabPanel Text="@L["DeviceDialog_TabGeneral"]" Icon="@Icons.Material.Filled.Info">
                 <MudForm @ref="_form" @bind-IsValid="@_isValid">
                     <MudTextField @bind-Value="_deviceId"
-                                  Label="Device ID"
-                                  HelperText="@(IsEditMode ? "Device ID cannot be changed" : "The device ID of the remote device (e.g., XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX)")"
+                                  Label="@L["DeviceDialog_DeviceId"]"
+                                  HelperText="@(IsEditMode ? L["DeviceDialog_DeviceIdCannotChange"] : L["DeviceDialog_DeviceIdHelper"])"
                                   Required="true"
-                                  RequiredError="Device ID is required"
+                                  RequiredError="@L["DeviceDialog_DeviceIdRequired"]"
                                   Immediate="true"
                                   ReadOnly="@IsEditMode"
                                   Validation="@(new Func<string, string?>(ValidateDeviceId))"
@@ -26,28 +29,28 @@
                                   Style="font-family: monospace;" />
 
                     <MudTextField @bind-Value="_name"
-                                  Label="Device Name"
-                                  HelperText="A friendly name for this device"
+                                  Label="@L["DeviceDialog_DeviceName"]"
+                                  HelperText="@L["DeviceDialog_DeviceNameHelper"]"
                                   Class="mb-4" />
 
                     <MudTextField @bind-Value="_addressesText"
-                                  Label="Addresses"
-                                  HelperText="Comma-separated addresses (e.g., tcp://192.168.1.100:22000, dynamic)"
+                                  Label="@L["DeviceDialog_Addresses"]"
+                                  HelperText="@L["DeviceDialog_AddressesHelper"]"
                                   Placeholder="dynamic"
                                   Class="mb-4" />
                 </MudForm>
             </MudTabPanel>
 
             @* ===== SHARING TAB ===== *@
-            <MudTabPanel Text="Sharing" Icon="@Icons.Material.Filled.Folder">
+            <MudTabPanel Text="@L["DeviceDialog_TabSharing"]" Icon="@Icons.Material.Filled.Folder">
                 <MudText Typo="Typo.body2" Class="mb-4">
-                    Select folders to share with this device:
+                    @L["DeviceDialog_SelectFolders"]
                 </MudText>
 
                 @if (State.Folders.Length == 0)
                 {
                     <MudAlert Severity="Severity.Info">
-                        No folders configured. Add folders first to share them with devices.
+                        @L["DeviceDialog_NoFoldersConfigured"]
                     </MudAlert>
                 }
                 else
@@ -68,59 +71,59 @@
             </MudTabPanel>
 
             @* ===== ADVANCED TAB ===== *@
-            <MudTabPanel Text="Advanced" Icon="@Icons.Material.Filled.Settings">
+            <MudTabPanel Text="@L["DeviceDialog_TabAdvanced"]" Icon="@Icons.Material.Filled.Settings">
                 <MudSelect @bind-Value="_compression"
-                           Label="Compression"
-                           HelperText="Data compression for transfers"
+                           Label="@L["DeviceDialog_Compression"]"
+                           HelperText="@L["DeviceDialog_CompressionHelper"]"
                            Class="mb-4">
-                    <MudSelectItem Value="@("metadata")">Metadata Only (Recommended)</MudSelectItem>
-                    <MudSelectItem Value="@("always")">Always</MudSelectItem>
-                    <MudSelectItem Value="@("never")">Never</MudSelectItem>
+                    <MudSelectItem Value="@("metadata")">@L["DeviceDialog_CompressionMetadata"]</MudSelectItem>
+                    <MudSelectItem Value="@("always")">@L["DeviceDialog_CompressionAlways"]</MudSelectItem>
+                    <MudSelectItem Value="@("never")">@L["DeviceDialog_CompressionNever"]</MudSelectItem>
                 </MudSelect>
 
                 <MudDivider Class="my-4" />
 
                 <MudSwitch @bind-Value="_introducer"
-                           Label="Introducer"
+                           Label="@L["DeviceDialog_Introducer"]"
                            Color="Color.Primary"
                            Class="mb-2" />
                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
-                    This device will introduce other devices to us
+                    @L["DeviceDialog_IntroducerDesc"]
                 </MudText>
 
                 @if (_introducer)
                 {
                     <MudSwitch @bind-Value="_skipIntroductionRemovals"
-                               Label="Skip Introduction Removals"
+                               Label="@L["DeviceDialog_SkipIntroductionRemovals"]"
                                Color="Color.Primary"
                                Class="mb-2" />
                     <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
-                        Don't remove devices introduced by this device
+                        @L["DeviceDialog_SkipIntroductionRemovalsDesc"]
                     </MudText>
                 }
 
                 <MudDivider Class="my-4" />
 
                 <MudSwitch @bind-Value="_autoAcceptFolders"
-                           Label="Auto Accept Folders"
+                           Label="@L["DeviceDialog_AutoAcceptFolders"]"
                            Color="Color.Primary"
                            Class="mb-2" />
                 <MudText Typo="Typo.caption" Color="Color.Secondary" Class="mb-4">
-                    Automatically accept folder share requests from this device
+                    @L["DeviceDialog_AutoAcceptFoldersDesc"]
                 </MudText>
 
                 <MudDivider Class="my-4" />
 
                 <MudTextField @bind-Value="_allowedNetworksText"
-                              Label="Allowed Networks"
-                              HelperText="Comma-separated networks (empty = all networks allowed)"
+                              Label="@L["DeviceDialog_AllowedNetworks"]"
+                              HelperText="@L["DeviceDialog_AllowedNetworksHelper"]"
                               Placeholder="192.168.0.0/16, 10.0.0.0/8"
                               Class="mb-4" />
             </MudTabPanel>
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Cancel">@L["DeviceDialog_Cancel"]</MudButton>
         <MudButton Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="Submit"
@@ -129,7 +132,7 @@
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            @(IsEditMode ? "Save" : "Add Device")
+            @(IsEditMode ? L["DeviceDialog_Save"] : L["DeviceDialog_AddDevice"])
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -190,16 +193,16 @@
     private string? ValidateDeviceId(string value)
     {
         if (string.IsNullOrWhiteSpace(value))
-            return "Device ID is required";
+            return L["DeviceDialog_DeviceIdRequired"];
 
         // Basic validation - should be like XXXXXXX-XXXXXXX-... format
         var trimmed = value.Trim().ToUpperInvariant();
         if (trimmed.Length < 7)
-            return "Device ID is too short";
+            return L["DeviceDialog_DeviceIdTooShort"];
 
         // Check for valid characters (A-Z, 0-9, -)
         if (!System.Text.RegularExpressions.Regex.IsMatch(trimmed, @"^[A-Z0-9\-]+$"))
-            return "Device ID contains invalid characters";
+            return L["DeviceDialog_DeviceIdInvalidChars"];
 
         return null;
     }
@@ -252,12 +255,12 @@
             if (IsEditMode)
             {
                 await ApiClient.UpdateDeviceAsync(device);
-                Snackbar.Add($"Device '{device.DisplayName}' saved", Severity.Success);
+                Snackbar.Add(string.Format(L["DeviceDialog_DeviceSaved"], device.DisplayName), Severity.Success);
             }
             else
             {
                 await ApiClient.AddDeviceAsync(device);
-                Snackbar.Add($"Device '{device.DisplayName}' added", Severity.Success);
+                Snackbar.Add(string.Format(L["DeviceDialog_DeviceAdded"], device.DisplayName), Severity.Success);
             }
 
             // Update folder sharing
@@ -267,7 +270,15 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to {(IsEditMode ? "save" : "add")} device: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            var errorMsg = IsEditMode
+                ? string.Format(L["DeviceDialog_FailedToSave"], ErrorHelper.GetUserFriendlyMessage(ex))
+                : string.Format(L["DeviceDialog_FailedToAdd"], ErrorHelper.GetUserFriendlyMessage(ex));
+            Snackbar.Add(errorMsg, Severity.Error);
         }
         finally
         {
@@ -304,7 +315,12 @@
                 }
                 catch (Exception ex)
                 {
-                    Snackbar.Add($"Failed to update folder '{folder.DisplayName}': {ex.Message}", Severity.Warning);
+                    if (ErrorHelper.IsAuthenticationError(ex))
+                    {
+                        Navigation.NavigateTo("/login", forceLoad: true);
+                        return;
+                    }
+                    Snackbar.Add(string.Format(L["DeviceDialog_FailedToUpdateFolder"], folder.DisplayName, ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Warning);
                 }
             }
         }

@@ -4,6 +4,7 @@
 @inject ISnackbar Snackbar
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
 @implements IDisposable
 
 <PageTitle>@L["Events_Title"] - CreatioHelper</PageTitle>
@@ -25,23 +26,23 @@
                        Variant="Variant.Outlined"
                        Dense="true">
                 <MudSelectItem Value="@("all")">@L["Events_AllTypes"]</MudSelectItem>
-                <MudSelectItem Value="@("StateChanged")">State Changed</MudSelectItem>
-                <MudSelectItem Value="@("ItemStarted")">Item Started</MudSelectItem>
-                <MudSelectItem Value="@("ItemFinished")">Item Finished</MudSelectItem>
-                <MudSelectItem Value="@("FolderCompletion")">Folder Completion</MudSelectItem>
-                <MudSelectItem Value="@("DeviceConnected")">Device Connected</MudSelectItem>
-                <MudSelectItem Value="@("DeviceDisconnected")">Device Disconnected</MudSelectItem>
-                <MudSelectItem Value="@("FolderErrors")">Folder Errors</MudSelectItem>
+                <MudSelectItem Value="@("StateChanged")">@L["EventType_StateChanged"]</MudSelectItem>
+                <MudSelectItem Value="@("ItemStarted")">@L["EventType_ItemStarted"]</MudSelectItem>
+                <MudSelectItem Value="@("ItemFinished")">@L["EventType_ItemFinished"]</MudSelectItem>
+                <MudSelectItem Value="@("FolderCompletion")">@L["EventType_FolderCompletion"]</MudSelectItem>
+                <MudSelectItem Value="@("DeviceConnected")">@L["EventType_DeviceConnected"]</MudSelectItem>
+                <MudSelectItem Value="@("DeviceDisconnected")">@L["EventType_DeviceDisconnected"]</MudSelectItem>
+                <MudSelectItem Value="@("FolderErrors")">@L["EventType_FolderErrors"]</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudSelect T="string"
                        Value="_selectedFolder"
                        ValueChanged="OnFolderChanged"
-                       Label="Folder"
+                       Label="@L["Common_Folder"]"
                        Variant="Variant.Outlined"
                        Dense="true">
-                <MudSelectItem Value="@("all")">All Folders</MudSelectItem>
+                <MudSelectItem Value="@("all")">@L["Events_AllFolders"]</MudSelectItem>
                 @foreach (var folder in _folders)
                 {
                     <MudSelectItem Value="@folder.Id">@folder.DisplayName</MudSelectItem>
@@ -52,10 +53,10 @@
             <MudSelect T="string"
                        Value="_selectedDevice"
                        ValueChanged="OnDeviceChanged"
-                       Label="Device"
+                       Label="@L["Common_Device"]"
                        Variant="Variant.Outlined"
                        Dense="true">
-                <MudSelectItem Value="@("all")">All Devices</MudSelectItem>
+                <MudSelectItem Value="@("all")">@L["Events_AllDevices"]</MudSelectItem>
                 @foreach (var device in _devices)
                 {
                     <MudSelectItem Value="@device.DeviceId">@device.DisplayName</MudSelectItem>
@@ -132,7 +133,7 @@ else
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            Load More
+            @L["Common_LoadMore"]
         </MudButton>
     </div>
 }
@@ -175,7 +176,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load events: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadEvents", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -254,7 +260,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load more events: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadMoreEvents", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -281,32 +292,60 @@ else
     {
         return type switch
         {
-            EventType.StateChanged => "State",
-            EventType.ItemStarted => "Started",
-            EventType.ItemFinished => "Finished",
-            EventType.FolderCompletion => "Complete",
-            EventType.DeviceConnected => "Connected",
-            EventType.DeviceDisconnected => "Disconnected",
-            EventType.FolderErrors => "Error",
+            EventType.StateChanged => L["EventType_State"],
+            EventType.ItemStarted => L["EventType_Started"],
+            EventType.ItemFinished => L["EventType_Finished"],
+            EventType.FolderCompletion => L["EventType_Complete"],
+            EventType.DeviceConnected => L["EventType_Connected"],
+            EventType.DeviceDisconnected => L["EventType_Disconnected"],
+            EventType.FolderErrors => L["EventType_Error"],
+            EventType.Unknown => L["EventType_Unknown"],
+            EventType.Starting => L["EventType_Starting"],
+            EventType.StartupComplete => L["EventType_StartupComplete"],
+            EventType.FolderWatchStateChanged => L["EventType_WatchState"],
+            EventType.ConfigSaved => L["EventType_ConfigSaved"],
+            EventType.DevicePaused => L["EventType_Paused"],
+            EventType.DeviceResumed => L["EventType_Resumed"],
+            EventType.FolderPaused => L["EventType_Paused"],
+            EventType.FolderResumed => L["EventType_Resumed"],
+            EventType.LocalChangeDetected => L["EventType_LocalChange"],
+            EventType.RemoteChangeDetected => L["EventType_RemoteChange"],
+            EventType.DownloadProgress => L["EventType_Downloading"],
+            EventType.FolderScanProgress => L["EventType_Scanning"],
             _ => type.ToString()
         };
     }
 
     private string GetEventDescription(SyncEvent evt)
     {
-        var folder = _folders.FirstOrDefault(f => f.Id == evt.FolderId)?.DisplayName ?? evt.FolderId;
-        var device = _devices.FirstOrDefault(d => d.DeviceId == evt.DeviceId)?.DisplayName ?? evt.DeviceId;
+        var folder = _folders.FirstOrDefault(f => f.Id == evt.FolderId)?.DisplayName ?? evt.FolderId ?? "";
+        var device = _devices.FirstOrDefault(d => d.DeviceId == evt.DeviceId)?.DisplayName ?? evt.DeviceId ?? "";
+
+        // Debug: if device/folder is empty but we expect data, show available keys
+        var deviceDisplay = !string.IsNullOrEmpty(device) ? device : $"[keys: {evt.DataKeys}]";
+        var folderDisplay = !string.IsNullOrEmpty(folder) ? folder : $"[keys: {evt.DataKeys}]";
 
         return evt.Type switch
         {
-            EventType.FolderCompletion => $"Folder '{folder}' completed with device '{device}'",
-            EventType.ItemFinished => $"File '{evt.FileName}' synced in '{folder}'",
-            EventType.ItemStarted => $"Started syncing '{evt.FileName}' in '{folder}'",
-            EventType.DeviceConnected => $"Device '{device}' connected",
-            EventType.DeviceDisconnected => $"Device '{device}' disconnected",
-            EventType.FolderErrors => $"Error in folder '{folder}': {evt.Error}",
-            EventType.StateChanged => $"State changed: {evt.From} -> {evt.To}",
-            _ => evt.Message ?? evt.Type.ToString()
+            EventType.FolderCompletion => L["EventDesc_FolderCompletion", folderDisplay, deviceDisplay],
+            EventType.ItemFinished => L["EventDesc_ItemFinished", evt.FileName ?? "", folderDisplay],
+            EventType.ItemStarted => L["EventDesc_ItemStarted", evt.FileName ?? "", folderDisplay],
+            EventType.DeviceConnected => L["EventDesc_DeviceConnected", deviceDisplay],
+            EventType.DeviceDisconnected => L["EventDesc_DeviceDisconnected", deviceDisplay],
+            EventType.FolderErrors => L["EventDesc_FolderErrors", folderDisplay, evt.Error ?? ""],
+            EventType.StateChanged => L["EventDesc_StateChanged", evt.From ?? "", evt.To ?? ""],
+            EventType.Starting => L["EventDesc_Starting"],
+            EventType.StartupComplete => L["EventDesc_StartupComplete"],
+            EventType.FolderWatchStateChanged => L["EventDesc_WatchStateChanged", folderDisplay],
+            EventType.DevicePaused => L["EventDesc_DevicePaused", deviceDisplay],
+            EventType.DeviceResumed => L["EventDesc_DeviceResumed", deviceDisplay],
+            EventType.FolderPaused => L["EventDesc_FolderPaused", folderDisplay],
+            EventType.FolderResumed => L["EventDesc_FolderResumed", folderDisplay],
+            EventType.LocalChangeDetected => L["EventDesc_LocalChange", evt.FileName ?? ""],
+            EventType.RemoteChangeDetected => L["EventDesc_RemoteChange", evt.FileName ?? "", deviceDisplay],
+            EventType.ConfigSaved => L["EventDesc_ConfigSaved"],
+            EventType.Unknown => $"{L["EventDesc_UnknownEvent"]}: {evt.RawType} [keys: {evt.DataKeys}]",
+            _ => evt.Message ?? $"{evt.RawType} [keys: {evt.DataKeys}]"
         };
     }
 

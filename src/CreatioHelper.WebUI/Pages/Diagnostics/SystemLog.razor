@@ -3,6 +3,8 @@
 @inject ISignalRService SignalR
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>@L["SystemLog_Title"] - CreatioHelper</PageTitle>
@@ -27,24 +29,24 @@
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">@L["SystemLog_AllLevels"]</MudSelectItem>
-                <MudSelectItem Value="@("error")">Error</MudSelectItem>
-                <MudSelectItem Value="@("warning")">Warning</MudSelectItem>
-                <MudSelectItem Value="@("info")">Info</MudSelectItem>
-                <MudSelectItem Value="@("debug")">Debug</MudSelectItem>
+                <MudSelectItem Value="@("error")">@L["SystemLog_LevelError"]</MudSelectItem>
+                <MudSelectItem Value="@("warning")">@L["SystemLog_LevelWarning"]</MudSelectItem>
+                <MudSelectItem Value="@("info")">@L["SystemLog_LevelInfo"]</MudSelectItem>
+                <MudSelectItem Value="@("debug")">@L["SystemLog_LevelDebug"]</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
             <MudSelect @bind-Value="_selectedFacility"
-                       Label="Facility"
+                       Label="@L["SystemLog_Facility"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
-                <MudSelectItem Value="@("all")">All Facilities</MudSelectItem>
-                <MudSelectItem Value="@("sync")">Sync</MudSelectItem>
-                <MudSelectItem Value="@("model")">Model</MudSelectItem>
-                <MudSelectItem Value="@("scanner")">Scanner</MudSelectItem>
-                <MudSelectItem Value="@("connections")">Connections</MudSelectItem>
-                <MudSelectItem Value="@("discover")">Discovery</MudSelectItem>
-                <MudSelectItem Value="@("upnp")">UPnP/NAT</MudSelectItem>
+                <MudSelectItem Value="@("all")">@L["SystemLog_AllFacilities"]</MudSelectItem>
+                <MudSelectItem Value="@("sync")">@L["SystemLog_FacilitySync"]</MudSelectItem>
+                <MudSelectItem Value="@("model")">@L["SystemLog_FacilityModel"]</MudSelectItem>
+                <MudSelectItem Value="@("scanner")">@L["SystemLog_FacilityScanner"]</MudSelectItem>
+                <MudSelectItem Value="@("connections")">@L["SystemLog_FacilityConnections"]</MudSelectItem>
+                <MudSelectItem Value="@("discover")">@L["SystemLog_FacilityDiscovery"]</MudSelectItem>
+                <MudSelectItem Value="@("upnp")">@L["SystemLog_FacilityUpnp"]</MudSelectItem>
             </MudSelect>
         </MudItem>
         <MudItem xs="12" md="4">
@@ -64,7 +66,7 @@
 <MudPaper Elevation="2" Class="log-viewer-container">
     <div class="log-viewer-toolbar pa-2 d-flex align-center">
         <MudText Typo="Typo.caption" Color="Color.Default">
-            @_filteredLogs.Count of @_logs.Count entries
+            @string.Format(L["SystemLog_EntriesCount"], _filteredLogs.Count, _logs.Count)
         </MudText>
         <MudSpacer />
         <MudIconButton Icon="@Icons.Material.Filled.Download"
@@ -225,7 +227,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to load logs: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadLogs", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -298,11 +305,16 @@
                 $"link.download = '{fileName}'; " +
                 $"link.click();");
 
-            Snackbar.Add("Logs downloaded", Severity.Success);
+            Snackbar.Add(L["Msg_LogsDownloaded"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to download logs: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToDownloadLogs", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
     }
 

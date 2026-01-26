@@ -3,6 +3,8 @@
 @inject ISnackbar Snackbar
 @inject IJSRuntime JSRuntime
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <PageTitle>@L["SupportBundle_Title"] - CreatioHelper</PageTitle>
 
@@ -76,9 +78,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeFolderStatus" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>Folder Status</MudText>
+                    <MudText>@L["SupportBundle_FolderStatus"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        Sync status of all folders (paths redacted)
+                        @L["SupportBundle_FolderStatusDesc"]
                     </MudText>
                 </div>
             </div>
@@ -88,9 +90,9 @@
             <div class="d-flex align-center">
                 <MudCheckBox @bind-Value="_includeDeviceStatus" Color="Color.Primary" Dense="true" />
                 <div>
-                    <MudText>Device Status</MudText>
+                    <MudText>@L["SupportBundle_DeviceStatus"]</MudText>
                     <MudText Typo="Typo.caption" Color="Color.Default">
-                        Connection status of all devices
+                        @L["SupportBundle_DeviceStatusDesc"]
                     </MudText>
                 </div>
             </div>
@@ -135,7 +137,7 @@
                StartIcon="@Icons.Material.Filled.Preview"
                OnClick="PreviewBundle"
                Disabled="@_isGenerating">
-        Preview
+        @L["SupportBundle_Preview"]
     </MudButton>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
@@ -150,7 +152,7 @@
 {
     <MudPaper Elevation="2" Class="pa-4 mt-4">
         <div class="d-flex align-center mb-2">
-            <MudText Typo="Typo.h6" Class="flex-grow-1">Preview</MudText>
+            <MudText Typo="Typo.h6" Class="flex-grow-1">@L["SupportBundle_Preview"]</MudText>
             <MudIconButton Icon="@Icons.Material.Filled.Close"
                            Size="Size.Small"
                            OnClick="@(() => _previewContent = null)" />
@@ -211,7 +213,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to generate preview: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToGeneratePreview", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -262,11 +269,16 @@
                 $"link.download = '{fileName}'; " +
                 $"link.click();");
 
-            Snackbar.Add("Support bundle downloaded successfully", Severity.Success);
+            Snackbar.Add(L["Msg_SupportBundleDownloaded"], Severity.Success);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to generate support bundle: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToGenerateBundle", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {

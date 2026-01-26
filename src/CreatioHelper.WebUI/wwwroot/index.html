@@ -28,15 +28,35 @@
         <!-- Loading indicator -->
         <div class="loading-container">
             <div class="loading-spinner"></div>
-            <p>Loading CreatioHelper...</p>
+            <p id="loading-text">Загрузка CreatioHelper...</p>
         </div>
     </div>
 
     <div id="blazor-error-ui">
-        An unhandled error has occurred.
-        <a href="" class="reload">Reload</a>
+        <span data-lang="en">An unhandled error has occurred.</span>
+        <span data-lang="ru">Произошла непредвиденная ошибка.</span>
+        <a href="" class="reload">
+            <span data-lang="en">Reload</span>
+            <span data-lang="ru">Перезагрузить</span>
+        </a>
         <a class="dismiss">X</a>
     </div>
+
+    <script>
+        // Simple localization for loading screen
+        (function() {
+            var lang = navigator.language || navigator.userLanguage;
+            var isRussian = lang && lang.toLowerCase().startsWith('ru');
+            var loadingText = document.getElementById('loading-text');
+            if (loadingText) {
+                loadingText.textContent = isRussian ? 'Загрузка CreatioHelper...' : 'Loading CreatioHelper...';
+            }
+            // Show only matching language spans
+            document.querySelectorAll('[data-lang]').forEach(function(el) {
+                el.style.display = (isRussian ? el.dataset.lang === 'ru' : el.dataset.lang === 'en') ? '' : 'none';
+            });
+        })();
+    </script>
 
     <!-- MudBlazor Scripts -->
     <script src="_content/MudBlazor/MudBlazor.min.js"></script>

@@ -2,6 +2,8 @@
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <PageTitle>@L["Settings_Network_Title"] - CreatioHelper</PageTitle>
 
@@ -410,7 +412,12 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_LoadFailed"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_LoadFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
         finally
         {
@@ -477,7 +484,12 @@ else if (_config != null)
         }
         catch (Exception ex)
         {
-            Snackbar.Add(string.Format(L["Msg_SaveFailed"], ex.Message), Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Msg_SaveFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
         finally
         {

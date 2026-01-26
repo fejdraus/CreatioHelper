@@ -1,4 +1,5 @@
 @* Sync Status Indicator Chip *@
+@inject IStringLocalizer<Localization> L
 
 <MudTooltip Text="@GetTooltip()">
     <MudChip T="string"
@@ -35,21 +36,21 @@
 
     private string GetLabel() => Status switch
     {
-        "idle" => "Up to Date",
-        "syncing" => "Syncing",
-        "scanning" => "Scanning",
-        "error" => "Error",
-        "paused" => "Paused",
-        _ => "Unknown"
+        "idle" => L["Status_UpToDate"],
+        "syncing" => L["Status_Syncing"],
+        "scanning" => L["Status_Scanning"],
+        "error" => L["Status_Error"],
+        "paused" => L["Status_Paused"],
+        _ => L["Status_Unknown"]
     };
 
     private string GetTooltip() => Status switch
     {
-        "idle" => "All folders are synchronized",
-        "syncing" => "Synchronizing files with remote devices",
-        "scanning" => "Scanning local folders for changes",
-        "error" => "One or more folders have errors",
-        "paused" => "Synchronization is paused",
-        _ => "Status unknown"
+        "idle" => L["Status_AllFoldersSynced"],
+        "syncing" => L["Status_SyncingFiles"],
+        "scanning" => L["Status_ScanningFolders"],
+        "error" => L["Status_FoldersHaveErrors"],
+        "paused" => L["Status_SyncPaused"],
+        _ => L["Status_StatusUnknown"]
     };
 }

@@ -3,6 +3,8 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>@L["Connections_Title"] - CreatioHelper</PageTitle>
@@ -13,7 +15,7 @@
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="@(() => RefreshConnections(showLoading: true))">
-        Refresh
+        @L["Common_Refresh"]
     </MudButton>
 </div>
 
@@ -196,11 +198,11 @@ else
                 <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Connections_LocalDiscovery"]</MudText>
                 @if (_discoveryStatus?.LocalAnnounceEnabled == true)
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">Enabled</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">@L["Common_Enabled"]</MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disabled</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["Common_Disabled"]</MudChip>
                 }
             </MudItem>
             <MudItem xs="12" md="6">
@@ -208,12 +210,12 @@ else
                 @if (_discoveryStatus?.GlobalAnnounceEnabled == true)
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Outlined">
-                        Enabled (@_discoveryStatus.GlobalAnnounceServers?.Length servers)
+                        @L["Common_Enabled"] (@_discoveryStatus.GlobalAnnounceServers?.Length @L["Connections_Servers"])
                     </MudChip>
                 }
                 else
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disabled</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["Common_Disabled"]</MudChip>
                 }
             </MudItem>
         </MudGrid>
@@ -318,7 +320,12 @@ else
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to refresh connections: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToRefreshConnections", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {

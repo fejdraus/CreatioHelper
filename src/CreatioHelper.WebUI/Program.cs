@@ -47,6 +47,7 @@ builder.Services.AddScoped<ISignalRService, SignalRService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<ILocalizationService, LocalizationService>();
+builder.Services.AddScoped<IErrorMessageHelper, ErrorMessageHelper>();
 builder.Services.AddScoped<StateContainer>();
 
 var host = builder.Build();

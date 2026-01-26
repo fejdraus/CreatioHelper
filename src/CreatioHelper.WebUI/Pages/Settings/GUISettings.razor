@@ -4,6 +4,8 @@
 @inject ISnackbar Snackbar
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 
 <PageTitle>@L["Settings_GUI"] - CreatioHelper</PageTitle>
 
@@ -218,7 +220,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"{L["Msg_SaveFailed", ex.Message]}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Msg_SaveFailed", ErrorHelper.GetUserFriendlyMessage(ex)]}", Severity.Error);
         }
         finally
         {

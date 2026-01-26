@@ -13,18 +13,12 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog
+// Configure Serilog (Console and File sinks are configured in appsettings.json)
 builder.Host.UseSerilog((context, configuration) =>
 {
     configuration
         .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext()
-        .WriteTo.Console()
-        .WriteTo.File("logs/agent-.log",
-            rollingInterval: RollingInterval.Day,
-            retainedFileCountLimit: 30,
-            fileSizeLimitBytes: 10_485_760, // 10 MB
-            rollOnFileSizeLimit: true);
+        .Enrich.FromLogContext();
 });
 
 builder.Services.AddApplicationInsightsTelemetry();

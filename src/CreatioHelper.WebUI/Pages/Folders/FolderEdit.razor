@@ -6,6 +6,7 @@
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
 
 <PageTitle>@L["FolderEdit_Title"] @(_folder?.DisplayName ?? "Folder") - CreatioHelper</PageTitle>
 
@@ -296,7 +297,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(L["FolderEdit_LoadError", ex.Message], Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["FolderEdit_LoadError", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -411,7 +417,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add(L["FolderEdit_SaveError", ex.Message], Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["FolderEdit_SaveError", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {

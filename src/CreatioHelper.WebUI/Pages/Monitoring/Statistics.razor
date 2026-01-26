@@ -3,6 +3,8 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
 @implements IDisposable
 
 <PageTitle>@L["Statistics_Title"] - CreatioHelper</PageTitle>
@@ -171,7 +173,7 @@
                              Size="Size.Small"
                              Color="@GetStatusColor(context.State)"
                              Variant="Variant.Outlined">
-                        @context.State
+                        @GetLocalizedState(context.State)
                     </MudChip>
                 </MudTd>
             </RowTemplate>
@@ -360,7 +362,12 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Failed to refresh statistics: {ex.Message}", Severity.Error);
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToRefreshStatistics", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
@@ -381,19 +388,19 @@
     private string FormatUptime(TimeSpan uptime)
     {
         if (uptime.TotalDays >= 1)
-            return $"{uptime.Days}d {uptime.Hours}h {uptime.Minutes}m";
+            return $"{uptime.Days}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
         if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}h {uptime.Minutes}m";
-        return $"{uptime.Minutes}m {uptime.Seconds}s";
+            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
+        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
     }
 
     private string FormatTimeAgo(DateTime time)
     {
         var diff = DateTime.UtcNow - time;
-        if (diff.TotalSeconds < 60) return "Just now";
-        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes}m ago";
-        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
-        if (diff.TotalDays < 7) return $"{(int)diff.TotalDays}d ago";
+        if (diff.TotalSeconds < 60) return L["Time_JustNow"];
+        if (diff.TotalMinutes < 60) return L["Time_MinutesAgo", (int)diff.TotalMinutes];
+        if (diff.TotalHours < 24) return L["Time_HoursAgo", (int)diff.TotalHours];
+        if (diff.TotalDays < 7) return L["Time_DaysAgo", (int)diff.TotalDays];
         return time.ToString("MMM d");
     }
 
@@ -406,6 +413,18 @@
             "scanning" => Color.Info,
             "error" => Color.Error,
             _ => Color.Default
+        };
+    }
+
+    private string GetLocalizedState(string state)
+    {
+        return state.ToLower() switch
+        {
+            "idle" => L["FolderState_Idle"],
+            "syncing" => L["FolderState_Syncing"],
+            "scanning" => L["FolderState_Scanning"],
+            "error" => L["FolderState_Error"],
+            _ => L["FolderState_Unknown"]
         };
     }
 
