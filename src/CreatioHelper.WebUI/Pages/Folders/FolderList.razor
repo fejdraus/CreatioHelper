@@ -6,6 +6,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@inject ISignalRService SignalR
 @implements IDisposable
 
 <PageTitle>@L["Folders_Title"] - CreatioHelper</PageTitle>
@@ -193,27 +194,27 @@ else
 
                     @* Action buttons *@
                     <div class="d-flex gap-2 mt-3">
-                        <MudButton Variant="Variant.Outlined"
+                        <MudButton Variant="Variant.Filled"
                                    Size="Size.Small"
                                    Color="@(folder.Paused ? Color.Success : Color.Warning)"
                                    StartIcon="@(folder.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                                    OnClick="@(() => TogglePause(folder))">
                             @(folder.Paused ? L["Action_Resume"] : L["Action_Pause"])
                         </MudButton>
-                        <MudButton Variant="Variant.Outlined"
+                        <MudButton Variant="Variant.Filled"
                                    Size="Size.Small"
                                    Color="Color.Primary"
                                    StartIcon="@Icons.Material.Filled.Refresh"
                                    OnClick="@(() => ScanFolder(folder.Id))">
                             @L["Action_Rescan"]
                         </MudButton>
-                        <MudButton Variant="Variant.Outlined"
+                        <MudButton Variant="Variant.Filled"
                                    Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.Edit"
                                    OnClick="@(() => EditFolder(folder))">
                             @L["Action_Edit"]
                         </MudButton>
-                        <MudButton Variant="Variant.Outlined"
+                        <MudButton Variant="Variant.Filled"
                                    Size="Size.Small"
                                    StartIcon="@Icons.Material.Filled.FilterList"
                                    OnClick="@(() => EditIgnores(folder))">
@@ -228,14 +229,13 @@ else
 
 @code {
     private bool _isLoading;
-    private System.Threading.Timer? _refreshTimer;
     private HashSet<string> _expandedFolders = new();
 
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
+        SignalR.OnFolderStatusChanged += OnFolderStatusChanged;
         await LoadFolderStatusesAsync();
-        StartAutoRefresh();
     }
 
     private void OnStateChanged()
@@ -243,30 +243,10 @@ else
         InvokeAsync(StateHasChanged);
     }
 
-    private void StartAutoRefresh()
+    private void OnFolderStatusChanged(FolderStatus status)
     {
-        _refreshTimer?.Dispose();
-        _refreshTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    foreach (var folder in State.Folders)
-                    {
-                        var status = await ApiClient.GetFolderStatusAsync(folder.Id);
-                        if (status != null)
-                        {
-                            State.UpdateFolderStatus(status);
-                        }
-                    }
-                    StateHasChanged();
-                }
-                catch
-                {
-                }
-            });
-        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        State.UpdateFolderStatus(status);
+        InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadFolderStatusesAsync()
@@ -519,10 +499,10 @@ else
 
     private string FormatInterval(int seconds)
     {
-        if (seconds < 60) return $"{seconds}s";
-        if (seconds < 3600) return $"{seconds / 60}m";
-        if (seconds < 86400) return $"{seconds / 3600}h";
-        return $"{seconds / 86400}d";
+        if (seconds < 60) return $"{seconds}{L["Time_Seconds"]}";
+        if (seconds < 3600) return $"{seconds / 60}{L["Time_Minutes"]}";
+        if (seconds < 86400) return $"{seconds / 3600}{L["Time_Hours"]}";
+        return $"{seconds / 86400}{L["Time_Days"]}";
     }
 
     private string GetPullOrderDisplay(string? order)
@@ -548,6 +528,6 @@ else
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
-        _refreshTimer?.Dispose();
+        SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
     }
 }

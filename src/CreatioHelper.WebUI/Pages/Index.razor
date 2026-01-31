@@ -3,6 +3,9 @@
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
+@inject IDialogService DialogService
+@inject ISignalRService SignalR
+@implements IDisposable
 
 <PageTitle>@L["Dashboard_Title"] - CreatioHelper</PageTitle>
 
@@ -66,6 +69,48 @@
                     <span class="down">@FormatRate(State.TransferStats.CurrentRateIn)</span>
                 </div>
                 <div class="label">@L["Devices_Upload"] / @L["Devices_Download"]</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Listeners Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="cursor-pointer" @onclick="ShowListenersDialog">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.Hearing"
+                         Color="Color.Tertiary"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@(_listenersStatus?.Summary ?? "-")</div>
+                <div class="label">@L["Dashboard_Listeners"]</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Discovery Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="cursor-pointer" @onclick="ShowDiscoveryDialog">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.Explore"
+                         Color="Color.Warning"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@(_discoveryStatus?.Summary ?? "-")</div>
+                <div class="label">@L["Dashboard_Discovery"]</div>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    @* Local State Total Card *@
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2">
+            <MudCardContent Class="stats-card">
+                <MudIcon Icon="@Icons.Material.Filled.Storage"
+                         Color="Color.Dark"
+                         Size="Size.Large"
+                         Class="mb-2" />
+                <div class="value">@FormatBytes(_totalLocalBytes)</div>
+                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles @L["FolderDetails_Files"], @_totalLocalDirs @L["FolderDetails_Dirs"])</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -144,8 +189,8 @@
     <MudPaper Elevation="2" Class="pa-4">
         <MudGrid>
             <MudItem xs="12" sm="6" md="3">
-                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_DeviceId"]</MudText>
-                <MudText Typo="Typo.body2" Class="device-id">@(State.SystemStatus.MyId?.Length > 20 ? State.SystemStatus.MyId[..20] + "..." : State.SystemStatus.MyId)</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Identification"]</MudText>
+                <MudText Typo="Typo.body2" Class="device-id" Style="font-family: monospace;">@GetShortDeviceId()</MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
                 <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Uptime"]</MudText>
@@ -169,27 +214,26 @@
 
     private int _connectedDevices;
     private int _remoteDevicesCount;
-    private Timer? _refreshTimer;
+    private ListenersStatus? _listenersStatus;
+    private DiscoveryStatus? _discoveryStatus;
+    private long _totalLocalFiles;
+    private long _totalLocalDirs;
+    private long _totalLocalBytes;
 
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
+        SignalR.OnFolderStatusChanged += OnFolderStatusChanged;
         UpdateCounts();
         await LoadFolderStatusesAsync();
+        await LoadDashboardExtrasAsync();
+    }
 
-        // Auto-refresh folder statuses every 2 seconds
-        _refreshTimer = new Timer(async _ =>
-        {
-            try
-            {
-                await LoadFolderStatusesAsync();
-                await InvokeAsync(StateHasChanged);
-            }
-            catch
-            {
-                // Ignore errors during auto-refresh
-            }
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+    private void OnFolderStatusChanged(FolderStatus status)
+    {
+        State.UpdateFolderStatus(status);
+        UpdateLocalStateTotals();
+        InvokeAsync(StateHasChanged);
     }
 
     private void OnStateChanged()
@@ -291,9 +335,55 @@
         return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
     }
 
+    private async Task LoadDashboardExtrasAsync()
+    {
+        try
+        {
+            _listenersStatus = await ApiClient.GetListenersStatusAsync();
+            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync();
+            UpdateLocalStateTotals();
+        }
+        catch
+        {
+            // Ignore errors
+        }
+    }
+
+    private void UpdateLocalStateTotals()
+    {
+        _totalLocalFiles = State.FolderStatuses.Values.Sum(s => s.LocalFiles);
+        _totalLocalDirs = State.FolderStatuses.Values.Sum(s => s.LocalDirectories);
+        _totalLocalBytes = State.FolderStatuses.Values.Sum(s => s.LocalBytes);
+    }
+
+    private string GetShortDeviceId()
+    {
+        var id = State.SystemStatus?.MyId;
+        if (string.IsNullOrEmpty(id)) return "-";
+        return id.Length > 7 ? id[..7] : id;
+    }
+
+    private async Task ShowListenersDialog()
+    {
+        var parameters = new DialogParameters<ListenersDialog>
+        {
+            { x => x.Status, _listenersStatus }
+        };
+        await DialogService.ShowAsync<ListenersDialog>(L["Dashboard_Listeners"], parameters);
+    }
+
+    private async Task ShowDiscoveryDialog()
+    {
+        var parameters = new DialogParameters<DiscoveryDialog>
+        {
+            { x => x.Status, _discoveryStatus }
+        };
+        await DialogService.ShowAsync<DiscoveryDialog>(L["Dashboard_Discovery"], parameters);
+    }
+
     public void Dispose()
     {
-        _refreshTimer?.Dispose();
         State.OnChange -= OnStateChanged;
+        SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
     }
 }

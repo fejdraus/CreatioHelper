@@ -5,13 +5,14 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@inject ISignalRService SignalR
 @implements IDisposable
 
 <PageTitle>@L["Connections_Title"] - CreatioHelper</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Connections_Title"]</MudText>
-    <MudButton Variant="Variant.Outlined"
+    <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="@(() => RefreshConnections(showLoading: true))">
@@ -234,7 +235,6 @@ else
 }
 
 @code {
-    private System.Threading.Timer? _refreshTimer;
     private bool _isLoading;
 
     // Summary
@@ -256,15 +256,16 @@ else
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
+        SignalR.OnConnectionChanged += OnConnectionChanged;
         await RefreshConnections(showLoading: true);
+    }
 
-        _refreshTimer = new System.Threading.Timer(async _ =>
+    private async void OnConnectionChanged(ConnectionInfo info)
+    {
+        await InvokeAsync(async () =>
         {
-            await InvokeAsync(async () =>
-            {
-                await RefreshConnections(showLoading: false);
-            });
-        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+            await RefreshConnections(showLoading: false);
+        });
     }
 
     private void OnStateChanged()
@@ -356,7 +357,7 @@ else
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
-        _refreshTimer?.Dispose();
+        SignalR.OnConnectionChanged -= OnConnectionChanged;
     }
 }
 
