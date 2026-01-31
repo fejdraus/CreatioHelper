@@ -284,12 +284,11 @@
 
     private void OnSystemStatusChanged(SystemStatus status)
     {
-        // Update system stats directly from event
-        _systemStartTime = status.StartTime;
-        _memoryUsage = status.Sys ?? 0;
-        _goroutines = status.Goroutines ?? 0;
-        if (status.DbSize.HasValue && status.DbSize.Value > 0)
-            _databaseSize = status.DbSize.Value;
+        // Update system stats - only override with non-null values
+        if (status.StartTime.HasValue) _systemStartTime = status.StartTime;
+        if (status.Sys.HasValue) _memoryUsage = status.Sys.Value;
+        if (status.Goroutines.HasValue) _goroutines = status.Goroutines.Value;
+        if (status.DbSize is > 0) _databaseSize = status.DbSize.Value;
         InvokeAsync(StateHasChanged);
     }
 
@@ -402,6 +401,8 @@
             _systemStartTime = status?.StartTime;
             _memoryUsage = status?.Sys ?? 0;
             _goroutines = status?.Goroutines ?? 0;
+            if (status?.DbSize is > 0)
+                _databaseSize = status.DbSize.Value;
 
             // Folder stats - update in place to avoid flickering
             var newFolderStats = new List<FolderStat>();

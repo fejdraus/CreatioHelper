@@ -62,6 +62,7 @@ public interface IApiClient
     Task TriggerGCAsync();
     Task<byte[]> GetHeapDumpAsync();
     Task<byte[]> GetGoroutineDumpAsync();
+    Task<byte[]> GetCpuProfileAsync(int duration = 30);
 
     // Advanced settings actions
     Task ResetDatabaseAsync();
@@ -371,6 +372,14 @@ public class ApiClient : IApiClient
         var response = await _httpClient.GetAsync("/rest/debug/goroutines");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    public async Task<byte[]> GetCpuProfileAsync(int duration = 30)
+    {
+        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(duration + 30));
+        var response = await _httpClient.GetAsync($"/rest/debug/cpuprof?duration={duration}", cts.Token);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadAsByteArrayAsync(cts.Token);
     }
 
     #endregion

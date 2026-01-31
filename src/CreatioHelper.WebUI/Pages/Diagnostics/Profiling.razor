@@ -5,6 +5,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@inject IJSRuntime JSRuntime
 @implements IDisposable
 
 <PageTitle>@L["Profiling_Title"] - CreatioHelper</PageTitle>
@@ -209,6 +210,13 @@
                    OnClick="DownloadGoroutineDump">
             @L["Profiling_DownloadGoroutineDump"]
         </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Timeline"
+                   Disabled="_cpuProfiling"
+                   OnClick="DownloadCpuProfile">
+            @(_cpuProfiling ? L["Profiling_CpuProfileRunning"] : L["Profiling_DownloadCpuProfile"])
+        </MudButton>
     </div>
 </MudPaper>
 
@@ -378,8 +386,14 @@
         try
         {
             var data = await ApiClient.GetHeapDumpAsync();
-            // Trigger download
-            Snackbar.Add(L["Profiling_HeapDumpDownloading"], Severity.Info);
+            var fileName = $"heapdump-{DateTime.Now:yyyyMMdd-HHmmss}.bin";
+            var base64 = Convert.ToBase64String(data);
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"const link = document.createElement('a'); " +
+                $"link.href = 'data:application/octet-stream;base64,{base64}'; " +
+                $"link.download = '{fileName}'; " +
+                $"link.click();");
+            Snackbar.Add(L["Profiling_HeapDumpDownloading"], Severity.Success);
         }
         catch (Exception ex)
         {
@@ -397,7 +411,14 @@
         try
         {
             var data = await ApiClient.GetGoroutineDumpAsync();
-            Snackbar.Add(L["Profiling_GoroutineDumpDownloading"], Severity.Info);
+            var fileName = $"goroutines-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+            var base64 = Convert.ToBase64String(data);
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"const link = document.createElement('a'); " +
+                $"link.href = 'data:text/plain;base64,{base64}'; " +
+                $"link.download = '{fileName}'; " +
+                $"link.click();");
+            Snackbar.Add(L["Profiling_GoroutineDumpDownloading"], Severity.Success);
         }
         catch (Exception ex)
         {
@@ -407,6 +428,41 @@
                 return;
             }
             Snackbar.Add(string.Format(L["Profiling_GoroutineDumpFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+        }
+    }
+
+    private bool _cpuProfiling;
+
+    private async Task DownloadCpuProfile()
+    {
+        try
+        {
+            _cpuProfiling = true;
+            Snackbar.Add(L["Profiling_CpuProfileStarted"], Severity.Info);
+            StateHasChanged();
+
+            var data = await ApiClient.GetCpuProfileAsync(30);
+            var fileName = $"cpuprofile-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+            var base64 = Convert.ToBase64String(data);
+            await JSRuntime.InvokeVoidAsync("eval",
+                $"const link = document.createElement('a'); " +
+                $"link.href = 'data:application/octet-stream;base64,{base64}'; " +
+                $"link.download = '{fileName}'; " +
+                $"link.click();");
+            Snackbar.Add(L["Profiling_CpuProfileDownloading"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(string.Format(L["Profiling_CpuProfileFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+        }
+        finally
+        {
+            _cpuProfiling = false;
         }
     }
 
