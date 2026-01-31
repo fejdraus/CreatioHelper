@@ -90,8 +90,12 @@ public static class SyncServiceExtensions
 
         var port = syncConfig.Port;
         Console.WriteLine($"DEBUG: Using sync port={port}, deviceName={syncConfig.DeviceName}");
-        
-        syncConfig.SetListenAddresses(new List<string> { $"tcp://0.0.0.0:{port}" });
+
+        // Only set default listen addresses if none were configured
+        if (syncConfig.ListenAddresses.Count == 0)
+        {
+            syncConfig.SetListenAddresses(new List<string> { $"tcp://0.0.0.0:{port}", $"quic://0.0.0.0:{port}" });
+        }
 
         services.AddSingleton(syncConfig);
         services.AddSingleton(certificate);

@@ -201,6 +201,7 @@ catch (Exception ex)
 {
     Log.Warning(ex, "Failed to load config.xml, sync will use defaults");
 }
+
 builder.Services.AddSyncServices(syncConfig);
 
 var app = builder.Build();

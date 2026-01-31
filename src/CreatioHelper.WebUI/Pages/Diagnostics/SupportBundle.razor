@@ -44,7 +44,7 @@
                                  Min="1"
                                  Max="30"
                                  Style="width: 80px;"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Margin="Margin.Dense"
                                  Disabled="@(!_includeLogs)" />
             </div>
@@ -133,7 +133,7 @@
 }
 
 <div class="d-flex justify-end gap-2">
-    <MudButton Variant="Variant.Outlined"
+    <MudButton Variant="Variant.Filled"
                StartIcon="@Icons.Material.Filled.Preview"
                OnClick="PreviewBundle"
                Disabled="@_isGenerating">

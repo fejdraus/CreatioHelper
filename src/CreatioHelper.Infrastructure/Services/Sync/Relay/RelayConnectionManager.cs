@@ -28,14 +28,8 @@ public class RelayConnectionManager : IDisposable
     private const double BackoffMultiplier = 2.0;
     private const int MaxConsecutiveFailures = 10;
 
-    // Default public relay servers (can be configured)
-    private readonly List<string> _defaultRelayServers = new()
-    {
-        "relay://relay1.syncthing.net:22067",
-        "relay://relay2.syncthing.net:22067",
-        "relay://relay3.syncthing.net:22067",
-        "relay://relay4.syncthing.net:22067"
-    };
+    // No hardcoded relay servers — must be configured explicitly
+    private readonly List<string> _defaultRelayServers = new();
 
     public RelayConnectionManager(
         ILogger<RelayConnectionManager> logger,

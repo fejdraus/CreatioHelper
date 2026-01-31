@@ -22,13 +22,13 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_syncProtocolListen"
                               Label="@L["Settings_Network_SyncProtocol"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               HelperText="@L["Settings_Network_SyncProtocolDesc"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_guiAddress"
                               Label="@L["Settings_Network_GuiAddress"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               HelperText="@L["Settings_Network_GuiAddressDesc"]" />
             </MudItem>
         </MudGrid>
@@ -77,7 +77,7 @@ else if (_config != null)
                 <MudItem xs="12" md="4">
                     <MudNumericField @bind-Value="_natLeaseMinutes"
                                      Label="@L["Settings_Network_NatLeaseMins"]"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Filled"
                                      Min="5"
                                      Max="1440"
                                      HelperText="@L["Settings_Network_NatLeaseMinsDesc"]" />
@@ -85,7 +85,7 @@ else if (_config != null)
                 <MudItem xs="12" md="4">
                     <MudNumericField @bind-Value="_natRenewalMinutes"
                                      Label="@L["Settings_Network_NatRenewalMins"]"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Filled"
                                      Min="1"
                                      Max="120"
                                      HelperText="@L["Settings_Network_NatRenewalMinsDesc"]" />
@@ -93,7 +93,7 @@ else if (_config != null)
                 <MudItem xs="12" md="4">
                     <MudNumericField @bind-Value="_natTimeoutSeconds"
                                      Label="@L["Settings_Network_NatTimeoutSecs"]"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Filled"
                                      Min="5"
                                      Max="60"
                                      HelperText="@L["Settings_Network_NatTimeoutSecsDesc"]" />
@@ -107,12 +107,12 @@ else if (_config != null)
             <MudTextField @bind-Value="_stunServers"
                           Label="@L["Settings_Network_StunServers"]"
                           Lines="3"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Filled"
                           HelperText="@L["Settings_Network_StunServersDesc"]" />
 
             <MudNumericField @bind-Value="_stunKeepaliveSeconds"
                              Label="@L["Settings_Network_StunKeepalive"]"
-                             Variant="Variant.Outlined"
+                             Variant="Variant.Filled"
                              Min="10"
                              Max="300"
                              Class="mt-3"
@@ -149,7 +149,7 @@ else if (_config != null)
             <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_GlobalDiscoveryServers"]</MudText>
             <MudTextField @bind-Value="_globalAnnounceServers"
                           Lines="3"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Filled"
                           HelperText="@L["Settings_Network_GlobalDiscoveryServersDesc"]" />
         }
 
@@ -161,7 +161,7 @@ else if (_config != null)
                 <MudItem xs="12" md="4">
                     <MudNumericField @bind-Value="_localAnnouncePort"
                                      Label="@L["Settings_Network_LocalAnnouncePort"]"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Filled"
                                      Min="1024"
                                      Max="65535"
                                      HelperText="@L["Settings_Network_LocalAnnouncePortDesc"]" />
@@ -169,13 +169,13 @@ else if (_config != null)
                 <MudItem xs="12" md="4">
                     <MudTextField @bind-Value="_localAnnounceMCAddr"
                                   Label="@L["Settings_Network_MulticastAddress"]"
-                                  Variant="Variant.Outlined"
+                                  Variant="Variant.Filled"
                                   HelperText="@L["Settings_Network_MulticastAddressDesc"]" />
                 </MudItem>
                 <MudItem xs="12" md="4">
                     <MudNumericField @bind-Value="_announceIntervalS"
                                      Label="@L["Settings_Network_AnnounceInterval"]"
-                                     Variant="Variant.Outlined"
+                                     Variant="Variant.Filled"
                                      Min="10"
                                      Max="3600"
                                      HelperText="@L["Settings_Network_AnnounceIntervalDesc"]" />
@@ -222,12 +222,12 @@ else if (_config != null)
             <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_RelayServers"]</MudText>
             <MudTextField @bind-Value="_relayServers"
                           Lines="3"
-                          Variant="Variant.Outlined"
+                          Variant="Variant.Filled"
                           HelperText="@L["Settings_Network_RelayServersDesc"]" />
 
             <MudNumericField @bind-Value="_relayReconnectIntervalM"
                              Label="@L["Settings_Network_RelayReconnectInterval"]"
-                             Variant="Variant.Outlined"
+                             Variant="Variant.Filled"
                              Min="1"
                              Max="60"
                              Class="mt-3"
@@ -242,14 +242,14 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_maxSendKbps"
                                  Label="@L["Settings_Network_MaxSendKbps"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="0"
                                  HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_maxRecvKbps"
                                  Label="@L["Settings_Network_MaxRecvKbps"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="0"
                                  HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
@@ -271,21 +271,21 @@ else if (_config != null)
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_maxConcurrentIncoming"
                                  Label="@L["Settings_Network_MaxIncoming"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="0"
                                  HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_maxConcurrentOutgoing"
                                  Label="@L["Settings_Network_MaxOutgoing"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="0"
                                  HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </MudItem>
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_reconnectionIntervalS"
                                  Label="@L["Settings_Network_ReconnectInterval"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="10"
                                  HelperText="@L["Settings_Network_ReconnectIntervalDesc"]" />
             </MudItem>
@@ -293,7 +293,7 @@ else if (_config != null)
     </MudPaper>
 
     <div class="d-flex justify-end gap-2">
-        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+        <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
             @L["Common_ResetDefaults"]
         </MudButton>
         <MudButton Variant="Variant.Filled"
@@ -325,7 +325,7 @@ else if (_config != null)
     private int _natLeaseMinutes = 60;
     private int _natRenewalMinutes = 30;
     private int _natTimeoutSeconds = 10;
-    private string _stunServers = "stun.syncthing.net:3478\nstun.l.google.com:19302";
+    private string _stunServers = "";
     private int _stunKeepaliveSeconds = 30;
 
     // Discovery settings
@@ -378,7 +378,7 @@ else if (_config != null)
                 _natLeaseMinutes = _config.Options.NatLeaseMinutes ?? 60;
                 _natRenewalMinutes = _config.Options.NatRenewalMinutes ?? 30;
                 _natTimeoutSeconds = _config.Options.NatTimeoutSeconds ?? 10;
-                _stunServers = string.Join("\n", _config.Options.StunServers ?? ["stun.syncthing.net:3478", "stun.l.google.com:19302"]);
+                _stunServers = string.Join("\n", _config.Options.StunServers ?? []);
                 _stunKeepaliveSeconds = _config.Options.StunKeepaliveSeconds ?? 30;
 
                 // Discovery settings
@@ -511,7 +511,7 @@ else if (_config != null)
         _natLeaseMinutes = 60;
         _natRenewalMinutes = 30;
         _natTimeoutSeconds = 10;
-        _stunServers = "stun.syncthing.net:3478\nstun.l.google.com:19302";
+        _stunServers = "";
         _stunKeepaliveSeconds = 30;
 
         // Discovery settings

@@ -64,6 +64,9 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<MonitoringService>();
         services.AddHostedService(provider => provider.GetRequiredService<MonitoringService>());
 
+        // SyncBroadcastService - broadcasts sync events and system status via SignalR
+        services.AddHostedService<SyncBroadcastService>();
+
         // Health Check
         services.AddScoped<CreatioHelperHealthCheck>();
 

@@ -462,12 +462,7 @@ public class DiscoveryManager : IDiscoveryManager
             {
                 Enabled = true,
                 Running = _isRunning,
-                Servers = new List<string>
-                {
-                    "https://discovery.syncthing.net/v2/",
-                    "https://discovery-v4.syncthing.net/v2/",
-                    "https://discovery-v6.syncthing.net/v2/"
-                },
+                Servers = _globalDiscovery?.DiscoveryServers?.ToList() ?? new List<string>(),
                 LastAnnouncement = _lastGlobalAnnouncement,
                 ServerStatuses = errors.ToDictionary(
                     e => e.Key,

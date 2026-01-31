@@ -3,11 +3,33 @@
 
 @* Simple layout for authentication pages without auth check *@
 
-<MudLayout>
-    <MudMainContent>
+<MudLayout Class="@($"auth-layout {(_isDarkMode ? "theme-dark" : "theme-light")}")">
+    <MudMainContent Class="auth-content">
         @Body
     </MudMainContent>
 </MudLayout>
+
+<style>
+    .auth-layout {
+        min-height: 100vh;
+    }
+
+    .auth-layout.theme-dark {
+        background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%) !important;
+    }
+
+    .auth-layout.theme-light {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    }
+
+    .auth-content {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        padding: 0 !important;
+    }
+</style>
 
 @code {
     private bool _isDarkMode = true;
@@ -15,5 +37,12 @@
     protected override async Task OnInitializedAsync()
     {
         _isDarkMode = await ThemeService.GetDarkModeAsync();
+        ThemeService.OnThemeChanged += OnThemeChanged;
+    }
+
+    private void OnThemeChanged(bool isDarkMode)
+    {
+        _isDarkMode = isDarkMode;
+        InvokeAsync(StateHasChanged);
     }
 }

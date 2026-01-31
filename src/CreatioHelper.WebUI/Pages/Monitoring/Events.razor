@@ -11,9 +11,11 @@
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Events_Title"]</MudText>
-    <MudSwitch @bind-Value="_liveUpdates"
-               Color="Color.Primary"
-               Label="@L["Events_LiveUpdates"]" />
+    <div class="gradient-controls">
+        <MudSwitch @bind-Value="_liveUpdates"
+                   Color="Color.Primary"
+                   Label="@L["Events_LiveUpdates"]" />
+    </div>
 </div>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -280,6 +282,7 @@ else
         {
             EventType.FolderCompletion => Color.Success,
             EventType.ItemFinished => Color.Success,
+            EventType.DiscoveryCompleted => Color.Success,
             EventType.DeviceConnected => Color.Info,
             EventType.DeviceDisconnected => Color.Warning,
             EventType.FolderErrors => Color.Error,
@@ -312,6 +315,7 @@ else
             EventType.RemoteChangeDetected => L["EventType_RemoteChange"],
             EventType.DownloadProgress => L["EventType_Downloading"],
             EventType.FolderScanProgress => L["EventType_Scanning"],
+            EventType.DiscoveryCompleted => L["EventType_DiscoveryCompleted"],
             _ => type.ToString()
         };
     }
@@ -344,9 +348,43 @@ else
             EventType.LocalChangeDetected => L["EventDesc_LocalChange", evt.FileName ?? ""],
             EventType.RemoteChangeDetected => L["EventDesc_RemoteChange", evt.FileName ?? "", deviceDisplay],
             EventType.ConfigSaved => L["EventDesc_ConfigSaved"],
+            EventType.DiscoveryCompleted => GetDiscoveryCompletedDescription(evt, folderDisplay),
             EventType.Unknown => $"{L["EventDesc_UnknownEvent"]}: {evt.RawType} [keys: {evt.DataKeys}]",
             _ => evt.Message ?? $"{evt.RawType} [keys: {evt.DataKeys}]"
         };
+    }
+
+    private string GetDiscoveryCompletedDescription(SyncEvent evt, string folderDisplay)
+    {
+        // If we have a folder, show folder-specific message
+        if (!string.IsNullOrEmpty(evt.FolderId))
+        {
+            return L["EventDesc_DiscoveryCompleted", folderDisplay];
+        }
+
+        // Global discovery - show statistics
+        var totalFiles = evt.GetDataValue("totalFiles");
+        var totalSize = evt.GetDataValue("totalSize");
+
+        if (!string.IsNullOrEmpty(totalFiles) && !string.IsNullOrEmpty(totalSize))
+        {
+            return L["EventDesc_DiscoveryCompletedGlobal", totalFiles, FormatBytes(long.TryParse(totalSize, out var size) ? size : 0)];
+        }
+
+        return L["EventDesc_DiscoveryCompletedSimple"];
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB", "TB" };
+        double len = bytes;
+        int order = 0;
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len /= 1024;
+        }
+        return $"{len:F1} {sizes[order]}";
     }
 
     private bool CanNavigate(SyncEvent evt)

@@ -305,12 +305,7 @@ public class StunKeepaliveConfiguration
 {
     public bool Enabled { get; set; } = true;
 
-    public List<string> Servers { get; set; } = new()
-    {
-        "stun.syncthing.net:3478",
-        "stun.l.google.com:19302",
-        "stun1.l.google.com:19302"
-    };
+    public List<string> Servers { get; set; } = new();
 
     public int KeepaliveIntervalSeconds { get; set; } = 30;
     public int RequestTimeoutSeconds { get; set; } = 5;

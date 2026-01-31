@@ -24,13 +24,13 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_deviceName"
                               Label="@L["Settings_General_DeviceName"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               HelperText="@L["Settings_General_DeviceNameDesc"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudTextField Value="@State.SystemStatus?.MyId"
                               Label="@L["Settings_General_DeviceId"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               ReadOnly="true"
                               Adornment="Adornment.End"
                               AdornmentIcon="@Icons.Material.Filled.ContentCopy"
@@ -46,13 +46,13 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_defaultFolderPath"
                               Label="@L["Settings_General_DefaultFolderPath"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               HelperText="@L["Settings_General_DefaultFolderPathDesc"]" />
             </MudItem>
             <MudItem xs="12" md="6">
                 <MudSelect @bind-Value="_folderType"
                            Label="@L["FolderEdit_FolderType"]"
-                           Variant="Variant.Outlined">
+                           Variant="Variant.Filled">
                     <MudSelectItem Value="@FolderType.SendReceive">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
                     <MudSelectItem Value="@FolderType.SendOnly">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
                     <MudSelectItem Value="@FolderType.ReceiveOnly">@L["FolderEdit_Type_ReceiveOnly"]</MudSelectItem>
@@ -85,14 +85,14 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudTextField @bind-Value="_apiKey"
                               Label="@L["Settings_General_ApiKey"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
                               Adornment="Adornment.End"
                               AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
                               OnAdornmentClick="ToggleApiKeyVisibility" />
             </MudItem>
             <MudItem xs="12" md="6">
-                <MudButton Variant="Variant.Outlined"
+                <MudButton Variant="Variant.Filled"
                            Color="Color.Primary"
                            OnClick="GenerateNewApiKey"
                            Class="mt-2">
@@ -114,7 +114,7 @@ else if (_config != null)
     </MudPaper>
 
     <div class="d-flex justify-end gap-2">
-        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+        <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
             @L["Common_ResetDefaults"]
         </MudButton>
         <MudButton Variant="Variant.Filled"

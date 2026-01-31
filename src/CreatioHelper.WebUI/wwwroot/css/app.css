@@ -353,8 +353,9 @@ html, body {
 
 .stats-card .label {
     font-size: 0.875rem;
-    color: rgba(255, 255, 255, 0.7);
+    opacity: 0.7;
 }
+
 
 /* Transfer rate display */
 .transfer-rate {
@@ -379,3 +380,297 @@ html, body {
         font-size: 0.75rem;
     }
 }
+
+/* ===========================================
+   Glassmorphism Theme - Global Styles
+   =========================================== */
+
+/* Gradient background for entire layout - Dark Theme */
+.theme-dark.mud-layout {
+    background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 50%, #0f0f1a 100%) !important;
+    min-height: 100vh;
+}
+
+/* Gradient background for entire layout - Light Theme */
+.theme-light.mud-layout {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%) !important;
+    min-height: 100vh;
+}
+
+.theme-dark .mud-main-content,
+.theme-light .mud-main-content {
+    background: transparent !important;
+}
+
+/* Glassmorphism for MudPaper and MudCard only */
+.theme-dark .mud-card,
+.theme-dark .mud-paper.pa-4,
+.theme-dark .mud-paper.pa-6,
+.theme-dark .mud-paper.pa-8,
+.theme-dark .mud-expansion-panels,
+.theme-dark .mud-table-container {
+    background: rgba(25, 25, 35, 0.7) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Reset any accidental button styling */
+.theme-dark .mud-button-root {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    border: none !important;
+}
+
+/* Restore outlined button border */
+.theme-dark .mud-button-outlined {
+    border: 1px solid var(--mud-palette-text-primary) !important;
+}
+
+.theme-dark .mud-button-outlined.mud-button-outlined-primary {
+    border-color: var(--mud-palette-primary) !important;
+}
+
+.theme-dark .mud-button-outlined.mud-button-outlined-secondary {
+    border-color: var(--mud-palette-secondary) !important;
+}
+
+.theme-dark .mud-button-outlined.mud-button-outlined-success {
+    border-color: var(--mud-palette-success) !important;
+}
+
+.theme-dark .mud-button-outlined.mud-button-outlined-error {
+    border-color: var(--mud-palette-error) !important;
+}
+
+/* AppBar glassmorphism */
+.theme-dark .mud-appbar {
+    background: rgba(20, 20, 30, 0.8) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Drawer glassmorphism */
+.theme-dark .mud-drawer {
+    background: rgba(20, 20, 30, 0.9) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Transparent input backgrounds */
+.theme-dark .mud-input-slot,
+.theme-dark .mud-input-control-input-container {
+    background: transparent !important;
+}
+
+.theme-dark .mud-input-outlined-border {
+    border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Dialog glassmorphism */
+.theme-dark .mud-dialog {
+    background: rgba(25, 25, 35, 0.95) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Menu and popover glassmorphism */
+.theme-dark .mud-popover-paper {
+    background: rgba(25, 25, 35, 0.95) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Table glassmorphism */
+.theme-dark .mud-table {
+    background: transparent !important;
+}
+
+.theme-dark .mud-table-container {
+    background: rgba(25, 25, 35, 0.5) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+
+/* ===========================================
+   Glassmorphism Light Theme Styles
+   =========================================== */
+
+/* Glassmorphism for MudPaper and MudCard - Light Theme */
+.theme-light .mud-card,
+.theme-light .mud-paper.pa-4,
+.theme-light .mud-paper.pa-6,
+.theme-light .mud-paper.pa-8,
+.theme-light .mud-expansion-panels,
+.theme-light .mud-table-container {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* AppBar - Light Theme */
+.theme-light .mud-appbar {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.theme-light .mud-appbar .mud-typography {
+    color: #1a1a2e !important;
+}
+
+/* AppBar icon buttons - make all dark except semantic colors (success/error) */
+.theme-light .mud-appbar .mud-icon-button .mud-icon-root {
+    color: #1a1a2e;
+}
+
+/* Preserve semantic colors in AppBar */
+.theme-light .mud-appbar .mud-icon-button.mud-icon-button-color-success .mud-icon-root {
+    color: var(--mud-palette-success) !important;
+}
+
+.theme-light .mud-appbar .mud-icon-button.mud-icon-button-color-error .mud-icon-root {
+    color: var(--mud-palette-error) !important;
+}
+
+/* Drawer - Light Theme */
+.theme-light .mud-drawer {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border-right: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+/* Light theme - headings on gradient background (outside cards) */
+.theme-light .mud-main-content .mud-typography-h4,
+.theme-light .mud-main-content .mud-typography-h5,
+.theme-light .mud-main-content .mud-typography-h6,
+.theme-light .mud-main-content .mud-typography-subtitle1,
+.theme-light .mud-main-content .mud-typography-subtitle2 {
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Light theme - controls on gradient background (outside cards) should have white text */
+.theme-light .gradient-controls .mud-switch-label,
+.theme-light .gradient-controls .mud-checkbox-label,
+.theme-light .gradient-controls .mud-input-label,
+.theme-light .gradient-controls .mud-typography {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Breadcrumbs on gradient - white text in light theme */
+.theme-light .mud-breadcrumbs .mud-breadcrumb-item,
+.theme-light .mud-breadcrumbs .mud-breadcrumb-separator {
+    color: #ffffff !important;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.theme-light .mud-breadcrumbs .mud-breadcrumb-item a {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.theme-light .mud-breadcrumbs .mud-breadcrumb-item a:hover {
+    color: #ffffff !important;
+}
+
+/* Alert styling for light theme - only non-filled alerts get glassmorphism */
+.theme-light .mud-main-content .mud-alert:not(.mud-alert-filled) {
+    background: rgba(255, 255, 255, 0.9) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Light theme - ALL text inside cards/papers should be normal dark color */
+/* This rule comes AFTER and has higher specificity to override the white headings */
+/* Higher specificity with .mud-main-content to override any other rules */
+.theme-light .mud-main-content .mud-paper .mud-typography,
+.theme-light .mud-main-content .mud-paper .mud-text,
+.theme-light .mud-main-content .mud-card .mud-typography,
+.theme-light .mud-main-content .mud-card .mud-text,
+.theme-light .mud-main-content .mud-alert:not(.mud-alert-filled) .mud-typography,
+.theme-light .mud-main-content .mud-expansion-panels .mud-typography,
+.theme-light .mud-main-content .mud-table-container .mud-typography {
+    color: var(--mud-palette-text-primary) !important;
+    text-shadow: none !important;
+}
+
+.theme-light .mud-main-content .mud-paper .mud-text-secondary,
+.theme-light .mud-main-content .mud-card .mud-text-secondary {
+    color: var(--mud-palette-text-secondary) !important;
+}
+
+/* Reset switch/checkbox labels inside cards and expansion panels */
+.theme-light .mud-main-content .mud-paper .mud-switch-label,
+.theme-light .mud-main-content .mud-paper .mud-checkbox-label,
+.theme-light .mud-main-content .mud-paper .mud-switch > .mud-typography,
+.theme-light .mud-main-content .mud-paper .mud-checkbox > .mud-typography,
+.theme-light .mud-main-content .mud-card .mud-switch-label,
+.theme-light .mud-main-content .mud-card .mud-checkbox-label,
+.theme-light .mud-main-content .mud-card .mud-switch > .mud-typography,
+.theme-light .mud-main-content .mud-card .mud-checkbox > .mud-typography,
+.theme-light .mud-main-content .mud-expansion-panels .mud-switch-label,
+.theme-light .mud-main-content .mud-expansion-panels .mud-checkbox-label,
+.theme-light .mud-main-content .mud-expansion-panels .mud-switch > .mud-typography,
+.theme-light .mud-main-content .mud-expansion-panels .mud-checkbox > .mud-typography,
+.theme-light .mud-main-content .mud-expansion-panel .mud-switch-label,
+.theme-light .mud-main-content .mud-expansion-panel .mud-checkbox-label,
+.theme-light .mud-main-content .mud-expansion-panel .mud-switch > .mud-typography,
+.theme-light .mud-main-content .mud-expansion-panel .mud-checkbox > .mud-typography {
+    color: var(--mud-palette-text-primary) !important;
+    text-shadow: none !important;
+}
+
+/* Ensure input/select text is dark inside papers in light theme */
+.theme-light .mud-main-content .mud-paper .mud-input,
+.theme-light .mud-main-content .mud-paper .mud-input-slot,
+.theme-light .mud-main-content .mud-paper .mud-select-input,
+.theme-light .mud-main-content .mud-card .mud-input,
+.theme-light .mud-main-content .mud-card .mud-input-slot,
+.theme-light .mud-main-content .mud-card .mud-select-input,
+.theme-light .mud-main-content .mud-expansion-panels .mud-input,
+.theme-light .mud-main-content .mud-expansion-panels .mud-input-slot,
+.theme-light .mud-main-content .mud-expansion-panels .mud-select-input {
+    color: var(--mud-palette-text-primary) !important;
+    text-shadow: none !important;
+}
+
+/* Dialog glassmorphism - Light Theme */
+.theme-light .mud-dialog {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+/* Menu and popover glassmorphism - Light Theme */
+.theme-light .mud-popover-paper {
+    background: rgba(255, 255, 255, 0.95) !important;
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+}
+
+/* Table - Light Theme */
+.theme-light .mud-table {
+    background: transparent !important;
+}
+
+.theme-light .mud-table-container {
+    background: rgba(255, 255, 255, 0.7) !important;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+}
+

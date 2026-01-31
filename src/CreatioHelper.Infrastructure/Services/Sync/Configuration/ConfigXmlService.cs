@@ -235,25 +235,18 @@ public class ConfigXmlService : IConfigXmlService
             GuiPassword = config.Gui.Password
         };
 
-        // Set listen addresses
+        // Set listen addresses ("default" expands to tcp + quic on port 22000)
         var listenAddresses = config.Options.ListenAddresses
-            .Select(addr => addr == "default" ? "tcp://0.0.0.0:22000" : addr)
+            .SelectMany(addr => addr == "default"
+                ? new[] { "tcp://0.0.0.0:22000", "quic://0.0.0.0:22000" }
+                : new[] { addr })
             .ToList();
         syncConfig.SetListenAddresses(listenAddresses);
 
         // Set global announce servers
         var announceServers = config.Options.GlobalAnnounceServers
-            .Where(s => s != "default")
+            .Where(s => s != "default" && !string.IsNullOrWhiteSpace(s))
             .ToList();
-        if (announceServers.Count == 0)
-        {
-            announceServers = new List<string>
-            {
-                "https://discovery.syncthing.net/v2/",
-                "https://discovery-v4.syncthing.net/v2/",
-                "https://discovery-v6.syncthing.net/v2/"
-            };
-        }
         syncConfig.SetGlobalAnnounceServers(announceServers);
 
         // Set NAT traversal configuration
@@ -262,7 +255,7 @@ public class ConfigXmlService : IConfigXmlService
         {
             syncConfig.NatTraversal.StunKeepAliveSeconds = config.Options.StunKeepaliveMinS;
             syncConfig.NatTraversal.StunServers = config.Options.StunServers
-                .Select(s => s == "default" ? "stun.syncthing.net:3478" : s)
+                .Where(s => s != "default" && !string.IsNullOrWhiteSpace(s))
                 .ToList();
         }
 

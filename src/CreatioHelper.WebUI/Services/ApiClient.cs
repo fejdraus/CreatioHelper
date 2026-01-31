@@ -43,8 +43,9 @@ public interface IApiClient
     // Events
     Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null);
 
-    // Discovery
+    // Discovery & Listeners
     Task<DiscoveryStatus?> GetDiscoveryStatusAsync();
+    Task<ListenersStatus> GetListenersStatusAsync();
 
     // Debug
     Task<DebugInfo?> GetDebugInfoAsync();
@@ -270,6 +271,40 @@ public class ApiClient : IApiClient
     public async Task<DiscoveryStatus?> GetDiscoveryStatusAsync()
     {
         return await _httpClient.GetFromJsonAsync<DiscoveryStatus>("/rest/system/discovery");
+    }
+
+    public async Task<ListenersStatus> GetListenersStatusAsync()
+    {
+        var result = new ListenersStatus();
+        try
+        {
+            var systemStatus = await GetSystemStatusAsync();
+            if (systemStatus?.ConnectionServiceStatus != null)
+            {
+                foreach (var (address, value) in systemStatus.ConnectionServiceStatus)
+                {
+                    string? error = null;
+                    if (value.ValueKind == System.Text.Json.JsonValueKind.Object &&
+                        value.TryGetProperty("error", out var errorProp) &&
+                        errorProp.ValueKind == System.Text.Json.JsonValueKind.String)
+                    {
+                        error = errorProp.GetString();
+                    }
+
+                    result.Listeners.Add(new ListenerInfo
+                    {
+                        Address = address,
+                        Status = string.IsNullOrEmpty(error) ? "ok" : "error",
+                        Error = error
+                    });
+                }
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+        return result;
     }
 
     #endregion

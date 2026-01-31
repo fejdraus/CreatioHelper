@@ -127,6 +127,25 @@ public class SqliteSyncDatabase : ISyncDatabase
         }
     }
 
+    public async Task<long> GetDatabaseSizeAsync()
+    {
+        try
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size();";
+            var result = await command.ExecuteScalarAsync();
+            return result is long size ? size : Convert.ToInt64(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get database size via PRAGMA");
+            return 0;
+        }
+    }
+
     private async Task ApplySchemaAsync()
     {
         _logger.LogDebug("Applying database schema...");
@@ -137,6 +156,10 @@ public class SqliteSyncDatabase : ISyncDatabase
         // Create all required tables for 100% Syncthing compatibility
         await ExecuteSqlCommandAsync(connection, CreateSyncthingCompatibleSchema());
         await ExecuteSqlCommandAsync(connection, CreateIndexes());
+
+        // Drop broken trigger from previous versions (it had invalid "UPDATE NEW" syntax)
+        await ExecuteSqlCommandAsync(connection, "DROP TRIGGER IF EXISTS file_metadata_sequence;");
+
         await ExecuteSqlCommandAsync(connection, CreateTriggers());
     }
 
@@ -343,17 +366,8 @@ public class SqliteSyncDatabase : ISyncDatabase
                     WHERE folder_id = NEW.folder_id AND file_name = NEW.file_name;
                 END;
 
-            -- Auto-increment sequences
-            CREATE TRIGGER IF NOT EXISTS file_metadata_sequence 
-                BEFORE INSERT ON file_metadata
-                WHEN NEW.sequence = 0
-                BEGIN
-                    UPDATE NEW SET sequence = (
-                        SELECT COALESCE(MAX(sequence), 0) + 1 
-                        FROM file_metadata 
-                        WHERE folder_id = NEW.folder_id
-                    );
-                END;
+            -- Note: Sequence auto-increment is handled in application code
+            -- SQLite BEFORE INSERT triggers cannot modify NEW row values
         ";
     }
 

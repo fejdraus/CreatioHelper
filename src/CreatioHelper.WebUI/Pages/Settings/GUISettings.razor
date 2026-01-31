@@ -1,5 +1,4 @@
 @page "/settings/gui"
-@inject IThemeService ThemeService
 @inject ILocalizationService LocalizationService
 @inject ISnackbar Snackbar
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
@@ -12,29 +11,18 @@
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings_GUI"]</MudText>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Appearance"]</MudText>
+    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Language"]</MudText>
 
-    <MudGrid>
-        <MudItem xs="12" md="6">
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Theme"]</MudText>
-            <MudToggleGroup T="string" @bind-Value="_selectedTheme" SelectionMode="SelectionMode.SingleSelection" Color="Color.Primary">
-                <MudToggleItem Value="@("light")" UnselectedIcon="@Icons.Material.Filled.LightMode" SelectedIcon="@Icons.Material.Filled.LightMode" Text="@L["Settings_ThemeLight"]" />
-                <MudToggleItem Value="@("dark")" UnselectedIcon="@Icons.Material.Filled.DarkMode" SelectedIcon="@Icons.Material.Filled.DarkMode" Text="@L["Settings_ThemeDark"]" />
-                <MudToggleItem Value="@("system")" UnselectedIcon="@Icons.Material.Filled.SettingsBrightness" SelectedIcon="@Icons.Material.Filled.SettingsBrightness" Text="@L["Settings_ThemeSystem"]" />
-            </MudToggleGroup>
-        </MudItem>
-        <MudItem xs="12" md="6">
-            <MudSelect @bind-Value="_language"
-                       Label="@L["Settings_Language"]"
-                       Variant="Variant.Outlined">
-                <MudSelectItem Value="@("en")">English</MudSelectItem>
-                <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
-                <MudSelectItem Value="@("de")">Deutsch</MudSelectItem>
-                <MudSelectItem Value="@("fr")">Français</MudSelectItem>
-                <MudSelectItem Value="@("es")">Español</MudSelectItem>
-            </MudSelect>
-        </MudItem>
-    </MudGrid>
+    <MudSelect @bind-Value="_language"
+               Label="@L["Settings_Language"]"
+               Variant="Variant.Filled"
+               Style="max-width: 300px;">
+        <MudSelectItem Value="@("en")">English</MudSelectItem>
+        <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
+        <MudSelectItem Value="@("de")">Deutsch</MudSelectItem>
+        <MudSelectItem Value="@("fr")">Français</MudSelectItem>
+        <MudSelectItem Value="@("es")">Español</MudSelectItem>
+    </MudSelect>
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -56,11 +44,11 @@
 
     <MudNumericField @bind-Value="_maxRecentEvents"
                      Label="@L["Settings_MaxRecentEvents"]"
-                     Variant="Variant.Outlined"
+                     Variant="Variant.Filled"
                      Min="5"
                      Max="50"
                      Class="mt-3"
-                     Style="max-width: 200px;" />
+                     Style="max-width: 300px;" />
 </MudPaper>
 
 <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -100,7 +88,7 @@
 
     <MudSelect @bind-Value="_dateFormat"
                Label="@L["Settings_DateFormat"]"
-               Variant="Variant.Outlined"
+               Variant="Variant.Filled"
                Class="mb-3">
         <MudSelectItem Value="@("short")">@L["Settings_DateShort"] (01/20/26)</MudSelectItem>
         <MudSelectItem Value="@("medium")">@L["Settings_DateMedium"] (Jan 20, 2026)</MudSelectItem>
@@ -110,14 +98,14 @@
 
     <MudSelect @bind-Value="_sizeFormat"
                Label="@L["Settings_SizeFormat"]"
-               Variant="Variant.Outlined">
+               Variant="Variant.Filled">
         <MudSelectItem Value="@("binary")">@L["Settings_SizeBinary"] (KiB, MiB, GiB)</MudSelectItem>
         <MudSelectItem Value="@("decimal")">@L["Settings_SizeDecimal"] (KB, MB, GB)</MudSelectItem>
     </MudSelect>
 </MudPaper>
 
 <div class="d-flex justify-end gap-2">
-    <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+    <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
         @L["Settings_ResetDefaults"]
     </MudButton>
     <MudButton Variant="Variant.Filled"
@@ -136,8 +124,7 @@
     private bool _isSaving;
     private string _initialLanguage = "en";
 
-    // Appearance
-    private string _selectedTheme = "system";
+    // Language
     private string _language = "en";
 
     // Dashboard
@@ -162,7 +149,6 @@
 
     private async Task LoadSettingsAsync()
     {
-        _selectedTheme = await LocalStorage.GetItemAsync<string>("gui_theme") ?? "system";
         _language = await LocalStorage.GetItemAsync<string>("gui_language") ?? "en";
         _initialLanguage = _language;
         _showTransferChart = await LocalStorage.GetItemAsync<bool?>("gui_showTransferChart") ?? true;
@@ -183,7 +169,6 @@
 
         try
         {
-            await LocalStorage.SetItemAsync("gui_theme", _selectedTheme);
             await LocalStorage.SetItemAsync("gui_language", _language);
             await LocalStorage.SetItemAsync("gui_showTransferChart", _showTransferChart);
             await LocalStorage.SetItemAsync("gui_showRecentEvents", _showRecentEvents);
@@ -194,18 +179,6 @@
             await LocalStorage.SetItemAsync("gui_notifyOnPendingDevice", _notifyOnPendingDevice);
             await LocalStorage.SetItemAsync("gui_dateFormat", _dateFormat);
             await LocalStorage.SetItemAsync("gui_sizeFormat", _sizeFormat);
-
-            // Apply theme immediately
-            switch (_selectedTheme)
-            {
-                case "dark":
-                    await ThemeService.SetDarkModeAsync(true);
-                    break;
-                case "light":
-                    await ThemeService.SetDarkModeAsync(false);
-                    break;
-                // "system" would need to check system preference
-            }
 
             // Apply language change (requires page reload)
             if (_language != _initialLanguage)
@@ -236,7 +209,6 @@
 
     private async Task ResetToDefaults()
     {
-        _selectedTheme = "system";
         _language = "en";
         _showTransferChart = true;
         _showRecentEvents = true;

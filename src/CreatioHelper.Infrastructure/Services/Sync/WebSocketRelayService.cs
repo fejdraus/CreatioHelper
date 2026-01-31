@@ -17,13 +17,8 @@ public class WebSocketRelayService : IDisposable
     private readonly ConcurrentDictionary<string, WebSocketRelayConnection> _connections = new();
     private readonly SemaphoreSlim _connectionSemaphore = new(1, 1);
     
-    // Default Syncthing relay servers
-    private static readonly List<string> DefaultRelayServers = new()
-    {
-        "wss://relay1.syncthing.net/endpoint",
-        "wss://relay2.syncthing.net/endpoint",
-        "wss://relay3.syncthing.net/endpoint"
-    };
+    // No hardcoded relay servers — must be configured explicitly
+    private static readonly List<string> DefaultRelayServers = new();
 
     public WebSocketRelayService(ILogger<WebSocketRelayService> logger, string deviceId)
     {

@@ -25,7 +25,7 @@ else if (_config != null)
 
         <MudTextField @bind-Value="_defaultFolderPath"
                       Label="@L["Settings_Advanced_DefaultFolderPath"]"
-                      Variant="Variant.Outlined"
+                      Variant="Variant.Filled"
                       HelperText="@L["Settings_Advanced_DefaultFolderPath_Help"]" />
 
         <MudDivider Class="my-4" />
@@ -57,7 +57,7 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_hashers"
                                  Label="@L["Settings_Advanced_ConcurrentHashers"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="1"
                                  Max="64"
                                  HelperText="@L["Settings_Advanced_ConcurrentHashers_Help"]" />
@@ -65,7 +65,7 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_maxFolderConcurrency"
                                  Label="@L["Settings_Advanced_MaxFolderConcurrency"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="1"
                                  Max="64"
                                  HelperText="@L["Settings_Advanced_MaxFolderConcurrency_Help"]" />
@@ -96,7 +96,7 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudNumericField @bind-Value="_databaseTuning"
                                  Label="@L["Settings_Advanced_DatabaseBlockSize"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="4096"
                                  Max="131072"
                                  Step="4096" />
@@ -104,7 +104,7 @@ else if (_config != null)
             <MudItem xs="12" md="6">
                 <MudSelect @bind-Value="_compressionLevel"
                            Label="@L["Settings_Advanced_CompressionLevel"]"
-                           Variant="Variant.Outlined">
+                           Variant="Variant.Filled">
                     <MudSelectItem Value="@("none")">@L["Settings_Advanced_Compression_None"]</MudSelectItem>
                     <MudSelectItem Value="@("lz4")">@L["Settings_Advanced_Compression_LZ4"]</MudSelectItem>
                     <MudSelectItem Value="@("zstd")">@L["Settings_Advanced_Compression_Zstd"]</MudSelectItem>
@@ -120,7 +120,7 @@ else if (_config != null)
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_pingTimeout"
                                  Label="@L["Settings_Advanced_PingTimeout"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="10"
                                  Max="300"
                                  HelperText="@L["Settings_Advanced_PingTimeout_Help"]" />
@@ -128,7 +128,7 @@ else if (_config != null)
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_reconnectionIntervalS"
                                  Label="@L["Settings_Advanced_ReconnectionInterval"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="10"
                                  Max="600"
                                  HelperText="@L["Settings_Advanced_ReconnectionInterval_Help"]" />
@@ -136,7 +136,7 @@ else if (_config != null)
             <MudItem xs="12" md="4">
                 <MudNumericField @bind-Value="_maxPendingKiB"
                                  Label="@L["Settings_Advanced_MaxPendingData"]"
-                                 Variant="Variant.Outlined"
+                                 Variant="Variant.Filled"
                                  Min="1024"
                                  Max="1048576"
                                  HelperText="@L["Settings_Advanced_MaxPendingData_Help"]" />
@@ -174,17 +174,9 @@ else if (_config != null)
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Debugging"]</MudText>
 
-        <MudSwitch @bind-Value="_crashReporting"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_CrashReporting"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Advanced_CrashReporting_Help"]
-        </MudText>
-
         <MudSelect @bind-Value="_logLevel"
                    Label="@L["Settings_Advanced_LogLevel"]"
-                   Variant="Variant.Outlined"
-                   Class="mt-3">
+                   Variant="Variant.Filled">
             <MudSelectItem Value="@("error")">@L["Settings_Advanced_LogLevel_Error"]</MudSelectItem>
             <MudSelectItem Value="@("warning")">@L["Settings_Advanced_LogLevel_Warning"]</MudSelectItem>
             <MudSelectItem Value="@("info")">@L["Settings_Advanced_LogLevel_Info"]</MudSelectItem>
@@ -201,13 +193,13 @@ else if (_config != null)
         </MudAlert>
 
         <div class="d-flex flex-wrap gap-3">
-            <MudButton Variant="Variant.Outlined"
+            <MudButton Variant="Variant.Filled"
                        Color="Color.Warning"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="ResetDatabase">
                 @L["Settings_Advanced_ResetDb"]
             </MudButton>
-            <MudButton Variant="Variant.Outlined"
+            <MudButton Variant="Variant.Filled"
                        Color="Color.Error"
                        StartIcon="@Icons.Material.Filled.DeleteForever"
                        OnClick="FactoryReset">
@@ -217,7 +209,7 @@ else if (_config != null)
     </MudPaper>
 
     <div class="d-flex justify-end gap-2">
-        <MudButton Variant="Variant.Outlined" OnClick="ResetToDefaults">
+        <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
             @L["Common_ResetToDefaults"]
         </MudButton>
         <MudButton Variant="Variant.Filled"
@@ -264,7 +256,6 @@ else if (_config != null)
     private bool _startBrowser = true;
 
     // Debugging
-    private bool _crashReporting = true;
     private string _logLevel = "info";
 
     protected override async Task OnInitializedAsync()
@@ -298,9 +289,6 @@ else if (_config != null)
 
                 // Startup
                 _startBrowser = _config.Options.StartBrowser ?? true;
-
-                // Debugging
-                _crashReporting = _config.Options.CrashReportingEnabled ?? true;
             }
         }
         catch (Exception ex)
@@ -346,9 +334,6 @@ else if (_config != null)
 
                 // Startup
                 _config.Options.StartBrowser = _startBrowser;
-
-                // Debugging
-                _config.Options.CrashReportingEnabled = _crashReporting;
             }
 
             await ApiClient.UpdateConfigAsync(_config);
@@ -462,7 +447,6 @@ else if (_config != null)
         _startBrowser = true;
 
         // Debugging
-        _crashReporting = true;
         _logLevel = "info";
 
         Snackbar.Add(L["Msg_SettingsResetToDefaults"], Severity.Info);

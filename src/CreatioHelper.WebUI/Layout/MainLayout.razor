@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@using CreatioHelper.WebUI.Services
 @inject IThemeService ThemeService
 @inject IApiClient ApiClient
 @inject ISignalRService SignalRService
@@ -9,7 +10,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 
-<MudLayout>
+<MudLayout Class="@(_isDarkMode ? "theme-dark" : "theme-light")">
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu"
                        Color="Color.Inherit"
@@ -31,10 +32,10 @@
         </MudTooltip>
 
         @* Theme Toggle *@
-        <MudTooltip Text="@(_isDarkMode ? L["Settings_ThemeLight"] : L["Settings_ThemeDark"])">
-            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+        <MudTooltip Text="@GetThemeTooltip()">
+            <MudIconButton Icon="@GetThemeIcon()"
                            Color="Color.Inherit"
-                           OnClick="@ToggleTheme" />
+                           OnClick="@CycleTheme" />
         </MudTooltip>
 
         @* Settings *@
@@ -79,6 +80,7 @@
 @code {
     private bool _drawerOpen = true;
     private bool _isDarkMode = true;
+    private ThemeMode _themeMode = ThemeMode.Dark;
     private bool _isConnected;
     private bool _isLoading;
     private string _syncStatus = "idle";
@@ -107,6 +109,7 @@
 
         // Load theme preference
         _isDarkMode = await ThemeService.GetDarkModeAsync();
+        _themeMode = ThemeService.CurrentMode;
         ThemeService.OnThemeChanged += OnThemeChanged;
 
         // Connect to SignalR
@@ -198,14 +201,32 @@
         _drawerOpen = !_drawerOpen;
     }
 
-    private async Task ToggleTheme()
+    private async Task CycleTheme()
     {
-        await ThemeService.ToggleThemeAsync();
+        await ThemeService.CycleThemeAsync();
+        _themeMode = ThemeService.CurrentMode;
     }
+
+    private string GetThemeIcon() => _themeMode switch
+    {
+        ThemeMode.Light => Icons.Material.Filled.LightMode,
+        ThemeMode.Dark => Icons.Material.Filled.DarkMode,
+        ThemeMode.System => Icons.Material.Filled.BrightnessAuto,
+        _ => Icons.Material.Filled.DarkMode
+    };
+
+    private string GetThemeTooltip() => _themeMode switch
+    {
+        ThemeMode.Light => L["Settings_ThemeLight"],
+        ThemeMode.Dark => L["Settings_ThemeDark"],
+        ThemeMode.System => L["Settings_ThemeSystem"],
+        _ => L["Settings_ThemeDark"]
+    };
 
     private void OnThemeChanged(bool isDarkMode)
     {
         _isDarkMode = isDarkMode;
+        _themeMode = ThemeService.CurrentMode;
         InvokeAsync(StateHasChanged);
     }
 

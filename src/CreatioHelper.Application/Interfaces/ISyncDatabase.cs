@@ -41,4 +41,9 @@ public interface ISyncDatabase : IDisposable
     /// Compact database (similar to Syncthing's compaction)
     /// </summary>
     Task CompactAsync();
+
+    /// <summary>
+    /// Get database size in bytes using PRAGMA page_count * page_size
+    /// </summary>
+    Task<long> GetDatabaseSizeAsync();
 }

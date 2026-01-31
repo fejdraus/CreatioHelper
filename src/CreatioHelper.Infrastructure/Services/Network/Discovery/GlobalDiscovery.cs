@@ -63,13 +63,8 @@ public class GlobalDiscovery : IAsyncDisposable
     /// </summary>
     public const int RequestTimeoutSeconds = 30;
 
-    // Default Syncthing discovery servers
-    private static readonly string[] DefaultDiscoveryServers =
-    {
-        "https://discovery.syncthing.net/v2",
-        "https://discovery-v4.syncthing.net/v2",
-        "https://discovery-v6.syncthing.net/v2"
-    };
+    // No hardcoded discovery servers — must be configured explicitly
+    private static readonly string[] DefaultDiscoveryServers = Array.Empty<string>();
 
     /// <summary>
     /// Event fired when a device is discovered via global discovery.

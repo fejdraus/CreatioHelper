@@ -27,12 +27,7 @@ public class NatTraversalConfiguration
     /// <summary>
     /// List of STUN servers to use for external IP discovery.
     /// </summary>
-    public List<string> StunServers { get; set; } = new()
-    {
-        "stun.syncthing.net:3478",
-        "stun.l.google.com:19302",
-        "stun1.l.google.com:19302"
-    };
+    public List<string> StunServers { get; set; } = new();
 }
 
 /// <summary>
@@ -43,7 +38,7 @@ public class SyncConfiguration : AggregateRoot
     public string DeviceId { get; set; } = string.Empty;
     public string DeviceName { get; set; } = string.Empty;
     public int Port { get; set; } = 22000;
-    public List<string> ListenAddresses { get; private set; } = new() { "tcp://0.0.0.0:22000" };
+    public List<string> ListenAddresses { get; private set; } = new() { "tcp://0.0.0.0:22000", "quic://0.0.0.0:22000" };
     
     /// <summary>
     /// Bandwidth management configuration
@@ -58,14 +53,9 @@ public class SyncConfiguration : AggregateRoot
     public bool LocalAnnounceEnabled { get; set; } = true;
     public int LocalAnnouncePort { get; set; } = 21027;
     public int DiscoveryPort => LocalAnnouncePort;
-    public List<string> GlobalAnnounceServers { get; private set; } = new()
-    {
-        "https://discovery.syncthing.net/v2/",
-        "https://discovery-v4.syncthing.net/v2/",
-        "https://discovery-v6.syncthing.net/v2/"
-    };
-    public bool RelaysEnabled { get; set; } = true;
-    public List<string> RelayServers { get; set; } = new() { "dynamic+https://relays.syncthing.net/endpoint" };
+    public List<string> GlobalAnnounceServers { get; private set; } = new();
+    public bool RelaysEnabled { get; set; } = false;
+    public List<string> RelayServers { get; set; } = new();
     public bool NatEnabled { get; set; } = true;
     public bool UpnpEnabled { get; set; } = true;
     public int MaxSendKbps { get; set; } = 0; // 0 = unlimited
@@ -125,7 +115,7 @@ public class SyncConfiguration : AggregateRoot
     public void SetPort(int port)
     {
         Port = port;
-        SetListenAddresses(new List<string> { $"tcp://0.0.0.0:{port}" });
+        SetListenAddresses(new List<string> { $"tcp://0.0.0.0:{port}", $"quic://0.0.0.0:{port}" });
     }
 
     public void UpdateDeviceName(string name)

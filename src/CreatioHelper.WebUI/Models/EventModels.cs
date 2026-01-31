@@ -62,6 +62,7 @@ public class SyncEvent
         "StartupComplete" => EventType.StartupComplete,
         "StateChanged" => EventType.StateChanged,
         "ClusterConfigReceived" => EventType.ClusterConfigReceived,
+        "DiscoveryCompleted" => EventType.DiscoveryCompleted,
         _ => EventType.Unknown
     };
 
@@ -176,7 +177,8 @@ public enum EventType
     Starting,
     StartupComplete,
     StateChanged,
-    ClusterConfigReceived
+    ClusterConfigReceived,
+    DiscoveryCompleted
 }
 
 public enum EventSeverity

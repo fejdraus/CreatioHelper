@@ -56,6 +56,7 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
     
     private UdpClient? _udpClient;
     private UdpClient? _broadcastClient;
+    private UdpClient? _broadcastClientV6;
     private CancellationTokenSource _cancellationTokenSource = new();
     private bool _isRunning;
     private readonly long _instanceId; // Random instance ID generated on startup
@@ -113,10 +114,23 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
             _udpClient = new UdpClient(_discoveryPort);
             _udpClient.EnableBroadcast = true;
             
-            // Setup UDP client for broadcasts
+            // Setup UDP client for broadcasts (IPv4)
             _broadcastClient = new UdpClient();
             _broadcastClient.EnableBroadcast = true;
-            
+
+            // Setup UDP client for IPv6 broadcasts (if supported)
+            if (Socket.OSSupportsIPv6)
+            {
+                try
+                {
+                    _broadcastClientV6 = new UdpClient(AddressFamily.InterNetworkV6);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "IPv6 broadcast client not available, IPv6 discovery disabled");
+                }
+            }
+
             _isRunning = true;
             
             // Start listening for announcements
@@ -150,7 +164,9 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
         _udpClient?.Dispose();
         _broadcastClient?.Close();
         _broadcastClient?.Dispose();
-        
+        _broadcastClientV6?.Close();
+        _broadcastClientV6?.Dispose();
+
         await Task.Delay(100); // Give time for cleanup
         
         _logger.LogInformation("Local discovery service stopped");
@@ -518,14 +534,23 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
             }
             
             // IPv6 Multicast (Syncthing compatibility) - ff12::8384 = Syncthing discovery multicast
-            try 
+            if (_broadcastClientV6 != null)
             {
-                var ipv6MulticastEndpoint = new IPEndPoint(IPAddress.Parse("ff12::8384"), _discoveryPort);
-                await _broadcastClient.SendAsync(packet, ipv6MulticastEndpoint);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Failed to send IPv6 multicast announcement (this is normal if IPv6 is disabled)");
+                try
+                {
+                    var ipv6MulticastEndpoint = new IPEndPoint(IPAddress.Parse("ff12::8384"), _discoveryPort);
+                    await _broadcastClientV6.SendAsync(packet, ipv6MulticastEndpoint);
+                }
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.NetworkUnreachable
+                                                  || ex.SocketErrorCode == SocketError.AddressFamilyNotSupported
+                                                  || ex.SocketErrorCode == SocketError.HostUnreachable)
+                {
+                    // IPv6 not available on this network - silently ignore
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to send IPv6 multicast announcement");
+                }
             }
             
             _logger.LogDebug("Broadcasted local discovery announcement for device {DeviceId}", _currentDeviceId);

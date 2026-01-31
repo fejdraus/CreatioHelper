@@ -143,6 +143,22 @@ public class SyncDatabase : ISyncDatabase
         _logger.LogInformation("Database compacted successfully");
     }
 
+    public async Task<long> GetDatabaseSizeAsync()
+    {
+        try
+        {
+            using var command = GetConnection().CreateCommand();
+            command.CommandText = "SELECT page_count * page_size FROM pragma_page_count(), pragma_page_size();";
+            var result = await command.ExecuteScalarAsync();
+            return result is long size ? size : Convert.ToInt64(result);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to get database size via PRAGMA");
+            return 0;
+        }
+    }
+
     private SqliteConnection GetConnection()
     {
         if (_connection == null || _connection.State != System.Data.ConnectionState.Open)
