@@ -1,0 +1,40 @@
+@inject IStringLocalizer<Localization> L
+@implements IDisposable
+
+<span>@FormatUptime(GetCurrentUptime())</span>
+
+@code {
+    [Parameter]
+    public DateTime? StartTime { get; set; }
+
+    private System.Threading.Timer? _timer;
+
+    protected override void OnInitialized()
+    {
+        _timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+    }
+
+    private TimeSpan GetCurrentUptime()
+    {
+        if (StartTime.HasValue)
+            return DateTime.UtcNow - StartTime.Value;
+        return TimeSpan.Zero;
+    }
+
+    private string FormatUptime(TimeSpan uptime)
+    {
+        if (uptime.TotalDays >= 1)
+            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
+        if (uptime.TotalHours >= 1)
+            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
+        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
+    }
+
+    public void Dispose()
+    {
+        _timer?.Dispose();
+    }
+}

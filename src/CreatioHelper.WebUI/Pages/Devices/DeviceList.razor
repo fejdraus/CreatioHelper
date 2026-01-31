@@ -6,6 +6,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@inject ISignalRService SignalR
 @implements IDisposable
 
 <PageTitle>@L["Devices_Title"] - CreatioHelper</PageTitle>
@@ -44,7 +45,7 @@ else
                 {
                     <MudText Typo="Typo.caption" Color="Color.Default" Class="mr-2">
                         <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" Style="vertical-align: middle;" />
-                        @FormatUptime(State.SystemStatus.UptimeSpan)
+                        <UptimeDisplay StartTime="@State.SystemStatus?.StartTime" />
                     </MudText>
                 }
                 <MudIconButton Icon="@(_thisDeviceExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
@@ -79,7 +80,7 @@ else
                             {
                                 <tr>
                                     <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Dashboard_Uptime"]</MudText></td>
-                                    <td><MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText></td>
+                                    <td><MudText Typo="Typo.body2"><UptimeDisplay StartTime="@State.SystemStatus?.StartTime" /></MudText></td>
                                 </tr>
                                 @if (State.SystemStatus.AppMemory.HasValue)
                                 {
@@ -298,20 +299,20 @@ else
 
                         @* Action buttons *@
                         <div class="d-flex gap-2 mt-3">
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Size="Size.Small"
                                        Color="@(device.Paused ? Color.Success : Color.Warning)"
                                        StartIcon="@(device.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                                        OnClick="@(() => TogglePause(device))">
                                 @(device.Paused ? L["Action_Resume"] : L["Action_Pause"])
                             </MudButton>
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Size="Size.Small"
                                        StartIcon="@Icons.Material.Filled.Edit"
                                        OnClick="@(() => EditDevice(device))">
                                 @L["Action_Edit"]
                             </MudButton>
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Size="Size.Small"
                                        Color="Color.Error"
                                        StartIcon="@Icons.Material.Filled.Delete"
@@ -345,7 +346,7 @@ else
                                OnClick="@(() => AcceptDevice(pending))">
                         @L["Common_Confirm"]
                     </MudButton>
-                    <MudButton Variant="Variant.Outlined"
+                    <MudButton Variant="Variant.Filled"
                                Color="Color.Error"
                                Size="Size.Small"
                                OnClick="@(() => RejectDevice(pending))">
@@ -368,49 +369,30 @@ else
     private PendingDevice[] _pendingDevices = [];
     private HashSet<string> _expandedDevices = new();
     private bool _thisDeviceExpanded;
-    private System.Threading.Timer? _refreshTimer;
     private Dictionary<string, DateTime> _lastSeenTimes = new();
 
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
+        SignalR.OnConnectionChanged += OnConnectionChanged;
         await LoadDevicesAsync();
-        StartAutoRefresh();
     }
 
-    private void StartAutoRefresh()
+    private void OnConnectionChanged(ConnectionInfo conn)
     {
-        _refreshTimer?.Dispose();
-        _refreshTimer = new System.Threading.Timer(async _ =>
+        var wasConnected = State.Connections.TryGetValue(conn.DeviceId, out var prevConn) && prevConn.Connected;
+
+        if (conn.Connected)
         {
-            await InvokeAsync(async () =>
-            {
-                try
-                {
-                    var connections = await ApiClient.GetConnectionsAsync();
-                    foreach (var conn in connections)
-                    {
-                        var wasConnected = State.Connections.TryGetValue(conn.DeviceId, out var prevConn) && prevConn.Connected;
-                        var isConnected = conn.Connected;
+            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
+        }
+        else if (wasConnected)
+        {
+            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
+        }
 
-                        if (isConnected)
-                        {
-                            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
-                        }
-                        else if (wasConnected && !isConnected)
-                        {
-                            _lastSeenTimes[conn.DeviceId] = DateTime.UtcNow;
-                        }
-
-                        State.UpdateConnection(conn);
-                    }
-                    StateHasChanged();
-                }
-                catch
-                {
-                }
-            });
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+        State.UpdateConnection(conn);
+        InvokeAsync(StateHasChanged);
     }
 
     private void OnStateChanged()
@@ -811,15 +793,6 @@ else
             .Select(f => f.DisplayName);
     }
 
-    private string FormatUptime(TimeSpan uptime)
-    {
-        if (uptime.TotalDays >= 1)
-            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        if (uptime.TotalHours >= 1)
-            return $"{(int)uptime.TotalHours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        return $"{(int)uptime.TotalMinutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
-    }
-
     private (long files, long dirs, long bytes) GetTotalGlobalState()
     {
         long files = 0, dirs = 0, bytes = 0;
@@ -866,6 +839,6 @@ else
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
-        _refreshTimer?.Dispose();
+        SignalR.OnConnectionChanged -= OnConnectionChanged;
     }
 }

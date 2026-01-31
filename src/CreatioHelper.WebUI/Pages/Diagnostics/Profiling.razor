@@ -191,19 +191,19 @@
     </div>
 
     <div class="d-flex flex-wrap gap-3">
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.CleaningServices"
                    OnClick="TriggerGC">
             @L["Profiling_ForceGc"]
         </MudButton>
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Download"
                    OnClick="DownloadHeapDump">
             @L["Profiling_DownloadHeapDump"]
         </MudButton>
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.BugReport"
                    OnClick="DownloadGoroutineDump">
@@ -227,8 +227,6 @@
 </style>
 
 @code {
-    private System.Threading.Timer? _refreshTimer;
-
     // Current metrics
     private double _cpuUsage;
     private long _appMemory;
@@ -261,15 +259,17 @@
 
     protected override async Task OnInitializedAsync()
     {
+        SignalR.OnSystemStatusChanged += OnSystemStatusChanged;
         await RefreshMetrics();
-        _refreshTimer = new System.Threading.Timer(async _ =>
+    }
+
+    private async void OnSystemStatusChanged(SystemStatus status)
+    {
+        await InvokeAsync(async () =>
         {
-            await InvokeAsync(async () =>
-            {
-                await RefreshMetrics();
-                StateHasChanged();
-            });
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+            await RefreshMetrics();
+            StateHasChanged();
+        });
     }
 
     private async Task RefreshMetrics()
@@ -412,6 +412,6 @@
 
     public void Dispose()
     {
-        _refreshTimer?.Dispose();
+        SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;
     }
 }

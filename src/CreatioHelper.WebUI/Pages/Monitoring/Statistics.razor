@@ -1,5 +1,6 @@
 @page "/monitoring/statistics"
 @inject IApiClient ApiClient
+@inject ISignalRService SignalR
 @inject StateContainer State
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
@@ -106,7 +107,7 @@
                 <tbody>
                     <tr>
                         <td>@L["Statistics_Uptime"]</td>
-                        <td class="text-right font-weight-bold">@FormatUptime(_uptime)</td>
+                        <td class="text-right font-weight-bold"><UptimeDisplay StartTime="@_systemStartTime" /></td>
                     </tr>
                     <tr>
                         <td>@L["Statistics_MemoryUsage"]</td>
@@ -233,8 +234,8 @@
 </MudPaper>
 
 @code {
-    private System.Threading.Timer? _refreshTimer;
     private bool _isLoading;
+    private bool _initialLoadComplete;
 
     // Overview
     private int _totalFolders;
@@ -252,7 +253,7 @@
     private long _bytesSynced = 0;
 
     // System stats
-    private TimeSpan _uptime;
+    private DateTime? _systemStartTime;
     private long _memoryUsage;
     private long _databaseSize = 0;
     private int _goroutines;
@@ -265,16 +266,15 @@
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
-        await RefreshStatistics();
 
-        _refreshTimer = new System.Threading.Timer(async _ =>
-        {
-            await InvokeAsync(async () =>
-            {
-                await RefreshStatistics();
-                StateHasChanged();
-            });
-        }, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+        // Subscribe to SignalR events for real-time updates
+        SignalR.OnSystemStatusChanged += OnSystemStatusChanged;
+        SignalR.OnFolderStatusChanged += OnFolderStatusChanged;
+        SignalR.OnConnectionChanged += OnConnectionChanged;
+        SignalR.OnSyncEvent += OnSyncEvent;
+
+        // Initial load only - subsequent updates come from SignalR events
+        await RefreshStatistics();
     }
 
     private void OnStateChanged()
@@ -282,8 +282,105 @@
         InvokeAsync(StateHasChanged);
     }
 
+    private void OnSystemStatusChanged(SystemStatus status)
+    {
+        // Update system stats directly from event
+        _systemStartTime = status.StartTime;
+        _memoryUsage = status.Sys ?? 0;
+        _goroutines = status.Goroutines ?? 0;
+        if (status.DbSize.HasValue && status.DbSize.Value > 0)
+            _databaseSize = status.DbSize.Value;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnFolderStatusChanged(FolderStatus status)
+    {
+        // Update folder stat if exists
+        var folderStat = _folderStats.FirstOrDefault(f => f.Id == status.Folder);
+        if (folderStat != null)
+        {
+            // Only update with non-zero values to avoid overwriting good data
+            if (status.GlobalFiles > 0) folderStat.Files = status.GlobalFiles;
+            if (status.GlobalDirectories > 0) folderStat.Directories = status.GlobalDirectories;
+            if (status.GlobalBytes > 0) folderStat.Bytes = status.GlobalBytes;
+            folderStat.SyncPercent = status.SyncPercentage;
+            if (!string.IsNullOrEmpty(status.State)) folderStat.State = status.State;
+        }
+        else if (!string.IsNullOrEmpty(status.Folder))
+        {
+            // Add new folder
+            _folderStats.Add(new FolderStat
+            {
+                Id = status.Folder,
+                Name = status.Folder,
+                Files = status.GlobalFiles,
+                Directories = status.GlobalDirectories,
+                Bytes = status.GlobalBytes,
+                SyncPercent = status.SyncPercentage,
+                State = status.State
+            });
+        }
+
+        // Recalculate totals
+        _totalFolders = _folderStats.Count;
+        _totalFiles = _folderStats.Sum(f => f.Files);
+        _totalBytes = _folderStats.Sum(f => f.Bytes);
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionChanged(ConnectionInfo info)
+    {
+        // Update device stat if exists
+        var deviceStat = _deviceStats.FirstOrDefault(d => d.DeviceId == info.DeviceId);
+        if (deviceStat != null)
+        {
+            deviceStat.Connected = info.Connected;
+            deviceStat.Downloaded = info.InBytesTotal;
+            deviceStat.Uploaded = info.OutBytesTotal;
+        }
+        else
+        {
+            // Add new device
+            _deviceStats.Add(new DeviceStat
+            {
+                DeviceId = info.DeviceId,
+                Name = info.DeviceId.Length > 7 ? info.DeviceId[..7] + "..." : info.DeviceId,
+                Connected = info.Connected,
+                Downloaded = info.InBytesTotal,
+                Uploaded = info.OutBytesTotal
+            });
+        }
+
+        // Recalculate all connection stats
+        _totalDevices = _deviceStats.Count;
+        _connectedDevices = _deviceStats.Count(d => d.Connected);
+        _totalDownloaded = _deviceStats.Sum(d => d.Downloaded);
+        _totalUploaded = _deviceStats.Sum(d => d.Uploaded);
+        _downloadRate = info.InBytesPerSec;
+        _uploadRate = info.OutBytesPerSec;
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSyncEvent(SyncEvent evt)
+    {
+        // Update synced stats on item finished
+        if (evt.Type == EventType.ItemFinished)
+        {
+            _filesSynced++;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
     private async Task RefreshStatistics()
     {
+        // Only run on initial load - SignalR handles all updates after that
+        if (_initialLoadComplete)
+        {
+            return;
+        }
+
         _isLoading = true;
         StateHasChanged();
 
@@ -302,12 +399,12 @@
             _connectedDevices = connections.Count(c => c.Connected);
 
             // System stats
-            _uptime = TimeSpan.FromSeconds(status?.Uptime ?? 0);
+            _systemStartTime = status?.StartTime;
             _memoryUsage = status?.Sys ?? 0;
             _goroutines = status?.Goroutines ?? 0;
 
-            // Folder stats
-            _folderStats.Clear();
+            // Folder stats - update in place to avoid flickering
+            var newFolderStats = new List<FolderStat>();
             _totalFiles = 0;
             _totalBytes = 0;
 
@@ -319,7 +416,7 @@
                     _totalFiles += folderStatus.GlobalFiles;
                     _totalBytes += folderStatus.GlobalBytes;
 
-                    _folderStats.Add(new FolderStat
+                    newFolderStats.Add(new FolderStat
                     {
                         Id = folder.Id,
                         Name = folder.DisplayName,
@@ -331,9 +428,10 @@
                     });
                 }
             }
+            _folderStats = newFolderStats;
 
-            // Device stats
-            _deviceStats.Clear();
+            // Device stats - update in place to avoid flickering
+            var newDeviceStats = new List<DeviceStat>();
             _totalDownloaded = 0;
             _totalUploaded = 0;
             _downloadRate = 0;
@@ -349,7 +447,7 @@
                 _downloadRate += conn?.InBytesPerSec ?? 0;
                 _uploadRate += conn?.OutBytesPerSec ?? 0;
 
-                _deviceStats.Add(new DeviceStat
+                newDeviceStats.Add(new DeviceStat
                 {
                     DeviceId = device.DeviceId,
                     Name = device.DisplayName,
@@ -359,6 +457,9 @@
                     Connected = conn?.Connected ?? false
                 });
             }
+            _deviceStats = newDeviceStats;
+
+            _initialLoadComplete = true;
         }
         catch (Exception ex)
         {
@@ -383,15 +484,6 @@
         if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
         if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
         return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
-    }
-
-    private string FormatUptime(TimeSpan uptime)
-    {
-        if (uptime.TotalDays >= 1)
-            return $"{uptime.Days}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
     }
 
     private string FormatTimeAgo(DateTime time)
@@ -431,7 +523,10 @@
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
-        _refreshTimer?.Dispose();
+        SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;
+        SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
+        SignalR.OnConnectionChanged -= OnConnectionChanged;
+        SignalR.OnSyncEvent -= OnSyncEvent;
     }
 }
 
