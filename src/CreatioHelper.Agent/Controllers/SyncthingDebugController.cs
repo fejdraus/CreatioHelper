@@ -30,22 +30,90 @@ public class SyncthingDebugController : ControllerBase
     /// GET /rest/debug/cpuprof
     /// </summary>
     [HttpGet("cpuprof")]
-    public ActionResult GetCpuProfile([FromQuery] int duration = 30)
+    public async Task<ActionResult> GetCpuProfile([FromQuery] int duration = 30)
     {
         try
         {
-            // Validate duration (max 5 minutes)
-            duration = Math.Clamp(duration, 1, 300);
+            duration = Math.Clamp(duration, 1, 60);
 
             _logger.LogInformation("CPU profiling requested for {Duration} seconds", duration);
 
-            // In a full implementation, this would use a profiler
-            // For now, return a placeholder response indicating profiling is not available
-            return Ok(new
+            var currentProcess = Process.GetCurrentProcess();
+
+            // Snapshot 1: capture per-thread CPU times
+            var snapshot1 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
+            foreach (ProcessThread thread in currentProcess.Threads)
             {
-                message = "CPU profiling not available in this build",
-                duration = duration
-            });
+                try
+                {
+                    snapshot1[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
+                }
+                catch
+                {
+                    // Some threads may exit between enumeration and access
+                }
+            }
+
+            await Task.Delay(duration * 1000);
+
+            // Refresh process info
+            currentProcess.Refresh();
+
+            // Snapshot 2
+            var snapshot2 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
+            foreach (ProcessThread thread in currentProcess.Threads)
+            {
+                try
+                {
+                    snapshot2[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
+                }
+                catch
+                {
+                }
+            }
+
+            // Compute deltas for threads present in both snapshots
+            var deltas = new List<(int Id, double CpuMs, System.Diagnostics.ThreadState State)>();
+            double totalCpuMs = 0;
+
+            foreach (var (id, s2) in snapshot2)
+            {
+                if (snapshot1.TryGetValue(id, out var s1))
+                {
+                    var deltaMs = (s2.TotalTime - s1.TotalTime).TotalMilliseconds;
+                    if (deltaMs < 0) deltaMs = 0;
+                    deltas.Add((id, deltaMs, s2.State));
+                    totalCpuMs += deltaMs;
+                }
+                else
+                {
+                    // New thread — use its full CPU time as delta
+                    deltas.Add((id, s2.TotalTime.TotalMilliseconds, s2.State));
+                    totalCpuMs += s2.TotalTime.TotalMilliseconds;
+                }
+            }
+
+            deltas.Sort((a, b) => b.CpuMs.CompareTo(a.CpuMs));
+
+            // Build text report
+            var sb = new StringBuilder();
+            sb.AppendLine($"--- CPU Profile ---");
+            sb.AppendLine($"Timestamp : {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+            sb.AppendLine($"Duration  : {duration}s");
+            sb.AppendLine($"Total CPU : {totalCpuMs:F1}ms across {deltas.Count} threads");
+            sb.AppendLine($"Processors: {Environment.ProcessorCount}");
+            sb.AppendLine();
+            sb.AppendLine($"{"Thread",-10} {"State",-15} {"CPU (ms)",10} {"% Total",10}");
+            sb.AppendLine(new string('-', 47));
+
+            foreach (var (id, cpuMs, state) in deltas)
+            {
+                var pct = totalCpuMs > 0 ? cpuMs / totalCpuMs * 100 : 0;
+                sb.AppendLine($"{id,-10} {state,-15} {cpuMs,10:F1} {pct,9:F1}%");
+            }
+
+            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+            return File(bytes, "application/octet-stream", "cpuprofile.txt");
         }
         catch (Exception ex)
         {

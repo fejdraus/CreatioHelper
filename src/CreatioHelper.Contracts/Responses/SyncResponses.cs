@@ -86,6 +86,12 @@ public class SystemStatusDto
 
     [JsonPropertyName("dbSize")]
     public long DbSize { get; set; }
+
+    [JsonPropertyName("cpuPercent")]
+    public double CpuPercent { get; set; }
+
+    [JsonPropertyName("alloc")]
+    public long Alloc { get; set; }
 }
 
 /// <summary>

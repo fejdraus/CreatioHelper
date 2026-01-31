@@ -127,23 +127,26 @@ public class SyncBroadcastService : BackgroundService
 
             if (folder == null) return;
 
-            var globalFiles = status.GlobalFiles > 0 ? status.GlobalFiles : Math.Max(status.TotalFiles, status.LocalFiles);
-            var globalBytes = status.GlobalBytes > 0 ? status.GlobalBytes : Math.Max(status.TotalBytes, status.LocalBytes);
+            // Use LocalFiles/LocalBytes as global (same as API endpoint /rest/db/status)
+            var globalFiles = status.LocalFiles;
+            var globalBytes = status.LocalBytes;
+            var inSyncBytes = globalBytes - status.NeedBytes;
 
             var folderStatus = new FolderStatusDto
             {
                 Folder = folderId,
-                State = status.State.ToString(),
+                State = status.State.ToString().ToLowerInvariant(),
                 GlobalFiles = globalFiles,
-                GlobalDirectories = status.TotalDirectories,
+                GlobalDirectories = status.LocalDirectories,
                 GlobalBytes = globalBytes,
                 LocalFiles = status.LocalFiles,
                 LocalDirectories = status.LocalDirectories,
                 LocalBytes = status.LocalBytes,
                 NeedFiles = status.NeedFiles,
                 NeedBytes = status.NeedBytes,
+                InSyncBytes = inSyncBytes,
                 SyncPercentage = globalBytes > 0
-                    ? (double)status.LocalBytes / globalBytes * 100
+                    ? (double)inSyncBytes / globalBytes * 100
                     : 100
             };
 
@@ -233,25 +236,26 @@ public class SyncBroadcastService : BackgroundService
                 {
                     var status = await syncEngine.GetSyncStatusAsync(folder.Id);
 
-                    // Use the best available value: GlobalFiles may be 0 if only local scan was done
-                    var globalFiles = status.GlobalFiles > 0 ? status.GlobalFiles : Math.Max(status.TotalFiles, status.LocalFiles);
-                    var globalBytes = status.GlobalBytes > 0 ? status.GlobalBytes : Math.Max(status.TotalBytes, status.LocalBytes);
+                    // Use LocalFiles/LocalBytes as global (same as API endpoint /rest/db/status)
+                    var globalFiles = status.LocalFiles;
+                    var globalBytes = status.LocalBytes;
+                    var inSyncBytes = globalBytes - status.NeedBytes;
 
                     var folderStatus = new FolderStatusDto
                     {
                         Folder = folder.Id,
-                        State = status.State.ToString(),
+                        State = status.State.ToString().ToLowerInvariant(),
                         GlobalFiles = globalFiles,
-                        GlobalDirectories = status.TotalDirectories,
+                        GlobalDirectories = status.LocalDirectories,
                         GlobalBytes = globalBytes,
                         LocalFiles = status.LocalFiles,
                         LocalDirectories = status.LocalDirectories,
                         LocalBytes = status.LocalBytes,
                         NeedFiles = status.NeedFiles,
                         NeedBytes = status.NeedBytes,
-                        InSyncBytes = status.LocalBytes,
+                        InSyncBytes = inSyncBytes,
                         SyncPercentage = globalBytes > 0
-                            ? (double)status.LocalBytes / globalBytes * 100
+                            ? (double)inSyncBytes / globalBytes * 100
                             : 100
                     };
 
@@ -322,6 +326,9 @@ public class SyncBroadcastService : BackgroundService
                 StartTime = process.StartTime.ToUniversalTime(),
                 Uptime = (long)statistics.Uptime.TotalSeconds,
                 Sys = process.WorkingSet64,
+                Alloc = GC.GetTotalMemory(false),
+                CpuPercent = process.TotalProcessorTime.TotalMilliseconds /
+                    (Environment.ProcessorCount * DateTime.UtcNow.Subtract(process.StartTime.ToUniversalTime()).TotalMilliseconds) * 100,
                 Goroutines = Environment.ProcessorCount,
                 TotalIn = statistics.TotalBytesIn,
                 TotalOut = statistics.TotalBytesOut,

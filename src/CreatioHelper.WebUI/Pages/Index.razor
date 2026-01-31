@@ -194,7 +194,7 @@
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
                 <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Uptime"]</MudText>
-                <MudText Typo="Typo.body2">@FormatUptime(State.SystemStatus.UptimeSpan)</MudText>
+                <MudText Typo="Typo.body2"><UptimeDisplay StartTime="@State.SystemStatus.StartTime" /></MudText>
             </MudItem>
             <MudItem xs="12" sm="6" md="3">
                 <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Memory"]</MudText>
@@ -224,6 +224,8 @@
     {
         State.OnChange += OnStateChanged;
         SignalR.OnFolderStatusChanged += OnFolderStatusChanged;
+        SignalR.OnSystemStatusChanged += OnSystemStatusChanged;
+        SignalR.OnConnectionChanged += OnConnectionChanged;
         UpdateCounts();
         await LoadFolderStatusesAsync();
         await LoadDashboardExtrasAsync();
@@ -233,6 +235,37 @@
     {
         State.UpdateFolderStatus(status);
         UpdateLocalStateTotals();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnSystemStatusChanged(SystemStatus status)
+    {
+        var current = State.SystemStatus;
+        if (current != null)
+        {
+            if (status.Uptime.HasValue) current.Uptime = status.Uptime;
+            if (status.StartTime.HasValue) current.StartTime = status.StartTime;
+            if (status.CpuPercent.HasValue) current.CpuPercent = status.CpuPercent;
+            if (status.Alloc.HasValue) current.Alloc = status.Alloc;
+            if (status.Sys.HasValue) current.Sys = status.Sys;
+            if (status.AppMemory.HasValue) current.AppMemory = status.AppMemory;
+            if (status.Goroutines.HasValue) current.Goroutines = status.Goroutines;
+            if (status.DbSize.HasValue) current.DbSize = status.DbSize;
+            if (status.OsMemoryUsed.HasValue) current.OsMemoryUsed = status.OsMemoryUsed;
+            if (status.TotalPhysicalMemory.HasValue) current.TotalPhysicalMemory = status.TotalPhysicalMemory;
+            if (status.DiscoveryEnabled.HasValue) current.DiscoveryEnabled = status.DiscoveryEnabled;
+            if (!string.IsNullOrEmpty(status.MyId)) current.MyId = status.MyId;
+        }
+        else
+        {
+            State.SystemStatus = status;
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnConnectionChanged(ConnectionInfo info)
+    {
+        UpdateCounts();
         InvokeAsync(StateHasChanged);
     }
 
@@ -326,15 +359,6 @@
         return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
     }
 
-    private string FormatUptime(TimeSpan uptime)
-    {
-        if (uptime.TotalDays >= 1)
-            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
-    }
-
     private async Task LoadDashboardExtrasAsync()
     {
         try
@@ -385,5 +409,7 @@
     {
         State.OnChange -= OnStateChanged;
         SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
+        SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;
+        SignalR.OnConnectionChanged -= OnConnectionChanged;
     }
 }
