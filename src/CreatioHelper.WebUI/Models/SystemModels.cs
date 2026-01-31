@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace CreatioHelper.WebUI.Models;
@@ -41,11 +42,14 @@ public class SystemStatus
     [JsonPropertyName("numCPU")]
     public int? NumCpu { get; set; }
 
+    [JsonPropertyName("dbSize")]
+    public long? DbSize { get; set; }
+
     [JsonPropertyName("discoveryEnabled")]
     public bool? DiscoveryEnabled { get; set; }
 
     [JsonPropertyName("connectionServiceStatus")]
-    public Dictionary<string, object>? ConnectionServiceStatus { get; set; }
+    public Dictionary<string, JsonElement>? ConnectionServiceStatus { get; set; }
 
     [JsonIgnore]
     public TimeSpan UptimeSpan => TimeSpan.FromSeconds(Uptime ?? 0);
@@ -199,6 +203,41 @@ public class OptionsConfig
 }
 
 /// <summary>
+/// Listener information
+/// </summary>
+public class ListenerInfo
+{
+    [JsonPropertyName("address")]
+    public string Address { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+
+    [JsonIgnore]
+    public bool IsOk => string.IsNullOrEmpty(Error) && Status != "error";
+}
+
+/// <summary>
+/// Aggregated listeners status for dashboard
+/// </summary>
+public class ListenersStatus
+{
+    public List<ListenerInfo> Listeners { get; set; } = new();
+
+    [JsonIgnore]
+    public int Active => Listeners.Count(l => l.IsOk);
+
+    [JsonIgnore]
+    public int Total => Listeners.Count;
+
+    [JsonIgnore]
+    public string Summary => $"{Active}/{Total}";
+}
+
+/// <summary>
 /// Discovery status
 /// </summary>
 public class DiscoveryStatus
@@ -220,6 +259,39 @@ public class DiscoveryStatus
 
     [JsonPropertyName("externalAddresses")]
     public string[]? ExternalAddresses { get; set; }
+
+    [JsonIgnore]
+    public int ActiveCount
+    {
+        get
+        {
+            int count = 0;
+            if (LocalAnnounceEnabled == true && Local?.MulticastStatus is not null and not "" and not "error")
+                count++;
+            if (Global != null)
+                count += Global.Values.Count(s => !string.IsNullOrEmpty(s.Status) && s.Status != "error");
+            return count;
+        }
+    }
+
+    [JsonIgnore]
+    public int TotalCount
+    {
+        get
+        {
+            int count = 0;
+            if (LocalAnnounceEnabled == true) count++;
+            if (GlobalAnnounceEnabled == true)
+            {
+                // Count actual global servers if available, otherwise count 1 for the feature
+                count += Global?.Count ?? (GlobalAnnounceServers?.Length ?? 0);
+            }
+            return count;
+        }
+    }
+
+    [JsonIgnore]
+    public string Summary => $"{ActiveCount}/{TotalCount}";
 }
 
 public class DiscoveryServerStatus

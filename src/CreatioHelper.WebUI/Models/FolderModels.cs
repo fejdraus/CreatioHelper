@@ -351,6 +351,33 @@ public class ScanProgressInfo
     };
 }
 
+/// <summary>
+/// Latest file change information
+/// </summary>
+public class ChangeInfo
+{
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = string.Empty;
+
+    [JsonPropertyName("filename")]
+    public string FileName { get; set; } = string.Empty;
+
+    [JsonPropertyName("modifiedBy")]
+    public string ModifiedBy { get; set; } = string.Empty;
+
+    [JsonPropertyName("time")]
+    public DateTime Time { get; set; }
+
+    [JsonIgnore]
+    public string DisplayAction => Action switch
+    {
+        "deleted" => "Deleted",
+        "modified" => "Updated",
+        "added" => "Added",
+        _ => Action
+    };
+}
+
 public enum ScanPhase
 {
     Unknown,

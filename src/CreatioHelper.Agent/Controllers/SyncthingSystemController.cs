@@ -48,6 +48,7 @@ public class SyncthingSystemController : ControllerBase
             var statistics = await _syncEngine.GetStatisticsAsync();
             var devices = await _syncEngine.GetDevicesAsync();
             var folders = await _syncEngine.GetFoldersAsync();
+            var config = await _syncEngine.GetConfigurationAsync();
 
             // Get memory statistics
             var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
@@ -77,11 +78,11 @@ public class SyncthingSystemController : ControllerBase
                 osMemoryUsed = memoryLoad,                  // Memory used by OS/all processes
                 totalPhysicalMemory = totalPhysicalMemory,  // Total RAM on machine
 
-                connectionServiceStatus = new { },
+                connectionServiceStatus = BuildConnectionServiceStatus(config),
                 cpuPercent = GetCpuUsage(currentProcess),
-                discoveryEnabled = true,
+                discoveryEnabled = config.LocalAnnounceEnabled || config.GlobalAnnounceEnabled,
                 discoveryErrors = new { },
-                discoveryMethods = 4,
+                discoveryMethods = (config.LocalAnnounceEnabled ? 1 : 0) + (config.GlobalAnnounceEnabled ? config.GlobalAnnounceServers.Count : 0),
                 goroutines = System.Threading.ThreadPool.ThreadCount,
                 guiAddressOverridden = false,
                 guiAddressUsed = "127.0.0.1:8384",
@@ -120,6 +121,19 @@ public class SyncthingSystemController : ControllerBase
         {
             return 0;
         }
+    }
+
+    /// <summary>
+    /// Build connection service status from config listen addresses
+    /// </summary>
+    private static Dictionary<string, object> BuildConnectionServiceStatus(SyncConfiguration config)
+    {
+        var result = new Dictionary<string, object>();
+        foreach (var addr in config.ListenAddresses)
+        {
+            result[addr] = new { error = (string?)null };
+        }
+        return result;
     }
 
     /// <summary>
@@ -867,23 +881,32 @@ public class SyncthingSystemController : ControllerBase
     {
         try
         {
-            var devices = await _syncEngine.GetDevicesAsync();
             var config = await _syncEngine.GetConfigurationAsync();
 
-            var result = new Dictionary<string, object>();
-
-            foreach (var device in devices)
+            // Build global discovery server statuses
+            var globalServers = new Dictionary<string, object>();
+            if (config.GlobalAnnounceEnabled)
             {
-                if (device.Addresses.Count > 0)
+                foreach (var server in config.GlobalAnnounceServers)
                 {
-                    result[device.DeviceId] = new
-                    {
-                        addresses = device.Addresses.ToArray()
-                    };
+                    globalServers[server] = new { status = "ok", lastSeen = DateTime.UtcNow };
                 }
             }
 
-            return Ok(result);
+            // Local discovery status
+            var localStatus = new
+            {
+                multicastStatus = config.LocalAnnounceEnabled ? "ok" : ""
+            };
+
+            return Ok(new
+            {
+                global = globalServers,
+                local = localStatus,
+                localAnnounceEnabled = config.LocalAnnounceEnabled,
+                globalAnnounceEnabled = config.GlobalAnnounceEnabled,
+                globalAnnounceServers = config.GlobalAnnounceServers.ToArray()
+            });
         }
         catch (Exception ex)
         {

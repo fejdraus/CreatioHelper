@@ -1,0 +1,83 @@
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Resources
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Localization> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Explore" Class="mr-2" />
+            @L["Dashboard_Discovery"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Status != null)
+        {
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dashboard_DiscoveryLocal"]</MudText>
+            <MudSimpleTable Dense="true" Hover="true" Class="mb-4">
+                <tbody>
+                    <tr>
+                        <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["Dashboard_LocalAnnounce"]</MudText></td>
+                        <td>
+                            @if (Status.LocalAnnounceEnabled == true)
+                            {
+                                <MudChip T="string" Color="@(Status.Local?.MulticastStatus is "ok" or "running" ? Color.Success : Color.Warning)" Size="Size.Small">
+                                    @(Status.Local?.MulticastStatus ?? "unknown")
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudChip T="string" Color="Color.Default" Size="Size.Small">@L["Common_Disabled"]</MudChip>
+                            }
+                        </td>
+                    </tr>
+                </tbody>
+            </MudSimpleTable>
+
+            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Dashboard_DiscoveryGlobal"]</MudText>
+            @if (Status.Global?.Count > 0)
+            {
+                <MudSimpleTable Dense="true" Hover="true">
+                    <thead>
+                        <tr>
+                            <th>@L["Dashboard_DiscoveryServer"]</th>
+                            <th>@L["Common_Status"]</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var (server, info) in Status.Global)
+                        {
+                            <tr>
+                                <td><MudText Typo="Typo.body2" Style="font-family: monospace; word-break: break-all;">@server</MudText></td>
+                                <td>
+                                    <MudChip T="string" Color="@(info.Status is "ok" or "running" or "success" ? Color.Success : Color.Error)" Size="Size.Small">
+                                        @info.Status
+                                    </MudChip>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </MudSimpleTable>
+            }
+            else if (Status.GlobalAnnounceEnabled != true)
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Common_Disabled"]</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Dashboard_NoDiscoveryServers"]</MudText>
+            }
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">@L["Common_Close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public DiscoveryStatus? Status { get; set; }
+}

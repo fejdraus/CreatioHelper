@@ -575,12 +575,7 @@ public class NatTraversalConfiguration
     public bool NatPmpEnabled { get; set; } = true;
     public bool StunEnabled { get; set; } = true;
 
-    public List<string> StunServers { get; set; } = new()
-    {
-        "stun.syncthing.net:3478",
-        "stun.l.google.com:19302",
-        "stun1.l.google.com:19302"
-    };
+    public List<string> StunServers { get; set; } = new();
 
     public int MappingRenewalMinutes { get; set; } = 30;
     public int StunKeepaliveIntervalSeconds { get; set; } = 30;

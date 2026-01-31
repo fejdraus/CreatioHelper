@@ -3,7 +3,7 @@
 @using CreatioHelper.WebUI.Services
 @using CreatioHelper.WebUI.Resources
 @using Microsoft.Extensions.Localization
-@inject ApiClient Api
+@inject IApiClient Api
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
@@ -54,21 +54,34 @@
 
                     <MudDivider Class="my-4" />
 
-                    <MudGrid>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_GlobalState"] @L["FolderDetails_Files"]</MudText>
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["FolderDetails_GlobalState"]</MudText>
+                    <MudGrid Class="mb-3">
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Files"]</MudText>
                             <MudText Typo="Typo.body1">@(_status?.GlobalFiles.ToString("N0") ?? "-")</MudText>
                         </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_LocalState"] @L["FolderDetails_Files"]</MudText>
-                            <MudText Typo="Typo.body1">@(_status?.LocalFiles.ToString("N0") ?? "-")</MudText>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Dirs"]</MudText>
+                            <MudText Typo="Typo.body1">@(_status?.GlobalDirectories.ToString("N0") ?? "-")</MudText>
                         </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_GlobalState"] @L["FolderDetails_Size"]</MudText>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Size"]</MudText>
                             <MudText Typo="Typo.body1">@FormatBytes(_status?.GlobalBytes ?? 0)</MudText>
                         </MudItem>
-                        <MudItem xs="6" sm="3">
-                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_LocalState"] @L["FolderDetails_Size"]</MudText>
+                    </MudGrid>
+
+                    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["FolderDetails_LocalState"]</MudText>
+                    <MudGrid>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Files"]</MudText>
+                            <MudText Typo="Typo.body1">@(_status?.LocalFiles.ToString("N0") ?? "-")</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Dirs"]</MudText>
+                            <MudText Typo="Typo.body1">@(_status?.LocalDirectories.ToString("N0") ?? "-")</MudText>
+                        </MudItem>
+                        <MudItem xs="4">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">@L["FolderDetails_Size"]</MudText>
                             <MudText Typo="Typo.body1">@FormatBytes(_status?.LocalBytes ?? 0)</MudText>
                         </MudItem>
                     </MudGrid>
@@ -112,11 +125,25 @@
                                 <td>@(_folder.IgnorePerms ? L["Common_Yes"] : L["Common_No"])</td>
                             </tr>
                             <tr>
+                                <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["FolderDetails_FilePullOrder"]</MudText></td>
+                                <td>@GetPullOrderDisplay(_folder.Order)</td>
+                            </tr>
+                            <tr>
                                 <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["FolderDetails_SharedWith"]</MudText></td>
                                 <td>@string.Format(L["Msg_DeviceCount"], _folder.Devices?.Length ?? 0)</td>
                             </tr>
                         </tbody>
                     </MudSimpleTable>
+
+                    @if (_latestChange != null)
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.subtitle2" Class="mb-1">@L["FolderDetails_LatestChange"]</MudText>
+                        <MudText Typo="Typo.body2">
+                            @_latestChange.DisplayAction: @System.IO.Path.GetFileName(_latestChange.FileName)
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@_latestChange.Time.ToLocalTime().ToString("g")</MudText>
+                    }
                 </MudPaper>
             </MudItem>
 
@@ -155,7 +182,8 @@
                             @foreach (var device in _folder.Devices)
                             {
                                 <MudListItem Icon="@Icons.Material.Filled.Devices">
-                                    <MudText Typo="Typo.body2" Style="word-break: break-all">@device.DeviceId</MudText>
+                                    <MudText Typo="Typo.body2">@GetDeviceName(device.DeviceId)</MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-family: monospace;">@device.DeviceId</MudText>
                                 </MudListItem>
                             }
                         </MudList>
@@ -176,6 +204,8 @@
 
     private FolderConfig? _folder;
     private FolderStatus? _status;
+    private ChangeInfo? _latestChange;
+    private DeviceConfig[]? _allDevices;
     private bool _loading = true;
     private List<BreadcrumbItem> _breadcrumbs = new();
 
@@ -192,9 +222,12 @@
             var folders = await Api.GetFoldersAsync();
             _folder = folders?.FirstOrDefault(f => f.Id == FolderId);
 
+            _allDevices = await Api.GetDevicesAsync();
+
             if (_folder != null)
             {
                 _status = await Api.GetFolderStatusAsync(FolderId);
+                await LoadLatestChangeAsync();
                 _breadcrumbs = new List<BreadcrumbItem>
                 {
                     new(L["Common_Folders"], "/folders"),
@@ -265,10 +298,50 @@
         return $"{len:F2} {sizes[order]}";
     }
 
-    private static string FormatInterval(int seconds)
+    private string FormatInterval(int seconds)
     {
-        if (seconds < 60) return $"{seconds}s";
-        if (seconds < 3600) return $"{seconds / 60}m";
-        return $"{seconds / 3600}h";
+        if (seconds < 60) return $"{seconds}{L["Time_Seconds"]}";
+        if (seconds < 3600) return $"{seconds / 60}{L["Time_Minutes"]}";
+        return $"{seconds / 3600}{L["Time_Hours"]}";
+    }
+
+    private string GetDeviceName(string deviceId)
+    {
+        var device = _allDevices?.FirstOrDefault(d => d.DeviceId == deviceId);
+        return device?.DisplayName ?? (deviceId.Length > 7 ? deviceId[..7] + "..." : deviceId);
+    }
+
+    private string GetPullOrderDisplay(string order) => order switch
+    {
+        "random" => L["FolderDetails_PullOrder_Random"],
+        "alphabetic" => L["FolderDetails_PullOrder_Alphabetic"],
+        "smallestFirst" => L["FolderDetails_PullOrder_SmallestFirst"],
+        "largestFirst" => L["FolderDetails_PullOrder_LargestFirst"],
+        "oldestFirst" => L["FolderDetails_PullOrder_OldestFirst"],
+        "newestFirst" => L["FolderDetails_PullOrder_NewestFirst"],
+        _ => order
+    };
+
+    private async Task LoadLatestChangeAsync()
+    {
+        try
+        {
+            var events = await Api.GetEventsAsync(limit: 50, filter: "LocalChangeDetected,RemoteChangeDetected");
+            var change = events?.FirstOrDefault(e => e.FolderId == FolderId);
+            if (change != null)
+            {
+                _latestChange = new ChangeInfo
+                {
+                    Action = change.GetDataValue("action"),
+                    FileName = change.GetDataValue("path"),
+                    ModifiedBy = change.GetDataValue("modifiedBy"),
+                    Time = change.Time
+                };
+            }
+        }
+        catch
+        {
+            // Ignore
+        }
     }
 }
