@@ -136,18 +136,7 @@ public class StunServerConfiguration
     /// <summary>
     /// Default STUN servers.
     /// </summary>
-    public List<string> DefaultServers { get; } = new()
-    {
-        "stun.syncthing.net",
-        "stun.callwithus.com",
-        "stun.counterpath.com",
-        "stun.ekiga.net",
-        "stun.ideasip.com",
-        "stun.schlund.de",
-        "stun.voiparound.com",
-        "stun.voipbuster.com",
-        "stun.voipstunt.com"
-    };
+    public List<string> DefaultServers { get; } = new();
 
     /// <summary>
     /// Custom STUN servers (added by user).

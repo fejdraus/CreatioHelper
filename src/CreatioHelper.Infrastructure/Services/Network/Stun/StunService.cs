@@ -139,15 +139,8 @@ public class StunService : IStunService
     private static readonly TimeSpan CheckInterval = TimeSpan.FromMinutes(5);
     private static readonly TimeSpan NatTypeDetectionInterval = TimeSpan.FromMinutes(30);
 
-    // Default STUN servers (Syncthing compatible)
-    private static readonly string[] DefaultStunServers =
-    [
-        "stun.syncthing.net:3478",
-        "stun.l.google.com:19302",
-        "stun1.l.google.com:19302",
-        "stun2.l.google.com:19302",
-        "stun.cloudflare.com:3478"
-    ];
+    // No hardcoded STUN servers — must be configured explicitly
+    private static readonly string[] DefaultStunServers = Array.Empty<string>();
 
     public NatType? NatType => _natType;
     public string? NatTypeDescription => _natTypeDescription;

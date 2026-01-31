@@ -70,6 +70,12 @@ public class FileMetadataRepository : IFileMetadataRepository
 
     public async Task UpsertAsync(FileMetadata metadata)
     {
+        // Auto-assign sequence if not set
+        if (metadata.Sequence == 0)
+        {
+            metadata.Sequence = await GetNextSequenceAsync(metadata.FolderId);
+        }
+
         const string sql = @"
             INSERT OR REPLACE INTO file_metadata (
                 folder_id, file_name, size, modified_time, permissions, is_deleted, is_invalid,
@@ -86,6 +92,18 @@ public class FileMetadataRepository : IFileMetadataRepository
         AddParameters(command, metadata);
 
         await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task<long> GetNextSequenceAsync(string folderId)
+    {
+        const string sql = "SELECT COALESCE(MAX(sequence), 0) + 1 FROM file_metadata WHERE folder_id = @folderId";
+
+        using var command = _getConnection().CreateCommand();
+        command.CommandText = sql;
+        command.Parameters.AddWithValue("@folderId", folderId);
+
+        var result = await command.ExecuteScalarAsync();
+        return result != null && result != DBNull.Value ? Convert.ToInt64(result) : 1;
     }
 
     public async Task DeleteAsync(string folderId, string fileName)
@@ -230,20 +248,24 @@ public class FileMetadataRepository : IFileMetadataRepository
 
     private static FileMetadata MapFromReader(SqliteDataReader reader)
     {
+        var permissionsOrdinal = reader.GetOrdinal("permissions");
+        var hashOrdinal = reader.GetOrdinal("hash");
+        var hashString = reader.IsDBNull(hashOrdinal) ? null : reader.GetString(hashOrdinal);
+
         var metadata = new FileMetadata
         {
             FolderId = reader.GetString(reader.GetOrdinal("folder_id")),
             FileName = reader.GetString(reader.GetOrdinal("file_name")),
             Size = reader.GetInt64(reader.GetOrdinal("size")),
             ModifiedTime = DateTime.Parse(reader.GetString(reader.GetOrdinal("modified_time"))),
-            Permissions = (int?)reader.GetInt64(reader.GetOrdinal("permissions")),
+            Permissions = reader.IsDBNull(permissionsOrdinal) ? null : (int?)reader.GetInt64(permissionsOrdinal),
             IsDeleted = reader.GetBoolean(reader.GetOrdinal("is_deleted")),
             IsInvalid = reader.GetBoolean(reader.GetOrdinal("is_invalid")),
             SymlinkTarget = reader.IsDBNull(reader.GetOrdinal("symlink_target")) ? null : reader.GetString(reader.GetOrdinal("symlink_target")),
             Sequence = reader.GetInt64(reader.GetOrdinal("sequence")),
             VersionVector = reader.GetString(reader.GetOrdinal("version_vector")),
             BlockSize = reader.GetInt32(reader.GetOrdinal("block_size")),
-            Hash = System.Text.Encoding.UTF8.GetBytes(reader.GetString(reader.GetOrdinal("hash"))),
+            Hash = string.IsNullOrEmpty(hashString) ? Array.Empty<byte>() : Convert.FromBase64String(hashString),
             ModifiedBy = reader.GetString(reader.GetOrdinal("modified_by")),
             LocallyChanged = reader.GetBoolean(reader.GetOrdinal("locally_changed")),
             LocalFlags = (FileLocalFlags)reader.GetInt32(reader.GetOrdinal("local_flags")),
@@ -271,26 +293,37 @@ public class FileMetadataRepository : IFileMetadataRepository
 
     private static void AddParameters(SqliteCommand command, FileMetadata metadata)
     {
-        command.Parameters.AddWithValue("@folderId", metadata.FolderId ?? string.Empty);
-        command.Parameters.AddWithValue("@fileName", metadata.FileName ?? string.Empty);
-        command.Parameters.AddWithValue("@size", metadata.Size);
-        command.Parameters.AddWithValue("@modifiedTime", metadata.ModifiedTime.ToString("O"));
-        command.Parameters.AddWithValue("@permissions", (object?)metadata.Permissions ?? DBNull.Value);
-        command.Parameters.AddWithValue("@isDeleted", metadata.IsDeleted);
-        command.Parameters.AddWithValue("@isInvalid", metadata.IsInvalid);
-        command.Parameters.AddWithValue("@isNoPermissions", metadata.IsNoPermissions);
-        command.Parameters.AddWithValue("@isSymlink", metadata.IsSymlink);
-        command.Parameters.AddWithValue("@symlinkTarget", (object?)metadata.SymlinkTarget ?? DBNull.Value);
-        command.Parameters.AddWithValue("@sequence", metadata.Sequence);
-        command.Parameters.AddWithValue("@versionVector", metadata.VersionVector ?? string.Empty);
-        command.Parameters.AddWithValue("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes ?? new List<string>()));
-        command.Parameters.AddWithValue("@blockSize", metadata.BlockSize);
-        command.Parameters.AddWithValue("@hash", metadata.Hash != null ? System.Text.Encoding.UTF8.GetString(metadata.Hash) : string.Empty);
-        command.Parameters.AddWithValue("@modifiedBy", metadata.ModifiedBy ?? string.Empty);
-        command.Parameters.AddWithValue("@locallyChanged", metadata.LocallyChanged);
-        command.Parameters.AddWithValue("@localFlags", (int)metadata.LocalFlags);
-        command.Parameters.AddWithValue("@platformData", JsonSerializer.Serialize(metadata.PlatformData ?? new Dictionary<string, object>()));
-        command.Parameters.AddWithValue("@updatedAt", metadata.UpdatedAt.ToString("O"));
+        // Use explicit SqliteParameter to properly handle nulls
+        command.Parameters.Add(new SqliteParameter("@folderId", metadata.FolderId ?? string.Empty));
+        command.Parameters.Add(new SqliteParameter("@fileName", metadata.FileName ?? string.Empty));
+        command.Parameters.Add(new SqliteParameter("@size", metadata.Size));
+        command.Parameters.Add(new SqliteParameter("@modifiedTime", metadata.ModifiedTime == default ? DateTime.UtcNow.ToString("O") : metadata.ModifiedTime.ToString("O")));
+
+        // Handle nullable permissions - must use SqliteType for null values
+        var permParam = new SqliteParameter("@permissions", SqliteType.Integer);
+        permParam.Value = metadata.Permissions.HasValue ? (object)metadata.Permissions.Value : DBNull.Value;
+        command.Parameters.Add(permParam);
+
+        command.Parameters.Add(new SqliteParameter("@isDeleted", metadata.IsDeleted ? 1 : 0));
+        command.Parameters.Add(new SqliteParameter("@isInvalid", metadata.IsInvalid ? 1 : 0));
+        command.Parameters.Add(new SqliteParameter("@isNoPermissions", metadata.IsNoPermissions ? 1 : 0));
+        command.Parameters.Add(new SqliteParameter("@isSymlink", metadata.IsSymlink ? 1 : 0));
+
+        // Handle nullable symlink target - must use SqliteType for null values
+        var symlinkParam = new SqliteParameter("@symlinkTarget", SqliteType.Text);
+        symlinkParam.Value = string.IsNullOrEmpty(metadata.SymlinkTarget) ? DBNull.Value : metadata.SymlinkTarget;
+        command.Parameters.Add(symlinkParam);
+
+        command.Parameters.Add(new SqliteParameter("@sequence", metadata.Sequence));
+        command.Parameters.Add(new SqliteParameter("@versionVector", metadata.VersionVector ?? "[]"));
+        command.Parameters.Add(new SqliteParameter("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes ?? new List<string>())));
+        command.Parameters.Add(new SqliteParameter("@blockSize", metadata.BlockSize));
+        command.Parameters.Add(new SqliteParameter("@hash", metadata.Hash != null && metadata.Hash.Length > 0 ? Convert.ToBase64String(metadata.Hash) : string.Empty));
+        command.Parameters.Add(new SqliteParameter("@modifiedBy", metadata.ModifiedBy ?? string.Empty));
+        command.Parameters.Add(new SqliteParameter("@locallyChanged", metadata.LocallyChanged ? 1 : 0));
+        command.Parameters.Add(new SqliteParameter("@localFlags", (int)metadata.LocalFlags));
+        command.Parameters.Add(new SqliteParameter("@platformData", JsonSerializer.Serialize(metadata.PlatformData ?? new Dictionary<string, object>())));
+        command.Parameters.Add(new SqliteParameter("@updatedAt", metadata.UpdatedAt == default ? DateTime.UtcNow.ToString("O") : metadata.UpdatedAt.ToString("O")));
     }
     
     public async Task<IEnumerable<FileMetadata>> GetByLocalFlagsAsync(string folderId, FileLocalFlags flags)

@@ -2,7 +2,7 @@
 @using CreatioHelper.WebUI.Models
 @using CreatioHelper.WebUI.Services
 @using Microsoft.Extensions.Localization
-@inject ApiClient Api
+@inject IApiClient Api
 @inject NavigationManager Navigation
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
@@ -19,7 +19,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Color="Color.Error" />
                 @L["FolderErrors_Title"]
             </MudText>
-            <MudButton Variant="Variant.Outlined"
+            <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="@LoadDataAsync">

@@ -1,0 +1,61 @@
+@using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Resources
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<Localization> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Hearing" Class="mr-2" />
+            @L["Dashboard_Listeners"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (Status?.Listeners.Count > 0)
+        {
+            <MudSimpleTable Dense="true" Hover="true">
+                <thead>
+                    <tr>
+                        <th>@L["Dashboard_ListenerAddress"]</th>
+                        <th>@L["Common_Status"]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var listener in Status.Listeners)
+                    {
+                        <tr>
+                            <td><MudText Typo="Typo.body2" Style="font-family: monospace;">@listener.Address</MudText></td>
+                            <td>
+                                @if (listener.IsOk)
+                                {
+                                    <MudChip T="string" Color="Color.Success" Size="Size.Small">OK</MudChip>
+                                }
+                                else
+                                {
+                                    <MudTooltip Text="@(listener.Error ?? "Error")">
+                                        <MudChip T="string" Color="Color.Error" Size="Size.Small">@L["Common_Error"]</MudChip>
+                                    </MudTooltip>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </MudSimpleTable>
+        }
+        else
+        {
+            <MudText Typo="Typo.body2" Color="Color.Secondary">@L["Dashboard_NoListeners"]</MudText>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="@(() => MudDialog.Close())">@L["Common_Close"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter]
+    public ListenersStatus? Status { get; set; }
+}

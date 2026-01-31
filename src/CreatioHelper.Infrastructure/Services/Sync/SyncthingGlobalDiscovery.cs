@@ -44,13 +44,8 @@ public class SyncthingGlobalDiscovery : IDisposable
     // Server configuration
     private readonly List<GlobalDiscoveryServer> _servers = new();
 
-    // Default global discovery servers
-    private static readonly string[] DefaultServers = new[]
-    {
-        "https://discovery.syncthing.net/v2/",
-        "https://discovery-v4.syncthing.net/v2/",
-        "https://discovery-v6.syncthing.net/v2/"
-    };
+    // No hardcoded discovery servers — must be configured explicitly
+    private static readonly string[] DefaultServers = Array.Empty<string>();
 
     public SyncthingGlobalDiscovery(
         ILogger<SyncthingGlobalDiscovery> logger,
