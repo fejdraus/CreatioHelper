@@ -6,6 +6,7 @@
 @inject IDialogService DialogService
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
+@inject ISignalRService SignalR
 @implements IDisposable
 
 <PageTitle>@L["PendingDevices_Title"] - CreatioHelper</PageTitle>
@@ -25,7 +26,7 @@
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["PendingDevices_Title"]</MudText>
-    <MudButton Variant="Variant.Outlined"
+    <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="LoadPendingDevicesAsync"
@@ -58,16 +59,12 @@
     <MudCollapse Expanded="@_autoAcceptExpanded">
         <MudDivider Class="my-3" />
 
-        <MudAlert Severity="Severity.Info" Class="mb-3" Variant="Variant.Outlined" Dense="true">
-            @L["PendingDevices_AutoAcceptIntroducedDesc"]
-        </MudAlert>
-
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AutoAcceptDefaultFolders"]</MudText>
                 <MudTextField @bind-Value="_defaultFolderPath"
                               Placeholder="@L["PendingDevices_AutoAcceptDefaultFoldersDesc"]"
-                              Variant="Variant.Outlined"
+                              Variant="Variant.Filled"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Folder"
                               HelperText="@L["PendingDevices_AutoAcceptAllowListDesc"]"
@@ -133,7 +130,7 @@ else if (_pendingDevices.Length == 0)
         <MudText Color="Color.Secondary" Class="mb-4">
             @L["PendingDevices_NoHistory"]
         </MudText>
-        <MudButton Variant="Variant.Outlined"
+        <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Devices"
                    Href="/devices">
@@ -203,7 +200,7 @@ else
                         </MudMenu>
                     </MudButtonGroup>
 
-                    <MudButton Variant="Variant.Outlined"
+                    <MudButton Variant="Variant.Filled"
                                Color="Color.Error"
                                Size="Size.Small"
                                StartIcon="@Icons.Material.Filled.Close"
@@ -265,7 +262,7 @@ else
                     <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AcceptDevice"]</MudText>
                     <MudGrid>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Color="Color.Success"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.Check"
@@ -278,7 +275,7 @@ else
                             </MudText>
                         </MudItem>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Color="Color.Info"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.AutoAwesome"
@@ -291,7 +288,7 @@ else
                             </MudText>
                         </MudItem>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Outlined"
+                            <MudButton Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.FolderShared"
@@ -318,7 +315,6 @@ else
     private bool _isLoading = true;
     private HashSet<string> _processingDevices = new();
     private HashSet<string> _expandedDevices = new();
-    private System.Threading.Timer? _refreshTimer;
 
     // Auto-accept configuration
     private bool _autoAcceptExpanded;
@@ -329,14 +325,13 @@ else
     protected override async Task OnInitializedAsync()
     {
         State.OnChange += OnStateChanged;
+        SignalR.OnSyncEvent += OnSyncEvent;
         await LoadPendingDevicesAsync();
-        StartAutoRefresh();
     }
 
-    private void StartAutoRefresh()
+    private async void OnSyncEvent(SyncEvent evt)
     {
-        _refreshTimer?.Dispose();
-        _refreshTimer = new System.Threading.Timer(async _ =>
+        if (evt.Type == EventType.DeviceDiscovered || evt.Type == EventType.DeviceConnected || evt.Type == EventType.PendingDevicesChanged)
         {
             await InvokeAsync(async () =>
             {
@@ -352,10 +347,10 @@ else
                 }
                 catch
                 {
-                    // Ignore errors during auto-refresh
+                    // Ignore errors during refresh
                 }
             });
-        }, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
+        }
     }
 
     private void OnStateChanged()
@@ -650,6 +645,6 @@ else
     public void Dispose()
     {
         State.OnChange -= OnStateChanged;
-        _refreshTimer?.Dispose();
+        SignalR.OnSyncEvent -= OnSyncEvent;
     }
 }
