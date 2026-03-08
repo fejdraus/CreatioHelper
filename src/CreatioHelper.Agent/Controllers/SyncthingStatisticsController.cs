@@ -18,7 +18,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest/stats")]
-[Authorize(Roles = Roles.ReadRoles)]
+[Authorize(Roles = Roles.MonitorRoles)]
 public class SyncthingStatisticsController : ControllerBase
 {
     private readonly IStatisticsCollector _statisticsCollector;

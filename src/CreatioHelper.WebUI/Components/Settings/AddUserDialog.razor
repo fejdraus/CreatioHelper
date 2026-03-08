@@ -1,0 +1,130 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-2" />
+            @(IsEditMode ? L["Users_Edit"] : L["Users_Add"])
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_username"
+                          Label="@L["Users_Username"]"
+                          Required="true"
+                          RequiredError="@L["Users_UsernameRequired"]"
+                          ReadOnly="@IsEditMode"
+                          Immediate="true"
+                          Class="mb-4" />
+
+            @if (!IsEditMode)
+            {
+                <MudTextField @bind-Value="_password"
+                              Label="@L["Users_Password"]"
+                              InputType="InputType.Password"
+                              Required="true"
+                              RequiredError="@L["Users_PasswordRequired"]"
+                              Immediate="true"
+                              Class="mb-4" />
+            }
+            else
+            {
+                <MudTextField @bind-Value="_password"
+                              Label="@L["Users_NewPasswordOptional"]"
+                              InputType="InputType.Password"
+                              HelperText="@L["Users_LeaveBlankKeepPassword"]"
+                              Class="mb-4" />
+            }
+
+            <MudSelect @bind-Value="_role"
+                       Label="@L["Users_Role"]"
+                       Required="true"
+                       Class="mb-4">
+                <MudSelectItem Value="@("admin")">Admin</MudSelectItem>
+                <MudSelectItem Value="@("user")">User</MudSelectItem>
+                <MudSelectItem Value="@("readonly")">Readonly</MudSelectItem>
+                <MudSelectItem Value="@("monitor")">Monitor</MudSelectItem>
+            </MudSelect>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(!_isValid || _saving)"
+                   OnClick="Submit">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsEditMode ? L["Common_Save"] : L["Users_Add"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public string? EditUsername { get; set; }
+    [Parameter] public string? EditRole { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _saving;
+    private string _username = string.Empty;
+    private string _password = string.Empty;
+    private string _role = "user";
+
+    protected override void OnParametersSet()
+    {
+        if (IsEditMode)
+        {
+            _username = EditUsername ?? string.Empty;
+            _role = EditRole ?? "user";
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid && !IsEditMode) return;
+
+        _saving = true;
+        try
+        {
+            if (IsEditMode)
+            {
+                await ApiClient.UpdateUserAsync(_username, new UpdateUserModel
+                {
+                    Role = _role,
+                    Password = string.IsNullOrWhiteSpace(_password) ? null : _password
+                });
+                Snackbar.Add(L["Users_UpdatedSuccess"], Severity.Success);
+            }
+            else
+            {
+                await ApiClient.CreateUserAsync(new CreateUserModel
+                {
+                    Username = _username,
+                    Password = _password,
+                    Role = _role
+                });
+                Snackbar.Add(L["Users_CreatedSuccess"], Severity.Success);
+            }
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (HttpRequestException ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

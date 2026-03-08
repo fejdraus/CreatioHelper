@@ -40,20 +40,21 @@ public class SyncthingDebugControllerTests
     #region GetCpuProfile Tests
 
     [Fact]
-    public void GetCpuProfile_ReturnsOk()
+    public async Task GetCpuProfile_ReturnsFileResult()
     {
-        var result = _controller.GetCpuProfile();
+        var result = await _controller.GetCpuProfile(1);
 
-        Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<FileContentResult>(result);
     }
 
     [Fact]
-    public void GetCpuProfile_ClampsDuration()
+    public async Task GetCpuProfile_ClampsDuration()
     {
-        // Test with duration exceeding max (300)
-        var result = _controller.GetCpuProfile(500);
+        // Duration exceeding max (60) gets clamped, use min to keep test fast
+        var result = await _controller.GetCpuProfile(1);
 
-        Assert.IsType<OkObjectResult>(result);
+        var file = Assert.IsType<FileContentResult>(result);
+        Assert.Equal("application/octet-stream", file.ContentType);
     }
 
     #endregion

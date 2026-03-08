@@ -21,7 +21,7 @@ public class DiagnosticsController : ControllerBase
     }
     
     [HttpGet("summary")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public ActionResult<object> GetDiagnosticsSummary()
     {
         try
@@ -60,25 +60,70 @@ public class DiagnosticsController : ControllerBase
     public async Task<ActionResult<object>> ForceSystemCheck()
     {
         using var diagnosticContext = _diagnosticsService.StartOperation("force_system_check");
-        
+
         try
         {
-            _logger.LogInformation("🔍 Force system check initiated by API request");
-            
-            // Simulate a forced check of all critical components
-            await Task.Delay(100); // Mocked check
-            
+            _logger.LogInformation("Force system check initiated by API request");
+
+            var checks = new Dictionary<string, object>();
+
+            // Check memory
+            var process = Process.GetCurrentProcess();
+            var memoryMb = process.WorkingSet64 / 1024.0 / 1024.0;
+            checks["memory"] = new
+            {
+                status = memoryMb < 2048 ? "ok" : "warning",
+                workingSetMb = Math.Round(memoryMb, 1),
+                gcMemory = GC.GetTotalMemory(false) / 1024.0 / 1024.0
+            };
+
+            // Check disk space
+            try
+            {
+                var appDir = AppContext.BaseDirectory;
+                var driveInfo = new System.IO.DriveInfo(Path.GetPathRoot(appDir)!);
+                var freeGb = driveInfo.AvailableFreeSpace / (1024.0 * 1024 * 1024);
+                checks["disk"] = new
+                {
+                    status = freeGb > 1 ? "ok" : "warning",
+                    freeSpaceGb = Math.Round(freeGb, 2),
+                    drive = driveInfo.Name
+                };
+            }
+            catch
+            {
+                checks["disk"] = new { status = "unknown", error = "Could not check disk space" };
+            }
+
+            // Check process health
+            checks["process"] = new
+            {
+                status = "ok",
+                threads = process.Threads.Count,
+                handles = process.HandleCount,
+                uptimeMinutes = (DateTime.Now - process.StartTime).TotalMinutes
+            };
+
+            // Check thread pool
+            System.Threading.ThreadPool.GetAvailableThreads(out var workerThreads, out var completionPortThreads);
+            checks["threadPool"] = new
+            {
+                status = "ok",
+                availableWorkerThreads = workerThreads,
+                availableCompletionPortThreads = completionPortThreads
+            };
+
             var results = new Dictionary<string, object>
             {
                 ["timestamp"] = DateTime.UtcNow,
                 ["initiated_by"] = "api_request",
                 ["status"] = "completed",
-                ["checks_performed"] = new[] { "iis", "file_system", "memory", "process_health" }
+                ["checks"] = checks
             };
 
-            diagnosticContext.AddContext("results_count", results.Count);
+            diagnosticContext.AddContext("results_count", checks.Count);
             diagnosticContext.MarkSuccess();
-            
+
             return Ok(results);
         }
         catch (Exception ex)
@@ -93,7 +138,7 @@ public class DiagnosticsController : ControllerBase
     /// Get the history of recent issues for troubleshooting
     /// </summary>
     [HttpGet("issues")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public ActionResult<object> GetRecentIssues()
     {
         try
@@ -103,15 +148,29 @@ public class DiagnosticsController : ControllerBase
 
             foreach (var operation in summary)
             {
+                var operationName = operation.Key;
+                var operationData = operation.Value as IDictionary<string, object>;
+                var failureCount = 0L;
+                var avgDuration = 0.0;
+
+                if (operationData != null)
                 {
-                    var operationName = operation.Key;
-                    issues.Add(new
-                    {
-                        Operation = operationName,
-                        Timestamp = DateTime.UtcNow,
-                        Type = "diagnostic_placeholder"
-                    });
+                    if (operationData.TryGetValue("FailureCount", out var fc) && fc is long fcl) failureCount = fcl;
+                    if (operationData.TryGetValue("AverageDurationMs", out var ad) && ad is double add) avgDuration = add;
                 }
+
+                var issueType = failureCount > 0 ? "failure"
+                    : avgDuration > 5000 ? "slow_operation"
+                    : "info";
+
+                issues.Add(new
+                {
+                    Operation = operationName,
+                    Timestamp = DateTime.UtcNow,
+                    Type = issueType,
+                    FailureCount = failureCount,
+                    AverageDurationMs = avgDuration
+                });
             }
 
             return Ok(new

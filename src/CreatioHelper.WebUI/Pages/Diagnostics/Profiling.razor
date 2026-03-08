@@ -60,7 +60,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Info" Size="Size.Large" Class="mr-3" />
                 <div>
                     <MudText Typo="Typo.caption" Color="Color.Default">@L["Dashboard_Uptime"]</MudText>
-                    <MudText Typo="Typo.h5">@FormatUptime(_uptime)</MudText>
+                    <MudText Typo="Typo.h5"><UptimeDisplay StartTime="@_startTime" /></MudText>
                 </div>
             </div>
         </MudPaper>
@@ -242,9 +242,9 @@
     private long _totalPhysicalMemory;
     private double _osMemoryPercent;
     private int _goroutines;
-    private TimeSpan _uptime;
+    private DateTime? _startTime;
 
-    // Heap stats (initialized for CS0649)
+    // Heap stats
     private long _heapAlloc = 0;
     private long _heapInUse = 0;
     private long _heapObjects = 0;
@@ -252,13 +252,18 @@
     private int _gcCollections = 0;
     private double _gcPauseTotal = 0;
 
-    // I/O stats (initialized for CS0649)
+    // I/O stats
     private int _filesOpen = 0;
     private int _networkConnections = 0;
     private long _totalRead = 0;
     private long _totalWritten = 0;
     private long _readRate = 0;
     private long _writeRate = 0;
+
+    // Previous values for rate calculation
+    private long _prevTotalRead = 0;
+    private long _prevTotalWritten = 0;
+    private DateTime _prevRateTimestamp = DateTime.UtcNow;
 
     // History for charts
     private List<double> _cpuHistory = new();
@@ -296,7 +301,37 @@
                 _osMemoryPercent = _totalPhysicalMemory > 0 ? (_osMemoryUsed * 100.0 / _totalPhysicalMemory) : 0;
 
                 _goroutines = status.Goroutines ?? 0;
-                _uptime = TimeSpan.FromSeconds(status.Uptime ?? 0);
+                _startTime = status.StartTime;
+
+                // Heap stats
+                _heapAlloc = status.HeapSizeBytes ?? 0;
+                _heapInUse = (status.HeapSizeBytes ?? 0) - (status.HeapFragmentedBytes ?? 0);
+                _heapObjects = status.HeapFragmentedBytes ?? 0; // Fragmented bytes (closest .NET analog)
+                _stackInUse = status.ProcessThreadCount ?? 0; // Thread count (closest .NET analog)
+                _gcCollections = (status.GcGen0Collections ?? 0) + (status.GcGen1Collections ?? 0) + (status.GcGen2Collections ?? 0);
+                _gcPauseTotal = status.GcTotalPauseMs ?? 0;
+
+                // I/O stats
+                _filesOpen = status.ProcessHandleCount ?? 0;
+                _networkConnections = status.ProcessThreadCount ?? 0;
+
+                // Calculate rates
+                var now = DateTime.UtcNow;
+                var elapsed = (now - _prevRateTimestamp).TotalSeconds;
+                var newTotalRead = status.TotalBytesIn ?? 0;
+                var newTotalWritten = status.TotalBytesOut ?? 0;
+
+                if (elapsed > 0 && _prevTotalRead > 0)
+                {
+                    _readRate = (long)((newTotalRead - _prevTotalRead) / elapsed);
+                    _writeRate = (long)((newTotalWritten - _prevTotalWritten) / elapsed);
+                }
+
+                _prevTotalRead = newTotalRead;
+                _prevTotalWritten = newTotalWritten;
+                _prevRateTimestamp = now;
+                _totalRead = newTotalRead;
+                _totalWritten = newTotalWritten;
 
                 // Update history
                 _cpuHistory.Add(_cpuUsage);

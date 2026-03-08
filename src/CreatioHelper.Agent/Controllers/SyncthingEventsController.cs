@@ -14,7 +14,7 @@ namespace CreatioHelper.Agent.Controllers;
 /// </summary>
 [ApiController]
 [Route("rest")]
-[Authorize(Roles = Roles.ReadRoles)]
+[Authorize(Roles = Roles.MonitorRoles)]
 public class SyncthingEventsController : ControllerBase
 {
     private readonly IEventLogger _eventLogger;
