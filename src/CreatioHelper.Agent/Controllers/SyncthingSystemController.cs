@@ -40,7 +40,7 @@ public class SyncthingSystemController : ControllerBase
     /// GET /rest/system/status
     /// </summary>
     [HttpGet("status")]
-    [AllowAnonymous]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetStatus()
     {
         try
@@ -94,7 +94,25 @@ public class SyncthingSystemController : ControllerBase
                 uptime = (int)statistics.Uptime.TotalSeconds,
                 urVersionMax = 3,
                 version = "v1.27.0", // CreatioHelper version mimicking Syncthing
-                codename = "Copper Dragonfly"
+                codename = "Copper Dragonfly",
+
+                // GC statistics
+                gcGen0Collections = GC.CollectionCount(0),
+                gcGen1Collections = GC.CollectionCount(1),
+                gcGen2Collections = GC.CollectionCount(2),
+                gcTotalPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,
+
+                // Heap statistics
+                heapSizeBytes = gcMemoryInfo.HeapSizeBytes,
+                heapFragmentedBytes = gcMemoryInfo.FragmentedBytes,
+
+                // Process statistics
+                processHandleCount = currentProcess.HandleCount,
+                processThreadCount = currentProcess.Threads.Count,
+
+                // I/O statistics
+                totalBytesIn = statistics.TotalBytesIn,
+                totalBytesOut = statistics.TotalBytesOut
             });
         }
         catch (Exception ex)
@@ -180,6 +198,8 @@ public class SyncthingSystemController : ControllerBase
             var devices = await _syncEngine.GetDevicesAsync();
             var folders = await _syncEngine.GetFoldersAsync();
 
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+
             // Build Syncthing-compatible configuration
             var config = new
             {
@@ -262,21 +282,29 @@ public class SyncthingSystemController : ControllerBase
                 }).ToArray(),
                 gui = new
                 {
-                    enabled = true,
-                    address = "127.0.0.1:8384",
+                    enabled = syncConfig.GuiEnabled,
+                    address = syncConfig.GuiAddress,
                     unixSocketPermissions = "0700",
-                    user = string.Empty,
-                    password = string.Empty,
-                    authMode = "static",
-                    useTLS = false,
-                    apiKey = "syncthing-compatible-key",
+                    user = syncConfig.GuiUser,
+                    password = syncConfig.GuiPassword,
+                    authMode = syncConfig.AuthMode,
+                    useTLS = syncConfig.GuiTls,
+                    apiKey = syncConfig.GuiApiKey,
                     insecureAdminAccess = false,
                     theme = "default",
                     debugging = false,
                     insecureSkipHostcheck = false,
                     insecureAllowFrameLoading = false
                 },
-                ldap = new { },
+                ldap = new
+                {
+                    address = syncConfig.LdapAddress,
+                    bindDN = syncConfig.LdapBindDN,
+                    transport = syncConfig.LdapTransport,
+                    insecureSkipVerify = syncConfig.LdapInsecureSkipVerify,
+                    searchBaseDN = syncConfig.LdapSearchBaseDN,
+                    searchFilter = syncConfig.LdapSearchFilter
+                },
                 options = new
                 {
                     listenAddresses = new[] { "default" },
@@ -358,21 +386,69 @@ public class SyncthingSystemController : ControllerBase
     /// </summary>
     [HttpPost("config")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
+    public async Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
     {
         try
         {
-            // Parse and validate Syncthing configuration format
-            _logger.LogInformation("Received configuration update");
-            
-            // For now, just return success - full implementation would
-            // parse the JSON and update internal configuration
-            return Task.FromResult<ActionResult>(Ok(new { success = true }));
+            _logger.LogInformation("Received configuration update, applying changes");
+
+            // Apply folder changes
+            if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var folderJson in foldersElement.EnumerateArray())
+                {
+                    if (!folderJson.TryGetProperty("id", out var idProp)) continue;
+                    var folderId = idProp.GetString();
+                    if (string.IsNullOrEmpty(folderId)) continue;
+
+                    var existing = await _syncEngine.GetFolderAsync(folderId);
+                    if (existing == null)
+                    {
+                        // Add new folder
+                        var path = folderJson.TryGetProperty("path", out var pathProp) ? pathProp.GetString() ?? "" : "";
+                        var label = folderJson.TryGetProperty("label", out var labelProp) ? labelProp.GetString() ?? folderId : folderId;
+                        var type = folderJson.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? "sendreceive" : "sendreceive";
+                        if (!string.IsNullOrEmpty(path))
+                        {
+                            await _syncEngine.AddFolderAsync(folderId, label, path, type);
+                        }
+                    }
+                }
+            }
+
+            // Apply device changes
+            if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var deviceJson in devicesElement.EnumerateArray())
+                {
+                    if (!deviceJson.TryGetProperty("deviceID", out var deviceIdProp)) continue;
+                    var deviceId = deviceIdProp.GetString();
+                    if (string.IsNullOrEmpty(deviceId)) continue;
+
+                    var devices = await _syncEngine.GetDevicesAsync();
+                    if (!devices.Any(d => d.DeviceId == deviceId))
+                    {
+                        var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
+                        var addresses = new List<string> { "dynamic" };
+                        if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
+                        {
+                            addresses = addrProp.EnumerateArray()
+                                .Select(a => a.GetString())
+                                .Where(s => !string.IsNullOrEmpty(s))
+                                .Cast<string>()
+                                .ToList();
+                        }
+                        await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+                    }
+                }
+            }
+
+            return Ok(new { success = true });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error updating system config");
-            return Task.FromResult<ActionResult>(StatusCode(500, new { error = "Internal server error" }));
+            return StatusCode(500, new { error = "Internal server error" });
         }
     }
 
@@ -425,21 +501,23 @@ public class SyncthingSystemController : ControllerBase
     {
         try
         {
-            var messages = new List<object>();
-            
-            for (int i = 0; i < Math.Min(last, 10); i++)
+            var entries = ReadLogEntries(Math.Min(last, 1000));
+            var messages = entries.Select(e => new
             {
-                messages.Add(new
+                when = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                message = e.Message,
+                level = e.Level switch
                 {
-                    when = DateTime.UtcNow.AddMinutes(-i).ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    message = $"CreatioHelper: Log message {i + 1}",
-                    level = 2 // INFO level
-                });
-            }
+                    "error" or "fatal" => 3,
+                    "warning" => 2,
+                    "debug" or "verbose" => 0,
+                    _ => 2 // INFO
+                }
+            }).ToArray();
 
             return Ok(new
             {
-                messages = messages.ToArray()
+                messages = messages
             });
         }
         catch (Exception ex)
@@ -460,7 +538,7 @@ public class SyncthingSystemController : ControllerBase
         try
         {
             var entries = new List<LogEntry>();
-            var logsDirectory = Path.Combine(AppContext.BaseDirectory, "logs");
+            var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
 
             if (!Directory.Exists(logsDirectory))
             {
@@ -520,6 +598,46 @@ public class SyncthingSystemController : ControllerBase
             _logger.LogError(ex, "Error getting system log entries");
             return StatusCode(500, Array.Empty<LogEntry>());
         }
+    }
+
+    /// <summary>
+    /// Read real log entries from log files (shared between GetLog, GetLogText, GetLogEntries)
+    /// </summary>
+    private List<LogEntry> ReadLogEntries(int limit)
+    {
+        var entries = new List<LogEntry>();
+        var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+
+        if (!Directory.Exists(logsDirectory))
+            return entries;
+
+        var logFiles = Directory.GetFiles(logsDirectory, "agent-*.log")
+            .OrderByDescending(f => System.IO.File.GetLastWriteTimeUtc(f))
+            .ToList();
+
+        foreach (var logFile in logFiles)
+        {
+            if (entries.Count >= limit) break;
+            try
+            {
+                using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                using var reader = new StreamReader(fileStream);
+                var lines = new List<string>();
+                string? line;
+                while ((line = reader.ReadLine()) != null)
+                    lines.Add(line);
+
+                for (int i = lines.Count - 1; i >= 0 && entries.Count < limit; i--)
+                {
+                    var entry = ParseLogLine(lines[i]);
+                    if (entry != null)
+                        entries.Add(entry);
+                }
+            }
+            catch { /* skip unreadable files */ }
+        }
+
+        return entries;
     }
 
     /// <summary>
@@ -644,14 +762,14 @@ public class SyncthingSystemController : ControllerBase
     {
         try
         {
+            var entries = ReadLogEntries(200);
             var sb = new System.Text.StringBuilder();
-            var now = DateTime.UtcNow;
 
-            // Generate sample log entries in plain text format
-            for (int i = 0; i < 10; i++)
+            foreach (var entry in entries)
             {
-                var timestamp = now.AddMinutes(-i).ToString("yyyy-MM-dd HH:mm:ss.fff");
-                sb.AppendLine($"[{timestamp}] INFO: CreatioHelper: Log message {i + 1}");
+                var timestamp = entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss.fff");
+                var level = entry.Level.ToUpperInvariant();
+                sb.AppendLine($"[{timestamp}] {level}: {entry.Message}");
             }
 
             return Content(sb.ToString(), "text/plain");
@@ -1177,14 +1295,23 @@ public class SyncthingSystemController : ControllerBase
         {
             if (!string.IsNullOrEmpty(folder))
             {
-                // Reset specific folder
+                // Reset specific folder — deep rescan
                 _logger.LogInformation("Reset requested for folder {FolderId}", folder);
-                // In full implementation, this would clear folder database and rescan
+                var folderInfo = await _syncEngine.GetFolderAsync(folder);
+                if (folderInfo == null)
+                    return NotFound(new { error = $"Folder {folder} not found" });
+
+                await _syncEngine.ScanFolderAsync(folder, deep: true);
             }
             else
             {
-                // Reset entire database
-                _logger.LogInformation("Full database reset requested");
+                // Reset all folders — deep rescan each
+                _logger.LogInformation("Full database reset requested — rescanning all folders");
+                var folders = await _syncEngine.GetFoldersAsync();
+                foreach (var f in folders)
+                {
+                    await _syncEngine.ScanFolderAsync(f.Id, deep: true);
+                }
             }
 
             return Ok(new { ok = "reset initiated" });

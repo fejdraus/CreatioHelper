@@ -333,7 +333,7 @@ public class SecurityController : ControllerBase
     /// Получить статистику безопасности
     /// </summary>
     [HttpGet("statistics")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<IActionResult> GetSecurityStatistics(CancellationToken cancellationToken = default)
     {
         try
@@ -352,7 +352,7 @@ public class SecurityController : ControllerBase
     /// Получить события безопасности
     /// </summary>
     [HttpGet("events")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<IActionResult> GetSecurityEvents(
         [FromQuery] DateTime? since = null,
         [FromQuery] SecurityEventType? eventType = null,
@@ -415,33 +415,41 @@ public class SecurityController : ControllerBase
         {
             var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
             var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
-            
+
             if (device?.Certificate == null)
             {
                 return NotFound(new { error = "Device not found or certificate missing" });
             }
 
-            // Создаем X509Certificate2 из информации (для демонстрации - в реальной реализации нужно загружать из хранилища)
-            // var currentCertificate = LoadCertificateFromStorage(device);
+            var currentCertificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
+            if (currentCertificate == null)
+            {
+                return StatusCode(500, new { error = "Could not load certificate from storage" });
+            }
 
-            // var newCertificate = await _certificateManager.RenewCertificateIfNeededAsync(
-            //     currentCertificate,
-            //     request.CommonName,
-            //     request.ValidityDays,
-            //     request.RenewalThresholdDays,
-            //     cancellationToken);
+            var newCertificate = await _certificateManager.RenewCertificateIfNeededAsync(
+                currentCertificate,
+                request.CommonName,
+                request.ValidityDays,
+                request.RenewalThresholdDays,
+                cancellationToken);
+
+            var renewed = newCertificate?.Thumbprint != currentCertificate.Thumbprint;
 
             await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
             {
                 EventType = SecurityEventType.CertificateRenewed,
                 DeviceId = deviceId,
                 Severity = SecuritySeverity.Info,
-                Message = $"Certificate renewal requested for device {deviceId}"
+                Message = renewed
+                    ? $"Certificate renewed for device {deviceId}"
+                    : $"Certificate renewal not needed for device {deviceId}"
             }, cancellationToken);
 
-            return Ok(new { 
-                success = true, 
-                message = "Certificate renewal completed",
+            return Ok(new {
+                success = true,
+                message = renewed ? "Certificate renewed successfully" : "Certificate renewal not needed",
+                renewed,
                 renewalRequired = device.RequiresCertificateRenewal(request.RenewalThresholdDays)
             });
         }
@@ -464,30 +472,82 @@ public class SecurityController : ControllerBase
     {
         try
         {
-            // В реальной реализации нужно загрузить сертификат из хранилища
-            // var certificate = LoadCertificateFromStorage(deviceId);
-            // var exportedData = await _certificateManager.ExportCertificateAsync(
-            //     certificate, request.Format, request.Password, cancellationToken);
+            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+            var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+
+            if (device?.Certificate == null)
+            {
+                return NotFound(new { error = "Device not found or certificate missing" });
+            }
+
+            var certificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
+            if (certificate == null)
+            {
+                return StatusCode(500, new { error = "Could not load certificate from storage" });
+            }
+
+            var exportedData = await _certificateManager.ExportCertificateAsync(
+                certificate, request.Format, request.Password, cancellationToken);
 
             await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
             {
                 EventType = SecurityEventType.ConfigurationChanged,
                 DeviceId = deviceId,
                 Severity = SecuritySeverity.Info,
-                Message = $"Certificate export requested for device {deviceId} in format {request.Format}"
+                Message = $"Certificate exported for device {deviceId} in format {request.Format}"
             }, cancellationToken);
 
-            return Ok(new { 
-                success = true, 
+            return Ok(new {
+                success = true,
                 message = "Certificate exported successfully",
-                format = request.Format.ToString()
-                // certificateData = Convert.ToBase64String(exportedData)
+                format = request.Format.ToString(),
+                certificateData = Convert.ToBase64String(exportedData)
             });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error exporting certificate for device {DeviceId}", deviceId);
             return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Load certificate from storage for a trusted device
+    /// </summary>
+    private async Task<X509Certificate2?> LoadCertificateFromStorageAsync(
+        DeviceSecurityConfiguration device,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var configDir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+                "CreatioHelper");
+            var certPath = Path.Combine(configDir, $"{device.DeviceId}.pem");
+
+            if (System.IO.File.Exists(certPath))
+            {
+                return await _certificateManager.LoadCertificateAsync(certPath, cancellationToken: cancellationToken);
+            }
+
+            // Fallback: try default certificate
+            var defaultCertPath = Path.Combine(configDir, "cert.pem");
+            var defaultKeyPath = Path.Combine(configDir, "key.pem");
+
+            if (System.IO.File.Exists(defaultCertPath))
+            {
+                return await _certificateManager.LoadCertificateAsync(
+                    defaultCertPath,
+                    System.IO.File.Exists(defaultKeyPath) ? defaultKeyPath : null,
+                    cancellationToken: cancellationToken);
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load certificate from storage for device {DeviceId}", device.DeviceId);
+            return null;
         }
     }
 }

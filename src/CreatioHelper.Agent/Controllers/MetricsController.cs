@@ -208,12 +208,39 @@ public class MetricsController : ControllerBase
         }
     }
 
+    private static DateTime _lastCpuCheckTime = DateTime.MinValue;
+    private static TimeSpan _lastTotalProcessorTime;
+    private static double _lastCpuPercent;
+
     private Task<double> GetCpuUsage()
     {
         try
         {
-            // Simplified implementation - a more complex calculation is needed in reality
-            return Task.FromResult(0.0);
+            var process = System.Diagnostics.Process.GetCurrentProcess();
+            var now = DateTime.UtcNow;
+
+            if (_lastCpuCheckTime == DateTime.MinValue)
+            {
+                _lastCpuCheckTime = now;
+                _lastTotalProcessorTime = process.TotalProcessorTime;
+                return Task.FromResult(0.0);
+            }
+
+            var elapsed = now - _lastCpuCheckTime;
+            if (elapsed.TotalMilliseconds < 100)
+            {
+                return Task.FromResult(_lastCpuPercent);
+            }
+
+            var cpuUsedMs = (process.TotalProcessorTime - _lastTotalProcessorTime).TotalMilliseconds;
+            var cpuPercent = cpuUsedMs / (elapsed.TotalMilliseconds * Environment.ProcessorCount) * 100;
+            cpuPercent = Math.Round(Math.Min(cpuPercent, 100), 1);
+
+            _lastCpuCheckTime = now;
+            _lastTotalProcessorTime = process.TotalProcessorTime;
+            _lastCpuPercent = cpuPercent;
+
+            return Task.FromResult(cpuPercent);
         }
         catch (Exception ex)
         {

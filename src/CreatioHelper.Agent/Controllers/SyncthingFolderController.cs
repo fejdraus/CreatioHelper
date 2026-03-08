@@ -235,7 +235,7 @@ public class SyncthingFolderController : ControllerBase
     /// GET /rest/folder/status?folder=default
     /// </summary>
     [HttpGet("status")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetStatus([FromQuery] string folder)
     {
         try

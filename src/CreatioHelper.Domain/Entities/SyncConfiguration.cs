@@ -93,6 +93,18 @@ public class SyncConfiguration : AggregateRoot
     // NAT traversal configuration
     public NatTraversalConfiguration? NatTraversal { get; private set; }
     
+    // Cluster key auto-pairing configuration
+    public ClusterKeyConfiguration? ClusterKey { get; set; }
+
+    // LDAP authentication configuration
+    public string AuthMode { get; set; } = "static"; // "static" | "ldap"
+    public string LdapAddress { get; set; } = "";
+    public string LdapBindDN { get; set; } = "";
+    public string LdapTransport { get; set; } = "plain"; // "plain" | "tls" | "starttls"
+    public bool LdapInsecureSkipVerify { get; set; } = false;
+    public string LdapSearchBaseDN { get; set; } = "";
+    public string LdapSearchFilter { get; set; } = "";
+
     // GUI configuration properties for Syncthing compatibility
     public bool GuiEnabled { get; set; } = true;
     public string GuiAddress { get; set; } = "127.0.0.1:8384";
@@ -196,19 +208,6 @@ public class SyncConfiguration : AggregateRoot
         NatTraversal.Enabled = enabled;
         NatTraversal.UpnpEnabled = upnpEnabled;
         NatTraversal.PmpEnabled = pmpEnabled;
-    }
-    
-    // Methods for new properties
-    public void AddDevice(SyncDevice device)
-    {
-        // Implementation would add device to collection
-        // For now, just a placeholder
-    }
-    
-    public void AddFolder(SyncFolder folder)
-    {
-        // Implementation would add folder to collection
-        // For now, just a placeholder
     }
     
     public void SetGuiConfiguration(bool enabled = true, string address = "127.0.0.1:8384", bool tls = false, string apiKey = "syncthing-compatible-key", string user = "", string password = "")

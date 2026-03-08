@@ -16,6 +16,13 @@ public interface IApiClient
     Task<string?> GetVersionAsync();
     Task<SystemVersionInfo?> GetVersionInfoAsync();
 
+    // User Management
+    Task<UserInfo[]> GetUsersAsync();
+    Task<UserInfo?> CreateUserAsync(CreateUserModel model);
+    Task<UserInfo?> UpdateUserAsync(string username, UpdateUserModel model);
+    Task<bool> DeleteUserAsync(string username);
+    Task<bool> ChangePasswordAsync(string username, ChangePasswordModel model);
+
     // Folders
     Task<FolderConfig[]> GetFoldersAsync();
     Task<FolderStatus?> GetFolderStatusAsync(string folderId);
@@ -412,6 +419,45 @@ public class ApiClient : IApiClient
         var response = await _httpClient.PostAsJsonAsync("/rest/debug/support", options);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync();
+    }
+
+    #endregion
+
+    #region User Management
+
+    public async Task<UserInfo[]> GetUsersAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<UserInfo[]>("/api/auth/users") ?? [];
+    }
+
+    public async Task<UserInfo?> CreateUserAsync(CreateUserModel model)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/auth/users", model);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<UserInfo>();
+    }
+
+    public async Task<UserInfo?> UpdateUserAsync(string username, UpdateUserModel model)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"/api/auth/users/{Uri.EscapeDataString(username)}", model);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<UserInfo>();
+    }
+
+    public async Task<bool> DeleteUserAsync(string username)
+    {
+        var response = await _httpClient.DeleteAsync($"/api/auth/users/{Uri.EscapeDataString(username)}");
+        return response.IsSuccessStatusCode;
+    }
+
+    public async Task<bool> ChangePasswordAsync(string username, ChangePasswordModel model)
+    {
+        var response = await _httpClient.PutAsJsonAsync($"/api/auth/users/{Uri.EscapeDataString(username)}/password", new
+        {
+            currentPassword = model.CurrentPassword,
+            newPassword = model.NewPassword
+        });
+        return response.IsSuccessStatusCode;
     }
 
     #endregion

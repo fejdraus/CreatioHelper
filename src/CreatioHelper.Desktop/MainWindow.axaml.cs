@@ -23,12 +23,16 @@ namespace CreatioHelper
 {
     public partial class MainWindow : Window
     {
-        private readonly MainWindowViewModel _viewModel;
+        private readonly MainWindowViewModel? _viewModel;
         private const string LogFilePath = "log.txt";
 
         public MainWindow()
         {
             InitializeComponent();
+
+            if (Design.IsDesignMode)
+                return;
+
             LogTextEditor.TextArea.TextView.LineTransformers.Add(
                 new LogLineColorizer()
             );
@@ -126,7 +130,7 @@ namespace CreatioHelper
 
         private async void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
         {
-            if (!_viewModel.IsBusy) return;
+            if (_viewModel is { IsBusy: false }) return;
             e.Cancel = true;
             var warningWindow = new CloseWarningWindow
             {
@@ -247,17 +251,17 @@ namespace CreatioHelper
                     if (Directory.Exists(path))
                     {
                         var version = AppVersionHelper.GetAppVersion(path);
-                        _viewModel.SitePathWithVersion = version;
+                        _viewModel?.SitePathWithVersion = version;
                     }
                 }
                 catch
                 {
-                    _viewModel.SitePathWithVersion = new Version();
+                    _viewModel?.SitePathWithVersion = new Version();
                 }
             }
             else
             {
-                _viewModel.SitePathWithVersion = new Version();
+                _viewModel?.SitePathWithVersion = new Version();
             }
         }
 
@@ -267,7 +271,7 @@ namespace CreatioHelper
             IServiceProvider provider,
             IOutputWriter writer)
         {
-            if (_viewModel.UseSyncthingForSync &&
+            if (_viewModel is { UseSyncthingForSync: true } &&
                 !string.IsNullOrEmpty(_viewModel.SyncthingApiUrl) &&
                 !string.IsNullOrEmpty(_viewModel.SyncthingApiKey))
             {
