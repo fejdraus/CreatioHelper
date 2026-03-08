@@ -32,6 +32,7 @@ public class EventsController : ControllerBase
     /// Получить события начиная с указанного ID (аналог GET /rest/events)
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<IActionResult> GetEvents(
         [FromQuery] int since = 0,
         [FromQuery] int limit = 100,

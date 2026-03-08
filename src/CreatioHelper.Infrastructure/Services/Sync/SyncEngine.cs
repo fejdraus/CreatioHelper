@@ -2388,6 +2388,14 @@ public class SyncEngine : ISyncEngine, IDisposable
     }
 
     /// <summary>
+    /// Remove a folder from the sync engine (public API)
+    /// </summary>
+    public async Task RemoveFolderAsync(string folderId, CancellationToken cancellationToken = default)
+    {
+        await RemoveFolderInternalAsync(folderId);
+    }
+
+    /// <summary>
     /// Remove a device from the sync engine (internal helper)
     /// </summary>
     private void RemoveDeviceInternal(string deviceId)

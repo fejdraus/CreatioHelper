@@ -357,7 +357,7 @@ else if (_config != null)
 
     private async Task ResetDatabase()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["Settings_Advanced_ResetDb"],
             L["Settings_Advanced_ResetDbConfirm"],
             yesText: L["Common_Reset"],
@@ -384,7 +384,7 @@ else if (_config != null)
 
     private async Task FactoryReset()
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["Settings_Advanced_FactoryReset"],
             L["Settings_Advanced_FactoryResetConfirm"],
             yesText: L["Settings_Advanced_FactoryResetYes"],
@@ -393,7 +393,7 @@ else if (_config != null)
         if (confirmed == true)
         {
             // Double confirmation for destructive action
-            var doubleConfirmed = await DialogService.ShowMessageBox(
+            var doubleConfirmed = await DialogService.ShowMessageBoxAsync(
                 L["Settings_Advanced_FactoryResetConfirmTitle"],
                 L["Settings_Advanced_FactoryResetConfirmMessage"],
                 yesText: L["Common_Reset"],

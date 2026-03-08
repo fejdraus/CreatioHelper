@@ -294,8 +294,8 @@ public class FileMetadataRepository : IFileMetadataRepository
     private static void AddParameters(SqliteCommand command, FileMetadata metadata)
     {
         // Use explicit SqliteParameter to properly handle nulls
-        command.Parameters.Add(new SqliteParameter("@folderId", metadata.FolderId ?? string.Empty));
-        command.Parameters.Add(new SqliteParameter("@fileName", metadata.FileName ?? string.Empty));
+        command.Parameters.Add(new SqliteParameter("@folderId", (object?)metadata.FolderId ?? string.Empty));
+        command.Parameters.Add(new SqliteParameter("@fileName", (object?)metadata.FileName ?? string.Empty));
         command.Parameters.Add(new SqliteParameter("@size", metadata.Size));
         command.Parameters.Add(new SqliteParameter("@modifiedTime", metadata.ModifiedTime == default ? DateTime.UtcNow.ToString("O") : metadata.ModifiedTime.ToString("O")));
 
@@ -315,14 +315,22 @@ public class FileMetadataRepository : IFileMetadataRepository
         command.Parameters.Add(symlinkParam);
 
         command.Parameters.Add(new SqliteParameter("@sequence", metadata.Sequence));
-        command.Parameters.Add(new SqliteParameter("@versionVector", metadata.VersionVector ?? "[]"));
+        command.Parameters.Add(new SqliteParameter("@versionVector", (object?)metadata.VersionVector ?? "[]"));
         command.Parameters.Add(new SqliteParameter("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes ?? new List<string>())));
         command.Parameters.Add(new SqliteParameter("@blockSize", metadata.BlockSize));
-        command.Parameters.Add(new SqliteParameter("@hash", metadata.Hash != null && metadata.Hash.Length > 0 ? Convert.ToBase64String(metadata.Hash) : string.Empty));
-        command.Parameters.Add(new SqliteParameter("@modifiedBy", metadata.ModifiedBy ?? string.Empty));
+
+        var hashParam = new SqliteParameter("@hash", SqliteType.Text);
+        hashParam.Value = metadata.Hash != null && metadata.Hash.Length > 0 ? Convert.ToBase64String(metadata.Hash) : (object)DBNull.Value;
+        command.Parameters.Add(hashParam);
+
+        command.Parameters.Add(new SqliteParameter("@modifiedBy", (object?)metadata.ModifiedBy ?? DBNull.Value));
         command.Parameters.Add(new SqliteParameter("@locallyChanged", metadata.LocallyChanged ? 1 : 0));
         command.Parameters.Add(new SqliteParameter("@localFlags", (int)metadata.LocalFlags));
-        command.Parameters.Add(new SqliteParameter("@platformData", JsonSerializer.Serialize(metadata.PlatformData ?? new Dictionary<string, object>())));
+
+        var platformParam = new SqliteParameter("@platformData", SqliteType.Text);
+        platformParam.Value = (object?)JsonSerializer.Serialize(metadata.PlatformData ?? new Dictionary<string, object>()) ?? DBNull.Value;
+        command.Parameters.Add(platformParam);
+
         command.Parameters.Add(new SqliteParameter("@updatedAt", metadata.UpdatedAt == default ? DateTime.UtcNow.ToString("O") : metadata.UpdatedAt.ToString("O")));
     }
     

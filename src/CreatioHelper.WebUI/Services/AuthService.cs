@@ -11,8 +11,10 @@ public interface IAuthService
 {
     bool IsAuthenticated { get; }
     string? Username { get; }
+    string? Role { get; }
     string? Token { get; }
     string? ErrorMessage { get; }
+    bool IsAdmin { get; }
 
     event Action<bool>? OnAuthStateChanged;
 
@@ -28,19 +30,23 @@ public class AuthService : IAuthService
     private const string AuthTokenKey = "authToken";
     private const string UsernameKey = "username";
     private const string TokenExpiresKey = "tokenExpires";
+    private const string RoleKey = "userRole";
 
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
 
     private bool _isAuthenticated;
     private string? _username;
+    private string? _role;
     private string? _token;
     private string? _errorMessage;
 
     public bool IsAuthenticated => _isAuthenticated;
     public string? Username => _username;
+    public string? Role => _role;
     public string? Token => _token;
     public string? ErrorMessage => _errorMessage;
+    public bool IsAdmin => string.Equals(_role, "admin", StringComparison.OrdinalIgnoreCase);
 
     public event Action<bool>? OnAuthStateChanged;
 
@@ -78,9 +84,15 @@ public class AuthService : IAuthService
 
                     SetAuthorizationHeader(result.Token);
 
+                    // Fetch role from validate endpoint
+                    var role = await FetchRoleAsync();
+
                     _isAuthenticated = true;
                     _username = username;
+                    _role = role;
                     _token = result.Token;
+
+                    await _localStorage.SetItemAsync(RoleKey, role ?? "user");
 
                     OnAuthStateChanged?.Invoke(true);
                     return true;
@@ -147,11 +159,13 @@ public class AuthService : IAuthService
         await _localStorage.RemoveItemAsync(AuthTokenKey);
         await _localStorage.RemoveItemAsync(UsernameKey);
         await _localStorage.RemoveItemAsync(TokenExpiresKey);
+        await _localStorage.RemoveItemAsync(RoleKey);
 
         ClearAuthorizationHeader();
 
         _isAuthenticated = false;
         _username = null;
+        _role = null;
         _token = null;
         _errorMessage = null;
 
@@ -185,9 +199,17 @@ public class AuthService : IAuthService
 
             if (response.IsSuccessStatusCode)
             {
+                var validateResult = await response.Content.ReadFromJsonAsync<ValidateResponse>();
+                var role = validateResult?.Role
+                    ?? await _localStorage.GetItemAsync<string>(RoleKey)
+                    ?? "user";
+
                 _isAuthenticated = true;
-                _username = username ?? "User";
+                _username = validateResult?.Username ?? username ?? "User";
+                _role = role;
                 _token = token;
+
+                await _localStorage.SetItemAsync(RoleKey, role);
 
                 OnAuthStateChanged?.Invoke(true);
                 return true;
@@ -214,11 +236,36 @@ public class AuthService : IAuthService
         _httpClient.DefaultRequestHeaders.Authorization = null;
     }
 
+    private async Task<string?> FetchRoleAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync("/api/auth/validate");
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ValidateResponse>();
+                return result?.Role;
+            }
+        }
+        catch
+        {
+            // Ignore - role will default
+        }
+        return null;
+    }
+
     private class TokenResponse
     {
         public string? Token { get; set; }
         public DateTime ExpiresAt { get; set; }
         public string? TokenType { get; set; }
+    }
+
+    private class ValidateResponse
+    {
+        public bool Valid { get; set; }
+        public string? Username { get; set; }
+        public string? Role { get; set; }
     }
 
     private class ErrorResponse

@@ -30,6 +30,7 @@ public class SyncController : ControllerBase
     /// Get device ID
     /// </summary>
     [HttpGet("device-id")]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<string>> GetDeviceId()
     {
         try

@@ -51,6 +51,40 @@ public class SystemStatus
     [JsonPropertyName("connectionServiceStatus")]
     public Dictionary<string, JsonElement>? ConnectionServiceStatus { get; set; }
 
+    // GC statistics
+    [JsonPropertyName("gcGen0Collections")]
+    public int? GcGen0Collections { get; set; }
+
+    [JsonPropertyName("gcGen1Collections")]
+    public int? GcGen1Collections { get; set; }
+
+    [JsonPropertyName("gcGen2Collections")]
+    public int? GcGen2Collections { get; set; }
+
+    [JsonPropertyName("gcTotalPauseMs")]
+    public double? GcTotalPauseMs { get; set; }
+
+    // Heap statistics
+    [JsonPropertyName("heapSizeBytes")]
+    public long? HeapSizeBytes { get; set; }
+
+    [JsonPropertyName("heapFragmentedBytes")]
+    public long? HeapFragmentedBytes { get; set; }
+
+    // Process statistics
+    [JsonPropertyName("processHandleCount")]
+    public int? ProcessHandleCount { get; set; }
+
+    [JsonPropertyName("processThreadCount")]
+    public int? ProcessThreadCount { get; set; }
+
+    // I/O statistics
+    [JsonPropertyName("totalBytesIn")]
+    public long? TotalBytesIn { get; set; }
+
+    [JsonPropertyName("totalBytesOut")]
+    public long? TotalBytesOut { get; set; }
+
     [JsonIgnore]
     public TimeSpan UptimeSpan => TimeSpan.FromSeconds(Uptime ?? 0);
 }
