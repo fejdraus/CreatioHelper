@@ -92,6 +92,45 @@ public class SystemStatusDto
 
     [JsonPropertyName("alloc")]
     public long Alloc { get; set; }
+
+    [JsonPropertyName("appMemory")]
+    public long AppMemory { get; set; }
+
+    [JsonPropertyName("osMemoryUsed")]
+    public long OsMemoryUsed { get; set; }
+
+    [JsonPropertyName("totalPhysicalMemory")]
+    public long TotalPhysicalMemory { get; set; }
+
+    [JsonPropertyName("gcGen0Collections")]
+    public int GcGen0Collections { get; set; }
+
+    [JsonPropertyName("gcGen1Collections")]
+    public int GcGen1Collections { get; set; }
+
+    [JsonPropertyName("gcGen2Collections")]
+    public int GcGen2Collections { get; set; }
+
+    [JsonPropertyName("gcTotalPauseMs")]
+    public double GcTotalPauseMs { get; set; }
+
+    [JsonPropertyName("heapSizeBytes")]
+    public long HeapSizeBytes { get; set; }
+
+    [JsonPropertyName("heapFragmentedBytes")]
+    public long HeapFragmentedBytes { get; set; }
+
+    [JsonPropertyName("processHandleCount")]
+    public int ProcessHandleCount { get; set; }
+
+    [JsonPropertyName("processThreadCount")]
+    public int ProcessThreadCount { get; set; }
+
+    [JsonPropertyName("totalBytesIn")]
+    public long TotalBytesIn { get; set; }
+
+    [JsonPropertyName("totalBytesOut")]
+    public long TotalBytesOut { get; set; }
 }
 
 /// <summary>

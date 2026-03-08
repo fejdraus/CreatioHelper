@@ -19,16 +19,98 @@
     <link href="_content/MudBlazor/MudBlazor.min.css" rel="stylesheet" />
 
     <!-- App Styles -->
-    <link href="css/app.css" rel="stylesheet" />
+    <link href="css/app.css?v=2" rel="stylesheet" />
     <link href="CreatioHelper.WebUI.styles.css" rel="stylesheet" />
+
+    <!-- Inline loading styles (available before CSS loads) -->
+    <style>
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 40%, #16213e 70%, #0a0a0f 100%);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+        }
+        .loading-container::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -60%);
+            animation: ambient-pulse 3s ease-in-out infinite;
+        }
+        @keyframes ambient-pulse {
+            0%, 100% { opacity: 0.6; transform: translate(-50%, -60%) scale(1); }
+            50% { opacity: 1; transform: translate(-50%, -60%) scale(1.15); }
+        }
+        .loading-logo {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 1.5rem;
+            animation: logo-fade-in 0.6s ease-out;
+        }
+        .loading-ring {
+            position: absolute;
+            inset: 0;
+            border: 2px solid transparent;
+            border-top-color: #7c4dff;
+            border-radius: 50%;
+            animation: loading-spin 2s linear infinite;
+        }
+        .loading-ring.ring-2 {
+            inset: 8px;
+            border-top-color: transparent;
+            border-right-color: #ce93d8;
+            animation-direction: reverse;
+            animation-duration: 1.5s;
+        }
+        .loading-sync-icon {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @keyframes loading-spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-title {
+            font-family: 'Roboto', sans-serif;
+            font-size: 2.125rem;
+            font-weight: 400;
+            margin: 0;
+            color: rgba(255, 255, 255, 0.87);
+            animation: logo-fade-in 0.8s ease-out;
+        }
+        @keyframes logo-fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
 
 <body>
     <div id="app">
         <!-- Loading indicator -->
         <div class="loading-container">
-            <div class="loading-spinner"></div>
-            <p id="loading-text">Загрузка CreatioHelper...</p>
+            <div class="loading-logo">
+                <div class="loading-ring"></div>
+                <div class="loading-ring ring-2"></div>
+                <div class="loading-sync-icon">
+                    <svg viewBox="0 0 24 24" width="36" height="36" fill="#7c4dff">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1 .25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                    </svg>
+                </div>
+            </div>
+            <h2 class="loading-title">CreatioHelper</h2>
         </div>
     </div>
 
@@ -43,15 +125,10 @@
     </div>
 
     <script>
-        // Simple localization for loading screen
+        // Localization for error UI
         (function() {
             var lang = navigator.language || navigator.userLanguage;
             var isRussian = lang && lang.toLowerCase().startsWith('ru');
-            var loadingText = document.getElementById('loading-text');
-            if (loadingText) {
-                loadingText.textContent = isRussian ? 'Загрузка CreatioHelper...' : 'Loading CreatioHelper...';
-            }
-            // Show only matching language spans
             document.querySelectorAll('[data-lang]').forEach(function(el) {
                 el.style.display = (isRussian ? el.dataset.lang === 'ru' : el.dataset.lang === 'en') ? '' : 'none';
             });

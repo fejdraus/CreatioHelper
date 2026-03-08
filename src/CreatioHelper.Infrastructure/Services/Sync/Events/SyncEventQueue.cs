@@ -436,6 +436,13 @@ public class SyncEventSubscription : IDisposable
 
     public void Dispose()
     {
-        _channel.Writer.Complete();
+        try
+        {
+            _channel.Writer.TryComplete();
+        }
+        catch (ChannelClosedException)
+        {
+            // Already closed
+        }
     }
 }

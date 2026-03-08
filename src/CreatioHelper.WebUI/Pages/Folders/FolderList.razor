@@ -375,7 +375,7 @@ else
 
     private async Task DeleteFolder(FolderConfig folder)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["Folders_RemoveFolder"],
             L["Msg_DeleteFolderConfirm", folder.DisplayName],
             yesText: L["Action_Delete"],

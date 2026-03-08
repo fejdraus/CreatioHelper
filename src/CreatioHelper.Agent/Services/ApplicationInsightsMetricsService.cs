@@ -25,11 +25,6 @@ public class ApplicationInsightsMetricsService : IMetricsService
                                      !string.IsNullOrEmpty(configuration["ApplicationInsights:InstrumentationKey"]);
     }
 
-    public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation)
-    {
-        return await MeasureAsync(operationName, operation, null);
-    }
-
     public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation, Dictionary<string, string>? tags = null)
     {
         // Always use the base service for local metrics
@@ -64,11 +59,6 @@ public class ApplicationInsightsMetricsService : IMetricsService
         return result;
     }
 
-    public void Measure(string operationName, Action operation)
-    {
-        Measure(operationName, operation, null);
-    }
-
     public void Measure(string operationName, Action operation, Dictionary<string, string>? tags = null)
     {
         _baseMetricsService.Measure(operationName, operation, tags);
@@ -82,8 +72,8 @@ public class ApplicationInsightsMetricsService : IMetricsService
                 stopwatch.Stop();
 
                 var telemetry = new EventTelemetry(operationName);
-                telemetry.Metrics["duration_ms"] = stopwatch.ElapsedMilliseconds;
-                
+                telemetry.Properties["duration_ms"] = stopwatch.ElapsedMilliseconds.ToString();
+
                 if (tags != null)
                 {
                     foreach (var tag in tags)
@@ -93,17 +83,13 @@ public class ApplicationInsightsMetricsService : IMetricsService
                 }
 
                 _telemetryClient.TrackEvent(telemetry);
+                _telemetryClient.TrackMetric($"{operationName}_duration_ms", stopwatch.ElapsedMilliseconds);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Failed to send telemetry to Application Insights for operation {OperationName}", operationName);
             }
         }
-    }
-
-    public T Measure<T>(string operationName, Func<T> operation)
-    {
-        return Measure(operationName, operation, null);
     }
 
     public T Measure<T>(string operationName, Func<T> operation, Dictionary<string, string>? tags = null)
@@ -166,9 +152,14 @@ public class ApplicationInsightsMetricsService : IMetricsService
         {
             try
             {
-                var telemetry = new EventTelemetry($"histogram_{metricName}");
-                telemetry.Metrics["value"] = value;
-                
+                var telemetry = new EventTelemetry($"histogram_{metricName}")
+                {
+                    Properties =
+                    {
+                        ["value"] = value.ToString()
+                    }
+                };
+
                 if (tags != null)
                 {
                     foreach (var tag in tags)
@@ -194,9 +185,14 @@ public class ApplicationInsightsMetricsService : IMetricsService
         {
             try
             {
-                var telemetry = new EventTelemetry($"gauge_{gaugeName}");
-                telemetry.Metrics["value"] = value;
-                
+                var telemetry = new EventTelemetry($"gauge_{gaugeName}")
+                {
+                    Properties =
+                    {
+                        ["value"] = value.ToString()
+                    }
+                };
+
                 if (tags != null)
                 {
                     foreach (var tag in tags)

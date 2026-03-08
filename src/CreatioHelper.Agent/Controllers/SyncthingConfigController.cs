@@ -49,7 +49,7 @@ public class SyncthingConfigController : ControllerBase
             var devices = await _syncEngine.GetDevicesAsync();
             var folders = await _syncEngine.GetFoldersAsync();
 
-            var config = BuildSyncthingConfig(devices, folders);
+            var config = await BuildSyncthingConfigAsync(devices, folders);
             return Ok(config);
         }
         catch (Exception ex)
@@ -69,11 +69,64 @@ public class SyncthingConfigController : ControllerBase
     {
         try
         {
-            _logger.LogInformation("Received full configuration update");
+            _logger.LogInformation("Received full configuration update, applying changes");
 
-            // Parse and apply configuration
-            // In a full implementation, this would validate and apply all config changes
-            await Task.CompletedTask;
+            // Apply folder changes
+            if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var folderJson in foldersElement.EnumerateArray())
+                {
+                    try
+                    {
+                        var folderConfig = ParseFolderConfiguration(folderJson);
+                        var existing = await _syncEngine.GetFolderAsync(folderConfig.Id);
+                        if (existing == null)
+                            await _syncEngine.AddFolderAsync(folderConfig);
+                        else
+                            await _syncEngine.UpdateFolderAsync(folderConfig);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error applying folder config from PUT /rest/config");
+                    }
+                }
+            }
+
+            // Apply device changes
+            if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var deviceJson in devicesElement.EnumerateArray())
+                {
+                    try
+                    {
+                        var deviceId = deviceJson.GetProperty("deviceID").GetString();
+                        if (string.IsNullOrEmpty(deviceId)) continue;
+
+                        var devices = await _syncEngine.GetDevicesAsync();
+                        if (!devices.Any(d => d.DeviceId == deviceId))
+                        {
+                            var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
+                            var addresses = new List<string> { "dynamic" };
+                            if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
+                            {
+                                addresses = addrProp.EnumerateArray()
+                                    .Select(a => a.GetString())
+                                    .Where(s => !string.IsNullOrEmpty(s))
+                                    .Cast<string>()
+                                    .ToList();
+                            }
+                            await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Error applying device config from PUT /rest/config");
+                    }
+                }
+            }
+
+            // Save configuration to config.xml for persistence
+            await SaveConfigurationToXmlAsync();
 
             return Ok(new { success = true });
         }
@@ -225,9 +278,13 @@ public class SyncthingConfigController : ControllerBase
             if (folder == null)
                 return NotFound(new { error = $"Folder {id} not found" });
 
-            // Folder deletion would require implementation in ISyncEngine
-            _logger.LogWarning("Folder deletion not implemented for folder {FolderId}", id);
-            return StatusCode(501, new { error = "Folder deletion not implemented" });
+            await _syncEngine.RemoveFolderAsync(id);
+
+            // Save configuration to config.xml for persistence
+            await SaveConfigurationToXmlAsync();
+
+            _logger.LogInformation("Folder {FolderId} deleted via API", id);
+            return Ok(new { message = $"Folder {id} removed successfully" });
         }
         catch (Exception ex)
         {
@@ -505,14 +562,15 @@ public class SyncthingConfigController : ControllerBase
     /// </summary>
     [HttpPut("options")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public ActionResult<object> UpdateOptions([FromBody] JsonElement optionsConfig)
+    public async Task<ActionResult<object>> UpdateOptions([FromBody] JsonElement optionsConfig)
     {
         try
         {
-            _logger.LogInformation("Received options configuration update");
+            _logger.LogInformation("Received options configuration update, persisting");
 
-            // Options update would require implementation
-            // For now, just return the current options
+            // Save configuration to config.xml for persistence
+            await SaveConfigurationToXmlAsync();
+
             return Ok(BuildOptionsConfig());
         }
         catch (Exception ex)
@@ -553,11 +611,12 @@ public class SyncthingConfigController : ControllerBase
     /// GET /rest/config/gui
     /// </summary>
     [HttpGet("gui")]
-    public ActionResult<object> GetGuiConfig()
+    public async Task<ActionResult<object>> GetGuiConfig()
     {
         try
         {
-            return Ok(BuildGuiConfig());
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+            return Ok(BuildGuiConfig(syncConfig));
         }
         catch (Exception ex)
         {
@@ -572,12 +631,13 @@ public class SyncthingConfigController : ControllerBase
     /// </summary>
     [HttpPut("gui")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public ActionResult<object> UpdateGuiConfig([FromBody] JsonElement guiConfig)
+    public async Task<ActionResult<object>> UpdateGuiConfig([FromBody] JsonElement guiConfig)
     {
         try
         {
             _logger.LogInformation("Received GUI configuration update");
-            return Ok(BuildGuiConfig());
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+            return Ok(BuildGuiConfig(syncConfig));
         }
         catch (Exception ex)
         {
@@ -766,11 +826,12 @@ public class SyncthingConfigController : ControllerBase
     /// GET /rest/config/ldap
     /// </summary>
     [HttpGet("ldap")]
-    public ActionResult<object> GetLdapConfig()
+    public async Task<ActionResult<object>> GetLdapConfig()
     {
         try
         {
-            return Ok(BuildLdapConfig());
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+            return Ok(BuildLdapConfig(syncConfig));
         }
         catch (Exception ex)
         {
@@ -785,14 +846,30 @@ public class SyncthingConfigController : ControllerBase
     /// </summary>
     [HttpPut("ldap")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public ActionResult<object> UpdateLdapConfig([FromBody] JsonElement ldapConfig)
+    public async Task<ActionResult<object>> UpdateLdapConfig([FromBody] JsonElement ldapConfig)
     {
         try
         {
             _logger.LogInformation("Received LDAP configuration update");
-            // LDAP configuration update would require implementation
-            // For now, return the current (empty) LDAP config
-            return Ok(BuildLdapConfig());
+
+            var syncConfig = await _syncEngine.GetConfigurationAsync();
+
+            if (ldapConfig.TryGetProperty("address", out var address))
+                syncConfig.LdapAddress = address.GetString() ?? "";
+            if (ldapConfig.TryGetProperty("bindDN", out var bindDN))
+                syncConfig.LdapBindDN = bindDN.GetString() ?? "";
+            if (ldapConfig.TryGetProperty("transport", out var transport))
+                syncConfig.LdapTransport = transport.GetString() ?? "plain";
+            if (ldapConfig.TryGetProperty("insecureSkipVerify", out var insecureSkip))
+                syncConfig.LdapInsecureSkipVerify = insecureSkip.GetBoolean();
+            if (ldapConfig.TryGetProperty("searchBaseDN", out var searchBaseDN))
+                syncConfig.LdapSearchBaseDN = searchBaseDN.GetString() ?? "";
+            if (ldapConfig.TryGetProperty("searchFilter", out var searchFilter))
+                syncConfig.LdapSearchFilter = searchFilter.GetString() ?? "";
+
+            await SaveConfigurationToXmlAsync();
+
+            return Ok(BuildLdapConfig(syncConfig));
         }
         catch (Exception ex)
         {
@@ -1180,15 +1257,16 @@ public class SyncthingConfigController : ControllerBase
         return config;
     }
 
-    private object BuildSyncthingConfig(List<SyncDevice> devices, List<SyncFolder> folders)
+    private async Task<object> BuildSyncthingConfigAsync(List<SyncDevice> devices, List<SyncFolder> folders)
     {
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
         return new
         {
             version = 37,
             folders = folders.Select(BuildFolderConfig).ToArray(),
             devices = devices.Select(BuildDeviceConfig).ToArray(),
-            gui = BuildGuiConfig(),
-            ldap = new { },
+            gui = BuildGuiConfig(syncConfig),
+            ldap = BuildLdapConfig(syncConfig),
             options = BuildOptionsConfig(),
             ignoredDevices = Array.Empty<object>(),
             pendingDevices = Array.Empty<object>(),
@@ -1327,18 +1405,18 @@ public class SyncthingConfigController : ControllerBase
         };
     }
 
-    private object BuildGuiConfig()
+    private static object BuildGuiConfig(SyncConfiguration syncConfig)
     {
         return new
         {
-            enabled = true,
-            address = "127.0.0.1:8384",
+            enabled = syncConfig.GuiEnabled,
+            address = syncConfig.GuiAddress,
             unixSocketPermissions = "0700",
-            user = string.Empty,
-            password = string.Empty,
-            authMode = "static",
-            useTLS = false,
-            apiKey = "syncthing-compatible-key",
+            user = syncConfig.GuiUser,
+            password = syncConfig.GuiPassword,
+            authMode = syncConfig.AuthMode,
+            useTLS = syncConfig.GuiTls,
+            apiKey = syncConfig.GuiApiKey,
             insecureAdminAccess = false,
             theme = "default",
             debugging = false,
@@ -1347,16 +1425,16 @@ public class SyncthingConfigController : ControllerBase
         };
     }
 
-    private object BuildLdapConfig()
+    private static object BuildLdapConfig(SyncConfiguration syncConfig)
     {
         return new
         {
-            address = string.Empty,
-            bindDN = string.Empty,
-            transport = "plain",
-            insecureSkipVerify = false,
-            searchBaseDN = string.Empty,
-            searchFilter = string.Empty
+            address = syncConfig.LdapAddress,
+            bindDN = syncConfig.LdapBindDN,
+            transport = syncConfig.LdapTransport,
+            insecureSkipVerify = syncConfig.LdapInsecureSkipVerify,
+            searchBaseDN = syncConfig.LdapSearchBaseDN,
+            searchFilter = syncConfig.LdapSearchFilter
         };
     }
 

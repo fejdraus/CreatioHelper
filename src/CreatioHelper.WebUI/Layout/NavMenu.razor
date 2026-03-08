@@ -1,5 +1,6 @@
 @inject StateContainer State
 @inject IStringLocalizer<Localization> L
+@inject IAuthService AuthService
 
 <MudNavMenu>
     <MudNavLink Href="/"
@@ -78,6 +79,10 @@
         <MudNavLink Href="/settings/advanced"
                     Icon="@Icons.Material.Filled.SettingsApplications">
             @L["Settings_Advanced"]
+        </MudNavLink>
+        <MudNavLink Href="/settings/users"
+                    Icon="@Icons.Material.Filled.People">
+            @L["Settings_Users"]
         </MudNavLink>
     </MudNavGroup>
 

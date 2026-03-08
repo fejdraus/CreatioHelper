@@ -257,7 +257,7 @@
     private long _memoryUsage;
     private long _databaseSize = 0;
     private int _goroutines;
-    private string _version = "1.0.0";
+    private string _version = "...";
     private DateTime _startedAt = DateTime.UtcNow;
 
     private List<FolderStat> _folderStats = new();
@@ -459,6 +459,13 @@
                 });
             }
             _deviceStats = newDeviceStats;
+
+            // B1: Fetch real version
+            var ver = await ApiClient.GetVersionAsync();
+            if (!string.IsNullOrEmpty(ver)) _version = ver;
+
+            // B2: Calculate bytesSynced
+            _bytesSynced = _totalDownloaded + _totalUploaded;
 
             _initialLoadComplete = true;
         }

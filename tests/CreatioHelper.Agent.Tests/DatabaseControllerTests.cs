@@ -116,6 +116,8 @@ public class DatabaseControllerTests
         var folder = CreateTestFolder("test-folder", "/path");
         _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
             .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.GetNeedListAsync("test-folder", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FolderNeedList());
 
         var result = await _controller.GetRemoteNeed("test-folder", "device");
 
@@ -153,6 +155,8 @@ public class DatabaseControllerTests
         var folder = CreateTestFolder("test-folder", "/path");
         _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
             .ReturnsAsync(folder);
+        _syncEngineMock.Setup(s => s.GetNeedListAsync("test-folder", It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FolderNeedList());
 
         var result = await _controller.GetLocalChanged("test-folder");
 

@@ -30,6 +30,8 @@ public class SyncthingConfigControllerTests
             .ReturnsAsync(new List<SyncDevice>());
         _syncEngineMock.Setup(s => s.GetFoldersAsync())
             .ReturnsAsync(new List<SyncFolder>());
+        _syncEngineMock.Setup(s => s.GetConfigurationAsync())
+            .ReturnsAsync(new SyncConfiguration { DeviceId = "TEST-DEVICE-ID", DeviceName = "test" });
 
         _controller = new SyncthingConfigController(
             _syncEngineMock.Object,
@@ -41,18 +43,18 @@ public class SyncthingConfigControllerTests
     #region LDAP Tests
 
     [Fact]
-    public void GetLdapConfig_ReturnsOk()
+    public async Task GetLdapConfig_ReturnsOk()
     {
-        var result = _controller.GetLdapConfig();
+        var result = await _controller.GetLdapConfig();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(ok.Value);
     }
 
     [Fact]
-    public void GetLdapConfig_ReturnsLdapConfigStructure()
+    public async Task GetLdapConfig_ReturnsLdapConfigStructure()
     {
-        var result = _controller.GetLdapConfig();
+        var result = await _controller.GetLdapConfig();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var value = ok.Value!;
@@ -68,9 +70,9 @@ public class SyncthingConfigControllerTests
     }
 
     [Fact]
-    public void GetLdapConfig_ReturnsDefaultTransport()
+    public async Task GetLdapConfig_ReturnsDefaultTransport()
     {
-        var result = _controller.GetLdapConfig();
+        var result = await _controller.GetLdapConfig();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         var value = ok.Value!;
@@ -82,37 +84,56 @@ public class SyncthingConfigControllerTests
     }
 
     [Fact]
-    public void UpdateLdapConfig_ReturnsOk()
+    public async Task UpdateLdapConfig_SavesAndReturnsOk()
     {
+        _configXmlServiceMock.Setup(s => s.FromSyncConfiguration(
+            It.IsAny<SyncConfiguration>(), It.IsAny<List<SyncDevice>>(), It.IsAny<List<SyncFolder>>()))
+            .Returns(new ConfigXml());
+        _configXmlServiceMock.Setup(s => s.SaveAsync(It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var ldapConfig = JsonSerializer.SerializeToElement(new
         {
             address = "ldap://localhost:389",
-            bindDN = "cn=admin,dc=example,dc=com",
+            bindDN = "cn=%s,dc=example,dc=com",
             transport = "starttls"
         });
 
-        var result = _controller.UpdateLdapConfig(ldapConfig);
+        var result = await _controller.UpdateLdapConfig(ldapConfig);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(ok.Value);
     }
 
     [Fact]
-    public void UpdateLdapConfig_ReturnsLdapConfig_AfterUpdate()
+    public async Task UpdateLdapConfig_ReturnsUpdatedValues()
     {
+        var syncConfig = new SyncConfiguration { DeviceId = "TEST-DEVICE-ID", DeviceName = "test" };
+        _syncEngineMock.Setup(s => s.GetConfigurationAsync()).ReturnsAsync(syncConfig);
+        _configXmlServiceMock.Setup(s => s.FromSyncConfiguration(
+            It.IsAny<SyncConfiguration>(), It.IsAny<List<SyncDevice>>(), It.IsAny<List<SyncFolder>>()))
+            .Returns(new ConfigXml());
+        _configXmlServiceMock.Setup(s => s.SaveAsync(It.IsAny<ConfigXml>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var ldapConfig = JsonSerializer.SerializeToElement(new
         {
-            address = "ldap://localhost:389"
+            address = "ldap://myserver:389",
+            transport = "tls"
         });
 
-        var result = _controller.UpdateLdapConfig(ldapConfig);
+        await _controller.UpdateLdapConfig(ldapConfig);
 
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        // GET should return updated values
+        var getResult = await _controller.GetLdapConfig();
+        var ok = Assert.IsType<OkObjectResult>(getResult.Result);
         var value = ok.Value!;
 
-        // Verify it returns a valid LDAP config structure
         var addressProperty = value.GetType().GetProperty("address");
-        Assert.NotNull(addressProperty);
+        Assert.Equal("ldap://myserver:389", addressProperty?.GetValue(value) as string);
+
+        var transportProperty = value.GetType().GetProperty("transport");
+        Assert.Equal("tls", transportProperty?.GetValue(value) as string);
     }
 
     #endregion
@@ -224,9 +245,9 @@ public class SyncthingConfigControllerTests
     }
 
     [Fact]
-    public void GetGuiConfig_ReturnsOk()
+    public async Task GetGuiConfig_ReturnsOk()
     {
-        var result = _controller.GetGuiConfig();
+        var result = await _controller.GetGuiConfig();
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(ok.Value);

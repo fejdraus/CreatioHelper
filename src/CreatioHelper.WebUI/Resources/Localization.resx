@@ -3582,4 +3582,102 @@
   <data name="DeviceDetails_NoSharedFolders" xml:space="preserve">
     <value>No shared folders</value>
   </data>
+
+  <!-- User Management -->
+  <data name="Settings_Users" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="Users_Title" xml:space="preserve">
+    <value>User Management</value>
+  </data>
+  <data name="Users_List" xml:space="preserve">
+    <value>Users</value>
+  </data>
+  <data name="Users_Add" xml:space="preserve">
+    <value>Add User</value>
+  </data>
+  <data name="Users_Edit" xml:space="preserve">
+    <value>Edit User</value>
+  </data>
+  <data name="Users_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="Users_Username" xml:space="preserve">
+    <value>Username</value>
+  </data>
+  <data name="Users_UsernameRequired" xml:space="preserve">
+    <value>Username is required</value>
+  </data>
+  <data name="Users_Password" xml:space="preserve">
+    <value>Password</value>
+  </data>
+  <data name="Users_PasswordRequired" xml:space="preserve">
+    <value>Password is required</value>
+  </data>
+  <data name="Users_NewPasswordOptional" xml:space="preserve">
+    <value>New Password (optional)</value>
+  </data>
+  <data name="Users_LeaveBlankKeepPassword" xml:space="preserve">
+    <value>Leave blank to keep current password</value>
+  </data>
+  <data name="Users_Role" xml:space="preserve">
+    <value>Role</value>
+  </data>
+  <data name="Users_Created" xml:space="preserve">
+    <value>Created</value>
+  </data>
+  <data name="Users_Updated" xml:space="preserve">
+    <value>Updated</value>
+  </data>
+  <data name="Users_Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Users_NoUsers" xml:space="preserve">
+    <value>No users found</value>
+  </data>
+  <data name="Users_CreatedSuccess" xml:space="preserve">
+    <value>User created successfully</value>
+  </data>
+  <data name="Users_UpdatedSuccess" xml:space="preserve">
+    <value>User updated successfully</value>
+  </data>
+  <data name="Users_Deleted" xml:space="preserve">
+    <value>User deleted successfully</value>
+  </data>
+  <data name="Users_DeleteFailed" xml:space="preserve">
+    <value>Failed to delete user</value>
+  </data>
+  <data name="Users_DeleteConfirmTitle" xml:space="preserve">
+    <value>Delete User</value>
+  </data>
+  <data name="Users_DeleteConfirmMessage" xml:space="preserve">
+    <value>Are you sure you want to delete user '{0}'?</value>
+  </data>
+  <data name="Users_ChangePassword" xml:space="preserve">
+    <value>Change Password</value>
+  </data>
+  <data name="Users_CurrentPassword" xml:space="preserve">
+    <value>Current Password</value>
+  </data>
+  <data name="Users_CurrentPasswordRequired" xml:space="preserve">
+    <value>Current password is required</value>
+  </data>
+  <data name="Users_NewPassword" xml:space="preserve">
+    <value>New Password</value>
+  </data>
+  <data name="Users_NewPasswordRequired" xml:space="preserve">
+    <value>New password is required</value>
+  </data>
+  <data name="Users_ConfirmPassword" xml:space="preserve">
+    <value>Confirm Password</value>
+  </data>
+  <data name="Users_PasswordsMismatch" xml:space="preserve">
+    <value>Passwords do not match</value>
+  </data>
+  <data name="Users_PasswordChanged" xml:space="preserve">
+    <value>Password changed successfully</value>
+  </data>
+  <data name="Users_PasswordChangeFailed" xml:space="preserve">
+    <value>Failed to change password</value>
+  </data>
 </root>

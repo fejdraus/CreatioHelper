@@ -235,6 +235,17 @@ public class ConfigXmlService : IConfigXmlService
             GuiPassword = config.Gui.Password
         };
 
+        // Map LDAP configuration
+        if (config.Ldap != null)
+        {
+            syncConfig.LdapAddress = config.Ldap.Address;
+            syncConfig.LdapBindDN = config.Ldap.BindDN;
+            syncConfig.LdapTransport = config.Ldap.Transport;
+            syncConfig.LdapInsecureSkipVerify = config.Ldap.InsecureSkipVerify;
+            syncConfig.LdapSearchBaseDN = config.Ldap.SearchBaseDN;
+            syncConfig.LdapSearchFilter = config.Ldap.SearchFilter;
+        }
+
         // Set listen addresses ("default" expands to tcp + quic on port 22000)
         var listenAddresses = config.Options.ListenAddresses
             .SelectMany(addr => addr == "default"
@@ -303,6 +314,15 @@ public class ConfigXmlService : IConfigXmlService
                 User = config.GuiUser,
                 Password = config.GuiPassword
             },
+            Ldap = !string.IsNullOrWhiteSpace(config.LdapAddress) ? new ConfigXmlLdap
+            {
+                Address = config.LdapAddress,
+                BindDN = config.LdapBindDN,
+                Transport = config.LdapTransport,
+                InsecureSkipVerify = config.LdapInsecureSkipVerify,
+                SearchBaseDN = config.LdapSearchBaseDN,
+                SearchFilter = config.LdapSearchFilter
+            } : null,
             Options = new ConfigXmlOptions
             {
                 ListenAddresses = config.ListenAddresses.Count > 0 ? config.ListenAddresses : new List<string> { "default" },

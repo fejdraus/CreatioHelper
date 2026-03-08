@@ -494,7 +494,7 @@ else
 
     private async Task DeleteDevice(DeviceConfig device)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["Devices_RemoveDevice"],
             L["Msg_DeleteDeviceConfirm", device.DisplayName],
             yesText: L["Action_Delete"],
