@@ -473,7 +473,7 @@ else
         var folders = State.Folders;
         if (folders.Length == 0)
         {
-            var confirmed = await DialogService.ShowMessageBox(
+            var confirmed = await DialogService.ShowMessageBoxAsync(
                 L["PendingDevices_SelectFolders"],
                 L["Msg_NoFoldersConfigured"],
                 yesText: L["PendingDevices_Accept"],
@@ -554,7 +554,7 @@ else
 
     private async Task RejectDeviceAsync(PendingDevice device)
     {
-        var confirmed = await DialogService.ShowMessageBox(
+        var confirmed = await DialogService.ShowMessageBoxAsync(
             L["PendingDevices_Reject"],
             L["Msg_ConfirmRejectDevice", device.DisplayName],
             yesText: L["PendingDevices_Reject"],

@@ -8,7 +8,9 @@ using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Infrastructure.Services.Redis;
 using CreatioHelper.Infrastructure.Services.Network;
 using CreatioHelper.Infrastructure.Services.Network.UPnP;
+using CreatioHelper.Infrastructure.Services.DeviceManagement;
 using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
+using CreatioHelper.Infrastructure.Services.Sync.Security;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
@@ -103,6 +105,18 @@ public static class ServiceCollectionExtensions
 
         // Pending devices/folders service for Syncthing compatibility
         services.AddSingleton<IPendingService, PendingService>();
+
+        // LDAP authentication service
+        services.AddSingleton<ILdapAuthService, LdapAuthService>();
+
+        // Cluster key auto-pairing
+        if (configuration != null)
+        {
+            services.Configure<ClusterKeyConfiguration>(
+                configuration.GetSection("ClusterKey"));
+        }
+        services.AddSingleton<IClusterKeyService, ClusterKeyService>();
+        services.AddSingleton<ClusterKeyAutoAcceptHandler>();
 
         return services;
     }

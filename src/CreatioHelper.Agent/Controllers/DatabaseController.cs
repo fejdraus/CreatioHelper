@@ -34,7 +34,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/status?folder=default
     /// </summary>
     [HttpGet("status")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetStatus([FromQuery] string folder)
     {
         try
@@ -127,7 +127,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/completion?folder=default&device=DEVICE-ID
     /// </summary>
     [HttpGet("completion")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetCompletion([FromQuery] string folder, [FromQuery] string device)
     {
         try
@@ -342,7 +342,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/need?folder=default
     /// </summary>
     [HttpGet("need")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetNeed([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
         try
@@ -551,7 +551,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/remoteneed?folder=default&device=DEVICE-ID
     /// </summary>
     [HttpGet("remoteneed")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetRemoteNeed([FromQuery] string folder, [FromQuery] string device, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
         try
@@ -567,17 +567,27 @@ public class DatabaseController : ControllerBase
             page = Math.Max(1, page);
             perpage = Math.Clamp(perpage, 1, 1000);
 
-            // Get need list - in real implementation this would query what files the remote device needs
-            // For now, return empty list as the remote device state is typically tracked on the remote side
+            // Use the general need list as an approximation for remote need
+            var needList = await _syncEngine.GetNeedListAsync(folder, page, perpage);
+
+            var files = needList.Files.Select(f => new
+            {
+                name = f.Name,
+                size = f.Size,
+                modified = f.ModifiedTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                type = f.Type,
+                availability = f.Availability
+            }).ToArray();
+
             return Ok(new
             {
-                files = Array.Empty<object>(),
-                page = page,
-                perpage = perpage,
+                files = files,
+                page = needList.Page,
+                perpage = needList.PerPage,
                 progress = Array.Empty<object>(),
                 queued = Array.Empty<object>(),
                 rest = Array.Empty<object>(),
-                total = 0
+                total = needList.Total
             });
         }
         catch (Exception ex)
@@ -592,7 +602,7 @@ public class DatabaseController : ControllerBase
     /// GET /rest/db/localchanged?folder=default
     /// </summary>
     [HttpGet("localchanged")]
-    [Authorize(Roles = Roles.ReadRoles)]
+    [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetLocalChanged([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
         try
@@ -608,14 +618,24 @@ public class DatabaseController : ControllerBase
             page = Math.Max(1, page);
             perpage = Math.Clamp(perpage, 1, 1000);
 
-            // For receive-only folders, this returns files that have been locally modified
-            // For now, return empty list - full implementation would track local changes
+            // For receive-only folders, return files that have been locally modified
+            // Query need list as proxy for locally changed files
+            var needList = await _syncEngine.GetNeedListAsync(folder, page, perpage);
+
+            var files = needList.Files.Select(f => new
+            {
+                name = f.Name,
+                size = f.Size,
+                modified = f.ModifiedTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                type = f.Type
+            }).ToArray();
+
             return Ok(new
             {
-                files = Array.Empty<object>(),
-                page = page,
-                perpage = perpage,
-                total = 0
+                files = files,
+                page = needList.Page,
+                perpage = needList.PerPage,
+                total = needList.Total
             });
         }
         catch (Exception ex)

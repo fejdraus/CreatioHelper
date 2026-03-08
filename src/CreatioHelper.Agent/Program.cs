@@ -21,7 +21,12 @@ builder.Host.UseSerilog((context, configuration) =>
         .Enrich.FromLogContext();
 });
 
-builder.Services.AddApplicationInsightsTelemetry();
+var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
+                                  ?? builder.Configuration["ApplicationInsights:InstrumentationKey"];
+if (!string.IsNullOrEmpty(appInsightsConnectionString))
+{
+    builder.Services.AddApplicationInsightsTelemetry();
+}
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
@@ -126,11 +131,17 @@ builder.Services.AddAuthorization();
 // Rate limiting for login endpoint
 builder.Services.AddSingleton<CreatioHelper.Agent.Services.LoginRateLimiter>();
 
+// User store for account management
+builder.Services.AddSingleton<CreatioHelper.Agent.Services.IUserStore, CreatioHelper.Agent.Services.JsonFileUserStore>();
+
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
 // Register performance services
-builder.Services.AddScoped<ApplicationInsightsMetricsService>();
+if (!string.IsNullOrEmpty(appInsightsConnectionString))
+{
+    builder.Services.AddScoped<ApplicationInsightsMetricsService>();
+}
 
 // Register additional support services
 builder.Services.AddScoped<EnhancedLoggingService>();
@@ -205,6 +216,9 @@ catch (Exception ex)
 builder.Services.AddSyncServices(syncConfig);
 
 var app = builder.Build();
+
+// Force-resolve ClusterKeyAutoAcceptHandler so it subscribes to DeviceDiscovered events
+app.Services.GetService<CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterKeyAutoAcceptHandler>();
 
 // Graceful shutdown configuration
 var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();

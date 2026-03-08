@@ -22,7 +22,7 @@ public class ConfigXml
     public ConfigXmlGui Gui { get; set; } = new();
 
     [XmlElement("ldap")]
-    public string? Ldap { get; set; }
+    public ConfigXmlLdap? Ldap { get; set; }
 
     [XmlElement("options")]
     public ConfigXmlOptions Options { get; set; } = new();

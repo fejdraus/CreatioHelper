@@ -320,6 +320,8 @@ public class SyncBroadcastService : BackgroundService
             }
             catch { /* ignore */ }
 
+            var gcMemoryInfo = GC.GetGCMemoryInfo();
+
             var systemStatus = new SystemStatusDto
             {
                 MyId = syncEngine.DeviceId,
@@ -334,7 +336,20 @@ public class SyncBroadcastService : BackgroundService
                 TotalOut = statistics.TotalBytesOut,
                 InBytesPerSec = 0,
                 OutBytesPerSec = 0,
-                DbSize = dbSize
+                DbSize = dbSize,
+                AppMemory = process.WorkingSet64,
+                OsMemoryUsed = gcMemoryInfo.MemoryLoadBytes,
+                TotalPhysicalMemory = gcMemoryInfo.TotalAvailableMemoryBytes,
+                GcGen0Collections = GC.CollectionCount(0),
+                GcGen1Collections = GC.CollectionCount(1),
+                GcGen2Collections = GC.CollectionCount(2),
+                GcTotalPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,
+                HeapSizeBytes = gcMemoryInfo.HeapSizeBytes,
+                HeapFragmentedBytes = gcMemoryInfo.FragmentedBytes,
+                ProcessHandleCount = process.HandleCount,
+                ProcessThreadCount = process.Threads.Count,
+                TotalBytesIn = statistics.TotalBytesIn,
+                TotalBytesOut = statistics.TotalBytesOut
             };
 
             await _hubContext.Clients.All.SendAsync("SystemStatus", systemStatus);

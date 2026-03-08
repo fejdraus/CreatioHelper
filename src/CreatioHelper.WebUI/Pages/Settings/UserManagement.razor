@@ -1,0 +1,196 @@
+@page "/settings/users"
+@inject IApiClient ApiClient
+@inject IAuthService AuthService
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+
+<MudText Typo="Typo.h5" Class="mb-4">
+    <MudIcon Icon="@Icons.Material.Filled.People" Class="mr-2" />
+    @L["Users_Title"]
+</MudText>
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudText Typo="Typo.h6">@L["Users_List"]</MudText>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.PersonAdd"
+                   OnClick="OpenAddUserDialog">
+            @L["Users_Add"]
+        </MudButton>
+    </MudStack>
+
+    @if (_loading)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (_users == null || _users.Length == 0)
+    {
+        <MudAlert Severity="Severity.Info">@L["Users_NoUsers"]</MudAlert>
+    }
+    else
+    {
+        <MudTable Items="@_users" Hover="true" Striped="true" Dense="true">
+            <HeaderContent>
+                <MudTh>@L["Users_Username"]</MudTh>
+                <MudTh>@L["Users_Role"]</MudTh>
+                <MudTh>@L["Users_Created"]</MudTh>
+                <MudTh>@L["Users_Updated"]</MudTh>
+                <MudTh Style="width: 200px;">@L["Users_Actions"]</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@L["Users_Username"]">
+                    <MudText Typo="Typo.body2">@context.Username</MudText>
+                </MudTd>
+                <MudTd DataLabel="@L["Users_Role"]">
+                    <MudChip T="string"
+                             Color="@(context.Role == "admin" ? Color.Warning : Color.Default)"
+                             Size="Size.Small">
+                        @context.Role
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="@L["Users_Created"]">
+                    @context.CreatedAt.ToLocalTime().ToString("g")
+                </MudTd>
+                <MudTd DataLabel="@L["Users_Updated"]">
+                    @(context.UpdatedAt?.ToLocalTime().ToString("g") ?? "—")
+                </MudTd>
+                <MudTd>
+                    <MudTooltip Text="@L["Users_ChangePassword"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Key"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OpenChangePasswordDialog(context.Username))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@L["Users_Edit"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => OpenEditUserDialog(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@L["Users_Delete"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Size="Size.Small"
+                                       Color="Color.Error"
+                                       Disabled="@IsLastAdmin(context)"
+                                       OnClick="@(() => ConfirmDeleteUser(context))" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+</MudPaper>
+
+@code {
+    private UserInfo[]? _users;
+    private bool _loading = true;
+
+    private bool _initialized;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !_initialized)
+        {
+            _initialized = true;
+            // Wait for auth to be ready before making API calls
+            await AuthService.InitializeAsync();
+            if (AuthService.IsAuthenticated)
+            {
+                await LoadUsersAsync();
+            }
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadUsersAsync()
+    {
+        _loading = true;
+        try
+        {
+            _users = await ApiClient.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Failed to load users: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private bool IsLastAdmin(UserInfo user)
+    {
+        if (user.Role != "admin") return false;
+        return _users?.Count(u => u.Role == "admin") <= 1;
+    }
+
+    private async Task OpenAddUserDialog()
+    {
+        var parameters = new DialogParameters<AddUserDialog>();
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddUserDialog>(L["Users_Add"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await LoadUsersAsync();
+    }
+
+    private async Task OpenEditUserDialog(UserInfo user)
+    {
+        var parameters = new DialogParameters<AddUserDialog>
+        {
+            { x => x.IsEditMode, true },
+            { x => x.EditUsername, user.Username },
+            { x => x.EditRole, user.Role }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<AddUserDialog>(L["Users_Edit"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+            await LoadUsersAsync();
+    }
+
+    private async Task OpenChangePasswordDialog(string username)
+    {
+        var isSelf = string.Equals(AuthService.Username, username, StringComparison.OrdinalIgnoreCase);
+        var parameters = new DialogParameters<ChangePasswordDialog>
+        {
+            { x => x.Username, username },
+            { x => x.RequireCurrentPassword, isSelf && !AuthService.IsAdmin }
+        };
+        var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ChangePasswordDialog>(L["Users_ChangePassword"], parameters, options);
+        await dialog.Result;
+    }
+
+    private async Task ConfirmDeleteUser(UserInfo user)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            L["Users_DeleteConfirmTitle"],
+            string.Format(L["Users_DeleteConfirmMessage"].Value, user.Username),
+            yesText: L["Users_Delete"],
+            cancelText: L["Common_Cancel"]);
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var success = await ApiClient.DeleteUserAsync(user.Username);
+                if (success)
+                {
+                    Snackbar.Add(L["Users_Deleted"], Severity.Success);
+                    await LoadUsersAsync();
+                }
+                else
+                {
+                    Snackbar.Add(L["Users_DeleteFailed"], Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}
