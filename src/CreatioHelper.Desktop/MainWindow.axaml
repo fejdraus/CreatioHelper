@@ -84,7 +84,7 @@
                     <MultiBinding Converter="{StaticResource DeleteAppVersionToVisibilityConverter}" TargetNullValue="False">
                         <Binding Path="IsIisMode"/>
                         <Binding Path="IsFolderMode"/>
-                        <Binding Path="SelectedIisSite.Version"/>
+                        <Binding Path="SelectedIisSite.Version" FallbackValue="{x:Null}"/>
                         <Binding Path="SitePathWithVersion"/>
                     </MultiBinding>
                 </Grid.IsVisible>
