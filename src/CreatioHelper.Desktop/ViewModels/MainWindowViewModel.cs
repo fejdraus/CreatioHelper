@@ -566,8 +566,11 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
+        OnPropertyChanged(nameof(SelectedIisSiteVersion));
         SaveServerSettings();
     }
+
+    public Version? SelectedIisSiteVersion => SelectedIisSite?.Version;
 
     partial void OnEnableFileCopySynchronizationChanged(bool value)
     {
