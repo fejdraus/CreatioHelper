@@ -445,6 +445,115 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
+    public int LoadLicResponse(string sitePath, string licFilePath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        if (string.IsNullOrEmpty(licFilePath)) throw new ArgumentNullException(nameof(licFilePath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"LoadLicResponse\" -fileName=\"{SafePath(licFilePath)}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Load License Response...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
+    public int BackupConfiguration(string sitePath, string backupPath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        if (string.IsNullOrEmpty(backupPath)) throw new ArgumentNullException(nameof(backupPath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"BackupConfiguration\" -workspaceName=\"Default\" -destinationPath=\"{SafePath(backupPath)}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -force=\"True\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Backup Configuration...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
+    public int RestoreConfiguration(string sitePath, string backupPath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        if (string.IsNullOrEmpty(backupPath)) throw new ArgumentNullException(nameof(backupPath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"RestoreConfiguration\" -workspaceName=\"Default\" -backupPath=\"{SafePath(backupPath)}\" -installPackageData=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Restore Configuration...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
+    public int PrevalidateInstallFromRepository(string sitePath, string packagesPath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        if (string.IsNullOrEmpty(packagesPath)) throw new ArgumentNullException(nameof(packagesPath));
+
+        packagesPath = packagesPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var tempPackagesPath = Path.Combine(packagesPath, "TempPackages");
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"PrevalidateInstallFromRepository\" -workspaceName=\"Default\" -sourcePath=\"{SafePath(packagesPath)}\" -destinationPath=\"{SafePath(tempPackagesPath)}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Pre-validation of Install From Repository...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
     private int RunWorkspaceConsole(string sitePath, string arguments, string? workingDirectory)
     {
         string exePath = GetWorkspaceConsoleExePath(sitePath);

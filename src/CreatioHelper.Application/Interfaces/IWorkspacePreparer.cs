@@ -10,4 +10,8 @@ public interface IWorkspacePreparer
     int RebuildWorkspace(string sitePath);
     int BuildConfiguration(string sitePath);
     int DeletePackages(string sitePath, string packageList);
+    int LoadLicResponse(string sitePath, string licFilePath);
+    int BackupConfiguration(string sitePath, string backupPath);
+    int RestoreConfiguration(string sitePath, string backupPath);
+    int PrevalidateInstallFromRepository(string sitePath, string packagesPath);
 }
