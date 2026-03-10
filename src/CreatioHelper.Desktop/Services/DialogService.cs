@@ -53,4 +53,24 @@ public class DialogService : IDialogService
         }
         return null;
     }
+
+    public async Task<string?> SaveFilePickerAsync(string title, string? defaultFileName = null, string[]? filters = null)
+    {
+        var options = new FilePickerSaveOptions
+        {
+            Title = title,
+            SuggestedFileName = defaultFileName
+        };
+
+        if (filters != null && filters.Length > 0)
+        {
+            options.FileTypeChoices = new List<FilePickerFileType>
+            {
+                new("Allowed files") { Patterns = filters }
+            };
+        }
+
+        var file = await _storageProvider.SaveFilePickerAsync(options);
+        return file?.Path.LocalPath;
+    }
 }

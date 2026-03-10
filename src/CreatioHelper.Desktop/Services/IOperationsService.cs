@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
@@ -15,6 +16,11 @@ public interface IOperationsService : INotifyPropertyChanged
     string StartButtonText { get; }
     bool IsStopButtonEnabled { get; }
     ISyncthingMonitorService? GetSyncthingMonitor();
+
+    /// <summary>
+    /// Execute a standalone WSC operation with full UI blocking and stop support.
+    /// </summary>
+    Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action);
 
     /// <summary>
     /// Start all IIS sites and application pools for servers in the list

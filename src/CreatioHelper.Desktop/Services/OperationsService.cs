@@ -634,7 +634,54 @@ public partial class OperationsService : ObservableObject, IOperationsService
             poolWasStopped: true, siteWasStopped: true, serviceWasStopped: true, cancellationToken);
     }
 
-    public void StopOperation() 
+    public async Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action)
+    {
+        if (IsBusy)
+        {
+            _output.WriteLine("[WARN] Another operation is already running.");
+            return;
+        }
+
+        _output.Clear();
+        _cancellationTokenSource = new CancellationTokenSource();
+        IsBusy = true;
+        StartButtonText = "In process...";
+        IsStopButtonEnabled = true;
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                _output.WriteLine($"Prepare WorkspaceConsole ...");
+                _workspacePreparer.Prepare(sitePath, out _);
+
+                if (_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    _output.WriteLine("[INFO] Operation was cancelled.");
+                    return;
+                }
+
+                _output.WriteLine($"Running {operationName}...");
+                int result = action();
+                if (result != 0)
+                    _output.WriteLine($"[ERROR] {operationName} failed.");
+                else
+                    _output.WriteLine($"[OK] {operationName} completed successfully.");
+            });
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+            StartButtonText = "Start";
+            IsStopButtonEnabled = false;
+        }
+    }
+
+    public void StopOperation()
     {
         if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested) 
         {

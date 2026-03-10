@@ -14,4 +14,9 @@ public interface IWorkspacePreparer
     int BackupConfiguration(string sitePath, string backupPath);
     int RestoreConfiguration(string sitePath, string backupPath);
     int PrevalidateInstallFromRepository(string sitePath, string packagesPath);
+    bool IsFileDesignModeEnabled(string sitePath);
+    string GetPkgPath(string sitePath);
+    int DownloadPackages(string sitePath, string destinationPath);
+    int LoadPackagesToDB(string sitePath);
+    int SaveLicenseRequest(string sitePath, string destinationPath, string customerId, string fileName);
 }
