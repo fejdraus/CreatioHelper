@@ -174,6 +174,22 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
                     {
+                        // Pre-validate if checkbox is checked
+                        if (viewModel.PrevalidateBeforeInstall)
+                        {
+                            _output.WriteLine("Running pre-validation before installation...");
+                            bool prevalidateSuccess = ExecutePreparerAction(
+                                () => preparer.PrevalidateInstallFromRepository(sitePath, packagesPath),
+                                "[ERROR] Pre-validation failed. Installation aborted.",
+                                cancellationToken);
+                            if (!prevalidateSuccess)
+                            {
+                                _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "prevalidation_failed" });
+                                return;
+                            }
+                            _output.WriteLine("[OK] Pre-validation passed.");
+                        }
+
                         // Stop ALL servers (local + remote) before package installation
                         _output.WriteLine("Stopping ALL servers before package installation...");
                         await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);

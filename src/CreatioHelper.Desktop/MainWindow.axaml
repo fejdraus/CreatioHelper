@@ -7,8 +7,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="800" Height="670"
-        MinWidth="800" MinHeight="400"
+        Width="920" Height="670"
+        MinWidth="920" MinHeight="400"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -66,9 +66,18 @@
                           IsVisible="{Binding IsWindows}" />
             </StackPanel>
 
-            <!-- Row 3: Packages Path -->
+            <!-- Row 3: Packages Path with Prevalidate checkbox -->
             <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
-                <TextBlock Text="Packages Path:" />
+                <Grid ColumnDefinitions="*,Auto">
+                    <TextBlock Text="Packages Path:" VerticalAlignment="Center"/>
+                    <CheckBox Grid.Column="1"
+                              Content="Prevalidate package installation"
+                              IsChecked="{Binding PrevalidateBeforeInstall}"
+                              IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                              VerticalAlignment="Center"
+                              HorizontalAlignment="Right"
+                              ToolTip.Tip="Run pre-validation before installing packages"/>
+                </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
                              Watermark="Enter path to packages folder for installation"
@@ -104,8 +113,8 @@
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
-            <!-- Row 5: Start/Stop buttons and server sync -->
-            <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto" Margin="0,5,0,5">
+            <!-- Row 5: Start/Stop buttons, Load License, and server sync -->
+            <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,5,0,5">
                 <!-- Start button -->
                 <Button x:Name="StartButton"
                         Grid.Column="0"
@@ -127,9 +136,20 @@
 
                 <!-- Empty spacer (Grid.Column="2") for alignment -->
 
-                <!-- ServerPanel button (Grid.Column="3") -->
-                <Button x:Name="ServerPanelButton"
+                <!-- Load License button (Grid.Column="3") -->
+                <Button x:Name="LoadLicenseButton"
                         Grid.Column="3"
+                        Content="Load License"
+                        Command="{Binding LoadLicenseCommand}"
+                        IsEnabled="{Binding AreControlsEnabled}"
+                        Width="110"
+                        Height="32"
+                        Margin="0,0,10,0"
+                        ToolTip.Tip="Load license response file (.lic)"/>
+
+                <!-- ServerPanel button (Grid.Column="4") -->
+                <Button x:Name="ServerPanelButton"
+                        Grid.Column="4"
                         Content="{Binding ServerPanelButtonText}"
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"

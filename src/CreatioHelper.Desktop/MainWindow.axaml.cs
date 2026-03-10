@@ -88,7 +88,7 @@ namespace CreatioHelper
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, statusService);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>

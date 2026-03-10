@@ -32,9 +32,10 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IDialogService _dialogService;
     private readonly ISystemServiceManager _systemServiceManager;
     private readonly IRedisManagerFactory _redisManagerFactory;
+    private readonly IWorkspacePreparer _workspacePreparer;
     private Version _sitePathWithVersion = new();
     private readonly IOutputWriter _output;
-    
+
     public MainWindowViewModel(
         IOutputWriter output,
         IMediator mediator,
@@ -44,7 +45,8 @@ public partial class MainWindowViewModel : ObservableObject
         IIisManager iisManager,
         IisService iisService,
         ISystemServiceManager systemServiceManager,
-        IRedisManagerFactory redisManagerFactory)
+        IRedisManagerFactory redisManagerFactory,
+        IWorkspacePreparer workspacePreparer)
     {
         _output = output;
         _mediator = mediator;
@@ -68,6 +70,7 @@ public partial class MainWindowViewModel : ObservableObject
         _iisService = iisService;
         _systemServiceManager = systemServiceManager;
         _redisManagerFactory = redisManagerFactory;
+        _workspacePreparer = workspacePreparer;
 
         // Initialize Syncthing commands
         ResumeAllSyncthingFoldersCommand = new AsyncRelayCommand(ResumeAllSyncthingFolders);
@@ -256,6 +259,9 @@ public partial class MainWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private string? _redisServiceName;
+
+    [ObservableProperty]
+    private bool _prevalidateBeforeInstall;
 
     public bool IsBusy => _operationsService.IsBusy;
 
@@ -538,7 +544,38 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
-    private void SetControlsEnabled(bool isEnabled) 
+    [RelayCommand]
+    private async Task LoadLicense()
+    {
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            _output.WriteLine("[ERROR] Site path is not configured.");
+            return;
+        }
+
+        var licFilePath = await _dialogService.OpenFilePickerAsync("Select license file", new[] { "*.tls" });
+        if (string.IsNullOrWhiteSpace(licFilePath)) return;
+
+        await Task.Run(() =>
+        {
+            _workspacePreparer.Prepare(sitePath, out var quartzIsActiveOriginal);
+            int result = _workspacePreparer.LoadLicResponse(sitePath, licFilePath);
+            if (result != 0)
+                _output.WriteLine("[ERROR] LoadLicResponse operation failed.");
+            else
+                _output.WriteLine("[OK] License loaded successfully.");
+        });
+    }
+
+    private string? GetResolvedSitePath()
+    {
+        if (IsIisMode)
+            return SelectedIisSite?.Path;
+        return SitePath;
+    }
+
+    private void SetControlsEnabled(bool isEnabled)
     {
         IsServerControlsEnabled = isEnabled;
     }
