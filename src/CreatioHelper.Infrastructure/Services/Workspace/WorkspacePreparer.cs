@@ -554,6 +554,117 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
+    public bool IsFileDesignModeEnabled(string sitePath)
+    {
+        if (string.IsNullOrWhiteSpace(sitePath) || !Directory.Exists(sitePath))
+            return false;
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        bool isFramework = IsDotNetFramework(sitePath);
+        var webConfigPath = isFramework
+            ? Path.Combine(sitePath, "Web.config")
+            : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+
+        if (!File.Exists(webConfigPath))
+            return false;
+
+        try
+        {
+            var (_, fileDesignModeEnabled, _) = ReadWebConfigSettings(webConfigPath);
+            return string.Equals(fileDesignModeEnabled, "true", StringComparison.OrdinalIgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public string GetPkgPath(string sitePath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        return Path.Combine(GetConfigurationPath(sitePath), "Pkg");
+    }
+
+    public int DownloadPackages(string sitePath, string destinationPath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"LoadPackagesToFileSystem\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Load Packages To File System (DB → FS)...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
+    public int LoadPackagesToDB(string sitePath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"LoadPackagesToDB\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Load Packages To DB (FS → DB)...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
+    public int SaveLicenseRequest(string sitePath, string destinationPath, string customerId, string fileName)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+        if (string.IsNullOrEmpty(destinationPath)) throw new ArgumentNullException(nameof(destinationPath));
+        if (string.IsNullOrEmpty(customerId)) throw new ArgumentNullException(nameof(customerId));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null) return 0;
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string configPath = GetConfigurationPath(sitePath);
+        string fileNamePart = string.IsNullOrEmpty(fileName) ? "" : $" -fileName=\"{fileName}\"";
+        string arguments = $"-operation=\"SaveLicenseRequest\" -destinationPath=\"{SafePath(destinationPath)}\" -customerId=\"{customerId}\"{fileNamePart} -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Save License Request...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
     private int RunWorkspaceConsole(string sitePath, string arguments, string? workingDirectory)
     {
         string exePath = GetWorkspaceConsoleExePath(sitePath);

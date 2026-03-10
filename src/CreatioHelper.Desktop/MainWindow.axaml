@@ -7,8 +7,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="920" Height="670"
-        MinWidth="920" MinHeight="400"
+        Width="1065" Height="670"
+        MinWidth="1065" MinHeight="400"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -21,7 +21,8 @@
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
             <Grid Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" IsVisible="{Binding IsWindows}">
@@ -31,10 +32,29 @@
                         <RadioButton Content="Folder" IsChecked="{Binding IsFolderMode}" GroupName="SiteSource" Margin="15,0,0,0" VerticalAlignment="Center"/>
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center"
+                            HorizontalAlignment="Center"
+                            IsVisible="{Binding IsFileDesignModeEnabled}">
+                    <TextBlock Text="Packages:" HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Button Content="Creatio → File System"
+                                Command="{Binding DownloadPackagesOpCommand}"
+                                Width="165" Height="32" Margin="0,0,10,0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                ToolTip.Tip="Download packages from database to file system"/>
+                        <Button Content="File System → Creatio"
+                                Command="{Binding LoadPackagesToDBOpCommand}"
+                                Width="165" Height="32"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                ToolTip.Tip="Load packages from file system to database"/>
+                    </StackPanel>
+                </StackPanel>
+                <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center">
                     <TextBlock Text="Redis:" HorizontalAlignment="Right"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
-                        <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="32" Margin="5,0" ToolTip.Tip="Check Redis status"/>
+                        <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="32" Margin="10,0" ToolTip.Tip="Check Redis status"/>
                         <Button Content="Clear" Command="{Binding ClearRedisCommand}" Width="80" Height="32" ToolTip.Tip="Clear Redis cache"/>
                     </StackPanel>
                 </StackPanel>
@@ -114,7 +134,7 @@
             </Grid>
 
             <!-- Row 5: Start/Stop buttons, Load License, and server sync -->
-            <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto,Auto" Margin="0,5,0,5">
+            <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="0,5,0,5">
                 <!-- Start button -->
                 <Button x:Name="StartButton"
                         Grid.Column="0"
@@ -136,20 +156,31 @@
 
                 <!-- Empty spacer (Grid.Column="2") for alignment -->
 
-                <!-- Load License button (Grid.Column="3") -->
-                <Button x:Name="LoadLicenseButton"
+                <!-- Save License Request button (Grid.Column="3") -->
+                <Button x:Name="SaveLicenseRequestButton"
                         Grid.Column="3"
+                        Content="Save Lic Request"
+                        Click="SaveLicenseRequest_Click"
+                        IsEnabled="{Binding AreControlsEnabled}"
+                        Width="135"
+                        Height="32"
+                        Margin="0,0,10,0"
+                        ToolTip.Tip="Generate license request file (.tlr)"/>
+
+                <!-- Load License button (Grid.Column="4") -->
+                <Button x:Name="LoadLicenseButton"
+                        Grid.Column="4"
                         Content="Load License"
                         Command="{Binding LoadLicenseCommand}"
                         IsEnabled="{Binding AreControlsEnabled}"
                         Width="110"
                         Height="32"
                         Margin="0,0,10,0"
-                        ToolTip.Tip="Load license response file (.lic)"/>
+                        ToolTip.Tip="Load license response file (.tls)"/>
 
-                <!-- ServerPanel button (Grid.Column="4") -->
+                <!-- ServerPanel button (Grid.Column="5") -->
                 <Button x:Name="ServerPanelButton"
-                        Grid.Column="4"
+                        Grid.Column="5"
                         Content="{Binding ServerPanelButtonText}"
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"

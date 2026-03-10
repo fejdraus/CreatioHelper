@@ -232,6 +232,10 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isLogToFileEnabled;
 
     [ObservableProperty]
+    private bool _isFileDesignModeEnabled;
+
+
+    [ObservableProperty]
     private bool _isServerControlsEnabled = true;
 
     [ObservableProperty]
@@ -557,15 +561,52 @@ public partial class MainWindowViewModel : ObservableObject
         var licFilePath = await _dialogService.OpenFilePickerAsync("Select license file", new[] { "*.tls" });
         if (string.IsNullOrWhiteSpace(licFilePath)) return;
 
-        await Task.Run(() =>
+        await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadLicResponse",
+            () => _workspacePreparer.LoadLicResponse(sitePath, licFilePath));
+    }
+
+    public async Task ExecuteSaveLicenseRequest(string customerId, string filePath)
+    {
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
         {
-            _workspacePreparer.Prepare(sitePath, out var quartzIsActiveOriginal);
-            int result = _workspacePreparer.LoadLicResponse(sitePath, licFilePath);
-            if (result != 0)
-                _output.WriteLine("[ERROR] LoadLicResponse operation failed.");
-            else
-                _output.WriteLine("[OK] License loaded successfully.");
-        });
+            _output.WriteLine("[ERROR] Site path is not configured.");
+            return;
+        }
+
+        var destinationPath = Path.GetDirectoryName(filePath) ?? "";
+        var fileName = Path.GetFileName(filePath);
+
+        await _operationsService.ExecuteWscOperationAsync(sitePath, "SaveLicenseRequest",
+            () => _workspacePreparer.SaveLicenseRequest(sitePath, destinationPath, customerId, fileName));
+    }
+
+    [RelayCommand]
+    private async Task DownloadPackagesOp()
+    {
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            _output.WriteLine("[ERROR] Site path is not configured.");
+            return;
+        }
+
+        await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToFileSystem",
+            () => _workspacePreparer.DownloadPackages(sitePath, string.Empty));
+    }
+
+    [RelayCommand]
+    private async Task LoadPackagesToDBOp()
+    {
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            _output.WriteLine("[ERROR] Site path is not configured.");
+            return;
+        }
+
+        await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToDB",
+            () => _workspacePreparer.LoadPackagesToDB(sitePath));
     }
 
     private string? GetResolvedSitePath()
@@ -599,12 +640,20 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSitePathChanged(string? value)
     {
         SaveServerSettings();
+        RefreshFileDesignMode();
     }
     partial void OnServiceNameChanged(string? value) => SaveServerSettings();
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
         SaveServerSettings();
+        RefreshFileDesignMode();
+    }
+
+    private void RefreshFileDesignMode()
+    {
+        var sitePath = GetResolvedSitePath();
+        IsFileDesignModeEnabled = !string.IsNullOrWhiteSpace(sitePath) && _workspacePreparer.IsFileDesignModeEnabled(sitePath);
     }
 
     public Version? SelectedIisSiteVersion => SelectedIisSite?.Version;

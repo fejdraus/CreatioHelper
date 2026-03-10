@@ -211,6 +211,20 @@ namespace CreatioHelper
             }
         }
 
+        private async void SaveLicenseRequest_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm)
+                return;
+
+            var dialog = new SaveLicenseRequestWindow();
+            var result = await dialog.ShowDialog<SaveLicenseRequestResult?>(this);
+
+            if (result != null)
+            {
+                await vm.ExecuteSaveLicenseRequest(result.CustomerId, result.FilePath);
+            }
+        }
+
         private async void ServerName_DoubleClick(object? sender, PointerPressedEventArgs e)
         {
             if (DataContext is not MainWindowViewModel vm || !vm.IsServerControlsEnabled)
