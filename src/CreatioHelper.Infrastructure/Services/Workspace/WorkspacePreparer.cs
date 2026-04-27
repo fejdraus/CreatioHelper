@@ -611,7 +611,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
-    public int LoadPackagesToDB(string sitePath)
+    public int LoadPackagesToDb(string sitePath)
     {
         if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
 
