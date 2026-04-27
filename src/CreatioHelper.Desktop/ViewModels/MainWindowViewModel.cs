@@ -33,6 +33,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly ISystemServiceManager _systemServiceManager;
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IWorkspacePreparer _workspacePreparer;
+    private readonly IPackageCleaner _packageCleaner;
     private Version _sitePathWithVersion = new();
     private readonly IOutputWriter _output;
 
@@ -46,7 +47,8 @@ public partial class MainWindowViewModel : ObservableObject
         IisService iisService,
         ISystemServiceManager systemServiceManager,
         IRedisManagerFactory redisManagerFactory,
-        IWorkspacePreparer workspacePreparer)
+        IWorkspacePreparer workspacePreparer,
+        IPackageCleaner packageCleaner)
     {
         _output = output;
         _mediator = mediator;
@@ -71,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject
         _systemServiceManager = systemServiceManager;
         _redisManagerFactory = redisManagerFactory;
         _workspacePreparer = workspacePreparer;
+        _packageCleaner = packageCleaner;
 
         // Initialize Syncthing commands
         ResumeAllSyncthingFoldersCommand = new AsyncRelayCommand(ResumeAllSyncthingFolders);
@@ -211,6 +214,9 @@ public partial class MainWindowViewModel : ObservableObject
     private string? _packagesPath;
 
     [ObservableProperty]
+    private bool _prevalidateBeforeInstall;
+
+    [ObservableProperty]
     private string? _packagesToDeleteBefore;
 
     [ObservableProperty]
@@ -264,15 +270,13 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string? _redisServiceName;
 
-    [ObservableProperty]
-    private bool _prevalidateBeforeInstall;
-
     public bool IsBusy => _operationsService.IsBusy;
 
     /// <summary>
     /// Returns true when UI controls should be enabled (not busy and not loading statuses)
     /// </summary>
-    public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses;
+    private bool _isValidating;
+    public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses && !_isValidating;
 
     public string SyncModeButtonText
     {
@@ -596,6 +600,52 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
+    private async Task ValidatePackagesOp()
+    {
+        if (_operationsService.IsBusy)
+        {
+            _output.WriteLine("[WARN] Another operation is already running.");
+            return;
+        }
+
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            _output.WriteLine("[ERROR] Site path is not configured.");
+            return;
+        }
+
+        var pkgPath = _workspacePreparer.GetPkgPath(sitePath);
+        if (string.IsNullOrWhiteSpace(pkgPath))
+        {
+            _output.WriteLine("[ERROR] Packages path is not configured.");
+            return;
+        }
+
+        _output.Clear();
+        _output.WriteLine("Running package cleaning & validation...");
+        _isValidating = true;
+        OnPropertyChanged(nameof(AreControlsEnabled));
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                var cleanResult = _packageCleaner.CleanPackages(pkgPath);
+                if (!cleanResult.HasInvalidOtherJson && !cleanResult.HasInvalidJson && !cleanResult.HasCircularDependencies)
+                {
+                    _output.WriteLine("No issues found.");
+                }
+            });
+        }
+        finally
+        {
+            _isValidating = false;
+            OnPropertyChanged(nameof(AreControlsEnabled));
+        }
+    }
+
+    [RelayCommand]
     private async Task LoadPackagesToDBOp()
     {
         var sitePath = GetResolvedSitePath();
@@ -606,7 +656,7 @@ public partial class MainWindowViewModel : ObservableObject
         }
 
         await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToDB",
-            () => _workspacePreparer.LoadPackagesToDB(sitePath));
+            () => _workspacePreparer.LoadPackagesToDb(sitePath));
     }
 
     private string? GetResolvedSitePath()
@@ -635,6 +685,7 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
+    partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
     partial void OnSitePathChanged(string? value)
@@ -720,6 +771,7 @@ public partial class MainWindowViewModel : ObservableObject
         SitePath = settings.SitePath;
         ServiceName = settings.ServiceName;
         PackagesPath = settings.PackagesPath;
+        PrevalidateBeforeInstall = settings.PrevalidateBeforeInstall;
         PackagesToDeleteBefore = settings.PackagesToDeleteBefore;
         PackagesToDeleteAfter = settings.PackagesToDeleteAfter;
 
@@ -805,6 +857,7 @@ public partial class MainWindowViewModel : ObservableObject
             ServiceName = IsFolderMode ? ServiceName : null,
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
             PackagesPath = PackagesPath,
+            PrevalidateBeforeInstall = PrevalidateBeforeInstall,
             PackagesToDeleteBefore = PackagesToDeleteBefore,
             PackagesToDeleteAfter = PackagesToDeleteAfter,
             ServerList = new ObservableCollection<ServerInfo>(ServerList.Select(s => new ServerInfo

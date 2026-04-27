@@ -20,7 +20,7 @@ public interface IOperationsService : INotifyPropertyChanged
     /// <summary>
     /// Execute a standalone WSC operation with full UI blocking and stop support.
     /// </summary>
-    Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action);
+    Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action, Func<bool>? preAction = null);
 
     /// <summary>
     /// Start all IIS sites and application pools for servers in the list

@@ -17,6 +17,6 @@ public interface IWorkspacePreparer
     bool IsFileDesignModeEnabled(string sitePath);
     string GetPkgPath(string sitePath);
     int DownloadPackages(string sitePath, string destinationPath);
-    int LoadPackagesToDB(string sitePath);
+    int LoadPackagesToDb(string sitePath);
     int SaveLicenseRequest(string sitePath, string destinationPath, string customerId, string fileName);
 }

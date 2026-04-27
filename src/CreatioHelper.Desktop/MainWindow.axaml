@@ -19,13 +19,13 @@
 
     <Grid ColumnDefinitions="*,Auto">
         <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
-            <Grid Grid.Row="0" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}" VerticalAlignment="Center">
+            <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" IsVisible="{Binding IsWindows}">
+                <StackPanel Grid.Column="0" Orientation="Vertical" VerticalAlignment="Center" IsVisible="{Binding IsWindows}" IsEnabled="{Binding AreControlsEnabled}">
                     <TextBlock Text="Site path source:" />
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" VerticalAlignment="Center">
                         <RadioButton Content="IIS" IsChecked="{Binding IsIisMode}" GroupName="SiteSource" VerticalAlignment="Center"/>
@@ -34,18 +34,25 @@
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center"
                             HorizontalAlignment="Center"
-                            IsVisible="{Binding IsFileDesignModeEnabled}">
+                            IsVisible="{Binding IsFileDesignModeEnabled}"
+                            IsEnabled="{Binding AreControlsEnabled}">
                     <TextBlock Text="Packages:" HorizontalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Button Content="Creatio → File System"
+                        <Button Content="Creatio → FS"
                                 Command="{Binding DownloadPackagesOpCommand}"
-                                Width="165" Height="32" Margin="0,0,10,0"
+                                Width="110" Height="32" Margin="0,0,10,0"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 ToolTip.Tip="Download packages from database to file system"/>
-                        <Button Content="File System → Creatio"
+                        <Button Content="Clean &amp; Validate"
+                                Command="{Binding ValidatePackagesOpCommand}"
+                                Width="130" Height="32" Margin="0,0,10,0"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                ToolTip.Tip="Validate JSON files, dependencies and package structure"/>
+                        <Button Content="FS → Creatio"
                                 Command="{Binding LoadPackagesToDBOpCommand}"
-                                Width="165" Height="32"
+                                Width="110" Height="32"
                                 HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 ToolTip.Tip="Load packages from file system to database"/>
@@ -65,13 +72,13 @@
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" 
-                             Watermark="Enter path to Creatio application folder"
+                             PlaceholderText="Enter path to Creatio application folder"
                              Margin="0,0,5,0"/>
                     <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
                 <TextBlock Text="Service Name (for service management):" Margin="0,5,0,0" />
                 <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}" 
-                         Watermark="Enter service name for Linux/Windows service management" />
+                         PlaceholderText="Enter service name for Linux/Windows service management" />
             </StackPanel>
 
             <!-- Row 2: IIS Mode -->
@@ -100,7 +107,7 @@
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
-                             Watermark="Enter path to packages folder for installation"
+                             PlaceholderText="Enter path to packages folder for installation"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
                             Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
@@ -123,13 +130,13 @@
                 <TextBox Grid.Row="1" Grid.Column="0"
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
-                         Watermark="Package names to delete before installation (comma-separated or one per line)"
+                         PlaceholderText="Package names to delete before installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
-                         Watermark="Package names to delete after installation (comma-separated or one per line)"
+                         PlaceholderText="Package names to delete after installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 

@@ -634,7 +634,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             poolWasStopped: true, siteWasStopped: true, serviceWasStopped: true, cancellationToken);
     }
 
-    public async Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action)
+    public async Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action, Func<bool>? preAction = null)
     {
         if (IsBusy)
         {
@@ -652,6 +652,11 @@ public partial class OperationsService : ObservableObject, IOperationsService
         {
             await Task.Run(() =>
             {
+                if (preAction != null && !preAction())
+                {
+                    return;
+                }
+
                 _output.WriteLine($"Prepare WorkspaceConsole ...");
                 _workspacePreparer.Prepare(sitePath, out _);
 
