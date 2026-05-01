@@ -23,6 +23,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
     private readonly IIisManager _iisManager;
     private readonly ISiteSynchronizer _siteSynchronizer;
     private readonly IWorkspacePreparer _workspacePreparer;
+    private readonly ICustomDescriptorUpdater _customDescriptorUpdater;
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IMetricsService _metricsService;
     private readonly ISyncthingMonitorService? _syncthingMonitor;
@@ -42,6 +43,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         IIisManager iisManager,
         ISiteSynchronizer siteSynchronizer,
         IWorkspacePreparer workspacePreparer,
+        ICustomDescriptorUpdater customDescriptorUpdater,
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService,
         IServerStatusService statusService,
@@ -51,6 +53,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _iisManager = iisManager;
         _siteSynchronizer = siteSynchronizer;
         _workspacePreparer = workspacePreparer;
+        _customDescriptorUpdater = customDescriptorUpdater;
         _redisManagerFactory = redisManagerFactory;
         _metricsService = metricsService;
         _statusService = statusService;
@@ -155,13 +158,15 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
                             if (!success) return;
-                            
+
+                            _customDescriptorUpdater.RemoveDependencies(sitePath, packagesBefore);
+
                             success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
-                        
+
                         if (!success)
                         {
                             _output.WriteLine("[ERROR] Package deletion BEFORE installation failed. Stopping execution.");
@@ -236,10 +241,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
                             if (!success) return;
-                            
+
+                            _customDescriptorUpdater.RemoveDependencies(sitePath, packagesAfter);
+
                             success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
                         
