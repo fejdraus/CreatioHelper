@@ -202,7 +202,7 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
                     <Button Content="Clear"
                             Command="{Binding ClearLogCommand}"
-                            Height="28"
+                            Height="32"
                             VerticalAlignment="Center"/>
                     <CheckBox x:Name="AutoScrollCheckBox"
                               Content="Auto Scroll"
@@ -223,7 +223,7 @@
                 <Button x:Name="SettingsButton"
                         Content="Settings"
                         Click="Settings_Click"
-                        Height="28"
+                        Height="32"
                         VerticalAlignment="Center"
                         HorizontalAlignment="Right"/>
             </Grid>

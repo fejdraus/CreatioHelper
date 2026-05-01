@@ -126,7 +126,6 @@ namespace CreatioHelper
             _updateService = provider.GetService<IUpdateService>();
             if (_updateService is not null)
             {
-                Title = $"Creatio Helper v{_updateService.CurrentVersion}";
                 _updateService.StateChanged += OnUpdateServiceStateChanged;
                 _updateService.Start();
             }
