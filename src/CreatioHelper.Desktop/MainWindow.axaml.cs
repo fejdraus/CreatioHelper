@@ -84,10 +84,11 @@ namespace CreatioHelper
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(writer);
             var packageCleaner = new PackageCleaner(writer);
+            var customDescriptorUpdater = new CustomDescriptorUpdater(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
 
             // SyncthingMonitorService will be created dynamically when needed
-            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, statusService);
+            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, customDescriptorUpdater, redisFactory, metricsService, statusService);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner);
 
