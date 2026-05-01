@@ -12,18 +12,24 @@ using CreatioHelper.Converters;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Services.Updates;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
+using MsBox.Avalonia;
+using MsBox.Avalonia.Enums;
 
 namespace CreatioHelper
 {
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel? _viewModel;
+        private readonly IUpdateService? _updateService;
+        private readonly IAppSettingsManager? _appSettingsManager;
+        private bool _updatePromptShowing;
         private const string LogFilePath = "log.txt";
 
         public MainWindow()
@@ -115,6 +121,92 @@ namespace CreatioHelper
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
             Closed += OnMainWindowClosed;
+
+            _appSettingsManager = provider.GetService<IAppSettingsManager>();
+            _updateService = provider.GetService<IUpdateService>();
+            if (_updateService is not null)
+            {
+                Title = $"Creatio Helper v{_updateService.CurrentVersion}";
+                _updateService.StateChanged += OnUpdateServiceStateChanged;
+                _updateService.Start();
+            }
+        }
+
+        private void OnUpdateServiceStateChanged(object? sender, UpdateState state)
+        {
+            if (state is not UpdateState.Available available)
+            {
+                return;
+            }
+
+            Dispatcher.UIThread.Post(async () =>
+            {
+                if (_updatePromptShowing || _updateService is null)
+                {
+                    return;
+                }
+                _updatePromptShowing = true;
+                try
+                {
+                    var msg =
+                        $"A new version is available.\n\n" +
+                        $"Current: {_updateService.CurrentVersion}\n" +
+                        $"Available: {available.Version}{(available.IsPrerelease ? " (beta)" : string.Empty)}\n\n" +
+                        $"Yes — install and restart now\n" +
+                        $"No — remind me later\n" +
+                        $"Cancel — skip this version";
+                    var box = MessageBoxManager.GetMessageBoxStandard(
+                        "Update available",
+                        msg,
+                        ButtonEnum.YesNoCancel,
+                        MsBox.Avalonia.Enums.Icon.Info);
+                    var result = await box.ShowWindowDialogAsync(this);
+                    if (result == ButtonResult.Yes)
+                    {
+                        await _updateService.DownloadAndInstallAsync();
+                    }
+                    else if (result == ButtonResult.Cancel)
+                    {
+                        _updateService.SkipCurrentAvailable();
+                    }
+                }
+                finally
+                {
+                    _updatePromptShowing = false;
+                }
+            });
+        }
+
+        private async void Settings_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_appSettingsManager is null || _updateService is null)
+            {
+                return;
+            }
+
+            var settings = _appSettingsManager.Load();
+            var dialog = new SettingsWindow(
+                settings.UpdateCheckEnabled,
+                settings.UpdateChannel,
+                _updateService.CurrentVersion);
+            var result = await dialog.ShowDialog<SettingsResult?>(this);
+            if (result is null)
+            {
+                return;
+            }
+
+            settings.UpdateCheckEnabled = result.UpdateCheckEnabled;
+            settings.UpdateChannel = result.UpdateChannel;
+            _appSettingsManager.Save(settings);
+
+            try
+            {
+                await _updateService.CheckNowAsync(explicitly: true);
+            }
+            catch
+            {
+                // ignored — surfaced via state events
+            }
         }
 
         private async void OnMainWindowClosed(object? sender, EventArgs e)

@@ -11,6 +11,7 @@ using CreatioHelper.Infrastructure.Services.Network.UPnP;
 using CreatioHelper.Infrastructure.Services.DeviceManagement;
 using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using CreatioHelper.Infrastructure.Services.Sync.Security;
+using CreatioHelper.Infrastructure.Services.Updates;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
@@ -83,6 +84,10 @@ public static class ServiceCollectionExtensions
 
         // Configuration managers
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
+
+        // Auto-update service
+        services.AddHttpClient(nameof(UpdateService));
+        services.AddSingleton<IUpdateService, UpdateService>();
         
         // Database services (if configuration is provided)
         if (configuration != null)

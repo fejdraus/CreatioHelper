@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Text.Json.Serialization;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Domain.Entities;
 
@@ -41,4 +43,13 @@ public class DtoAppSettings
     /// Found in Syncthing config.xml or GUI -> Actions -> Settings -> API Key
     /// </summary>
     public string? SyncthingApiKey { get; set; }
+
+    public bool PrevalidateBeforeInstall { get; set; }
+
+    public bool UpdateCheckEnabled { get; set; } = true;
+
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Beta;
+
+    public string? SkipUpdateVersion { get; set; }
 }

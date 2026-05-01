@@ -1,0 +1,65 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
+        x:Class="CreatioHelper.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Width="450"
+        MinWidth="450"
+        MaxWidth="450"
+        SizeToContent="Height"
+        Title="Settings"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="15" Spacing="12">
+
+        <TextBlock Text="⚙️ Settings"
+                   FontWeight="Bold"
+                   FontSize="16"
+                   Foreground="#4A90E2"/>
+
+        <Border BorderBrush="{DynamicResource ThemeBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="5"
+                Padding="12">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Updates"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="#4A90E2"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="Current version:" VerticalAlignment="Center"/>
+                    <TextBlock Text="{Binding CurrentVersion}"
+                               VerticalAlignment="Center"
+                               FontFamily="Cascadia Code,Consolas,Monospace"
+                               Foreground="#4A90E2"/>
+                </StackPanel>
+
+                <CheckBox Content="Check for updates automatically"
+                          IsChecked="{Binding UpdateCheckEnabled, Mode=TwoWay}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding UpdateCheckEnabled}">
+                    <TextBlock Text="Channel:" VerticalAlignment="Center" Width="80"/>
+                    <ComboBox ItemsSource="{Binding AvailableChannels}"
+                              SelectedItem="{Binding UpdateChannel, Mode=TwoWay}"
+                              Width="160"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="10">
+            <Button Width="100"
+                    Content="OK"
+                    IsDefault="True"
+                    Click="OkButton_Click"/>
+            <Button Width="100"
+                    Content="Cancel"
+                    IsCancel="True"
+                    Click="CancelButton_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>
