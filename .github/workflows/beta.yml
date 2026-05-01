@@ -1,0 +1,65 @@
+name: Build Beta
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build a beta from'
+        required: true
+        type: string
+        default: 'feature/user-management-and-cluster-key'
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      base_version: ${{ steps.read.outputs.base_version }}
+      beta_version: ${{ steps.compose.outputs.beta_version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Read base version from csproj
+        id: read
+        shell: bash
+        run: |
+          ver=$(dotnet msbuild src/CreatioHelper.Desktop/CreatioHelper.csproj -getProperty:Version -nologo | tr -d '[:space:]')
+          if [[ -z "$ver" ]]; then
+            echo "::error::Could not read <Version> from csproj"
+            exit 1
+          fi
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::Base version '$ver' is not valid SemVer (MAJOR.MINOR.PATCH[.REV])"
+            exit 1
+          fi
+          echo "base_version=$ver" >> "$GITHUB_OUTPUT"
+          echo "Base version: $ver"
+
+      - name: Compose beta version
+        id: compose
+        shell: bash
+        run: |
+          base="${{ steps.read.outputs.base_version }}"
+          beta="${base}-beta.${{ github.run_number }}"
+          echo "beta_version=$beta" >> "$GITHUB_OUTPUT"
+          echo "Beta version: $beta"
+
+  build:
+    needs: prepare
+    uses: ./.github/workflows/_build.yml
+    with:
+      version: ${{ needs.prepare.outputs.beta_version }}
+      ref: ${{ inputs.branch }}
+      tag_name: v${{ needs.prepare.outputs.beta_version }}
+      is_prerelease: true
+      make_latest: false
