@@ -66,7 +66,12 @@ jobs:
             -p:EnableCompressionInSingleFile=true \
             -p:PublishReadyToRun=true \
             -p:DebugType=None \
-            -p:DebugSymbols=false
+            -p:DebugSymbols=false \
+            -p:CopyDebugSymbolFilesFromPackages=false
+
+      - name: Strip residual PDB files
+        shell: bash
+        run: find publish -name '*.pdb' -delete
 
       - name: Archive (Windows)
         if: runner.os == 'Windows'
