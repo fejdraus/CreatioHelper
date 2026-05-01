@@ -28,6 +28,7 @@ public class UpdateService : IUpdateService, IDisposable
 
     private UpdateState _state = new UpdateState.Idle();
     private bool _started;
+    private ProcessStartInfo? _pendingApply;
 
     public UpdateService(IHttpClientFactory httpFactory, IAppSettingsManager settingsManager, IOutputWriter output)
     {
@@ -41,6 +42,8 @@ public class UpdateService : IUpdateService, IDisposable
     public UpdateState State => _state;
 
     public string CurrentVersion { get; }
+
+    public string? LastSeenVersion { get; private set; }
 
     public event EventHandler<UpdateState>? StateChanged;
 
@@ -130,9 +133,12 @@ public class UpdateService : IUpdateService, IDisposable
             var release = await FetchTopReleaseAsync(settings.UpdateChannel, ct).ConfigureAwait(false);
             if (release is null)
             {
+                LastSeenVersion = null;
                 SetState(new UpdateState.Idle(NotAvailable: explicitly));
                 return;
             }
+
+            LastSeenVersion = release.Version.ToString();
 
             if (!NuGetVersion.TryParse(CurrentVersion, out var current))
             {
@@ -318,9 +324,7 @@ del ""%~f0""
 ";
         await File.WriteAllTextAsync(scriptPath, script, ct).ConfigureAwait(false);
 
-        SetState(new UpdateState.Ready(available.Version));
-
-        var psi = new ProcessStartInfo
+        _pendingApply = new ProcessStartInfo
         {
             FileName = "cmd.exe",
             Arguments = $"/c \"{scriptPath}\"",
@@ -328,9 +332,28 @@ del ""%~f0""
             CreateNoWindow = true,
             WindowStyle = ProcessWindowStyle.Hidden,
         };
-        Process.Start(psi);
 
-        _output.WriteLine($"[INFO] Update {available.Version} staged. Application will restart.");
+        _output.WriteLine($"[INFO] Update {available.Version} staged. Awaiting user confirmation to restart.");
+        SetState(new UpdateState.Ready(available.Version));
+    }
+
+    public void QuitAndApply()
+    {
+        if (_pendingApply is null)
+        {
+            return;
+        }
+
+        try
+        {
+            Process.Start(_pendingApply);
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to launch update applier: {ex.Message}");
+            return;
+        }
+
         Environment.Exit(0);
     }
 
@@ -355,10 +378,46 @@ del ""%~f0""
     private static string ReadCurrentInformationalVersion()
     {
         var assembly = Assembly.GetEntryAssembly() ?? Assembly.GetExecutingAssembly();
-        var info = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>();
-        var raw = info?.InformationalVersion ?? assembly.GetName().Version?.ToString() ?? "0.0.0";
-        var plus = raw.IndexOf('+');
-        return plus >= 0 ? raw[..plus] : raw;
+
+        var attrVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+        if (LooksLikeFullVersion(attrVersion))
+        {
+            return Strip(attrVersion!);
+        }
+
+        try
+        {
+            var path = Environment.ProcessPath;
+            if (!string.IsNullOrEmpty(path) && File.Exists(path))
+            {
+                var fvi = FileVersionInfo.GetVersionInfo(path);
+                var product = fvi.ProductVersion;
+                if (LooksLikeFullVersion(product))
+                {
+                    return Strip(product!);
+                }
+            }
+        }
+        catch
+        {
+            // ignored — fall through to attribute or Assembly.Version
+        }
+
+        if (!string.IsNullOrEmpty(attrVersion))
+        {
+            return Strip(attrVersion);
+        }
+
+        return assembly.GetName().Version?.ToString() ?? "0.0.0";
+
+        static bool LooksLikeFullVersion(string? value) =>
+            !string.IsNullOrEmpty(value) && (value.Contains('-') || value.Contains('+'));
+
+        static string Strip(string raw)
+        {
+            var plus = raw.IndexOf('+');
+            return plus >= 0 ? raw[..plus] : raw;
+        }
     }
 
     private sealed record GitHubRelease(NuGetVersion Version, string HtmlUrl, string AssetUrl, bool IsPrerelease);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -133,47 +134,116 @@ namespace CreatioHelper
 
         private void OnUpdateServiceStateChanged(object? sender, UpdateState state)
         {
-            if (state is not UpdateState.Available available)
-            {
-                return;
-            }
-
             Dispatcher.UIThread.Post(async () =>
             {
-                if (_updatePromptShowing || _updateService is null)
+                if (_viewModel is null || _updateService is null)
                 {
                     return;
                 }
-                _updatePromptShowing = true;
-                try
+
+                switch (state)
                 {
-                    var msg =
-                        $"A new version is available.\n\n" +
-                        $"Current: {_updateService.CurrentVersion}\n" +
-                        $"Available: {available.Version}{(available.IsPrerelease ? " (beta)" : string.Empty)}\n\n" +
-                        $"Yes — install and restart now\n" +
-                        $"No — remind me later\n" +
-                        $"Cancel — skip this version";
-                    var box = MessageBoxManager.GetMessageBoxStandard(
-                        "Update available",
-                        msg,
-                        ButtonEnum.YesNoCancel,
-                        MsBox.Avalonia.Enums.Icon.Info);
-                    var result = await box.ShowWindowDialogAsync(this);
-                    if (result == ButtonResult.Yes)
-                    {
-                        await _updateService.DownloadAndInstallAsync();
-                    }
-                    else if (result == ButtonResult.Cancel)
-                    {
-                        _updateService.SkipCurrentAvailable();
-                    }
-                }
-                finally
-                {
-                    _updatePromptShowing = false;
+                    case UpdateState.Available available:
+                        _viewModel.UpdateBannerText = $"🔔 Update {available.Version} available — click to install";
+                        _viewModel.IsUpdateActionable = true;
+                        await PromptForInstallAsync(available);
+                        break;
+
+                    case UpdateState.Downloading downloading:
+                        _viewModel.UpdateBannerText = $"⬇ Downloading {downloading.Version}  {downloading.Percent:F0}%";
+                        _viewModel.IsUpdateActionable = false;
+                        break;
+
+                    case UpdateState.Ready ready:
+                        _viewModel.UpdateBannerText = $"✓ {ready.Version} ready — restarting";
+                        _viewModel.IsUpdateActionable = false;
+                        await PromptToApplyAsync(ready);
+                        break;
+
+                    case UpdateState.Idle:
+                    case UpdateState.Disabled:
+                        _viewModel.UpdateBannerText = null;
+                        _viewModel.IsUpdateActionable = false;
+                        break;
                 }
             });
+        }
+
+        private async Task PromptForInstallAsync(UpdateState.Available available)
+        {
+            if (_updatePromptShowing || _updateService is null)
+            {
+                return;
+            }
+            _updatePromptShowing = true;
+            try
+            {
+                var msg =
+                    $"A new version is available.\n\n" +
+                    $"Current: {_updateService.CurrentVersion}\n" +
+                    $"Available: {available.Version}{(available.IsPrerelease ? " (beta)" : string.Empty)}\n\n" +
+                    $"Yes — download and install now\n" +
+                    $"No — remind me later (banner stays visible)\n" +
+                    $"Cancel — skip this version";
+                var box = MessageBoxManager.GetMessageBoxStandard(
+                    "Update available",
+                    msg,
+                    ButtonEnum.YesNoCancel,
+                    MsBox.Avalonia.Enums.Icon.Info);
+                var result = await box.ShowWindowDialogAsync(this);
+                if (result == ButtonResult.Yes)
+                {
+                    _ = _updateService.DownloadAndInstallAsync();
+                }
+                else if (result == ButtonResult.Cancel)
+                {
+                    _updateService.SkipCurrentAvailable();
+                }
+            }
+            finally
+            {
+                _updatePromptShowing = false;
+            }
+        }
+
+        private async Task PromptToApplyAsync(UpdateState.Ready ready)
+        {
+            if (_updateService is null)
+            {
+                return;
+            }
+            var box = MessageBoxManager.GetMessageBoxStandard(
+                "Restart to apply update",
+                $"Update {ready.Version} has been downloaded.\n\nThe application will close and restart now to apply it.",
+                ButtonEnum.OkCancel,
+                MsBox.Avalonia.Enums.Icon.Info);
+            var result = await box.ShowWindowDialogAsync(this);
+            if (result == ButtonResult.Ok)
+            {
+                _updateService.QuitAndApply();
+            }
+            else if (_viewModel is not null)
+            {
+                _viewModel.UpdateBannerText = $"✓ {ready.Version} ready — click to restart";
+                _viewModel.IsUpdateActionable = true;
+            }
+        }
+
+        private async void UpdateBanner_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_updateService is null)
+            {
+                return;
+            }
+            switch (_updateService.State)
+            {
+                case UpdateState.Available available:
+                    await PromptForInstallAsync(available);
+                    break;
+                case UpdateState.Ready ready:
+                    await PromptToApplyAsync(ready);
+                    break;
+            }
         }
 
         private async void Settings_Click(object? sender, RoutedEventArgs e)
@@ -187,7 +257,7 @@ namespace CreatioHelper
             var dialog = new SettingsWindow(
                 settings.UpdateCheckEnabled,
                 settings.UpdateChannel,
-                _updateService.CurrentVersion);
+                _updateService);
             var result = await dialog.ShowDialog<SettingsResult?>(this);
             if (result is null)
             {

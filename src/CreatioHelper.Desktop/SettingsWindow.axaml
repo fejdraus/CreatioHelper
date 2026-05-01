@@ -13,11 +13,6 @@
 
     <StackPanel Margin="15" Spacing="12">
 
-        <TextBlock Text="⚙️ Settings"
-                   FontWeight="Bold"
-                   FontSize="16"
-                   Foreground="#4A90E2"/>
-
         <Border BorderBrush="{DynamicResource ThemeBorderBrush}"
                 BorderThickness="1"
                 CornerRadius="5"
@@ -28,13 +23,25 @@
                            FontSize="13"
                            Foreground="#4A90E2"/>
 
-                <StackPanel Orientation="Horizontal" Spacing="8">
-                    <TextBlock Text="Current version:" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding CurrentVersion}"
-                               VerticalAlignment="Center"
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Current version:" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentVersion}"
                                FontFamily="Cascadia Code,Consolas,Monospace"
-                               Foreground="#4A90E2"/>
-                </StackPanel>
+                               Foreground="#4A90E2"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Latest on server:" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LatestVersion, FallbackValue=—, TargetNullValue=—}"
+                               FontFamily="Cascadia Code,Consolas,Monospace"
+                               Foreground="#4A90E2"
+                               VerticalAlignment="Center"
+                               Margin="0,4,0,0"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CheckStatus}"
+                               FontSize="11"
+                               Foreground="Gray"
+                               IsVisible="{Binding CheckStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </Grid>
 
                 <CheckBox Content="Check for updates automatically"
                           IsChecked="{Binding UpdateCheckEnabled, Mode=TwoWay}"/>
@@ -45,6 +52,15 @@
                               SelectedItem="{Binding UpdateChannel, Mode=TwoWay}"
                               Width="160"/>
                 </StackPanel>
+
+                <Button Content="Check for updates now"
+                        Click="CheckNowButton_Click"
+                        IsEnabled="{Binding !IsCheckInFlight}"
+                        HorizontalAlignment="Left"
+                        Height="32"
+                        Padding="14,0"
+                        VerticalContentAlignment="Center"
+                        HorizontalContentAlignment="Center"/>
             </StackPanel>
         </Border>
 

@@ -197,13 +197,16 @@
                         HorizontalAlignment="Right" />
             </Grid>
 
-            <!-- Row 6: "Auto Scroll" checkbox + Settings button on the right -->
-            <Grid Grid.Row="6" Margin="0,0,0,5">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Left">
+            <!-- Row 6: log toolbar — Clear/checkboxes left, optional update banner middle, Settings right -->
+            <Grid Grid.Row="6" Margin="0,0,0,5" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="Clear"
                             Command="{Binding ClearLogCommand}"
                             Height="32"
-                            VerticalAlignment="Center"/>
+                            Padding="12,0"
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"/>
                     <CheckBox x:Name="AutoScrollCheckBox"
                               Content="Auto Scroll"
                               IsChecked="{Binding IsAutoScrollEnabled, Mode=TwoWay}"
@@ -220,12 +223,32 @@
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                 </StackPanel>
-                <Button x:Name="SettingsButton"
+
+                <Button Grid.Column="1"
+                        x:Name="UpdateBannerButton"
+                        Content="{Binding UpdateBannerText}"
+                        Click="UpdateBanner_Click"
+                        IsVisible="{Binding UpdateBannerText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                        IsEnabled="{Binding IsUpdateActionable}"
+                        Height="32"
+                        Padding="10,0"
+                        Margin="10,0,10,0"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"
+                        HorizontalContentAlignment="Center"
+                        ToolTip.Tip="Click to install the available update"/>
+
+                <Button Grid.Column="2"
+                        x:Name="SettingsButton"
                         Content="Settings"
                         Click="Settings_Click"
                         Height="32"
+                        Padding="12,0"
                         VerticalAlignment="Center"
-                        HorizontalAlignment="Right"/>
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"
+                        HorizontalContentAlignment="Center"/>
             </Grid>
 
             <!-- Row 7: Log list box (star "*" stretches to fill remaining space) -->

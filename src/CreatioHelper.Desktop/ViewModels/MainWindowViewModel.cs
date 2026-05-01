@@ -238,6 +238,12 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isLogToFileEnabled;
 
     [ObservableProperty]
+    private string? _updateBannerText;
+
+    [ObservableProperty]
+    private bool _isUpdateActionable;
+
+    [ObservableProperty]
     private bool _isFileDesignModeEnabled;
 
 
