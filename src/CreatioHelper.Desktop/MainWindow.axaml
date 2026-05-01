@@ -12,9 +12,21 @@
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
-        <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
-        <converters:NotConverter x:Key="NotConverter"/>
+        <ResourceDictionary>
+            <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
+            <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
+            <converters:NotConverter x:Key="NotConverter"/>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#C8E6C9"/>
+                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#1B5E20"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#2E7D32"/>
+                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#E8F5E9"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
@@ -224,20 +236,20 @@
                               Margin="10,0,0,0"/>
                 </StackPanel>
 
-                <Button Grid.Column="1"
-                        x:Name="UpdateBannerButton"
-                        Content="{Binding UpdateBannerText}"
-                        Click="UpdateBanner_Click"
-                        IsVisible="{Binding UpdateBannerText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                        IsEnabled="{Binding IsUpdateActionable}"
-                        Height="32"
-                        Padding="10,0"
-                        Margin="10,0,10,0"
+                <Border Grid.Column="1"
+                        Background="{DynamicResource UpdateBadgeBackground}"
+                        CornerRadius="14"
+                        Padding="14,4"
                         VerticalAlignment="Center"
-                        VerticalContentAlignment="Center"
                         HorizontalAlignment="Right"
-                        HorizontalContentAlignment="Center"
-                        ToolTip.Tip="Click to install the available update"/>
+                        Margin="10,0,10,0"
+                        IsVisible="{Binding IsUpdateAvailable}"
+                        ToolTip.Tip="Open Settings to install the update">
+                    <TextBlock Text="Update available"
+                               Foreground="{DynamicResource UpdateBadgeForeground}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </Border>
 
                 <Button Grid.Column="2"
                         x:Name="SettingsButton"

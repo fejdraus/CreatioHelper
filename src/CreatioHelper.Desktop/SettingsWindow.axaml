@@ -53,14 +53,23 @@
                               Width="160"/>
                 </StackPanel>
 
-                <Button Content="Check for updates now"
-                        Click="CheckNowButton_Click"
-                        IsEnabled="{Binding !IsCheckInFlight}"
-                        HorizontalAlignment="Left"
-                        Height="32"
-                        Padding="14,0"
-                        VerticalContentAlignment="Center"
-                        HorizontalContentAlignment="Center"/>
+                <StackPanel Orientation="Vertical" Spacing="6">
+                    <Button x:Name="ActionButton"
+                            Content="{Binding ActionButtonText}"
+                            Click="ActionButton_Click"
+                            IsEnabled="{Binding IsActionButtonEnabled}"
+                            HorizontalAlignment="Left"
+                            MinWidth="180"
+                            Height="32"
+                            Padding="14,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"/>
+                    <ProgressBar Value="{Binding DownloadProgressPercent}"
+                                 Maximum="100"
+                                 Minimum="0"
+                                 Height="6"
+                                 IsVisible="{Binding IsDownloadProgressVisible}"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 
