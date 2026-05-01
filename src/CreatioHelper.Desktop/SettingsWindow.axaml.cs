@@ -51,28 +51,47 @@ public partial class SettingsWindow : Window
             case UpdateState.Checking:
                 _viewModel.IsCheckInFlight = true;
                 _viewModel.CheckStatus = "Checking…";
+                _viewModel.ActionButtonText = "Checking…";
+                _viewModel.IsActionButtonEnabled = false;
+                _viewModel.IsDownloadProgressVisible = false;
                 break;
 
             case UpdateState.Available available:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = available.Version;
                 _viewModel.CheckStatus = "Update available";
+                _viewModel.ActionButtonText = "Install update now";
+                _viewModel.IsActionButtonEnabled = true;
+                _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.DownloadProgressPercent = 0;
                 break;
 
             case UpdateState.Downloading downloading:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
                 _viewModel.CheckStatus = $"Downloading {downloading.Percent:F0}%";
+                _viewModel.ActionButtonText = $"Downloading {downloading.Percent:F0}%";
+                _viewModel.IsActionButtonEnabled = false;
+                _viewModel.IsDownloadProgressVisible = true;
+                _viewModel.DownloadProgressPercent = downloading.Percent;
                 break;
 
             case UpdateState.Ready ready:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = ready.Version;
                 _viewModel.CheckStatus = "Update downloaded — pending restart";
+                _viewModel.ActionButtonText = "Restart and apply update";
+                _viewModel.IsActionButtonEnabled = true;
+                _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.DownloadProgressPercent = 100;
                 break;
 
             case UpdateState.Idle idle:
                 _viewModel.IsCheckInFlight = false;
+                _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.DownloadProgressPercent = 0;
+                _viewModel.ActionButtonText = "Check for updates now";
+                _viewModel.IsActionButtonEnabled = true;
                 if (!string.IsNullOrEmpty(idle.Error))
                 {
                     _viewModel.CheckStatus = $"Check failed: {idle.Error}";
@@ -98,6 +117,9 @@ public partial class SettingsWindow : Window
             case UpdateState.Disabled:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.CheckStatus = "Update checks are disabled";
+                _viewModel.ActionButtonText = "Check for updates now";
+                _viewModel.IsActionButtonEnabled = false;
+                _viewModel.IsDownloadProgressVisible = false;
                 break;
         }
     }
@@ -116,19 +138,40 @@ public partial class SettingsWindow : Window
         Close(null);
     }
 
-    private async void CheckNowButton_Click(object? sender, RoutedEventArgs e)
+    private async void ActionButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_updateService is null)
         {
             return;
         }
-        try
+
+        switch (_updateService.State)
         {
-            await _updateService.CheckNowAsync(explicitly: true);
-        }
-        catch
-        {
-            // Surfaced via state events.
+            case UpdateState.Available:
+                try
+                {
+                    _ = _updateService.DownloadAndInstallAsync();
+                }
+                catch
+                {
+                    // Surfaced via state events.
+                }
+                break;
+
+            case UpdateState.Ready:
+                _updateService.QuitAndApply();
+                break;
+
+            default:
+                try
+                {
+                    await _updateService.CheckNowAsync(explicitly: true);
+                }
+                catch
+                {
+                    // Surfaced via state events.
+                }
+                break;
         }
     }
 }

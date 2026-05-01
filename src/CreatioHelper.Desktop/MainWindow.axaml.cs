@@ -20,8 +20,6 @@ using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
-using MsBox.Avalonia;
-using MsBox.Avalonia.Enums;
 
 namespace CreatioHelper
 {
@@ -30,7 +28,6 @@ namespace CreatioHelper
         private readonly MainWindowViewModel? _viewModel;
         private readonly IUpdateService? _updateService;
         private readonly IAppSettingsManager? _appSettingsManager;
-        private bool _updatePromptShowing;
         private const string LogFilePath = "log.txt";
 
         public MainWindow()
@@ -134,116 +131,14 @@ namespace CreatioHelper
 
         private void OnUpdateServiceStateChanged(object? sender, UpdateState state)
         {
-            Dispatcher.UIThread.Post(async () =>
+            Dispatcher.UIThread.Post(() =>
             {
-                if (_viewModel is null || _updateService is null)
+                if (_viewModel is null)
                 {
                     return;
                 }
-
-                switch (state)
-                {
-                    case UpdateState.Available available:
-                        _viewModel.UpdateBannerText = $"🔔 Update {available.Version} available — click to install";
-                        _viewModel.IsUpdateActionable = true;
-                        await PromptForInstallAsync(available);
-                        break;
-
-                    case UpdateState.Downloading downloading:
-                        _viewModel.UpdateBannerText = $"⬇ Downloading {downloading.Version}  {downloading.Percent:F0}%";
-                        _viewModel.IsUpdateActionable = false;
-                        break;
-
-                    case UpdateState.Ready ready:
-                        _viewModel.UpdateBannerText = $"✓ {ready.Version} ready — restarting";
-                        _viewModel.IsUpdateActionable = false;
-                        await PromptToApplyAsync(ready);
-                        break;
-
-                    case UpdateState.Idle:
-                    case UpdateState.Disabled:
-                        _viewModel.UpdateBannerText = null;
-                        _viewModel.IsUpdateActionable = false;
-                        break;
-                }
+                _viewModel.IsUpdateAvailable = state is UpdateState.Available or UpdateState.Ready;
             });
-        }
-
-        private async Task PromptForInstallAsync(UpdateState.Available available)
-        {
-            if (_updatePromptShowing || _updateService is null)
-            {
-                return;
-            }
-            _updatePromptShowing = true;
-            try
-            {
-                var msg =
-                    $"A new version is available.\n\n" +
-                    $"Current: {_updateService.CurrentVersion}\n" +
-                    $"Available: {available.Version}{(available.IsPrerelease ? " (beta)" : string.Empty)}\n\n" +
-                    $"Yes — download and install now\n" +
-                    $"No — remind me later (banner stays visible)\n" +
-                    $"Cancel — skip this version";
-                var box = MessageBoxManager.GetMessageBoxStandard(
-                    "Update available",
-                    msg,
-                    ButtonEnum.YesNoCancel,
-                    MsBox.Avalonia.Enums.Icon.Info);
-                var result = await box.ShowWindowDialogAsync(this);
-                if (result == ButtonResult.Yes)
-                {
-                    _ = _updateService.DownloadAndInstallAsync();
-                }
-                else if (result == ButtonResult.Cancel)
-                {
-                    _updateService.SkipCurrentAvailable();
-                }
-            }
-            finally
-            {
-                _updatePromptShowing = false;
-            }
-        }
-
-        private async Task PromptToApplyAsync(UpdateState.Ready ready)
-        {
-            if (_updateService is null)
-            {
-                return;
-            }
-            var box = MessageBoxManager.GetMessageBoxStandard(
-                "Restart to apply update",
-                $"Update {ready.Version} has been downloaded.\n\nThe application will close and restart now to apply it.",
-                ButtonEnum.OkCancel,
-                MsBox.Avalonia.Enums.Icon.Info);
-            var result = await box.ShowWindowDialogAsync(this);
-            if (result == ButtonResult.Ok)
-            {
-                _updateService.QuitAndApply();
-            }
-            else if (_viewModel is not null)
-            {
-                _viewModel.UpdateBannerText = $"✓ {ready.Version} ready — click to restart";
-                _viewModel.IsUpdateActionable = true;
-            }
-        }
-
-        private async void UpdateBanner_Click(object? sender, RoutedEventArgs e)
-        {
-            if (_updateService is null)
-            {
-                return;
-            }
-            switch (_updateService.State)
-            {
-                case UpdateState.Available available:
-                    await PromptForInstallAsync(available);
-                    break;
-                case UpdateState.Ready ready:
-                    await PromptToApplyAsync(ready);
-                    break;
-            }
         }
 
         private async void Settings_Click(object? sender, RoutedEventArgs e)
