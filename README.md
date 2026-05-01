@@ -138,9 +138,9 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 ## ![Ukraine](https://flagcdn.com/48x36/ua.png) Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
-All funds raised via the Monobank jar below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** — specifically to help defenders **repair and purchase FPV drones** for the front line.
+All funds raised via Monobank below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** — specifically to help defenders **repair and purchase FPV drones** for the front line.
 
-[![Donate to ZSU via Monobank](https://img.shields.io/badge/Donate%20to%20ZSU-Monobank%20Jar-FFD500?style=for-the-badge&labelColor=005BBB)](https://send.monobank.ua/jar/5szFAnZLuT)
+[![Donate to ZSU via Monobank](https://img.shields.io/badge/Donate%20to%20ZSU-Monobank-FFD500?style=for-the-badge&labelColor=005BBB)](https://send.monobank.ua/jar/5szFAnZLuT)
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
