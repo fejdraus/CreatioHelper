@@ -8,6 +8,8 @@ public interface IUpdateService
 
     string CurrentVersion { get; }
 
+    string? LastSeenVersion { get; }
+
     event EventHandler<UpdateState>? StateChanged;
 
     void Start();
@@ -15,6 +17,8 @@ public interface IUpdateService
     Task CheckNowAsync(bool explicitly = true, CancellationToken cancellationToken = default);
 
     Task DownloadAndInstallAsync(CancellationToken cancellationToken = default);
+
+    void QuitAndApply();
 
     void SkipCurrentAvailable();
 }
