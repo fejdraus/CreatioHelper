@@ -136,14 +136,9 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 ## ![Ukraine](https://flagcdn.com/48x36/ua.png) Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
-All funds raised via the links below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** and defenders on the front line.
+All funds raised via the Monobank jar below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** — specifically to help defenders **repair and purchase FPV drones** for the front line.
 
-[![Support on Patreon](https://img.shields.io/badge/Support%20on-Patreon-orange)](https://www.patreon.com/yourpatreonlink)
-[![Support on Buy Me a Coffee](https://img.shields.io/badge/Support%20via-Buy%20Me%20a%20Coffee-yellow)](https://www.buymeacoffee.com/yourcoffeelink)
-
-<!-- [![Support on Ko-fi](https://img.shields.io/badge/Support%20via-Ko--fi-red)](https://ko-fi.com/H2H31J97O4) -->
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H31J97O4)
+[![Donate to ZSU via Monobank](https://img.shields.io/badge/Donate%20to%20ZSU-Monobank%20Jar-FFD500?style=for-the-badge&labelColor=005BBB)](https://send.monobank.ua/jar/5szFAnZLuT)
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
