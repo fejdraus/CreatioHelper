@@ -18,6 +18,7 @@
     - Pause/Resume folders during operations
     - Direct link to Syncthing Web UI
   - Automatic remote server management (IIS sites/pools)
+- **Automatic Updates**: Background check against GitHub Releases (Stable/Beta channels). On Windows downloads, replaces files and restarts in one click; on Linux/macOS opens the release page in the browser.
 
 ### Agent Service
 
@@ -51,7 +52,7 @@ All source projects are located in `src/`, and test projects in `tests/`. Main p
 
 ### Requirements:
 
-- .NET 8 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
+- .NET 10 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
 - Git
 - Windows with IIS (for IIS management features, can also work in Folder Mode without IIS)
 - Redis (optional, for cache management)
@@ -77,10 +78,11 @@ dotnet run --project src/CreatioHelper.Agent
 
 ## CI/CD
 
-Build and test pipelines are configured with GitHub Actions:
+Build and release pipelines are configured with GitHub Actions:
 
-- `dotnet-build.yml` — CI pipeline: build, test, multiplatform (Windows and Linux)
-- `release-build.yml` — CD pipeline: package release builds (`.zip`) for Windows and Linux, upload to GitHub Releases
+- `release.yml` — **Stable**. Auto-runs on push to `main` when `<Version>` in `src/CreatioHelper.Desktop/CreatioHelper.csproj` changes; creates tag `vX.Y.Z` and a non-prerelease GitHub Release with `win-x64` and `linux-x64` ZIPs.
+- `beta.yml` — **Beta**. Manual via `workflow_dispatch` from any branch; produces prerelease tag `vX.Y.Z-beta.<run_number>` and Release flagged as `prerelease`.
+- `_build.yml` — Reusable workflow called by both. Runs the `win-x64` + `linux-x64` matrix, builds self-contained single-file artifacts with native libs bundled and ReadyToRun pre-compilation enabled, then publishes the Release.
 
 The Desktop application is built with Avalonia, providing true cross-platform support for Windows, Linux, and macOS.
 
@@ -136,14 +138,9 @@ Special thanks to the members of the **PeaceTeam** from **Banza** for their inva
 ## ![Ukraine](https://flagcdn.com/48x36/ua.png) Support the Armed Forces of Ukraine (ZSU)
 
 We stand with Ukraine in its fight against Russian aggression.
-All funds raised via the links below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** and defenders on the front line.
+All funds raised via the Monobank jar below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** — specifically to help defenders **repair and purchase FPV drones** for the front line.
 
-[![Support on Patreon](https://img.shields.io/badge/Support%20on-Patreon-orange)](https://www.patreon.com/yourpatreonlink)
-[![Support on Buy Me a Coffee](https://img.shields.io/badge/Support%20via-Buy%20Me%20a%20Coffee-yellow)](https://www.buymeacoffee.com/yourcoffeelink)
-
-<!-- [![Support on Ko-fi](https://img.shields.io/badge/Support%20via-Ko--fi-red)](https://ko-fi.com/H2H31J97O4) -->
-
-[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H31J97O4)
+[![Donate to ZSU via Monobank](https://img.shields.io/badge/Donate%20to%20ZSU-Monobank%20Jar-FFD500?style=for-the-badge&labelColor=005BBB)](https://send.monobank.ua/jar/5szFAnZLuT)
 
 > 💙💛 **All contributions will be sent directly to support ZSU defenders.**
 
