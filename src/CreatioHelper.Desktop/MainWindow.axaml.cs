@@ -83,12 +83,14 @@ namespace CreatioHelper
             var dialogService = new DialogService(StorageProvider);
             var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(writer);
+            var packageCleaner = new PackageCleaner(writer);
+            var customDescriptorUpdater = new CustomDescriptorUpdater(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
 
             // SyncthingMonitorService will be created dynamically when needed
-            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, redisFactory, metricsService, statusService);
+            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, customDescriptorUpdater, redisFactory, metricsService, statusService);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>
@@ -208,6 +210,20 @@ namespace CreatioHelper
                 // If opening fails, show error in log
                 var writer = App.Services?.GetService<IOutputWriter>();
                 writer?.WriteLine($"[ERROR] Failed to open Syncthing Web UI: {ex.Message}");
+            }
+        }
+
+        private async void SaveLicenseRequest_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm)
+                return;
+
+            var dialog = new SaveLicenseRequestWindow();
+            var result = await dialog.ShowDialog<SaveLicenseRequestResult?>(this);
+
+            if (result != null)
+            {
+                await vm.ExecuteSaveLicenseRequest(result.CustomerId, result.FilePath);
             }
         }
 

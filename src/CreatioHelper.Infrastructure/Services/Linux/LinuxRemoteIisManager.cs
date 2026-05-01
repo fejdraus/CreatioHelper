@@ -7,12 +7,13 @@ namespace CreatioHelper.Infrastructure.Services.Linux;
 
 public class LinuxRemoteIisManager : IRemoteIisManager
 {
-    private const string SystemctlCommand = "systemctl";
+    private const string SystemctlCommand = "/usr/bin/systemctl";
     private const string RunningStatus = "Running";
     private const string StoppedStatus = "Stopped";
     private const string ActiveStatus = "active";
     private const string OperationCancelledMessage = "Operation was cancelled";
-    
+    private static readonly bool IsFlatpak = File.Exists("/.flatpak-info");
+
     private readonly IOutputWriter _output;
 
     public LinuxRemoteIisManager(IOutputWriter output)
@@ -142,19 +143,37 @@ public class LinuxRemoteIisManager : IRemoteIisManager
         }
     }
 
-    private async Task<Result> ExecuteSystemctlCommandAsync(string action, string serviceName, CancellationToken cancellationToken)
+    private static ProcessStartInfo CreateHostProcessStartInfo(string fileName, string arguments)
     {
-        try
+        if (IsFlatpak)
         {
-            using var process = Process.Start(new ProcessStartInfo
+            return new ProcessStartInfo
             {
-                FileName = SystemctlCommand,
-                Arguments = $"{action} {serviceName}",
+                FileName = "flatpak-spawn",
+                Arguments = $"--host {fileName} {arguments}",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 UseShellExecute = false,
                 CreateNoWindow = true
-            });
+            };
+        }
+
+        return new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+    }
+
+    private async Task<Result> ExecuteSystemctlCommandAsync(string action, string serviceName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var process = Process.Start(CreateHostProcessStartInfo(SystemctlCommand, $"{action} {serviceName}"));
 
             if (process == null)
             {
@@ -192,15 +211,7 @@ public class LinuxRemoteIisManager : IRemoteIisManager
     {
         try
         {
-            using var process = Process.Start(new ProcessStartInfo
-            {
-                FileName = SystemctlCommand,
-                Arguments = $"is-active {serviceName}",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            });
+            using var process = Process.Start(CreateHostProcessStartInfo(SystemctlCommand, $"is-active {serviceName}"));
 
             if (process == null)
             {

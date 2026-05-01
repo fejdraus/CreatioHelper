@@ -1,0 +1,73 @@
+name: Release (stable)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/CreatioHelper.Desktop/CreatioHelper.csproj'
+      - '.github/workflows/release.yml'
+      - '.github/workflows/_build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      should_release: ${{ steps.decide.outputs.should_release }}
+      version: ${{ steps.read.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Read version from csproj
+        id: read
+        shell: bash
+        run: |
+          ver=$(dotnet msbuild src/CreatioHelper.Desktop/CreatioHelper.csproj -getProperty:Version -nologo | tr -d '[:space:]')
+          if [[ -z "$ver" ]]; then
+            echo "::error::Could not read <Version> from csproj"
+            exit 1
+          fi
+          if [[ ! "$ver" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+            echo "::error::Version '$ver' is not a valid stable SemVer (MAJOR.MINOR.PATCH[.REV])"
+            exit 1
+          fi
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "Csproj version: $ver"
+
+      - name: Decide whether to release
+        id: decide
+        shell: bash
+        run: |
+          tag="v${{ steps.read.outputs.version }}"
+          if git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists locally — skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          elif git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists on origin — skipping release."
+            echo "should_release=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "Tag $tag does not exist — proceeding with release."
+            echo "should_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: check
+    if: needs.check.outputs.should_release == 'true'
+    uses: ./.github/workflows/_build.yml
+    with:
+      version: ${{ needs.check.outputs.version }}
+      ref: ${{ github.sha }}
+      tag_name: v${{ needs.check.outputs.version }}
+      is_prerelease: false
+      make_latest: true

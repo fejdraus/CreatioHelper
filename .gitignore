@@ -43,3 +43,4 @@ cert.pem
 .worktrees/
 .security-key
 logs/security/
+/publish
