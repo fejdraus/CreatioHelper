@@ -18,6 +18,7 @@
     - Pause/Resume folders during operations
     - Direct link to Syncthing Web UI
   - Automatic remote server management (IIS sites/pools)
+- **Automatic Updates**: Background check against GitHub Releases (Stable/Beta channels). On Windows downloads, replaces files and restarts in one click; on Linux/macOS opens the release page in the browser.
 
 ### Agent Service
 
@@ -51,7 +52,7 @@ All source projects are located in `src/`, and test projects in `tests/`. Main p
 
 ### Requirements:
 
-- .NET 8 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
+- .NET 10 SDK ([https://dotnet.microsoft.com](https://dotnet.microsoft.com))
 - Git
 - Windows with IIS (for IIS management features, can also work in Folder Mode without IIS)
 - Redis (optional, for cache management)
@@ -77,10 +78,11 @@ dotnet run --project src/CreatioHelper.Agent
 
 ## CI/CD
 
-Build and test pipelines are configured with GitHub Actions:
+Build and release pipelines are configured with GitHub Actions:
 
-- `dotnet-build.yml` — CI pipeline: build, test, multiplatform (Windows and Linux)
-- `release-build.yml` — CD pipeline: package release builds (`.zip`) for Windows and Linux, upload to GitHub Releases
+- `release.yml` — **Stable**. Auto-runs on push to `main` when `<Version>` in `src/CreatioHelper.Desktop/CreatioHelper.csproj` changes; creates tag `vX.Y.Z` and a non-prerelease GitHub Release with `win-x64` and `linux-x64` ZIPs.
+- `beta.yml` — **Beta**. Manual via `workflow_dispatch` from any branch; produces prerelease tag `vX.Y.Z-beta.<run_number>` and Release flagged as `prerelease`.
+- `_build.yml` — Reusable workflow called by both. Runs the `win-x64` + `linux-x64` matrix, builds self-contained single-file artifacts with native libs bundled and ReadyToRun pre-compilation enabled, then publishes the Release.
 
 The Desktop application is built with Avalonia, providing true cross-platform support for Windows, Linux, and macOS.
 
