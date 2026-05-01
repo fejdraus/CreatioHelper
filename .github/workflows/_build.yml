@@ -53,13 +53,22 @@ jobs:
       - name: Publish
         shell: bash
         run: |
+          full_version='${{ inputs.version }}'
+          version_prefix=$(echo "$full_version" | cut -d- -f1)
+          version_suffix=$(echo "$full_version" | cut -s -d- -f2-)
           dotnet publish src/CreatioHelper.Desktop/CreatioHelper.csproj \
             --configuration Release \
             --runtime ${{ matrix.rid }} \
             --self-contained true \
             --no-restore \
             --output publish \
-            -p:Version=${{ inputs.version }} \
+            -p:Version="$full_version" \
+            -p:VersionPrefix="$version_prefix" \
+            -p:VersionSuffix="$version_suffix" \
+            -p:InformationalVersion="$full_version" \
+            -p:AssemblyVersion="$version_prefix" \
+            -p:FileVersion="$version_prefix" \
+            -p:IncludeSourceRevisionInInformationalVersion=false \
             -p:PublishSingleFile=true \
             -p:IncludeNativeLibrariesForSelfExtract=true \
             -p:IncludeAllContentForSelfExtract=true \
