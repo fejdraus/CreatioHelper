@@ -41,4 +41,6 @@ public class AppSettings
     /// Found in Syncthing config.xml or GUI -> Actions -> Settings -> API Key
     /// </summary>
     public string? SyncthingApiKey { get; set; }
+
+    public bool PrevalidateBeforeInstall { get; set; }
 }

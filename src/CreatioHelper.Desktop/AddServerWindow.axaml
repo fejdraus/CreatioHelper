@@ -17,17 +17,17 @@
         <TextBlock Text="Server name:" />
         <TextBox Text="{Binding ServerName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter server name (e.g., PROD-SERVER-01)" />
+                 PlaceholderText="Enter server name (e.g., PROD-SERVER-01)" />
 
         <TextBlock Text="Site name:" />
         <TextBox Text="{Binding SiteName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter IIS site name (e.g., Default Web Site)" />
+                 PlaceholderText="Enter IIS site name (e.g., Default Web Site)" />
 
         <TextBlock Text="Pool name:" />
         <TextBox Text="{Binding PoolName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter IIS application pool name (e.g., DefaultAppPool)" />
+                 PlaceholderText="Enter IIS application pool name (e.g., DefaultAppPool)" />
 
         <!-- File Copy Sync Fields -->
         <Border IsVisible="{Binding IsFileCopyFieldsVisible}"
@@ -44,7 +44,7 @@
 
                 <TextBlock Text="Network path to site:" />
                 <TextBox Text="{Binding NetworkPath, Mode=TwoWay}"
-                         Watermark="Enter UNC path to site folder (e.g., \\server\share\site)" />
+                         PlaceholderText="Enter UNC path to site folder (e.g., \\server\share\site)" />
             </StackPanel>
         </Border>
 
@@ -63,7 +63,7 @@
 
                 <TextBlock Text="Syncthing Device ID:" />
                 <TextBox Text="{Binding SyncthingDeviceId, Mode=TwoWay}"
-                         Watermark="Device ID (63 characters, 7 groups separated by hyphens)"/>
+                         PlaceholderText="Device ID (63 characters, 7 groups separated by hyphens)"/>
 
                 <TextBlock Text="Syncthing Folder IDs:" Margin="0,8,0,0"/>
 
@@ -71,7 +71,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
                     <TextBox Grid.Column="0"
                              Text="{Binding NewFolderId, Mode=TwoWay}"
-                             Watermark="Enter folder ID (e.g., default, bin-folder)"
+                             PlaceholderText="Enter folder ID (e.g., default, bin-folder)"
                              Margin="0,0,8,0"/>
                     <Button Grid.Column="1"
                             Content="Add"

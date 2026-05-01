@@ -50,7 +50,10 @@ public sealed class Job : IDisposable
 
         if (!AssignProcessToJobObject(_handle, processHandle))
         {
-            throw new Win32Exception(Marshal.GetLastWin32Error());   
+            // Non-critical: process may already belong to another job object.
+            // Job is a safety net for KILL_ON_JOB_CLOSE, not essential.
+            System.Diagnostics.Debug.WriteLine(
+                $"[Job] AssignProcessToJobObject failed: {new Win32Exception(Marshal.GetLastWin32Error()).Message}");
         }
     }
 

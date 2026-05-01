@@ -23,6 +23,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
     private readonly IIisManager _iisManager;
     private readonly ISiteSynchronizer _siteSynchronizer;
     private readonly IWorkspacePreparer _workspacePreparer;
+    private readonly ICustomDescriptorUpdater _customDescriptorUpdater;
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IMetricsService _metricsService;
     private readonly ISyncthingMonitorService? _syncthingMonitor;
@@ -42,6 +43,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         IIisManager iisManager,
         ISiteSynchronizer siteSynchronizer,
         IWorkspacePreparer workspacePreparer,
+        ICustomDescriptorUpdater customDescriptorUpdater,
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService,
         IServerStatusService statusService,
@@ -51,6 +53,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _iisManager = iisManager;
         _siteSynchronizer = siteSynchronizer;
         _workspacePreparer = workspacePreparer;
+        _customDescriptorUpdater = customDescriptorUpdater;
         _redisManagerFactory = redisManagerFactory;
         _metricsService = metricsService;
         _statusService = statusService;
@@ -155,13 +158,15 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesBefore), "[ERROR] Deleting packages failed.", cancellationToken);
                             if (!success) return;
-                            
+
+                            _customDescriptorUpdater.RemoveDependencies(sitePath, packagesBefore);
+
                             success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
-                        
+
                         if (!success)
                         {
                             _output.WriteLine("[ERROR] Package deletion BEFORE installation failed. Stopping execution.");
@@ -174,6 +179,22 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
                     if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
                     {
+                        // Pre-validate if checkbox is checked
+                        if (viewModel.PrevalidateBeforeInstall)
+                        {
+                            _output.WriteLine("Running pre-validation before installation...");
+                            bool prevalidateSuccess = ExecutePreparerAction(
+                                () => preparer.PrevalidateInstallFromRepository(sitePath, packagesPath),
+                                "[ERROR] Pre-validation failed. Installation aborted.",
+                                cancellationToken);
+                            if (!prevalidateSuccess)
+                            {
+                                _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "prevalidation_failed" });
+                                return;
+                            }
+                            _output.WriteLine("[OK] Pre-validation passed.");
+                        }
+
                         // Stop ALL servers (local + remote) before package installation
                         _output.WriteLine("Stopping ALL servers before package installation...");
                         await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, viewModel.IsServerPanelVisible, cancellationToken).ConfigureAwait(false);
@@ -220,10 +241,12 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         {
                             success = ExecutePreparerAction(() => preparer.DeletePackages(sitePath, packagesAfter), "[ERROR] Deleting packages failed.", cancellationToken);
                             if (!success) return;
-                            
+
+                            _customDescriptorUpdater.RemoveDependencies(sitePath, packagesAfter);
+
                             success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                             if (!success) return;
-                            
+
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
                         });
                         
@@ -618,7 +641,59 @@ public partial class OperationsService : ObservableObject, IOperationsService
             poolWasStopped: true, siteWasStopped: true, serviceWasStopped: true, cancellationToken);
     }
 
-    public void StopOperation() 
+    public async Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action, Func<bool>? preAction = null)
+    {
+        if (IsBusy)
+        {
+            _output.WriteLine("[WARN] Another operation is already running.");
+            return;
+        }
+
+        _output.Clear();
+        _cancellationTokenSource = new CancellationTokenSource();
+        IsBusy = true;
+        StartButtonText = "In process...";
+        IsStopButtonEnabled = true;
+
+        try
+        {
+            await Task.Run(() =>
+            {
+                if (preAction != null && !preAction())
+                {
+                    return;
+                }
+
+                _output.WriteLine($"Prepare WorkspaceConsole ...");
+                _workspacePreparer.Prepare(sitePath, out _);
+
+                if (_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    _output.WriteLine("[INFO] Operation was cancelled.");
+                    return;
+                }
+
+                _output.WriteLine($"Running {operationName}...");
+                int result = action();
+                if (result != 0)
+                    _output.WriteLine($"[ERROR] {operationName} failed.");
+                else
+                    _output.WriteLine($"[OK] {operationName} completed successfully.");
+            });
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] {ex.Message}");
+        }
+        finally
+        {
+            IsBusy = false;
+            StartButtonText = "Start";
+            IsStopButtonEnabled = false;
+        }
+    }
+
+    public void StopOperation()
     {
         if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested) 
         {
