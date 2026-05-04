@@ -1,8 +1,6 @@
-<h1 align="center">
-  <br>
-  <b>CreatioHelper</b>
-  <br>
-</h1>
+<p align="center">
+  <img src="./header.svg" alt="CreatioHelper" width="800"/>
+</p>
 
 <p align="center">
   <img src="./CreatioHelper.png" alt="CreatioHelper Desktop" width="800"/>
