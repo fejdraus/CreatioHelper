@@ -1,4 +1,12 @@
-# CreatioHelper
+<h1 align="center">
+  <br>
+  <b>CreatioHelper</b>
+  <br>
+</h1>
+
+<p align="center">
+  <img src="./CreatioHelper.png" alt="CreatioHelper Desktop" width="800"/>
+</p>
 
 **CreatioHelper** is a comprehensive cross-platform tool for managing Terrasoft Creatio installations. It streamlines development workflows through automation of routine operations and provides both GUI and API interfaces.
 
@@ -27,14 +35,6 @@
 - **Built-in Sync** _(in development)_: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
-
----
-
-<p align="center">
-  <img src="./CreatioHelper.png" alt="CreatioHelper Desktop" width="800"/>
-</p>
-
----
 
 ## Project Structure
 
