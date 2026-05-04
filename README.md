@@ -28,6 +28,14 @@
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
 
+---
+
+<p align="center">
+  <img src="./CreatioHelper.png" alt="CreatioHelper Desktop" width="800"/>
+</p>
+
+---
+
 ## Project Structure
 
 All source projects are located in `src/`, and test projects in `tests/`. Main projects:
