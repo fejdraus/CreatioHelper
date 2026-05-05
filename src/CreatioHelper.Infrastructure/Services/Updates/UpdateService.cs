@@ -171,6 +171,11 @@ public class UpdateService : IUpdateService, IDisposable
                 AssetUrl: release.AssetUrl,
                 IsPrerelease: release.IsPrerelease));
         }
+        catch
+        {
+            SetState(new UpdateState.Idle());
+            throw;
+        }
         finally
         {
             _checkLock.Release();
