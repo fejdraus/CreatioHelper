@@ -39,7 +39,7 @@
     <PackageReference Include="MaxMind.GeoIP2" Version="5.4.1" />
 
     <!-- SemVer 2.0 parsing/comparison for auto-update version checks -->
-    <PackageReference Include="NuGet.Versioning" Version="6.13.2" />
+    <PackageReference Include="NuGet.Versioning" Version="7.3.1" />
 
     <!-- IHttpClientFactory for the auto-update HTTP client -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.7" />
