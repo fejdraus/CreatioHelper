@@ -61,6 +61,10 @@ All source projects are located in `src/`, and test projects in `tests/`. Main p
 - `CreatioHelper.Desktop`: Avalonia-based GUI application.
 - `CreatioHelper.Agent`: minimal ASP.NET Core web service providing remote control API.
 
+## Configuration
+
+Settings are stored in memory by default and reset on each restart. To persist settings across restarts, create an empty `settings.json` file in the same folder as the executable. CreatioHelper will automatically read from and write to it.
+
 ## Build and Run
 
 ### Requirements:
