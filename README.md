@@ -12,18 +12,25 @@
 
 ### Desktop Application
 
-- **Package Management**: Install, update, and remove Creatio packages with automated workflows
+- **Package Installation**: Install packages into Creatio with optional cleanup
+  - Delete packages before and/or after installation
+  - Prevalidate packages before installation
+- **File Design Mode**: Synchronize packages between Creatio database and filesystem
+  - Download packages from Creatio DB to filesystem (Creatio → FS)
+  - Upload packages from filesystem to Creatio DB (FS → Creatio)
+  - Clean & Validate package sources
 - **Schema Rebuild**: Regenerate and compile schema sources via WorkspaceConsole integration
-- **IIS Management**: Automatic start/stop of IIS sites and application pools during operations
-- **Redis Integration**: Automatic cache clearing after deployments
-- **Multi-Server Synchronization**: Synchronize changes across multiple Creatio instances
+- **License Management**: Generate license requests and load licenses into Creatio
+- **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
+- **Redis Integration**: Check Redis status and clear cache after deployments
+- **Multi-Server Synchronization**: Apply changes across multiple Creatio instances simultaneously
   - Traditional file copy synchronization
   - **External Syncthing Integration**: Connect to external Syncthing instance via REST API
     - Real-time synchronization monitoring via Events API
     - Multi-folder support (e.g., separate folders for Terrasoft.WebApp and bin)
     - Pause/Resume folders during operations
     - Direct link to Syncthing Web UI
-  - Automatic remote server management (IIS sites/pools)
+  - Bulk IIS management across all target servers
 - **Automatic Updates**: Background check against GitHub Releases (Stable/Beta channels). On Windows downloads, replaces files and restarts in one click; on Linux/macOS opens the release page in the browser.
 
 ### Agent Service
