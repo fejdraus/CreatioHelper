@@ -165,7 +165,7 @@ public partial class SettingsWindow : Window
             default:
                 try
                 {
-                    await _updateService.CheckNowAsync(explicitly: true);
+                    await _updateService.CheckNowAsync(explicitly: true, channelOverride: _viewModel.UpdateChannel);
                 }
                 catch
                 {

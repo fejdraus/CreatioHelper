@@ -1,4 +1,5 @@
 using CreatioHelper.Application.Services.Updates;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Application.Interfaces;
 
@@ -14,7 +15,7 @@ public interface IUpdateService
 
     void Start();
 
-    Task CheckNowAsync(bool explicitly = true, CancellationToken cancellationToken = default);
+    Task CheckNowAsync(bool explicitly = true, UpdateChannel? channelOverride = null, CancellationToken cancellationToken = default);
 
     Task DownloadAndInstallAsync(CancellationToken cancellationToken = default);
 
