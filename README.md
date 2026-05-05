@@ -128,7 +128,13 @@ The project follows Clean Architecture principles:
 
 ## Acknowledgements
 
-Special thanks to the members of the **PeaceTeam** from **Banza** for their invaluable contributions in development and testing:
+<p align="center">
+  <a href="https://banzait.com/" target="_blank">
+    <img src="./banza-logo.svg" alt="Banza" height="32"/>
+  </a>
+</p>
+
+Special thanks to the members of the **PeaceTeam** from **[Banza](https://banzait.com/)** for their invaluable contributions in development and testing:
 
 - **Oleksandr**
 - **Anna**

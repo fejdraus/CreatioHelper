@@ -30,7 +30,7 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*" Margin="10">
+        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="10">
             <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -276,6 +276,18 @@
                     HorizontalScrollBarVisibility="{Binding IsWrapTextEnabled, Converter={StaticResource BoolToScrollBarVisibilityConverter}}"
                     VerticalScrollBarVisibility="Auto"/>
             </Border>
+
+            <!-- Row 8: footer -->
+            <HyperlinkButton Grid.Row="8"
+                             Content="Powered by Banza"
+                             NavigateUri="https://banzait.com/"
+                             FontSize="10"
+                             Foreground="Gray"
+                             Opacity="1"
+                             Padding="0"
+                             HorizontalAlignment="Right"
+                             VerticalAlignment="Center"
+                             Margin="0,3,0,0"/>
         </Grid>
 
         <!-- Right panel: server list (static) -->
