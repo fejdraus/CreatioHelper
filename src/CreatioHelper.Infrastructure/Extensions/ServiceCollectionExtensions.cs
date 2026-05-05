@@ -86,7 +86,8 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
 
         // Auto-update service
-        services.AddHttpClient(nameof(UpdateService));
+        services.AddHttpClient(nameof(UpdateService))
+            .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<IUpdateService, UpdateService>();
         
         // Database services (if configuration is provided)
