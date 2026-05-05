@@ -58,9 +58,9 @@ public class UpdateService : IUpdateService, IDisposable
         _timer.Change(InitialDelay, PollInterval);
     }
 
-    public Task CheckNowAsync(bool explicitly = true, CancellationToken cancellationToken = default)
+    public Task CheckNowAsync(bool explicitly = true, UpdateChannel? channelOverride = null, CancellationToken cancellationToken = default)
     {
-        return CheckCoreAsync(explicitly, cancellationToken);
+        return CheckCoreAsync(explicitly, channelOverride, cancellationToken);
     }
 
     public async Task DownloadAndInstallAsync(CancellationToken cancellationToken = default)
@@ -104,7 +104,7 @@ public class UpdateService : IUpdateService, IDisposable
     {
         try
         {
-            await CheckCoreAsync(explicitly: false, CancellationToken.None).ConfigureAwait(false);
+            await CheckCoreAsync(explicitly: false, channelOverride: null, CancellationToken.None).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -112,7 +112,7 @@ public class UpdateService : IUpdateService, IDisposable
         }
     }
 
-    private async Task CheckCoreAsync(bool explicitly, CancellationToken ct)
+    private async Task CheckCoreAsync(bool explicitly, UpdateChannel? channelOverride, CancellationToken ct)
     {
         if (!await _checkLock.WaitAsync(0, ct).ConfigureAwait(false))
         {
@@ -130,7 +130,8 @@ public class UpdateService : IUpdateService, IDisposable
 
             SetState(new UpdateState.Checking());
 
-            var release = await FetchTopReleaseAsync(settings.UpdateChannel, ct).ConfigureAwait(false);
+            var channel = channelOverride ?? settings.UpdateChannel;
+            var release = await FetchTopReleaseAsync(channel, ct).ConfigureAwait(false);
             if (release is null)
             {
                 LastSeenVersion = null;
