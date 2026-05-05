@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -12,6 +13,7 @@ using CreatioHelper.Converters;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Services.Updates;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
 using CreatioHelper.Infrastructure.Services;
@@ -24,6 +26,8 @@ namespace CreatioHelper
     public partial class MainWindow : Window
     {
         private readonly MainWindowViewModel? _viewModel;
+        private readonly IUpdateService? _updateService;
+        private readonly IAppSettingsManager? _appSettingsManager;
         private const string LogFilePath = "log.txt";
 
         public MainWindow()
@@ -115,6 +119,58 @@ namespace CreatioHelper
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
             Closing += OnMainWindowClosing;
             Closed += OnMainWindowClosed;
+
+            _appSettingsManager = provider.GetService<IAppSettingsManager>();
+            _updateService = provider.GetService<IUpdateService>();
+            if (_updateService is not null)
+            {
+                _updateService.StateChanged += OnUpdateServiceStateChanged;
+                _updateService.Start();
+            }
+        }
+
+        private void OnUpdateServiceStateChanged(object? sender, UpdateState state)
+        {
+            Dispatcher.UIThread.Post(() =>
+            {
+                if (_viewModel is null)
+                {
+                    return;
+                }
+                _viewModel.IsUpdateAvailable = state is UpdateState.Available or UpdateState.Ready;
+            });
+        }
+
+        private async void Settings_Click(object? sender, RoutedEventArgs e)
+        {
+            if (_appSettingsManager is null || _updateService is null)
+            {
+                return;
+            }
+
+            var settings = _appSettingsManager.Load();
+            var dialog = new SettingsWindow(
+                settings.UpdateCheckEnabled,
+                settings.UpdateChannel,
+                _updateService);
+            var result = await dialog.ShowDialog<SettingsResult?>(this);
+            if (result is null)
+            {
+                return;
+            }
+
+            settings.UpdateCheckEnabled = result.UpdateCheckEnabled;
+            settings.UpdateChannel = result.UpdateChannel;
+            _appSettingsManager.Save(settings);
+
+            try
+            {
+                await _updateService.CheckNowAsync(explicitly: true);
+            }
+            catch
+            {
+                // ignored — surfaced via state events
+            }
         }
 
         private async void OnMainWindowClosed(object? sender, EventArgs e)
