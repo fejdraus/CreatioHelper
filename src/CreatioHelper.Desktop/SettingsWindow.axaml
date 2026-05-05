@@ -1,0 +1,90 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
+        x:Class="CreatioHelper.SettingsWindow"
+        x:DataType="vm:SettingsWindowViewModel"
+        Width="450"
+        MinWidth="450"
+        MaxWidth="450"
+        SizeToContent="Height"
+        Title="Settings"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner">
+
+    <StackPanel Margin="15" Spacing="12">
+
+        <Border BorderBrush="{DynamicResource ThemeBorderBrush}"
+                BorderThickness="1"
+                CornerRadius="5"
+                Padding="12">
+            <StackPanel Spacing="10">
+                <TextBlock Text="Updates"
+                           FontWeight="Bold"
+                           FontSize="13"
+                           Foreground="#4A90E2"/>
+
+                <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
+                    <TextBlock Grid.Row="0" Grid.Column="0" Text="Current version:" VerticalAlignment="Center"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding CurrentVersion}"
+                               FontFamily="Cascadia Code,Consolas,Monospace"
+                               Foreground="#4A90E2"
+                               VerticalAlignment="Center"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Text="Latest on server:" VerticalAlignment="Center" Margin="0,4,0,0"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LatestVersion, FallbackValue=—, TargetNullValue=—}"
+                               FontFamily="Cascadia Code,Consolas,Monospace"
+                               Foreground="#4A90E2"
+                               VerticalAlignment="Center"
+                               Margin="0,4,0,0"/>
+
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CheckStatus}"
+                               FontSize="11"
+                               Foreground="Gray"
+                               IsVisible="{Binding CheckStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                </Grid>
+
+                <CheckBox Content="Check for updates automatically"
+                          IsChecked="{Binding UpdateCheckEnabled, Mode=TwoWay}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="8" IsEnabled="{Binding UpdateCheckEnabled}">
+                    <TextBlock Text="Channel:" VerticalAlignment="Center" Width="80"/>
+                    <ComboBox ItemsSource="{Binding AvailableChannels}"
+                              SelectedItem="{Binding UpdateChannel, Mode=TwoWay}"
+                              Width="160"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Vertical" Spacing="6">
+                    <Button x:Name="ActionButton"
+                            Content="{Binding ActionButtonText}"
+                            Click="ActionButton_Click"
+                            IsEnabled="{Binding IsActionButtonEnabled}"
+                            HorizontalAlignment="Left"
+                            MinWidth="180"
+                            Height="32"
+                            Padding="14,0"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"/>
+                    <ProgressBar Value="{Binding DownloadProgressPercent}"
+                                 Maximum="100"
+                                 Minimum="0"
+                                 Height="6"
+                                 IsVisible="{Binding IsDownloadProgressVisible}"/>
+                </StackPanel>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="10">
+            <Button Width="100"
+                    Content="OK"
+                    IsDefault="True"
+                    Click="OkButton_Click"/>
+            <Button Width="100"
+                    Content="Cancel"
+                    IsCancel="True"
+                    Click="CancelButton_Click"/>
+        </StackPanel>
+
+    </StackPanel>
+</Window>

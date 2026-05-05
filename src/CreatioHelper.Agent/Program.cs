@@ -66,7 +66,6 @@ builder.Services.AddHealthChecks();
 
 // Configuration binding
 builder.Services.Configure<AuthenticationSettings>(builder.Configuration.GetSection("Authentication"));
-builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 builder.Services.Configure<SwaggerAuthSettings>(builder.Configuration.GetSection("SwaggerAuth"));
 
 // JWT Authentication
@@ -95,6 +94,15 @@ if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length <
 jwtSettings.Issuer ??= "CreatioHelper.Agent";
 jwtSettings.Audience ??= "CreatioHelper.Client";
 if (jwtSettings.ExpirationHours <= 0) jwtSettings.ExpirationHours = 24;
+
+// Register resolved JwtSettings so AuthController gets the same secret (including generated dev secret)
+builder.Services.Configure<JwtSettings>(opts =>
+{
+    opts.Secret = jwtSettings.Secret;
+    opts.Issuer = jwtSettings.Issuer;
+    opts.Audience = jwtSettings.Audience;
+    opts.ExpirationHours = jwtSettings.ExpirationHours;
+});
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

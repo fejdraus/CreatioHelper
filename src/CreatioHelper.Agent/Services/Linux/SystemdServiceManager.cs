@@ -13,11 +13,43 @@ public class SystemdServiceManager : IWebServerService
     private static readonly System.Text.RegularExpressions.Regex ValidServiceNameRegex =
         new(@"^[a-zA-Z0-9._@-]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
+    private static readonly bool IsFlatpak = File.Exists("/.flatpak-info");
+
     /// <summary>
     /// Validates that a service name contains only safe characters.
     /// </summary>
     private static bool IsValidServiceName(string serviceName)
         => !string.IsNullOrWhiteSpace(serviceName) && ValidServiceNameRegex.IsMatch(serviceName);
+
+    /// <summary>
+    /// Creates a ProcessStartInfo that works both natively and inside a Flatpak sandbox.
+    /// When running inside Flatpak, uses flatpak-spawn --host to execute commands on the host.
+    /// </summary>
+    private static ProcessStartInfo CreateHostProcessStartInfo(string fileName, string arguments)
+    {
+        if (IsFlatpak)
+        {
+            return new ProcessStartInfo
+            {
+                FileName = "flatpak-spawn",
+                Arguments = $"--host {fileName} {arguments}",
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+        }
+
+        return new ProcessStartInfo
+        {
+            FileName = fileName,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+    }
 
     public SystemdServiceManager(ILogger<SystemdServiceManager> logger)
     {
@@ -209,15 +241,7 @@ public class SystemdServiceManager : IWebServerService
     {
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "systemctl",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var startInfo = CreateHostProcessStartInfo("/usr/bin/systemctl", arguments);
 
             using var process = Process.Start(startInfo);
             if (process == null)
@@ -248,15 +272,7 @@ public class SystemdServiceManager : IWebServerService
     {
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "systemctl",
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
+            var startInfo = CreateHostProcessStartInfo("/usr/bin/systemctl", arguments);
 
             using var process = Process.Start(startInfo);
             if (process == null)
@@ -305,15 +321,7 @@ public class SystemdServiceManager : IWebServerService
             if (int.TryParse(pidText?.Trim(), out var pid) && pid > 0)
             {
                 // pid is an integer, so it's safe to use in the command (no injection possible)
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "sh",
-                    Arguments = $"-c \"ss -ltnp | grep 'pid={pid},'\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
+                var startInfo = CreateHostProcessStartInfo("sh", $"-c \"ss -ltnp | grep 'pid={pid},'\"");
 
                 using var process = Process.Start(startInfo);
                 if (process == null)

@@ -1,4 +1,5 @@
 ﻿using System.Collections.ObjectModel;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Domain.Entities;
 
@@ -43,4 +44,10 @@ public class AppSettings
     public string? SyncthingApiKey { get; set; }
 
     public bool PrevalidateBeforeInstall { get; set; }
+
+    public bool UpdateCheckEnabled { get; set; } = true;
+
+    public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Beta;
+
+    public string? SkipUpdateVersion { get; set; }
 }

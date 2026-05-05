@@ -12,9 +12,21 @@
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
-        <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
-        <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
-        <converters:NotConverter x:Key="NotConverter"/>
+        <ResourceDictionary>
+            <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
+            <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
+            <converters:NotConverter x:Key="NotConverter"/>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#C8E6C9"/>
+                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#1B5E20"/>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#2E7D32"/>
+                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#E8F5E9"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+        </ResourceDictionary>
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
@@ -197,28 +209,59 @@
                         HorizontalAlignment="Right" />
             </Grid>
 
-            <!-- Row 6: "Auto Scroll" checkbox -->
-            <StackPanel Grid.Row="6" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,5">
-                <Button Content="Clear" 
-                        Command="{Binding ClearLogCommand}" 
-                        Height="28" 
-                        VerticalAlignment="Center"/>
-                <CheckBox x:Name="AutoScrollCheckBox"
-                          Content="Auto Scroll"
-                          IsChecked="{Binding IsAutoScrollEnabled, Mode=TwoWay}"
-                          VerticalAlignment="Center"
-                          Margin="10,0,0,0"/>
-                <CheckBox x:Name="WrapTextCheckBox"
-                          Content="Wrap Text"
-                          IsChecked="{Binding IsWrapTextEnabled, Mode=TwoWay}"
-                          VerticalAlignment="Center"
-                          Margin="10,0,0,0"/>
-                <CheckBox x:Name="LogToFileCheckBox"
-                          Content="Log To File"
-                          IsChecked="{Binding IsLogToFileEnabled, Mode=TwoWay}"
-                          VerticalAlignment="Center"
-                          Margin="10,0,0,0"/>
-            </StackPanel>
+            <!-- Row 6: log toolbar — Clear/checkboxes left, optional update banner middle, Settings right -->
+            <Grid Grid.Row="6" Margin="0,0,0,5" ColumnDefinitions="Auto,*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                    <Button Content="Clear"
+                            Command="{Binding ClearLogCommand}"
+                            Height="32"
+                            Padding="12,0"
+                            VerticalAlignment="Center"
+                            VerticalContentAlignment="Center"
+                            HorizontalContentAlignment="Center"/>
+                    <CheckBox x:Name="AutoScrollCheckBox"
+                              Content="Auto Scroll"
+                              IsChecked="{Binding IsAutoScrollEnabled, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="WrapTextCheckBox"
+                              Content="Wrap Text"
+                              IsChecked="{Binding IsWrapTextEnabled, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="LogToFileCheckBox"
+                              Content="Log To File"
+                              IsChecked="{Binding IsLogToFileEnabled, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                </StackPanel>
+
+                <Border Grid.Column="1"
+                        Background="{DynamicResource UpdateBadgeBackground}"
+                        CornerRadius="14"
+                        Padding="14,4"
+                        VerticalAlignment="Center"
+                        HorizontalAlignment="Right"
+                        Margin="10,0,10,0"
+                        IsVisible="{Binding IsUpdateAvailable}"
+                        ToolTip.Tip="Open Settings to install the update">
+                    <TextBlock Text="Update available"
+                               Foreground="{DynamicResource UpdateBadgeForeground}"
+                               FontWeight="SemiBold"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                <Button Grid.Column="2"
+                        x:Name="SettingsButton"
+                        Content="Settings"
+                        Click="Settings_Click"
+                        Height="32"
+                        Padding="12,0"
+                        VerticalAlignment="Center"
+                        VerticalContentAlignment="Center"
+                        HorizontalAlignment="Right"
+                        HorizontalContentAlignment="Center"/>
+            </Grid>
 
             <!-- Row 7: Log list box (star "*" stretches to fill remaining space) -->
             <Border Grid.Row="7" BorderBrush="#D4D4D4" BorderThickness="1" CornerRadius="5" Padding="5">
