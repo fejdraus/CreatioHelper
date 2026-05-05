@@ -102,13 +102,18 @@ public class UpdateService : IUpdateService, IDisposable
 
     private async void OnTimer(object? _)
     {
+        var settings = _settingsManager.Load();
+        if (!settings.UpdateCheckEnabled)
+        {
+            return;
+        }
+
         try
         {
             await CheckCoreAsync(explicitly: false, channelOverride: null, CancellationToken.None).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch
         {
-            _output.WriteLine($"[ERROR] Update check failed: {ex.Message}");
         }
     }
 
