@@ -47,7 +47,7 @@ public class AppSettings
 
     public bool UpdateCheckEnabled { get; set; } = true;
 
-    public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Beta;
+    public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;
 
     public string? SkipUpdateVersion { get; set; }
 }
