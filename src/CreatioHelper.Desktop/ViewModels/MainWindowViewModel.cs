@@ -296,8 +296,19 @@ public partial class MainWindowViewModel : ObservableObject
     public bool HasSyncthingApiUrl => !string.IsNullOrEmpty(SyncthingApiUrl);
 
     public string StartButtonText => _operationsService.StartButtonText;
-    
+
     public bool IsStopButtonEnabled => _operationsService.IsStopButtonEnabled;
+
+    /// <summary>
+    /// True when package paths are empty — user can choose between Compile (default) and Compile All (dropdown).
+    /// When any package path is set, full rebuild is forced and the dropdown is hidden.
+    /// </summary>
+    public bool IsCompileChoiceAvailable =>
+        string.IsNullOrWhiteSpace(PackagesPath) &&
+        string.IsNullOrWhiteSpace(PackagesToDeleteBefore) &&
+        string.IsNullOrWhiteSpace(PackagesToDeleteAfter);
+
+    public bool IsFullRebuildOnly => !IsCompileChoiceAvailable;
     
     public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
 
@@ -524,9 +535,15 @@ public partial class MainWindowViewModel : ObservableObject
     }
     
     [RelayCommand]
-    private async Task Start() 
+    private async Task Start()
     {
-        await _operationsService.StartOperation(this);
+        await _operationsService.StartOperation(this, fullRebuild: false);
+    }
+
+    [RelayCommand]
+    private async Task StartFull()
+    {
+        await _operationsService.StartOperation(this, fullRebuild: true);
     }
 
     [RelayCommand]
@@ -687,10 +704,25 @@ public partial class MainWindowViewModel : ObservableObject
         SaveServerSettings();
     }
 
-    partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
+    partial void OnPackagesPathChanged(string? value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
+        OnPropertyChanged(nameof(IsFullRebuildOnly));
+    }
     partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
-    partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
-    partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
+    partial void OnPackagesToDeleteBeforeChanged(string? value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
+        OnPropertyChanged(nameof(IsFullRebuildOnly));
+    }
+    partial void OnPackagesToDeleteAfterChanged(string? value)
+    {
+        SaveServerSettings();
+        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
+        OnPropertyChanged(nameof(IsFullRebuildOnly));
+    }
     partial void OnSitePathChanged(string? value)
     {
         SaveServerSettings();

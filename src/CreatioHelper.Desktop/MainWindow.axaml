@@ -154,14 +154,35 @@
 
             <!-- Row 5: Start/Stop buttons, Load License, and server sync -->
             <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="0,5,0,5">
-                <!-- Start button -->
-                <Button x:Name="StartButton"
+                <!-- Start split button: shown only when package paths are empty (choice between incremental Compile and full Compile All). -->
+                <SplitButton x:Name="StartButton"
+                             Grid.Column="0"
+                             Content="{Binding StartButtonText}"
+                             Command="{Binding StartCommand}"
+                             IsEnabled="{Binding AreControlsEnabled}"
+                             IsVisible="{Binding IsCompileChoiceAvailable}"
+                             Width="140"
+                             Height="32"
+                             ToolTip.Tip="Click: incremental compile. Dropdown: full rebuild (Compile All).">
+                    <SplitButton.Flyout>
+                        <MenuFlyout Placement="Bottom">
+                            <MenuItem Header="Start (Compile All)"
+                                      Command="{Binding StartFullCommand}"
+                                      ToolTip.Tip="Full rebuild: RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True"/>
+                        </MenuFlyout>
+                    </SplitButton.Flyout>
+                </SplitButton>
+
+                <!-- Plain Start button: shown when package paths are set (full rebuild is forced, no choice). -->
+                <Button x:Name="StartButtonFullOnly"
                         Grid.Column="0"
                         Content="{Binding StartButtonText}"
-                        Command="{Binding StartCommand}"
+                        Command="{Binding StartFullCommand}"
                         IsEnabled="{Binding AreControlsEnabled}"
+                        IsVisible="{Binding IsFullRebuildOnly}"
                         Width="140"
-                        Height="32"/>
+                        Height="32"
+                        ToolTip.Tip="Package operations require full rebuild (RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True)."/>
 
                 <!-- Stop and kill WSC button -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"

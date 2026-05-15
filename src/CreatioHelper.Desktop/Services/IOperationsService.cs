@@ -10,7 +10,7 @@ namespace CreatioHelper.Services;
 
 public interface IOperationsService : INotifyPropertyChanged
 {
-    Task StartOperation(MainWindowViewModel viewModel);
+    Task StartOperation(MainWindowViewModel viewModel, bool fullRebuild = true);
     void StopOperation();
     bool IsBusy { get; }
     string StartButtonText { get; }

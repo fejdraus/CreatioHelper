@@ -388,7 +388,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
-    public int BuildConfiguration(string sitePath)
+    public int BuildConfiguration(string sitePath, bool force = true)
     {
         if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
 
@@ -411,8 +411,9 @@ public class WorkspacePreparer : IWorkspacePreparer
         _output.WriteLine($"Path to log file: {logPath}");
         string webAppPath = GetWebAppPath(sitePath);
         string configPath = GetConfigurationPath(sitePath);
-        string arguments = $"-operation=\"BuildConfiguration\" -force=\"True\" -workspaceName=\"Default\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
-        _output.WriteLine("Starting Build Configuration...");
+        string forceFlag = force ? "True" : "False";
+        string arguments = $"-operation=\"BuildConfiguration\" -force=\"{forceFlag}\" -workspaceName=\"Default\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine(force ? "Starting Build Configuration (force=True, full rebuild)..." : "Starting Build Configuration (force=False, incremental)...");
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 

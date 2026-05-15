@@ -74,7 +74,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         return true;
     }
 
-    public async Task StartOperation(MainWindowViewModel viewModel)
+    public async Task StartOperation(MainWindowViewModel viewModel, bool fullRebuild = true)
     {
         IsStopButtonEnabled = false;
         _output.Clear();
@@ -101,6 +101,13 @@ public partial class OperationsService : ObservableObject, IOperationsService
             viewModel.IsServerControlsEnabled = false;
 
             var quartzIsActiveOriginal = true;
+            bool hasPackageOps = !string.IsNullOrWhiteSpace(packagesPath) ||
+                                 !string.IsNullOrWhiteSpace(packagesBefore) ||
+                                 !string.IsNullOrWhiteSpace(packagesAfter);
+            if (!fullRebuild && hasPackageOps)
+            {
+                _output.WriteLine("[INFO] Package operations require full rebuild — Compile mode overridden to Compile All.");
+            }
             try
             {
                 _output.WriteLine("Prepare WorkspaceConsole ...");
@@ -285,17 +292,26 @@ public partial class OperationsService : ObservableObject, IOperationsService
                         IsStopButtonEnabled = true;
 
                         // Measure schema generation operations time
-                        _output.WriteLine("Performing schema regeneration and compilation...");
+                        _output.WriteLine(fullRebuild
+                            ? "Performing schema regeneration and full compilation (Compile All)..."
+                            : "Performing incremental compilation (Compile)...");
                         bool success = false;
                         _metricsService.Measure("schema_operations", () =>
                         {
-                            success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
-                            if (!success) return;
+                            if (fullRebuild)
+                            {
+                                success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
+                                if (!success) return;
 
-                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            if (!success) return;
+                                success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                                if (!success) return;
 
-                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                                success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: true), "[ERROR] Building configuration failed.", cancellationToken);
+                            }
+                            else
+                            {
+                                success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: false), "[ERROR] Building configuration failed.", cancellationToken);
+                            }
                         });
 
                         if (!success)
@@ -305,7 +321,9 @@ public partial class OperationsService : ObservableObject, IOperationsService
                             return;
                         }
 
-                        _output.WriteLine("[OK] Schema regeneration and compilation completed successfully.");
+                        _output.WriteLine(fullRebuild
+                            ? "[OK] Schema regeneration and compilation completed successfully."
+                            : "[OK] Incremental compilation completed successfully.");
                     }
 
                     // Clear Redis cache immediately after all operations complete (before synchronization and IIS start)
