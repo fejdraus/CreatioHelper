@@ -88,7 +88,7 @@ public partial class SettingsWindow : Window
             case UpdateState.Downloading downloading:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
-                _viewModel.CheckStatus = $"Downloading {downloading.Percent:F0}%";
+                _viewModel.CheckStatus = null;
                 _viewModel.ActionButtonText = $"Downloading {downloading.Percent:F0}%";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = true;
