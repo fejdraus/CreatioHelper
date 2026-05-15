@@ -191,6 +191,18 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
     public Task StopAllIisAsync(IEnumerable<ServerInfo> servers) => _orchestrator.StopAllIisAsync(servers);
 
+    public Task RestartAllIisAsync(IEnumerable<ServerInfo> servers)
+    {
+        if (IsBusy)
+        {
+            _output.WriteLine("[WARN] Another operation is already running.");
+            return Task.CompletedTask;
+        }
+
+        var callbacks = new SelfUiCallbacks(this);
+        return _orchestrator.RestartAllIisAsync(servers, callbacks);
+    }
+
     private static string GetCommandLine(Process process)
     {
         try
@@ -236,5 +248,20 @@ public partial class OperationsService : ObservableObject, IOperationsService
         public void OnStopButtonEnabledChanged(bool enabled) => _service.IsStopButtonEnabled = enabled;
         public void OnStartButtonText(string text) => _service.StartButtonText = text;
         public void OnServerControlsEnabledChanged(bool enabled) => _viewModel.IsServerControlsEnabled = enabled;
+    }
+
+    private sealed class SelfUiCallbacks : IDeploymentUiCallbacks
+    {
+        private readonly OperationsService _service;
+
+        public SelfUiCallbacks(OperationsService service)
+        {
+            _service = service;
+        }
+
+        public void OnBusyChanged(bool isBusy) => _service.IsBusy = isBusy;
+        public void OnStopButtonEnabledChanged(bool enabled) => _service.IsStopButtonEnabled = enabled;
+        public void OnStartButtonText(string text) => _service.StartButtonText = text;
+        public void OnServerControlsEnabledChanged(bool enabled) { }
     }
 }

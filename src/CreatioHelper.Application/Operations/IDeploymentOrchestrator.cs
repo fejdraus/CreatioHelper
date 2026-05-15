@@ -11,5 +11,5 @@ public interface IDeploymentOrchestrator
 
     Task StartAllIisAsync(IEnumerable<ServerInfo> servers, CancellationToken cancellationToken = default);
     Task StopAllIisAsync(IEnumerable<ServerInfo> servers, CancellationToken cancellationToken = default);
-    Task RestartAllIisAsync(IEnumerable<ServerInfo> servers, CancellationToken cancellationToken = default);
+    Task RestartAllIisAsync(IEnumerable<ServerInfo> servers, IDeploymentUiCallbacks? ui = null, CancellationToken cancellationToken = default);
 }

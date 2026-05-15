@@ -184,15 +184,28 @@
                         Height="32"
                         ToolTip.Tip="Package operations require full rebuild (RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True)."/>
 
-                <!-- Stop and kill WSC button -->
+                <!-- Stop and kill WSC button (visible while a scenario is running) -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsStopButtonEnabled}"
+                        IsVisible="{Binding IsBusy}"
                         Width="140"
                         Height="32"
                         Margin="10,0,0,0" />
+
+                <!-- Restart IIS pool + site button (visible when idle) -->
+                <Button x:Name="RestartLocalIisButton"
+                        Grid.Column="1"
+                        Content="Restart IIS"
+                        Command="{Binding RestartLocalIisCommand}"
+                        IsEnabled="{Binding CanRestartLocalIis}"
+                        IsVisible="{Binding !IsBusy}"
+                        Width="140"
+                        Height="32"
+                        Margin="10,0,0,0"
+                        ToolTip.Tip="Restart local IIS application pool and website for the selected site."/>
 
                 <!-- Empty spacer (Grid.Column="2") for alignment -->
 
@@ -259,12 +272,14 @@
                               Content="Skip Redis Clear"
                               ToolTip.Tip="Skip Redis cache clear during compilation (useful when attaching IDE to Creatio)"
                               IsChecked="{Binding SkipRedisClear, Mode=TwoWay}"
+                              IsEnabled="{Binding AreControlsEnabled}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                     <CheckBox x:Name="SkipServerRestartCheckBox"
                               Content="Skip IIS Restart"
                               ToolTip.Tip="Skip IIS stop/start during compile (keeps the process alive so IDE can stay attached)"
                               IsChecked="{Binding SkipServerRestart, Mode=TwoWay}"
+                              IsEnabled="{Binding AreControlsEnabled}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                 </StackPanel>

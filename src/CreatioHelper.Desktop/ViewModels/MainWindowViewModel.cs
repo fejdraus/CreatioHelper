@@ -59,6 +59,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(AreControlsEnabled));
+                OnPropertyChanged(nameof(CanRestartLocalIis));
             }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
                 OnPropertyChanged(nameof(StartButtonText));
@@ -315,8 +316,15 @@ public partial class MainWindowViewModel : ObservableObject
         string.IsNullOrWhiteSpace(PackagesToDeleteAfter);
 
     public bool IsFullRebuildOnly => !IsCompileChoiceAvailable;
-    
+
     public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
+
+    public bool CanRestartLocalIis =>
+        IsWindows &&
+        IsIisMode &&
+        SelectedIisSite != null &&
+        !string.IsNullOrWhiteSpace(SelectedIisSite.PoolName) &&
+        !IsBusy;
 
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
@@ -553,9 +561,27 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Stop() 
+    private void Stop()
     {
         _operationsService.StopOperation();
+    }
+
+    [RelayCommand]
+    private async Task RestartLocalIis()
+    {
+        if (SelectedIisSite == null || string.IsNullOrWhiteSpace(SelectedIisSite.PoolName))
+        {
+            _output.WriteLine("[INFO] No IIS site selected — cannot restart pool/site.");
+            return;
+        }
+
+        var local = new ServerInfo
+        {
+            Name = new ServerName(Environment.MachineName),
+            SiteName = SelectedIisSite.Name ?? string.Empty,
+            PoolName = SelectedIisSite.PoolName ?? string.Empty
+        };
+        await _operationsService.RestartAllIisAsync(new[] { local });
     }
 
     [RelayCommand]
@@ -701,6 +727,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsIisMode));
         OnPropertyChanged(nameof(CanUseIisBulkOperations));
+        OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
     }
 
@@ -740,6 +767,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
+        OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
         RefreshFileDesignMode();
     }

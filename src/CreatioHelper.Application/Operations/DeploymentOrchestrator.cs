@@ -745,8 +745,10 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         }
     }
 
-    public async Task RestartAllIisAsync(IEnumerable<ServerInfo> servers, CancellationToken cancellationToken = default)
+    public async Task RestartAllIisAsync(IEnumerable<ServerInfo> servers, IDeploymentUiCallbacks? ui = null, CancellationToken cancellationToken = default)
     {
+        ui ??= NullDeploymentUiCallbacks.Instance;
+
         if (!_iisManager.IsSupported())
         {
             _output.WriteLine("[ERROR] IIS is not supported on this platform");
@@ -761,9 +763,21 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             return;
         }
 
-        await StopAllIisAsync(serverList, cancellationToken).ConfigureAwait(false);
-        await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
-        await StartAllIisAsync(serverList, cancellationToken).ConfigureAwait(false);
+        ui.OnBusyChanged(true);
+        ui.OnStartButtonText("In process...");
+        ui.OnServerControlsEnabledChanged(false);
+        try
+        {
+            await StopAllIisAsync(serverList, cancellationToken).ConfigureAwait(false);
+            await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
+            await StartAllIisAsync(serverList, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            ui.OnBusyChanged(false);
+            ui.OnStartButtonText("Start");
+            ui.OnServerControlsEnabledChanged(true);
+        }
     }
 
     private async Task PerformSyncthingOrchestrationAsync(
