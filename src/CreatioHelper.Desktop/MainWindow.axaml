@@ -184,24 +184,23 @@
                         Height="32"
                         ToolTip.Tip="Package operations require full rebuild (RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True)."/>
 
-                <!-- Stop and kill WSC button (visible while a scenario is running) -->
+                <!-- Stop and kill WSC button (visible unless Restart IIS replaces it) -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsStopButtonEnabled}"
-                        IsVisible="{Binding IsBusy}"
+                        IsVisible="{Binding !CanRestartLocalIis}"
                         Width="140"
                         Height="32"
                         Margin="10,0,0,0" />
 
-                <!-- Restart IIS pool + site button (visible when idle) -->
+                <!-- Restart IIS pool + site button (visible when idle and IIS site is available) -->
                 <Button x:Name="RestartLocalIisButton"
                         Grid.Column="1"
                         Content="Restart IIS"
                         Command="{Binding RestartLocalIisCommand}"
-                        IsEnabled="{Binding CanRestartLocalIis}"
-                        IsVisible="{Binding !IsBusy}"
+                        IsVisible="{Binding CanRestartLocalIis}"
                         Width="140"
                         Height="32"
                         Margin="10,0,0,0"
