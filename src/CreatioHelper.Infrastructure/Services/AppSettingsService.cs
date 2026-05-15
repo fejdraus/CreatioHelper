@@ -35,12 +35,17 @@ namespace CreatioHelper.Infrastructure.Services
 
         public static AppSettings Load()
         {
-            if (!File.Exists(SettingsFile))
+            return Load(SettingsFile);
+        }
+
+        public static AppSettings Load(string path)
+        {
+            if (!File.Exists(path))
                 return new AppSettings();
 
             try
             {
-                string json = File.ReadAllText(SettingsFile);
+                string json = File.ReadAllText(path);
                 var dtoAppSettings = JsonSerializer.Deserialize<DtoAppSettings>(json) ?? new DtoAppSettings();
                 return dtoAppSettings.Adapt<AppSettings>();
             }

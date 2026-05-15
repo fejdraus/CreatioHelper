@@ -238,6 +238,12 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isLogToFileEnabled;
 
     [ObservableProperty]
+    private bool _skipRedisClear;
+
+    [ObservableProperty]
+    private bool _skipServerRestart;
+
+    [ObservableProperty]
     private bool _isUpdateAvailable;
 
     [ObservableProperty]
@@ -711,6 +717,8 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsFullRebuildOnly));
     }
     partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
+    partial void OnSkipRedisClearChanged(bool value) => SaveServerSettings();
+    partial void OnSkipServerRestartChanged(bool value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value)
     {
         SaveServerSettings();
@@ -807,6 +815,8 @@ public partial class MainWindowViewModel : ObservableObject
         ServiceName = settings.ServiceName;
         PackagesPath = settings.PackagesPath;
         PrevalidateBeforeInstall = settings.PrevalidateBeforeInstall;
+        SkipRedisClear = settings.SkipRedisClear;
+        SkipServerRestart = settings.SkipServerRestart;
         PackagesToDeleteBefore = settings.PackagesToDeleteBefore;
         PackagesToDeleteAfter = settings.PackagesToDeleteAfter;
 
@@ -893,6 +903,8 @@ public partial class MainWindowViewModel : ObservableObject
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
             PackagesPath = PackagesPath,
             PrevalidateBeforeInstall = PrevalidateBeforeInstall,
+            SkipRedisClear = SkipRedisClear,
+            SkipServerRestart = SkipServerRestart,
             PackagesToDeleteBefore = PackagesToDeleteBefore,
             PackagesToDeleteAfter = PackagesToDeleteAfter,
             ServerList = new ObservableCollection<ServerInfo>(ServerList.Select(s => new ServerInfo

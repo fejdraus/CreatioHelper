@@ -13,6 +13,7 @@ using CreatioHelper.Converters;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Operations;
 using CreatioHelper.Application.Services.Updates;
 using CreatioHelper.ViewModels;
 using Microsoft.Extensions.DependencyInjection;
@@ -85,14 +86,13 @@ namespace CreatioHelper
             var statusService = provider.GetRequiredService<IServerStatusService>();
             
             var dialogService = new DialogService(StorageProvider);
-            var siteSync = provider.GetRequiredService<ISiteSynchronizer>();
             var workspacePreparer = new WorkspacePreparer(writer);
             var packageCleaner = new PackageCleaner(writer);
-            var customDescriptorUpdater = new CustomDescriptorUpdater(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
+            var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
 
             // SyncthingMonitorService will be created dynamically when needed
-            var operationsService = new OperationsService(writer, iisManager, siteSync, workspacePreparer, customDescriptorUpdater, redisFactory, metricsService, statusService);
+            var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner);
 

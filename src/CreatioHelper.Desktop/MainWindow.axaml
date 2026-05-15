@@ -7,8 +7,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="1065" Height="670"
-        MinWidth="1065" MinHeight="400"
+        Width="1130" Height="670"
+        MinWidth="1130" MinHeight="400"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -253,6 +253,18 @@
                     <CheckBox x:Name="LogToFileCheckBox"
                               Content="Log To File"
                               IsChecked="{Binding IsLogToFileEnabled, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="SkipRedisClearCheckBox"
+                              Content="Skip Redis Clear"
+                              ToolTip.Tip="Skip Redis cache clear during compilation (useful when attaching IDE to Creatio)"
+                              IsChecked="{Binding SkipRedisClear, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="SkipServerRestartCheckBox"
+                              Content="Skip IIS Restart"
+                              ToolTip.Tip="Skip IIS stop/start during compile (keeps the process alive so IDE can stay attached)"
+                              IsChecked="{Binding SkipServerRestart, Mode=TwoWay}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                 </StackPanel>

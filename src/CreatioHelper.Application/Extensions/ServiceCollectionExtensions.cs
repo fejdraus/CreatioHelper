@@ -1,4 +1,5 @@
 using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Operations;
 using CreatioHelper.Application.Settings;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IMediator, CreatioHelper.Application.Mediator.Mediator>();
         services.AddTransient<IRequestHandler<LoadSettingsQuery, AppSettings>, LoadSettingsHandler>();
         services.AddTransient<IRequestHandler<SaveSettingsCommand, Unit>, SaveSettingsHandler>();
+        services.AddTransient<IDeploymentOrchestrator, DeploymentOrchestrator>();
         return services;
     }
 }

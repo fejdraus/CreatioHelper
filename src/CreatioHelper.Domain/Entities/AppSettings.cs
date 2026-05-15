@@ -45,6 +45,10 @@ public class AppSettings
 
     public bool PrevalidateBeforeInstall { get; set; }
 
+    public bool SkipRedisClear { get; set; }
+
+    public bool SkipServerRestart { get; set; }
+
     public bool UpdateCheckEnabled { get; set; } = true;
 
     public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;
