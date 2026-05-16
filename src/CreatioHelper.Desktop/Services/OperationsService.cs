@@ -61,6 +61,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             PackagesToDeleteBefore = viewModel.PackagesToDeleteBefore,
             PackagesToDeleteAfter = viewModel.PackagesToDeleteAfter,
             PrevalidateBeforeInstall = viewModel.PrevalidateBeforeInstall,
+            ResetUnlockedPackageFlags = viewModel.ResetUnlockedPackageFlags,
             Compile = fullRebuild ? CompileMode.Full : CompileMode.Incremental,
             Sync = viewModel.UseSyncthingForSync
                 ? SyncMode.Syncthing

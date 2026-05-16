@@ -1,6 +1,7 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
+using CreatioHelper.Infrastructure.Services.Database;
 using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
@@ -55,6 +56,7 @@ public static class ServiceCollectionExtensions
         // Workspace operations
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
         services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
+        services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
         
         // Remove SystemMetricsCollector registration here - it is registered in the Agent project
         

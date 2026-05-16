@@ -146,6 +146,7 @@ internal static class CliEntryPoint
             PackagesToDeleteBefore = settings.PackagesToDeleteBefore,
             PackagesToDeleteAfter = settings.PackagesToDeleteAfter,
             PrevalidateBeforeInstall = settings.PrevalidateBeforeInstall,
+            ResetUnlockedPackageFlags = settings.ResetUnlockedPackageFlags,
             Compile = ParseCompileMode(cli.Get("compile")),
             Sync = ResolveSyncMode(settings, cli),
             Servers = settings.ServerList.ToArray(),
@@ -226,7 +227,7 @@ internal static class CliEntryPoint
                 await orchestrator.StopAllIisAsync(servers, ct).ConfigureAwait(false);
                 break;
             case "restart":
-                await orchestrator.RestartAllIisAsync(servers, ct).ConfigureAwait(false);
+                await orchestrator.RestartAllIisAsync(servers, null, ct).ConfigureAwait(false);
                 break;
         }
 
@@ -250,6 +251,14 @@ internal static class CliEntryPoint
         if (cli.Get("delete-before") is { } db) s.PackagesToDeleteBefore = db;
         if (cli.Get("delete-after") is { } da) s.PackagesToDeleteAfter = da;
         if (cli.Get("prevalidate") is { } prev && bool.TryParse(prev, out var pb)) s.PrevalidateBeforeInstall = pb;
+        if (cli.Get("reset-unlocked-flags") is { } ruf && bool.TryParse(ruf, out var rufv))
+        {
+            s.ResetUnlockedPackageFlags = rufv;
+        }
+        else if (cli.HasFlag("reset-unlocked-flags"))
+        {
+            s.ResetUnlockedPackageFlags = true;
+        }
     }
 
     private static (string? path, Version? version, string? pool, string? siteName) ResolveSiteContext(AppSettings s, IOutputWriter output)
@@ -403,6 +412,7 @@ internal static class CliEntryPoint
         Console.WriteLine("  --delete-before \"A,B\"        Delete packages before installation");
         Console.WriteLine("  --delete-after  \"A,B\"        Delete packages after installation");
         Console.WriteLine("  --prevalidate true|false     Prevalidate before install");
+        Console.WriteLine("  --reset-unlocked-flags       Reset IsLocked/IsChanged on unlocked packages (locked are reset by default)");
         Console.WriteLine("  --compile auto|incremental|full   Compile strategy (default: auto)");
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");

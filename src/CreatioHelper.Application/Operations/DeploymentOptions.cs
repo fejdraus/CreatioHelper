@@ -16,6 +16,7 @@ public class DeploymentOptions
     public string? PackagesToDeleteBefore { get; set; }
     public string? PackagesToDeleteAfter { get; set; }
     public bool PrevalidateBeforeInstall { get; set; }
+    public bool ResetUnlockedPackageFlags { get; set; }
 
     public CompileMode Compile { get; set; } = CompileMode.Auto;
     public SyncMode Sync { get; set; } = SyncMode.None;

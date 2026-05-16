@@ -15,6 +15,7 @@
 - **Package Installation**: Install packages into Creatio with optional cleanup
   - Delete packages before and/or after installation
   - Prevalidate packages before installation
+  - Automatic reset of stale `IsLocked`/`IsChanged` flags for locked packages (SysPackage.InstallType = 1) before install — clears leftover SVN-style locks that would otherwise prevent schema updates. Optional checkbox extends the reset to unlocked (developer) packages.
 - **File Design Mode**: Synchronize packages between Creatio database and filesystem
   - Download packages from Creatio DB to filesystem (Creatio → FS)
   - Upload packages from filesystem to Creatio DB (FS → Creatio)
@@ -38,6 +39,52 @@
 - **HTTP API**: Remote control and monitoring of Creatio instances
 - **Automation**: Scriptable deployments and operations
 - **Built-in Sync** _(in development)_: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
+
+### CLI (`creatio-cli`)
+
+Headless deployment automation following the same "execute what is filled in" philosophy as the Desktop app. Available for `win-x64` and `linux-x64` in every release ZIP.
+
+```bash
+creatio-cli [options]                          # Run deployment
+creatio-cli redis-clear [options]              # Clear Redis cache
+creatio-cli iis start|stop|restart [options]   # Manage IIS pools/sites (Windows)
+```
+
+**Options:**
+
+| Flag | Description |
+|------|-------------|
+| `--settings <path>` | Load `AppSettings` from JSON (same format as Desktop `settings.json`) |
+| `--site <path>` | Filesystem site path (overrides settings) |
+| `--iis-site <name>` | IIS site name (Windows only) — auto-resolves app pool |
+| `--service-name <name>` | Windows/Linux service name (Folder mode) |
+| `--packages-path <path>` | Install packages from path |
+| `--delete-before "A,B"` | Delete packages before installation |
+| `--delete-after "A,B"` | Delete packages after installation |
+| `--prevalidate true\|false` | Prevalidate before install |
+| `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
+| `--compile auto\|incremental\|full` | Compile strategy (default: `auto`) |
+| `--sync none\|files\|syncthing` | Sync mode for multi-server |
+| `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
+| `--no-iis-restart` | Skip IIS stop/start during compile (keeps process alive for IDE attach) |
+| `--no-color` | Disable ANSI colors |
+| `--quiet` | Only print `[ERROR]` lines |
+
+**Examples:**
+
+```bash
+# Run a full deploy using a saved settings file
+creatio-cli --settings .\deploy.json
+
+# Compile-only with no Redis clear and no IIS restart (IDE attach scenario)
+creatio-cli --iis-site AstanaMotors --compile incremental --no-redis-clear --no-iis-restart
+
+# Install packages and extend the IsLocked/IsChanged reset to developer packages
+creatio-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --reset-unlocked-flags
+
+# Restart IIS pool + site (no app touch)
+creatio-cli iis restart --iis-site AstanaMotors
+```
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
 

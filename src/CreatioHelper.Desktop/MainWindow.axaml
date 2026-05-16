@@ -109,13 +109,18 @@
             <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="Packages Path:" VerticalAlignment="Center"/>
-                    <CheckBox Grid.Column="1"
-                              Content="Prevalidate package installation"
-                              IsChecked="{Binding PrevalidateBeforeInstall}"
-                              IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                              VerticalAlignment="Center"
-                              HorizontalAlignment="Right"
-                              ToolTip.Tip="Run pre-validation before installing packages"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <CheckBox Content="Prevalidate package installation"
+                                  IsChecked="{Binding PrevalidateBeforeInstall}"
+                                  IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Run pre-validation before installing packages"/>
+                        <CheckBox Content="Reset IsLocked/IsChanged on unlocked packages"
+                                  IsChecked="{Binding ResetUnlockedPackageFlags}"
+                                  IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Locked packages (SysPackage.InstallType = 1) are always reset before install. Enable to also reset IsLocked/IsChanged on unlocked (developer) packages."/>
+                    </StackPanel>
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"

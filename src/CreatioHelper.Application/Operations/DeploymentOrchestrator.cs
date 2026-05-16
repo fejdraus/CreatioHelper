@@ -17,6 +17,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IMetricsService _metricsService;
     private readonly IServerStatusService _statusService;
+    private readonly IPackageFlagsResetter _packageFlagsResetter;
 
     public DeploymentOrchestrator(
         IOutputWriter output,
@@ -26,7 +27,8 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         ICustomDescriptorUpdater customDescriptorUpdater,
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService,
-        IServerStatusService statusService)
+        IServerStatusService statusService,
+        IPackageFlagsResetter packageFlagsResetter)
     {
         _output = output;
         _iisManager = iisManager;
@@ -36,6 +38,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         _redisManagerFactory = redisManagerFactory;
         _metricsService = metricsService;
         _statusService = statusService;
+        _packageFlagsResetter = packageFlagsResetter;
     }
 
     public async Task<DeploymentResult> RunAsync(
@@ -189,6 +192,18 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     _output.WriteLine("Stopping ALL servers before package installation...");
                     await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
                     serversAlreadyStopped = true;
+
+                    string resetScope = options.ResetUnlockedPackageFlags ? "all packages" : "locked packages (InstallType = 1)";
+                    _output.WriteLine($"Resetting IsLocked/IsChanged on {resetScope} before installation...");
+                    bool resetOk = _packageFlagsResetter.ResetFlags(sitePath, options.ResetUnlockedPackageFlags);
+                    if (!resetOk)
+                    {
+                        _output.WriteLine("[ERROR] Resetting package flags failed. Stopping execution.");
+                        _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = "reset_flags_failed" });
+                        hadError = true;
+                        return;
+                    }
+
                     _output.WriteLine("Start installation packages...");
                     bool success = false;
                     _metricsService.Measure("package_install", () =>

@@ -218,6 +218,9 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _prevalidateBeforeInstall;
 
     [ObservableProperty]
+    private bool _resetUnlockedPackageFlags;
+
+    [ObservableProperty]
     private string? _packagesToDeleteBefore;
 
     [ObservableProperty]
@@ -744,6 +747,7 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsFullRebuildOnly));
     }
     partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
+    partial void OnResetUnlockedPackageFlagsChanged(bool value) => SaveServerSettings();
     partial void OnSkipRedisClearChanged(bool value) => SaveServerSettings();
     partial void OnSkipServerRestartChanged(bool value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value)
@@ -843,6 +847,7 @@ public partial class MainWindowViewModel : ObservableObject
         ServiceName = settings.ServiceName;
         PackagesPath = settings.PackagesPath;
         PrevalidateBeforeInstall = settings.PrevalidateBeforeInstall;
+        ResetUnlockedPackageFlags = settings.ResetUnlockedPackageFlags;
         SkipRedisClear = settings.SkipRedisClear;
         SkipServerRestart = settings.SkipServerRestart;
         PackagesToDeleteBefore = settings.PackagesToDeleteBefore;
@@ -931,6 +936,7 @@ public partial class MainWindowViewModel : ObservableObject
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
             PackagesPath = PackagesPath,
             PrevalidateBeforeInstall = PrevalidateBeforeInstall,
+            ResetUnlockedPackageFlags = ResetUnlockedPackageFlags,
             SkipRedisClear = SkipRedisClear,
             SkipServerRestart = SkipServerRestart,
             PackagesToDeleteBefore = PackagesToDeleteBefore,

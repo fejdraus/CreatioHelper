@@ -55,7 +55,7 @@
     },
     "Install packages (--iis-site AstanaMotors)": {
       "commandName": "Project",
-      "commandLineArgs": "--iis-site \"AstanaMotors\" --packages-path \"C:\\Pkgs\""
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --packages-path \"C:\\Users\\fejdraus\\Desktop\\WorkspaceConsole_extracted\""
     },
     "Delete packages before (--iis-site AstanaMotors)": {
       "commandName": "Project",

@@ -46,6 +46,8 @@ public class DtoAppSettings
 
     public bool PrevalidateBeforeInstall { get; set; }
 
+    public bool ResetUnlockedPackageFlags { get; set; }
+
     public bool SkipRedisClear { get; set; }
 
     public bool SkipServerRestart { get; set; }
