@@ -245,7 +245,7 @@ public class UpdateService : IUpdateService, IDisposable
                     }
 
                     var name = asset["name"]?.GetValue<string>() ?? string.Empty;
-                    if (name.StartsWith("CreatioHelper-", StringComparison.Ordinal)
+                    if (name.StartsWith("CreatioHelper-Desktop-", StringComparison.Ordinal)
                         && name.Contains(ridPattern, StringComparison.OrdinalIgnoreCase)
                         && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                     {
