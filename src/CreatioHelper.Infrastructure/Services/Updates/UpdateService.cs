@@ -245,7 +245,9 @@ public class UpdateService : IUpdateService, IDisposable
                     }
 
                     var name = asset["name"]?.GetValue<string>() ?? string.Empty;
-                    if (name.Contains(ridPattern, StringComparison.OrdinalIgnoreCase) && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+                    if (name.StartsWith("CreatioHelper-", StringComparison.Ordinal)
+                        && name.Contains(ridPattern, StringComparison.OrdinalIgnoreCase)
+                        && name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
                     {
                         assetUrl = asset["browser_download_url"]?.GetValue<string>();
                         break;
