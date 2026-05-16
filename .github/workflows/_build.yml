@@ -91,7 +91,7 @@ jobs:
             --runtime ${{ matrix.rid }} \
             --self-contained true \
             --no-restore \
-            --output publish/cli \
+            --output publish-cli \
             -p:Version="$full_version" \
             -p:VersionPrefix="$version_prefix" \
             -p:VersionSuffix="$version_suffix" \
@@ -110,26 +110,49 @@ jobs:
 
       - name: Strip residual PDB files
         shell: bash
-        run: find publish -name '*.pdb' -delete
+        run: |
+          find publish -name '*.pdb' -delete
+          find publish-cli -name '*.pdb' -delete
 
-      - name: Archive (Windows)
+      - name: Archive Desktop (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           Compress-Archive -Path publish/* -DestinationPath "CreatioHelper-${{ matrix.rid }}-${{ inputs.version }}.zip"
 
-      - name: Archive (Linux)
+      - name: Archive Desktop (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           cd publish
           zip -r "../CreatioHelper-${{ matrix.rid }}-${{ inputs.version }}.zip" .
 
-      - name: Upload artifact
+      - name: Archive CLI (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path publish-cli/* -DestinationPath "creatio-cli-${{ matrix.rid }}-${{ inputs.version }}.zip"
+
+      - name: Archive CLI (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          cd publish-cli
+          zip -r "../creatio-cli-${{ matrix.rid }}-${{ inputs.version }}.zip" .
+
+      - name: Upload Desktop artifact
         uses: actions/upload-artifact@v4
         with:
           name: CreatioHelper-${{ matrix.rid }}-${{ inputs.version }}
           path: CreatioHelper-${{ matrix.rid }}-${{ inputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: creatio-cli-${{ matrix.rid }}-${{ inputs.version }}
+          path: creatio-cli-${{ matrix.rid }}-${{ inputs.version }}.zip
           if-no-files-found: error
           retention-days: 7
 
