@@ -7,8 +7,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="1065" Height="670"
-        MinWidth="1065" MinHeight="400"
+        Width="1130" Height="670"
+        MinWidth="1130" MinHeight="400"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -109,13 +109,18 @@
             <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="Packages Path:" VerticalAlignment="Center"/>
-                    <CheckBox Grid.Column="1"
-                              Content="Prevalidate package installation"
-                              IsChecked="{Binding PrevalidateBeforeInstall}"
-                              IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
-                              VerticalAlignment="Center"
-                              HorizontalAlignment="Right"
-                              ToolTip.Tip="Run pre-validation before installing packages"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
+                        <CheckBox Content="Prevalidate package installation"
+                                  IsChecked="{Binding PrevalidateBeforeInstall}"
+                                  IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Run pre-validation before installing packages"/>
+                        <CheckBox Content="Reset IsLocked/IsChanged on unlocked packages"
+                                  IsChecked="{Binding ResetUnlockedPackageFlags}"
+                                  IsEnabled="{Binding PackagesPath, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"
+                                  VerticalAlignment="Center"
+                                  ToolTip.Tip="Locked packages (SysPackage.InstallType = 1) are always reset before install. Enable to also reset IsLocked/IsChanged on unlocked (developer) packages."/>
+                    </StackPanel>
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
@@ -184,15 +189,27 @@
                         Height="32"
                         ToolTip.Tip="Package operations require full rebuild (RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True)."/>
 
-                <!-- Stop and kill WSC button -->
+                <!-- Stop and kill WSC button (visible unless Restart IIS replaces it) -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
                         Command="{Binding StopCommand}"
                         IsEnabled="{Binding IsStopButtonEnabled}"
+                        IsVisible="{Binding !CanRestartLocalIis}"
                         Width="140"
                         Height="32"
                         Margin="10,0,0,0" />
+
+                <!-- Restart IIS pool + site button (visible when idle and IIS site is available) -->
+                <Button x:Name="RestartLocalIisButton"
+                        Grid.Column="1"
+                        Content="Restart IIS"
+                        Command="{Binding RestartLocalIisCommand}"
+                        IsVisible="{Binding CanRestartLocalIis}"
+                        Width="140"
+                        Height="32"
+                        Margin="10,0,0,0"
+                        ToolTip.Tip="Restart local IIS application pool and website for the selected site."/>
 
                 <!-- Empty spacer (Grid.Column="2") for alignment -->
 
@@ -253,6 +270,20 @@
                     <CheckBox x:Name="LogToFileCheckBox"
                               Content="Log To File"
                               IsChecked="{Binding IsLogToFileEnabled, Mode=TwoWay}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="SkipRedisClearCheckBox"
+                              Content="Skip Redis Clear"
+                              ToolTip.Tip="Skip Redis cache clear during compilation (useful when attaching IDE to Creatio)"
+                              IsChecked="{Binding SkipRedisClear, Mode=TwoWay}"
+                              IsEnabled="{Binding AreControlsEnabled}"
+                              VerticalAlignment="Center"
+                              Margin="10,0,0,0"/>
+                    <CheckBox x:Name="SkipServerRestartCheckBox"
+                              Content="Skip IIS Restart"
+                              ToolTip.Tip="Skip IIS stop/start during compile (keeps the process alive so IDE can stay attached)"
+                              IsChecked="{Binding SkipServerRestart, Mode=TwoWay}"
+                              IsEnabled="{Binding AreControlsEnabled}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                 </StackPanel>

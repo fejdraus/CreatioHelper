@@ -31,4 +31,9 @@ public interface IOperationsService : INotifyPropertyChanged
     /// Stop all IIS sites and application pools for servers in the list
     /// </summary>
     Task StopAllIisAsync(IEnumerable<ServerInfo> servers);
+
+    /// <summary>
+    /// Restart (stop, wait, start) all IIS sites and application pools for servers in the list
+    /// </summary>
+    Task RestartAllIisAsync(IEnumerable<ServerInfo> servers);
 }

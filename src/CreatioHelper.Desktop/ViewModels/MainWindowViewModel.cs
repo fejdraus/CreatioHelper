@@ -59,6 +59,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(AreControlsEnabled));
+                OnPropertyChanged(nameof(CanRestartLocalIis));
             }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
                 OnPropertyChanged(nameof(StartButtonText));
@@ -217,6 +218,9 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _prevalidateBeforeInstall;
 
     [ObservableProperty]
+    private bool _resetUnlockedPackageFlags;
+
+    [ObservableProperty]
     private string? _packagesToDeleteBefore;
 
     [ObservableProperty]
@@ -236,6 +240,12 @@ public partial class MainWindowViewModel : ObservableObject
     
     [ObservableProperty]
     private bool _isLogToFileEnabled;
+
+    [ObservableProperty]
+    private bool _skipRedisClear;
+
+    [ObservableProperty]
+    private bool _skipServerRestart;
 
     [ObservableProperty]
     private bool _isUpdateAvailable;
@@ -309,8 +319,15 @@ public partial class MainWindowViewModel : ObservableObject
         string.IsNullOrWhiteSpace(PackagesToDeleteAfter);
 
     public bool IsFullRebuildOnly => !IsCompileChoiceAvailable;
-    
+
     public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
+
+    public bool CanRestartLocalIis =>
+        IsWindows &&
+        IsIisMode &&
+        SelectedIisSite != null &&
+        !string.IsNullOrWhiteSpace(SelectedIisSite.PoolName) &&
+        !IsBusy;
 
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
@@ -547,9 +564,27 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void Stop() 
+    private void Stop()
     {
         _operationsService.StopOperation();
+    }
+
+    [RelayCommand]
+    private async Task RestartLocalIis()
+    {
+        if (SelectedIisSite == null || string.IsNullOrWhiteSpace(SelectedIisSite.PoolName))
+        {
+            _output.WriteLine("[INFO] No IIS site selected — cannot restart pool/site.");
+            return;
+        }
+
+        var local = new ServerInfo
+        {
+            Name = new ServerName(Environment.MachineName),
+            SiteName = SelectedIisSite.Name ?? string.Empty,
+            PoolName = SelectedIisSite.PoolName ?? string.Empty
+        };
+        await _operationsService.RestartAllIisAsync(new[] { local });
     }
 
     [RelayCommand]
@@ -695,6 +730,7 @@ public partial class MainWindowViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(IsIisMode));
         OnPropertyChanged(nameof(CanUseIisBulkOperations));
+        OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
     }
 
@@ -711,6 +747,9 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(IsFullRebuildOnly));
     }
     partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
+    partial void OnResetUnlockedPackageFlagsChanged(bool value) => SaveServerSettings();
+    partial void OnSkipRedisClearChanged(bool value) => SaveServerSettings();
+    partial void OnSkipServerRestartChanged(bool value) => SaveServerSettings();
     partial void OnPackagesToDeleteBeforeChanged(string? value)
     {
         SaveServerSettings();
@@ -732,6 +771,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
+        OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
         RefreshFileDesignMode();
     }
@@ -807,6 +847,9 @@ public partial class MainWindowViewModel : ObservableObject
         ServiceName = settings.ServiceName;
         PackagesPath = settings.PackagesPath;
         PrevalidateBeforeInstall = settings.PrevalidateBeforeInstall;
+        ResetUnlockedPackageFlags = settings.ResetUnlockedPackageFlags;
+        SkipRedisClear = settings.SkipRedisClear;
+        SkipServerRestart = settings.SkipServerRestart;
         PackagesToDeleteBefore = settings.PackagesToDeleteBefore;
         PackagesToDeleteAfter = settings.PackagesToDeleteAfter;
 
@@ -893,6 +936,9 @@ public partial class MainWindowViewModel : ObservableObject
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
             PackagesPath = PackagesPath,
             PrevalidateBeforeInstall = PrevalidateBeforeInstall,
+            ResetUnlockedPackageFlags = ResetUnlockedPackageFlags,
+            SkipRedisClear = SkipRedisClear,
+            SkipServerRestart = SkipServerRestart,
             PackagesToDeleteBefore = PackagesToDeleteBefore,
             PackagesToDeleteAfter = PackagesToDeleteAfter,
             ServerList = new ObservableCollection<ServerInfo>(ServerList.Select(s => new ServerInfo

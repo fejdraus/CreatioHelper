@@ -48,9 +48,11 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore src/CreatioHelper.Desktop/CreatioHelper.csproj --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
+        run: |
+          dotnet restore src/CreatioHelper.Desktop/CreatioHelper.csproj --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
+          dotnet restore src/CreatioHelper.Cli/CreatioHelper.Cli.csproj --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
 
-      - name: Publish
+      - name: Publish (Desktop)
         shell: bash
         run: |
           full_version='${{ inputs.version }}'
@@ -62,6 +64,34 @@ jobs:
             --self-contained true \
             --no-restore \
             --output publish \
+            -p:Version="$full_version" \
+            -p:VersionPrefix="$version_prefix" \
+            -p:VersionSuffix="$version_suffix" \
+            -p:InformationalVersion="$full_version" \
+            -p:AssemblyVersion="$version_prefix" \
+            -p:FileVersion="$version_prefix" \
+            -p:IncludeSourceRevisionInInformationalVersion=false \
+            -p:PublishSingleFile=true \
+            -p:IncludeNativeLibrariesForSelfExtract=true \
+            -p:IncludeAllContentForSelfExtract=true \
+            -p:EnableCompressionInSingleFile=true \
+            -p:PublishReadyToRun=true \
+            -p:DebugType=None \
+            -p:DebugSymbols=false \
+            -p:CopyDebugSymbolFilesFromPackages=false
+
+      - name: Publish (CLI)
+        shell: bash
+        run: |
+          full_version='${{ inputs.version }}'
+          version_prefix=$(echo "$full_version" | cut -d- -f1)
+          version_suffix=$(echo "$full_version" | cut -s -d- -f2-)
+          dotnet publish src/CreatioHelper.Cli/CreatioHelper.Cli.csproj \
+            --configuration Release \
+            --runtime ${{ matrix.rid }} \
+            --self-contained true \
+            --no-restore \
+            --output publish/cli \
             -p:Version="$full_version" \
             -p:VersionPrefix="$version_prefix" \
             -p:VersionSuffix="$version_suffix" \

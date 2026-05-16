@@ -1,6 +1,7 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Infrastructure.Services.Configuration;
+using CreatioHelper.Infrastructure.Services.Database;
 using CreatioHelper.Infrastructure.Services.Linux;
 using CreatioHelper.Infrastructure.Services.MacOs;
 using CreatioHelper.Infrastructure.Services.MacOS;
@@ -12,6 +13,7 @@ using CreatioHelper.Infrastructure.Services.DeviceManagement;
 using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using CreatioHelper.Infrastructure.Services.Sync.Security;
 using CreatioHelper.Infrastructure.Services.Updates;
+using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Infrastructure.Logging;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Performance;
@@ -50,6 +52,11 @@ public static class ServiceCollectionExtensions
         
         // Redis Manager Factory for Redis operations
         services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
+
+        // Workspace operations
+        services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
+        services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
+        services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
         
         // Remove SystemMetricsCollector registration here - it is registered in the Agent project
         

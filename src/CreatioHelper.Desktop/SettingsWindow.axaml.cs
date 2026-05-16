@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -36,7 +37,25 @@ public partial class SettingsWindow : Window
 
         ApplyUpdateState(updateService.State);
         updateService.StateChanged += OnUpdateServiceStateChanged;
-        Closed += (_, _) => updateService.StateChanged -= OnUpdateServiceStateChanged;
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        Closed += (_, _) =>
+        {
+            updateService.StateChanged -= OnUpdateServiceStateChanged;
+            _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        };
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(SettingsWindowViewModel.UpdateChannel))
+        {
+            _viewModel.ActionButtonText = "Check for updates now";
+            _viewModel.IsActionButtonEnabled = _viewModel.UpdateCheckEnabled;
+            _viewModel.IsDownloadProgressVisible = false;
+            _viewModel.DownloadProgressPercent = 0;
+            _viewModel.LatestVersion = null;
+            _viewModel.CheckStatus = "Channel changed — click to check the selected channel.";
+        }
     }
 
     private void OnUpdateServiceStateChanged(object? sender, UpdateState state)
@@ -69,7 +88,7 @@ public partial class SettingsWindow : Window
             case UpdateState.Downloading downloading:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
-                _viewModel.CheckStatus = $"Downloading {downloading.Percent:F0}%";
+                _viewModel.CheckStatus = null;
                 _viewModel.ActionButtonText = $"Downloading {downloading.Percent:F0}%";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = true;

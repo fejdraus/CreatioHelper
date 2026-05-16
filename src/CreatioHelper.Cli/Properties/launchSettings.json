@@ -1,0 +1,81 @@
+{
+  "profiles": {
+    "Help": {
+      "commandName": "Project",
+      "commandLineArgs": "--help"
+    },
+    "Deploy from settings.json": {
+      "commandName": "Project",
+      "commandLineArgs": "--settings ./settings.json",
+      "workingDirectory": "$(MSBuildProjectDirectory)"
+    },
+    "Compile incremental (--site)": {
+      "commandName": "Project",
+      "commandLineArgs": "--site \"R:\\Web\\AstanaMotors\" --compile incremental"
+    },
+    "Compile full (--site)": {
+      "commandName": "Project",
+      "commandLineArgs": "--site \"R:\\Web\\AstanaMotors\" --compile full"
+    },
+    "Install packages": {
+      "commandName": "Project",
+      "commandLineArgs": "--site \"R:\\Web\\AstanaMotors\" --packages-path \"C:\\Pkgs\""
+    },
+    "Delete packages before": {
+      "commandName": "Project",
+      "commandLineArgs": "--site \"R:\\Web\\AstanaMotors\" --delete-before \"OldPkg1,OldPkg2\""
+    },
+    "Redis clear": {
+      "commandName": "Project",
+      "commandLineArgs": "redis-clear --site \"R:\\Web\\AstanaMotors\""
+    },
+    "IIS restart (from settings)": {
+      "commandName": "Project",
+      "commandLineArgs": "iis restart --settings ./settings.json"
+    },
+    "IIS stop (--iis-site)": {
+      "commandName": "Project",
+      "commandLineArgs": "iis stop --iis-site \"Default Web Site\""
+    },
+    "Compile incremental (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --compile incremental"
+    },
+    "Compile incremental + no Redis clear (for IDE attach)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --compile incremental --no-redis-clear"
+    },
+    "Compile incremental + no Redis + no IIS restart (IDE attach)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --compile incremental --no-redis-clear --no-iis-restart"
+    },
+    "Compile full (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --compile full"
+    },
+    "Install packages (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --packages-path \"C:\\Users\\fejdraus\\Desktop\\WorkspaceConsole_extracted\""
+    },
+    "Delete packages before (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "--iis-site \"AstanaMotors\" --delete-before \"OldPkg1,OldPkg2\""
+    },
+    "Redis clear (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "redis-clear --iis-site \"AstanaMotors\""
+    },
+    "IIS restart (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "iis restart --iis-site \"AstanaMotors\""
+    },
+    "IIS stop (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "iis stop --iis-site \"AstanaMotors\""
+    },
+    "IIS start (--iis-site AstanaMotors)": {
+      "commandName": "Project",
+      "commandLineArgs": "iis start --iis-site \"AstanaMotors\""
+    }
+  }
+}
