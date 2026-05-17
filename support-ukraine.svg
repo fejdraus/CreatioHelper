@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 320" width="1280" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Support the Armed Forces of Ukraine">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#0050A0"/>
+      <stop offset="50%"  stop-color="#005BBB"/>
+      <stop offset="100%" stop-color="#0A6BC9"/>
+    </linearGradient>
+    <linearGradient id="field" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%"   stop-color="#FFD500"/>
+      <stop offset="50%"  stop-color="#FFD500"/>
+      <stop offset="100%" stop-color="#FFB800"/>
+    </linearGradient>
+    <linearGradient id="cta" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%"   stop-color="#FFD500"/>
+      <stop offset="100%" stop-color="#FFAA00"/>
+    </linearGradient>
+    <radialGradient id="orb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%"   stop-color="#FFFFFF" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="1"/>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0"   width="1280" height="160" fill="url(#sky)"/>
+  <rect x="0" y="160" width="1280" height="160" fill="url(#field)"/>
+
+  <circle cx="180"  cy="80"  r="220" fill="url(#orb)"/>
+  <circle cx="1100" cy="60"  r="200" fill="url(#orb)"/>
+
+  <g opacity="0.18" fill="#FFFFFF">
+    <circle cx="80"   cy="40"  r="2"/>
+    <circle cx="260"  cy="22"  r="1.5"/>
+    <circle cx="540"  cy="48"  r="2"/>
+    <circle cx="820"  cy="20"  r="1.5"/>
+    <circle cx="980"  cy="55"  r="2"/>
+    <circle cx="1180" cy="30"  r="1.5"/>
+    <circle cx="120"  cy="120" r="1.5"/>
+    <circle cx="1220" cy="110" r="1.5"/>
+  </g>
+
+  <g transform="translate(60, 60)">
+    <rect width="80" height="56" rx="6" fill="#FFFFFF" stroke="#0A2540" stroke-width="2"/>
+    <rect width="80" height="28" fill="#005BBB"/>
+    <rect y="28" width="80" height="28" fill="#FFD500"/>
+  </g>
+
+  <text x="180" y="86"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="44" font-weight="800" letter-spacing="-0.5"
+        fill="#FFFFFF">Stand with Ukraine</text>
+
+  <text x="180" y="130"
+        font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+        font-size="20" font-weight="500"
+        fill="#FFFFFF" opacity="0.92">Supplies for the 505th Separate Marine Battalion of Ukraine.</text>
+
+  <g transform="translate(60, 210)">
+    <text x="0" y="0"
+          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+          font-size="22" font-weight="700"
+          fill="#0A2540">100% to the 505th Separate Marine Battalion</text>
+    <text x="0" y="34"
+          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+          font-size="16" font-weight="500"
+          fill="#0A2540" opacity="0.85">Buys parts and components for soldiers on the front line.</text>
+    <text x="0" y="78"
+          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+          font-size="18" font-weight="800" letter-spacing="2"
+          fill="#0A2540">GLORY TO UKRAINE!  ✦  GLORY TO THE HEROES!</text>
+  </g>
+
+  <g transform="translate(940, 200)">
+    <rect width="280" height="84" rx="42" fill="url(#cta)" stroke="#0A2540" stroke-width="2"/>
+    <text x="140" y="54"
+          font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
+          font-size="28" font-weight="800" letter-spacing="2"
+          text-anchor="middle"
+          fill="#0A2540">DONATE →</text>
+  </g>
+</svg>

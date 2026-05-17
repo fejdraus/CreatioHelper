@@ -1,9 +1,13 @@
 <p align="center">
-  <img src="./header.svg" alt="CreatioHelper" width="800"/>
+  <a href="https://send.monobank.ua/jar/4vLgR4UT1p" target="_blank">
+    <img src="./support-ukraine.svg" alt="Stand with Ukraine - Donate via Monobank to the 505th Separate Marine Battalion (ZSU)" width="1280"/>
+  </a>
 </p>
 
 <p align="center">
-  <img src="./CreatioHelper.png" alt="CreatioHelper Desktop" width="800"/>
+  <a href="https://github.com/fejdraus/CreatioHelper/releases/latest">
+    <img src="./hero.svg" alt="CreatioHelper - Cross-platform automation for Terrasoft Creatio" width="1280"/>
+  </a>
 </p>
 
 **CreatioHelper** is a comprehensive cross-platform tool for managing Terrasoft Creatio installations. It streamlines development workflows through automation of routine operations and provides both GUI and API interfaces.
@@ -202,16 +206,3 @@ Special thanks to the members of the **PeaceTeam** from **[Banza](https://banzai
 - **Dmytro**
 - **KotikSmerit**
 - **Olena**
-
----
-
-## ![Ukraine](https://flagcdn.com/48x36/ua.png) Support the Armed Forces of Ukraine (ZSU)
-
-We stand with Ukraine in its fight against Russian aggression.
-All funds raised via Monobank below will be **fully transferred to support the Armed Forces of Ukraine (Zbroini Syly Ukrainy, ZSU)** — specifically to help defenders **repair and purchase FPV drones** for the front line.
-
-[![Donate to ZSU via Monobank](https://img.shields.io/badge/Donate%20to%20ZSU-Monobank-FFD500?style=for-the-badge&labelColor=005BBB)](https://send.monobank.ua/jar/4vLgR4UT1p)
-
-> 💙💛 **All contributions will be sent directly to support ZSU defenders.**
-
-**Glory to Ukraine! Glory to the Heroes!** ![Ukraine](https://flagcdn.com/32x24/ua.png)
