@@ -40,18 +40,12 @@
     <circle cx="1220" cy="110" r="1.5"/>
   </g>
 
-  <g transform="translate(60, 60)">
-    <rect width="80" height="56" rx="6" fill="#FFFFFF" stroke="#0A2540" stroke-width="2"/>
-    <rect width="80" height="28" fill="#005BBB"/>
-    <rect y="28" width="80" height="28" fill="#FFD500"/>
-  </g>
-
-  <text x="180" y="86"
+  <text x="60" y="86"
         font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
         font-size="44" font-weight="800" letter-spacing="-0.5"
         fill="#FFFFFF">Stand with Ukraine</text>
 
-  <text x="180" y="130"
+  <text x="60" y="130"
         font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif"
         font-size="20" font-weight="500"
         fill="#FFFFFF" opacity="0.92">Supplies for the 505th Separate Marine Battalion of Ukraine.</text>
