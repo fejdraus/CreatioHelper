@@ -17,7 +17,6 @@ public class IisService
     {
         if (!OperatingSystem.IsWindows()) return false;
     
-        // Quick check via the registry
         try
         {
             using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Microsoft\InetStp");
@@ -28,11 +27,10 @@ public class IisService
             return false;
         }
     
-        // Check the IIS service
         try
         {
             using var serviceController = new System.ServiceProcess.ServiceController("W3SVC");
-            var _ = serviceController.Status; // Just try to retrieve the status
+            var _ = serviceController.Status;
             return true;
         }
         catch (InvalidOperationException)
@@ -61,34 +59,45 @@ public class IisService
 
                 foreach (var site in sites)
                 {
-                    var app = site.Applications.FirstOrDefault(a => a.Path == "/0");
-                    var appVdir = app?.VirtualDirectories["/"];
+                    var subApp = site.Applications.FirstOrDefault(a => a.Path == "/0");
+                    var subAppVdir = subApp?.VirtualDirectories["/"];
                     var rootApp = site.Applications["/"];
                     var rootVdir = rootApp?.VirtualDirectories["/"];
                     string sitePath = rootVdir?.PhysicalPath ?? string.Empty;
-                    string appPath = appVdir?.PhysicalPath ?? string.Empty;
+                    string subAppPath = subAppVdir?.PhysicalPath ?? string.Empty;
                     string poolName = rootApp?.ApplicationPoolName ?? string.Empty;
 
-                    var connectionStrings = Path.Combine(sitePath, "ConnectionStrings.config");
-
-                    if (string.IsNullOrEmpty(sitePath) || string.IsNullOrEmpty(appPath) || string.IsNullOrEmpty(poolName))
-                        continue;
-                    if (!File.Exists(Path.Combine(appPath, "Web.config")))
-                        continue;
-                    if (!File.Exists(connectionStrings))
-                        continue;
-                    if (!File.Exists(Path.Combine(sitePath, "Web.config")))
-                        continue;
-
-                    var assemblyName = AppVersionHelper.GetAppVersion(sitePath);
-                    results.Add(new IisSiteInfo
+                    if (!string.IsNullOrEmpty(sitePath) && !string.IsNullOrEmpty(subAppPath) && !string.IsNullOrEmpty(poolName)
+                        && File.Exists(Path.Combine(subAppPath, "Web.config"))
+                        && File.Exists(Path.Combine(sitePath, "ConnectionStrings.config"))
+                        && File.Exists(Path.Combine(sitePath, "Web.config")))
                     {
-                        Id = site.Id,
-                        Name = site.Name,
-                        Path = sitePath,
-                        PoolName = poolName,
-                        Version = assemblyName
-                    });
+                        results.Add(new IisSiteInfo
+                        {
+                            Id = site.Id,
+                            Name = site.Name,
+                            Path = sitePath,
+                            PoolName = poolName,
+                            Version = AppVersionHelper.GetAppVersion(sitePath)
+                        });
+                    }
+
+                    foreach (var virtualApp in site.Applications.Where(a => a.Path != "/" && a.Path != "/0"))
+                    {
+                        var vdir = virtualApp.VirtualDirectories["/"];
+                        string virtualPath = vdir?.PhysicalPath ?? string.Empty;
+                        if (string.IsNullOrEmpty(virtualPath)) continue;
+                        if (!File.Exists(Path.Combine(virtualPath, "ConnectionStrings.config"))) continue;
+
+                        results.Add(new IisSiteInfo
+                        {
+                            Id = site.Id,
+                            Name = $"{site.Name}{virtualApp.Path}",
+                            Path = virtualPath,
+                            PoolName = virtualApp.ApplicationPoolName ?? string.Empty,
+                            Version = AppVersionHelper.GetAppVersion(virtualPath)
+                        });
+                    }
                 }
 
                 Dispatcher.UIThread.Post(() =>

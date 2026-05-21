@@ -102,7 +102,16 @@
                           ItemsSource="{Binding IisSites}"
                           SelectedItem="{Binding SelectedIisSite}"
                           PlaceholderText="Select IIS site from the list"
-                          IsVisible="{Binding IsWindows}" />
+                          IsVisible="{Binding IsWindows}">
+                    <ComboBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Text="{Binding ShortName}" />
+                                <TextBlock Text="{Binding PathSuffix}" Foreground="#888888" FontSize="12" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
             </StackPanel>
 
             <!-- Row 3: Packages Path with Prevalidate checkbox -->

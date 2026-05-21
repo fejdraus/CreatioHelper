@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
-    <PackageReference Include="Google.Protobuf" Version="3.34.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.35.0" />
     <PackageReference Include="Grpc.Tools" Version="2.80.0" PrivateAssets="All" />
 
     <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->

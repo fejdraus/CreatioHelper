@@ -578,10 +578,11 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.Clear();
         var local = new ServerInfo
         {
             Name = new ServerName(Environment.MachineName),
-            SiteName = SelectedIisSite.Name ?? string.Empty,
+            SiteName = SelectedIisSite.IsVirtualApp ? string.Empty : (SelectedIisSite.Name ?? string.Empty),
             PoolName = SelectedIisSite.PoolName ?? string.Empty
         };
         await _operationsService.RestartAllIisAsync(new[] { local });

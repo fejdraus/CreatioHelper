@@ -671,13 +671,32 @@ public class WorkspacePreparer : IWorkspacePreparer
     private int RunWorkspaceConsole(string sitePath, string arguments, string? workingDirectory)
     {
         string exePath = GetWorkspaceConsoleExePath(sitePath);
-        string args = $"{Quote(exePath)} {arguments}";
-        _output.WriteLine($"Running dotnet with args: {args}");
+        _output.WriteLine($"Running dotnet with args: {Quote(exePath)} {arguments}");
+
+        bool isUnc = OperatingSystem.IsWindows() &&
+                     (exePath.StartsWith(@"\\", StringComparison.Ordinal) ||
+                      exePath.StartsWith("//",  StringComparison.Ordinal));
+
         if (IsDotNetFramework(sitePath))
         {
+            if (isUnc)
+            {
+                // pushd maps the UNC path to a temporary drive letter so that
+                // Windows zone restrictions don't block native DLL loading (e.g. SharpSvn.dll)
+                var dir  = Path.GetDirectoryName(exePath)!;
+                var name = Path.GetFileName(exePath);
+                return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && \"{name}\" {arguments}", _output, null);
+            }
             return ProcessHelper.Run(exePath, arguments, _output, workingDirectory);
         }
-        return ProcessHelper.Run("dotnet", args, _output, workingDirectory);
+
+        if (isUnc)
+        {
+            var dir  = Path.GetDirectoryName(exePath)!;
+            var name = Path.GetFileName(exePath);
+            return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && dotnet \"{name}\" {arguments}", _output, null);
+        }
+        return ProcessHelper.Run("dotnet", $"{Quote(exePath)} {arguments}", _output, workingDirectory);
     }
 
     private static string Quote(string path) => $"\"{path}\"";
@@ -689,7 +708,7 @@ public class WorkspacePreparer : IWorkspacePreparer
     private string GetConfigurationPath(string sitePath) => Path.Combine(GetWebAppPath(sitePath), "Terrasoft.Configuration");
 
     private bool IsDotNetFramework(string sitePath) => Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"));
-    
+
     string SafePath(string path) => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 
 }

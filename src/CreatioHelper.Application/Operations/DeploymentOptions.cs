@@ -10,6 +10,7 @@ public class DeploymentOptions
     public bool IsIisMode { get; set; }
     public string? IisSiteName { get; set; }
     public string? IisPoolName { get; set; }
+    public bool IisPoolOnly { get; set; }
     public string? ServiceName { get; set; }
 
     public string? PackagesPath { get; set; }
@@ -17,6 +18,7 @@ public class DeploymentOptions
     public string? PackagesToDeleteAfter { get; set; }
     public bool PrevalidateBeforeInstall { get; set; }
     public bool ResetUnlockedPackageFlags { get; set; }
+    public bool QuickInstall { get; set; }
 
     public CompileMode Compile { get; set; } = CompileMode.Auto;
     public SyncMode Sync { get; set; } = SyncMode.None;

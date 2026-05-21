@@ -21,5 +21,11 @@ public class IisSiteInfo
 
     public Version Version { get; set; } = new();
 
-    public override string ToString() => Name;
+    public bool IsVirtualApp => Name.Contains('/');
+
+    public string ShortName => IsVirtualApp ? Name.Split('/').Last() : Name;
+
+    public string PathSuffix => IsVirtualApp ? $" ({Name})" : string.Empty;
+
+    public override string ToString() => Name.Contains('/') ? $"{ShortName} ({Name})" : Name;
 }

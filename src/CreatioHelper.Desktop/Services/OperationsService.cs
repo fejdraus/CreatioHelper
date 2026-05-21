@@ -56,6 +56,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             IsIisMode = viewModel.IsIisMode,
             IisSiteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null,
             IisPoolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null,
+            IisPoolOnly = viewModel.IsIisMode && (viewModel.SelectedIisSite?.IsVirtualApp ?? false),
             ServiceName = viewModel.ServiceName,
             PackagesPath = viewModel.PackagesPath,
             PackagesToDeleteBefore = viewModel.PackagesToDeleteBefore,

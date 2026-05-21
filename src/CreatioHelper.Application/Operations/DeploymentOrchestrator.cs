@@ -111,7 +111,13 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                 string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
                 var poolName = options.IsIisMode ? options.IisPoolName : null;
-                var siteName = options.IsIisMode ? options.IisSiteName : null;
+                var siteName = options.IsIisMode && !options.IisPoolOnly ? options.IisSiteName : null;
+
+                if (options.IisPoolOnly)
+                {
+                    _output.WriteLine($"[INFO] Virtual application mode: only app pool '{poolName}' will be managed (website stop/start skipped).");
+                }
+
                 var appVersion = options.SiteVersion;
 
                 if (appVersion == null || appVersion < new Version(7, 12, 0, 0))
@@ -205,11 +211,15 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     }
 
                     _output.WriteLine("Start installation packages...");
+                    if (options.QuickInstall)
+                    {
+                        _output.WriteLine("[INFO] Quick install mode: RebuildWorkspace and BuildConfiguration will be skipped.");
+                    }
                     bool success = false;
                     _metricsService.Measure("package_install", () =>
                     {
                         success = ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
-                        if (!success) return;
+                        if (!success || options.QuickInstall) return;
 
                         success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
                         if (!success) return;

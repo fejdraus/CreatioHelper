@@ -66,6 +66,7 @@ internal static class CliEntryPoint
             {
                 "redis-clear" => await RunRedisClearAsync(provider, settings, cli, output, cts.Token),
                 "iis" => await RunIisAsync(provider, settings, cli, output, cts.Token),
+                "lic" => await RunLicAsync(provider, settings, cli, output, cts.Token),
                 _ => await RunDeployAsync(provider, settings, cli, output, cts.Token)
             };
         }
@@ -108,39 +109,39 @@ internal static class CliEntryPoint
             return 2;
         }
 
-        var (resolvedSitePath, resolvedVersion, resolvedPool, resolvedSiteName) = ResolveSiteContext(settings, output);
-        if (string.IsNullOrWhiteSpace(resolvedSitePath))
+        var site = ResolveSiteContext(settings, output);
+        if (site == null || string.IsNullOrWhiteSpace(site.Path))
         {
             return 2;
         }
 
-        if (!Directory.Exists(resolvedSitePath))
+        if (!Directory.Exists(site.Path))
         {
-            output.WriteLine($"[ERROR] Site path does not exist: {resolvedSitePath}");
+            output.WriteLine($"[ERROR] Site path does not exist: {site.Path}");
             return 2;
         }
 
-        if (resolvedVersion == null)
+        if (site.Version == new Version())
         {
             try
             {
-                resolvedVersion = AppVersionHelper.GetAppVersion(resolvedSitePath);
+                site.Version = AppVersionHelper.GetAppVersion(site.Path);
             }
             catch
             {
-                resolvedVersion = new Version();
+                site.Version = new Version();
             }
         }
 
-        bool effectiveIisMode = settings.IsIisMode || !string.IsNullOrWhiteSpace(resolvedSiteName);
+        bool effectiveIisMode = settings.IsIisMode || !string.IsNullOrWhiteSpace(site.Name);
         var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
         var options = new DeploymentOptions
         {
-            SitePath = resolvedSitePath,
-            SiteVersion = resolvedVersion,
+            SitePath = site.Path,
+            SiteVersion = site.Version,
             IsIisMode = effectiveIisMode,
-            IisSiteName = resolvedSiteName ?? (settings.IsIisMode ? settings.SelectedIisSiteName : null),
-            IisPoolName = resolvedPool,
+            IisSiteName = site.Name,
+            IisPoolName = site.PoolName,
             ServiceName = settings.ServiceName,
             PackagesPath = settings.PackagesPath,
             PackagesToDeleteBefore = settings.PackagesToDeleteBefore,
@@ -152,7 +153,9 @@ internal static class CliEntryPoint
             Servers = settings.ServerList.ToArray(),
             HasRemoteServers = settings.IsServerPanelVisible && settings.ServerList.Count > 0,
             SkipRedisClear = cli.HasFlag("no-redis-clear"),
-            SkipServerRestart = cli.HasFlag("no-iis-restart")
+            SkipServerRestart = cli.HasFlag("no-iis-restart"),
+            IisPoolOnly = site.IsVirtualApp,
+            QuickInstall = cli.HasFlag("quick-install")
         };
 
         var result = await orchestrator.RunAsync(options, NullDeploymentUiCallbacks.Instance, ct).ConfigureAwait(false);
@@ -166,14 +169,14 @@ internal static class CliEntryPoint
     private static async Task<int> RunRedisClearAsync(IServiceProvider provider, AppSettings settings, CliArgs cli, IOutputWriter output, CancellationToken ct)
     {
         ApplyOverrides(settings, cli);
-        var (resolvedSitePath, _, _, _) = ResolveSiteContext(settings, output);
-        if (string.IsNullOrWhiteSpace(resolvedSitePath))
+        var site = ResolveSiteContext(settings, output);
+        if (site == null || string.IsNullOrWhiteSpace(site.Path))
         {
             return 2;
         }
 
         var factory = provider.GetRequiredService<IRedisManagerFactory>();
-        var manager = factory.Create(resolvedSitePath);
+        var manager = factory.Create(site.Path);
         bool status = manager.CheckStatus();
         if (!status)
         {
@@ -202,8 +205,8 @@ internal static class CliEntryPoint
 
         if (!servers.Any())
         {
-            var (_, _, pool, siteName) = ResolveSiteContext(settings, output);
-            var resolvedName = siteName ?? settings.SelectedIisSiteName;
+            var site = ResolveSiteContext(settings, output);
+            var resolvedName = site?.Name ?? settings.SelectedIisSiteName;
             if (!string.IsNullOrWhiteSpace(resolvedName))
             {
                 servers = new[]
@@ -211,8 +214,8 @@ internal static class CliEntryPoint
                     new ServerInfo
                     {
                         Name = new CreatioHelper.Domain.ValueObjects.ServerName(Environment.MachineName),
-                        SiteName = resolvedName ?? string.Empty,
-                        PoolName = pool ?? string.Empty
+                        SiteName = site?.IsVirtualApp == true ? string.Empty : (resolvedName ?? string.Empty),
+                        PoolName = site?.PoolName ?? string.Empty
                     }
                 };
             }
@@ -232,6 +235,61 @@ internal static class CliEntryPoint
         }
 
         return 0;
+    }
+
+    private static async Task<int> RunLicAsync(IServiceProvider provider, AppSettings settings, CliArgs cli, IOutputWriter output, CancellationToken ct)
+    {
+        ApplyOverrides(settings, cli);
+
+        var action = cli.SubCommand?.ToLowerInvariant();
+        if (action != "load" && action != "request")
+        {
+            output.WriteLine("[ERROR] Use: creatio-cli lic load|request");
+            return 2;
+        }
+
+        var site = ResolveSiteContext(settings, output);
+        if (site == null || string.IsNullOrWhiteSpace(site.Path))
+        {
+            return 2;
+        }
+
+        var preparer = provider.GetRequiredService<IWorkspacePreparer>();
+
+        if (action == "load")
+        {
+            var licFile = cli.Get("lic-file");
+            if (string.IsNullOrWhiteSpace(licFile))
+            {
+                output.WriteLine("[ERROR] Provide --lic-file <path>");
+                return 2;
+            }
+            if (!File.Exists(licFile))
+            {
+                output.WriteLine($"[ERROR] License file not found: {licFile}");
+                return 2;
+            }
+            int code = preparer.LoadLicResponse(site.Path, licFile);
+            return code == 0 ? 0 : 1;
+        }
+        else
+        {
+            var destination = cli.Get("destination");
+            var customerId = cli.Get("customer-id");
+            if (string.IsNullOrWhiteSpace(destination))
+            {
+                output.WriteLine("[ERROR] Provide --destination <path>");
+                return 2;
+            }
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                output.WriteLine("[ERROR] Provide --customer-id <id>");
+                return 2;
+            }
+            var fileName = cli.Get("file-name") ?? string.Empty;
+            int code = preparer.SaveLicenseRequest(site.Path, destination, customerId, fileName);
+            return code == 0 ? 0 : 1;
+        }
     }
 
     private static void ApplyOverrides(AppSettings s, CliArgs cli)
@@ -261,25 +319,24 @@ internal static class CliEntryPoint
         }
     }
 
-    private static (string? path, Version? version, string? pool, string? siteName) ResolveSiteContext(AppSettings s, IOutputWriter output)
+    private static IisSiteInfo? ResolveSiteContext(AppSettings s, IOutputWriter output)
     {
         if (s.IsIisMode && !string.IsNullOrWhiteSpace(s.SelectedIisSiteName))
         {
             if (!OperatingSystem.IsWindows())
             {
                 output.WriteLine("[ERROR] IIS mode requires Windows. Provide --site <path> instead.");
-                return (null, null, null, null);
+                return null;
             }
 
             try
             {
-                var (p, v, pool) = ResolveIisSiteByName(s.SelectedIisSiteName!);
-                return (p, v, pool, s.SelectedIisSiteName);
+                return ResolveIisSiteByName(s.SelectedIisSiteName!);
             }
             catch (Exception ex)
             {
                 output.WriteLine($"[ERROR] Cannot resolve IIS site '{s.SelectedIisSiteName}': {ex.Message}");
-                return (null, null, null, null);
+                return null;
             }
         }
 
@@ -288,21 +345,20 @@ internal static class CliEntryPoint
             try
             {
                 var match = FindIisSiteByPath(s.SitePath);
-                if (match.HasValue)
+                if (match != null)
                 {
-                    return (s.SitePath, null, match.Value.pool, match.Value.siteName);
+                    return match;
                 }
             }
             catch
             {
-                // Fall through to plain folder mode
             }
         }
 
-        return (s.SitePath, null, null, null);
+        return new IisSiteInfo { Path = s.SitePath ?? string.Empty };
     }
 
-    private static (string siteName, string? pool)? FindIisSiteByPath(string sitePath)
+    private static IisSiteInfo? FindIisSiteByPath(string sitePath)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -326,7 +382,12 @@ internal static class CliEntryPoint
                     var normPhys = Path.TrimEndingDirectorySeparator(Path.GetFullPath(phys));
                     if (string.Equals(normPhys, normalized, StringComparison.OrdinalIgnoreCase))
                     {
-                        return (site.Name, app.ApplicationPoolName);
+                        return new IisSiteInfo
+                        {
+                            Name = app.Path != "/" ? $"{site.Name}{app.Path}" : site.Name,
+                            Path = sitePath,
+                            PoolName = app.ApplicationPoolName ?? string.Empty
+                        };
                     }
                 }
             }
@@ -334,37 +395,36 @@ internal static class CliEntryPoint
         return null;
     }
 
-    private static (string? path, Version? version, string? pool) ResolveIisSiteByName(string siteName)
+    private static IisSiteInfo ResolveIisSiteByName(string input)
     {
         if (!OperatingSystem.IsWindows())
         {
-            return (null, null, null);
+            throw new PlatformNotSupportedException("IIS is only supported on Windows.");
         }
+
+        var slashIdx = input.IndexOf('/');
+        string siteName = slashIdx > 0 ? input[..slashIdx] : input;
+        string appPath = slashIdx > 0 ? input[slashIdx..] : "/";
 
         using var manager = new Microsoft.Web.Administration.ServerManager();
-        var site = manager.Sites[siteName];
-        if (site == null)
-        {
-            throw new InvalidOperationException($"IIS site '{siteName}' not found.");
-        }
+        var site = manager.Sites[siteName] ?? throw new InvalidOperationException($"IIS site '{siteName}' not found.");
+        var app = site.Applications[appPath] ?? throw new InvalidOperationException($"Application '{appPath}' not found in IIS site '{siteName}'.");
 
-        var app = site.Applications["/"];
-        var vdir = app?.VirtualDirectories["/"];
-        var physical = vdir?.PhysicalPath;
-        var pool = app?.ApplicationPoolName;
-        Version? version = null;
+        var vdir = app.VirtualDirectories["/"];
+        var physical = vdir?.PhysicalPath ?? string.Empty;
+        Version version = new();
         if (!string.IsNullOrWhiteSpace(physical) && Directory.Exists(physical))
         {
-            try
-            {
-                version = AppVersionHelper.GetAppVersion(physical);
-            }
-            catch
-            {
-                version = null;
-            }
+            try { version = AppVersionHelper.GetAppVersion(physical); } catch { }
         }
-        return (physical, version, pool);
+
+        return new IisSiteInfo
+        {
+            Name = input,
+            Path = physical,
+            PoolName = app.ApplicationPoolName ?? string.Empty,
+            Version = version
+        };
     }
 
     private static CompileMode ParseCompileMode(string? value)
@@ -402,6 +462,8 @@ internal static class CliEntryPoint
         Console.WriteLine("  creatio-cli [options]                            Run deployment (only steps with non-empty values)");
         Console.WriteLine("  creatio-cli redis-clear [options]                Clear Redis cache");
         Console.WriteLine("  creatio-cli iis start|stop|restart [options]     Manage IIS pools/sites");
+        Console.WriteLine("  creatio-cli lic load [options]                   Load license response file into Creatio");
+        Console.WriteLine("  creatio-cli lic request [options]                Save license request file from Creatio");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --settings <path>            Load AppSettings from JSON (same format as Desktop settings.json)");
@@ -417,13 +479,27 @@ internal static class CliEntryPoint
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");
+        Console.WriteLine("  --quick-install              Skip RebuildWorkspace and BuildConfiguration after package install (faster, like clio)");
         Console.WriteLine("  --no-color                   Disable ANSI colors");
         Console.WriteLine("  --quiet                      Only print [ERROR] lines");
+        Console.WriteLine();
+        Console.WriteLine("lic load options:");
+        Console.WriteLine("  --lic-file <path>            Path to the license response file (.lic)");
+        Console.WriteLine();
+        Console.WriteLine("lic request options:");
+        Console.WriteLine("  --destination <path>         Directory to save the license request file");
+        Console.WriteLine("  --customer-id <id>           Customer ID for the license request");
+        Console.WriteLine("  --file-name <name>           Output file name (optional)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
         Console.WriteLine("  creatio-cli --settings .\\deploy.json");
         Console.WriteLine("  creatio-cli --site C:\\Site --compile full");
         Console.WriteLine("  creatio-cli --site C:\\Site --packages-path C:\\Pkgs");
+        Console.WriteLine("  creatio-cli --site C:\\Site --packages-path C:\\Pkgs --quick-install");
+        Console.WriteLine("  creatio-cli --iis-site \"Default Web Site\"");
+        Console.WriteLine("  creatio-cli --iis-site \"Default Web Site/creatio\" --packages-path C:\\Pkgs");
         Console.WriteLine("  creatio-cli iis restart --settings .\\deploy.json");
+        Console.WriteLine("  creatio-cli lic load --site C:\\Site --lic-file C:\\license.lic");
+        Console.WriteLine("  creatio-cli lic request --site C:\\Site --destination C:\\Out --customer-id 12345");
     }
 }
