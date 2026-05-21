@@ -1,5 +1,6 @@
 /.idea
 /.vs
+/mcp-cursor-executed.txt
 /src/**/bin
 /src/**/obj
 /tests/**/bin

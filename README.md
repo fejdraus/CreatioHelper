@@ -52,6 +52,8 @@ Headless deployment automation following the same "execute what is filled in" ph
 creatio-cli [options]                          # Run deployment
 creatio-cli redis-clear [options]              # Clear Redis cache
 creatio-cli iis start|stop|restart [options]   # Manage IIS pools/sites (Windows)
+creatio-cli lic load [options]                 # Load license response file into Creatio
+creatio-cli lic request [options]              # Save license request file from Creatio
 ```
 
 **Options:**
@@ -71,8 +73,23 @@ creatio-cli iis start|stop|restart [options]   # Manage IIS pools/sites (Windows
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
 | `--no-iis-restart` | Skip IIS stop/start during compile (keeps process alive for IDE attach) |
+| `--quick-install` | Skip `RebuildWorkspace` and `BuildConfiguration` after package install (faster, like clio) |
 | `--no-color` | Disable ANSI colors |
 | `--quiet` | Only print `[ERROR]` lines |
+
+**`lic load` options:**
+
+| Flag | Description |
+|------|-------------|
+| `--lic-file <path>` | Path to the license response file (`.lic`) |
+
+**`lic request` options:**
+
+| Flag | Description |
+|------|-------------|
+| `--destination <path>` | Directory to save the license request file |
+| `--customer-id <id>` | Customer ID for the license request |
+| `--file-name <name>` | Output file name (optional) |
 
 **Examples:**
 
@@ -88,6 +105,15 @@ creatio-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --reset-unlocke
 
 # Restart IIS pool + site (no app touch)
 creatio-cli iis restart --iis-site AstanaMotors
+
+# Install packages without full rebuild (faster, incremental only)
+creatio-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --quick-install
+
+# Load a license response file
+creatio-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic
+
+# Save a license request file
+creatio-cli lic request --iis-site AstanaMotors --destination C:\licenses --customer-id 12345
 ```
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).
