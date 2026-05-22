@@ -2,7 +2,7 @@
 
 namespace CreatioHelper.Infrastructure.Logging
 {
-    public class BufferingOutputWriter : IOutputWriter
+    public class BufferingOutputWriter : IOutputWriter, INotifyCleared
     {
         private readonly Action<string> _writeAction;
         private readonly Action _clearAction;

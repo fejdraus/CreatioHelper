@@ -111,7 +111,10 @@ public partial class MainWindowViewModel : ObservableObject
         _metricsService.MetricsUpdated += async (_, _) =>
             await Dispatcher.UIThread.InvokeAsync(RefreshMetricsAsync);
 
-        _output.Cleared += () => Dispatcher.UIThread.InvokeAsync(ClearCharts);
+        if (_output is INotifyCleared notifyCleared)
+        {
+            notifyCleared.Cleared += () => Dispatcher.UIThread.InvokeAsync(ClearCharts);
+        }
 
         // Initialize asynchronously after construction
         _ = InitializeAsync();
