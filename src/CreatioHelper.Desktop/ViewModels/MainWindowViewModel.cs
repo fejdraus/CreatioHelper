@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -16,6 +16,14 @@ using CreatioHelper.Application.Mediator;
 using CreatioHelper.Application.Settings;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
+using LiveChartsCore;
+using LiveChartsCore.Defaults;
+using LiveChartsCore.SkiaSharpView;
+using LiveChartsCore.SkiaSharpView.Painting;
+using SkiaSharp;
+using System.Text.Json;
+using Avalonia.Threading;
+using Version = System.Version;
 
 namespace CreatioHelper.ViewModels;
 
@@ -36,6 +44,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IPackageCleaner _packageCleaner;
     private Version _sitePathWithVersion = new();
     private readonly IOutputWriter _output;
+    private readonly IMetricsService _metricsService;
 
     public MainWindowViewModel(
         IOutputWriter output,
@@ -48,9 +57,11 @@ public partial class MainWindowViewModel : ObservableObject
         ISystemServiceManager systemServiceManager,
         IRedisManagerFactory redisManagerFactory,
         IWorkspacePreparer workspacePreparer,
-        IPackageCleaner packageCleaner)
+        IPackageCleaner packageCleaner,
+        IMetricsService metricsService)
     {
         _output = output;
+        _metricsService = metricsService;
         _mediator = mediator;
         _operationsService = operationsService;
         _operationsService.PropertyChanged += (_, args) =>
@@ -60,6 +71,10 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(AreControlsEnabled));
                 OnPropertyChanged(nameof(CanRestartLocalIis));
+                if (!_operationsService.IsBusy)
+                {
+                    _ = RefreshMetricsAsync();
+                }
             }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
                 OnPropertyChanged(nameof(StartButtonText));
@@ -92,6 +107,11 @@ public partial class MainWindowViewModel : ObservableObject
             FileLogService.AppendLine(message);
             _output.WriteLine(message);
         };
+
+        _metricsService.MetricsUpdated += async (_, _) =>
+            await Dispatcher.UIThread.InvokeAsync(RefreshMetricsAsync);
+
+        _output.Cleared += () => Dispatcher.UIThread.InvokeAsync(ClearCharts);
 
         // Initialize asynchronously after construction
         _ = InitializeAsync();
@@ -364,6 +384,24 @@ public partial class MainWindowViewModel : ObservableObject
     public void ClearLogCommand()
     {
         _output.Clear();
+    }
+
+    private void ClearCharts()
+    {
+        _metricsService.ClearHistory();
+        foreach (var key in _pieSeriesMap.Keys.ToList())
+        {
+            _pieSeriesCollection.Remove(_pieSeriesMap[key].Series);
+            _pieSeriesMap.Remove(key);
+        }
+        foreach (var key in _pipelineSeriesMap.Keys.ToList())
+        {
+            _pipelineSeriesCollection.Remove(_pipelineSeriesMap[key].Series);
+            _pipelineSeriesMap.Remove(key);
+        }
+        PipelineXAxes = new[] { new Axis() };
+        PipelineYAxes = new[] { new Axis() };
+        TotalDurationText = string.Empty;
     }
     
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -651,8 +689,12 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToFileSystem",
-            () => _workspacePreparer.DownloadPackages(sitePath, string.Empty));
+        await _metricsService.MeasureAsync("creatio_to_fs", async () =>
+        {
+            await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToFileSystem",
+                () => _workspacePreparer.DownloadPackages(sitePath, string.Empty));
+            return true;
+        });
     }
 
     [RelayCommand]
@@ -685,13 +727,17 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
-            await Task.Run(() =>
+            await _metricsService.MeasureAsync("clean_validate", async () =>
             {
-                var cleanResult = _packageCleaner.CleanPackages(pkgPath);
-                if (!cleanResult.HasInvalidOtherJson && !cleanResult.HasInvalidJson && !cleanResult.HasCircularDependencies)
+                await Task.Run(() =>
                 {
-                    _output.WriteLine("No issues found.");
-                }
+                    var cleanResult = _packageCleaner.CleanPackages(pkgPath);
+                    if (!cleanResult.HasInvalidOtherJson && !cleanResult.HasInvalidJson && !cleanResult.HasCircularDependencies)
+                    {
+                        _output.WriteLine("No issues found.");
+                    }
+                });
+                return true;
             });
         }
         finally
@@ -711,8 +757,12 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToDB",
-            () => _workspacePreparer.LoadPackagesToDb(sitePath));
+        await _metricsService.MeasureAsync("fs_to_creatio", async () =>
+        {
+            await _operationsService.ExecuteWscOperationAsync(sitePath, "LoadPackagesToDB",
+                () => _workspacePreparer.LoadPackagesToDb(sitePath));
+            return true;
+        });
     }
 
     private string? GetResolvedSitePath()
@@ -1555,4 +1605,340 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     #endregion
+
+    [ObservableProperty]
+    private string _totalDurationText = string.Empty;
+
+    [ObservableProperty]
+    private IEnumerable<ISeries> _durationsSeries = Array.Empty<ISeries>();
+
+    private readonly ObservableCollection<ISeries> _pieSeriesCollection = new();
+    private readonly Dictionary<string, (PieSeries<ObservableValue> Series, ObservableValue Value)> _pieSeriesMap = new(StringComparer.Ordinal);
+
+    private readonly ObservableCollection<ISeries> _pipelineSeriesCollection = new();
+    private readonly Dictionary<string, (ColumnSeries<ObservablePoint> Series, ObservableCollection<ObservablePoint> Values)> _pipelineSeriesMap = new(StringComparer.Ordinal);
+
+    [ObservableProperty]
+    private IEnumerable<ISeries> _pipelineSeries = Array.Empty<ISeries>();
+
+    [ObservableProperty]
+    private IEnumerable<Axis> _pipelineYAxes = new[] { new Axis() };
+
+    [ObservableProperty]
+    private IEnumerable<Axis> _pipelineXAxes = new[] { new Axis() };
+
+    private static readonly HashSet<string> _excludedOperations = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "server_status_refresh",
+        "startup_operations"
+    };
+
+    private static bool IsExcludedOperation(string rawName)
+    {
+        var baseName = System.Text.RegularExpressions.Regex.Replace(rawName, @"\[.*?\]", "").TrimEnd('_', ' ');
+        return _excludedOperations.Contains(baseName);
+    }
+
+    private static readonly SKColor[] _chartPalette =
+    {
+        new SKColor(255, 85,  85),   // red
+        new SKColor(85,  170, 255),  // blue
+        new SKColor(85,  220, 120),  // green
+        new SKColor(255, 165, 0),    // orange
+        new SKColor(200, 100, 255),  // purple
+        new SKColor(0,   210, 210),  // cyan
+        new SKColor(255, 215, 0),    // yellow
+        new SKColor(255, 100, 180),  // hot pink
+        new SKColor(100, 255, 200),  // mint
+        new SKColor(255, 130, 60),   // deep orange
+        new SKColor(130, 100, 255),  // indigo
+        new SKColor(60,  220, 60),   // lime
+    };
+
+    private static int StableHash(string s)
+    {
+        unchecked
+        {
+            int h = 17;
+            foreach (var c in s.ToLowerInvariant()) { h = h * 31 + c; }
+            return Math.Abs(h);
+        }
+    }
+
+    private static SKColor PickColor(string formattedName, Dictionary<string, SKColor> map)
+    {
+        if (map.TryGetValue(formattedName, out var c)) { return c; }
+        var start = StableHash(formattedName) % _chartPalette.Length;
+        var used = new HashSet<SKColor>(map.Values);
+        for (int i = 0; i < _chartPalette.Length; i++)
+        {
+            var candidate = _chartPalette[(start + i) % _chartPalette.Length];
+            if (!used.Contains(candidate)) { c = candidate; break; }
+        }
+        map[formattedName] = c;
+        return c;
+    }
+
+    [RelayCommand]
+    private async Task RefreshMetricsAsync()
+    {
+        try
+        {
+            var metrics = await _metricsService.GetMetricsAsync();
+            var history = _metricsService.GetOperationHistory();
+
+            // Build shared color map: same name → same color in both charts
+            var colorMap = new Dictionary<string, SKColor>();
+            if (metrics.TryGetValue("durations", out var durObj) && durObj is Dictionary<string, object> durDict)
+            {
+                foreach (var k in durDict.Keys.Where(k => !IsExcludedOperation(k)))
+                    PickColor(FormatMetricName(k), colorMap);
+            }
+            foreach (var op in history.Where(op => !IsExcludedOperation(op.Name)))
+                PickColor(FormatMetricName(op.Name), colorMap);
+
+            // ── Pie chart ──────────────────────────────────────────────────
+            if (!ReferenceEquals(DurationsSeries, _pieSeriesCollection))
+            {
+                DurationsSeries = _pieSeriesCollection;
+            }
+
+            if (metrics.TryGetValue("durations", out var durationsObj) && durationsObj is Dictionary<string, object> durations)
+            {
+                var activeKeys = new HashSet<string>();
+                foreach (var kvp in durations.Where(kvp => !IsExcludedOperation(kvp.Key)))
+                {
+                    double avg = 0;
+                    if (kvp.Value is JsonElement je && je.TryGetProperty("Average", out var avgProp))
+                        avg = avgProp.GetDouble();
+                    else if (kvp.Value is Dictionary<string, object> dict && dict.TryGetValue("Average", out var avgObj))
+                        avg = Convert.ToDouble(avgObj);
+                    else
+                    {
+                        var pi = kvp.Value.GetType().GetProperty("Average");
+                        if (pi != null) { avg = Convert.ToDouble(pi.GetValue(kvp.Value)); }
+                    }
+
+                    if (avg <= 0) { continue; }
+
+                    var newValue = Math.Round(avg / 1000.0, 2);
+                    var name = FormatMetricName(kvp.Key);
+                    var color = PickColor(name, colorMap);
+                    activeKeys.Add(name);
+
+                    if (_pieSeriesMap.TryGetValue(name, out var existing))
+                    {
+                        existing.Value.Value = newValue;
+                    }
+                    else
+                    {
+                        var obsVal = new ObservableValue(newValue);
+                        var pieSeries = new PieSeries<ObservableValue>
+                        {
+                            Values = new[] { obsVal },
+                            Name = name,
+                            Fill = new SolidColorPaint(color),
+                            DataLabelsSize = 11,
+                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Middle,
+                            DataLabelsFormatter = p => DurationFormatter.Format(p.Coordinate.PrimaryValue * 1000),
+                            ToolTipLabelFormatter = p => $"{p.Context.Series.Name}  {DurationFormatter.Format(p.Coordinate.PrimaryValue * 1000)}"
+                        };
+                        _pieSeriesMap[name] = (pieSeries, obsVal);
+                        _pieSeriesCollection.Add(pieSeries);
+                    }
+                }
+
+                foreach (var key in _pieSeriesMap.Keys.Where(k => !activeKeys.Contains(k)).ToList())
+                {
+                    _pieSeriesCollection.Remove(_pieSeriesMap[key].Series);
+                    _pieSeriesMap.Remove(key);
+                }
+            }
+
+            // ── Pipeline chart ─────────────────────────────────────────────
+            var filteredHistory = history
+                .Where(op => !IsExcludedOperation(op.Name))
+                .ToList();
+
+            var totalMs = filteredHistory.Where(op => op.Success).Sum(op => op.DurationMs);
+            TotalDurationText = totalMs > 0 ? $"Total: {DurationFormatter.Format(totalMs)}" : string.Empty;
+
+            if (!ReferenceEquals(PipelineSeries, _pipelineSeriesCollection))
+            {
+                PipelineSeries = _pipelineSeriesCollection;
+            }
+
+            if (filteredHistory.Count > 0)
+            {
+                var uniqueNames = filteredHistory.Select(op => FormatMetricName(op.Name)).Distinct().ToList();
+                var activeKeys = new HashSet<string>(uniqueNames);
+
+                foreach (var opName in uniqueNames)
+                {
+                    var color = PickColor(opName, colorMap);
+                    var newPoints = filteredHistory
+                        .Select((op, i) => FormatMetricName(op.Name) == opName && op.Success
+                            ? (idx: i, dur: Math.Round(op.DurationMs, 1))
+                            : ((int idx, double dur)?)null)
+                        .Where(p => p.HasValue)
+                        .Select(p => p!.Value)
+                        .ToList();
+
+                    if (newPoints.Count == 0) { continue; }
+
+                    if (_pipelineSeriesMap.TryGetValue(opName, out var existing))
+                    {
+                        var vals = existing.Values;
+                        for (int i = 0; i < Math.Min(vals.Count, newPoints.Count); i++)
+                        {
+                            vals[i].X = newPoints[i].idx;
+                            vals[i].Y = newPoints[i].dur;
+                        }
+                        while (vals.Count > newPoints.Count) { vals.RemoveAt(vals.Count - 1); }
+                        for (int i = vals.Count; i < newPoints.Count; i++)
+                        {
+                            vals.Add(new ObservablePoint(newPoints[i].idx, newPoints[i].dur));
+                        }
+                    }
+                    else
+                    {
+                        var valuesCollection = new ObservableCollection<ObservablePoint>(
+                            newPoints.Select(p => new ObservablePoint(p.idx, p.dur)));
+                        var series = new ColumnSeries<ObservablePoint>
+                        {
+                            Values = valuesCollection,
+                            Name = opName,
+                            Fill = new SolidColorPaint(color),
+                            Stroke = null,
+                            MaxBarWidth = 24,
+                            IgnoresBarPosition = true,
+                            DataLabelsSize = 10,
+                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsFormatter = p =>
+                            {
+                                var v = p.Coordinate.PrimaryValue;
+                                return v > 0 ? DurationFormatter.Format(v) : string.Empty;
+                            }
+                        };
+                        _pipelineSeriesMap[opName] = (series, valuesCollection);
+                        _pipelineSeriesCollection.Add(series);
+                    }
+                }
+
+                // Error series
+                const string errorKey = "__error__";
+                var newErrorPoints = filteredHistory
+                    .Select((op, i) => !op.Success
+                        ? (idx: i, dur: Math.Round(op.DurationMs, 1))
+                        : ((int idx, double dur)?)null)
+                    .Where(p => p.HasValue)
+                    .Select(p => p!.Value)
+                    .ToList();
+
+                if (newErrorPoints.Count > 0)
+                {
+                    activeKeys.Add(errorKey);
+                    if (_pipelineSeriesMap.TryGetValue(errorKey, out var existingErr))
+                    {
+                        var vals = existingErr.Values;
+                        for (int i = 0; i < Math.Min(vals.Count, newErrorPoints.Count); i++)
+                        {
+                            vals[i].X = newErrorPoints[i].idx;
+                            vals[i].Y = newErrorPoints[i].dur;
+                        }
+                        while (vals.Count > newErrorPoints.Count) { vals.RemoveAt(vals.Count - 1); }
+                        for (int i = vals.Count; i < newErrorPoints.Count; i++)
+                        {
+                            vals.Add(new ObservablePoint(newErrorPoints[i].idx, newErrorPoints[i].dur));
+                        }
+                    }
+                    else
+                    {
+                        var valuesCollection = new ObservableCollection<ObservablePoint>(
+                            newErrorPoints.Select(p => new ObservablePoint(p.idx, p.dur)));
+                        var series = new ColumnSeries<ObservablePoint>
+                        {
+                            Values = valuesCollection,
+                            Name = "Error",
+                            Fill = new SolidColorPaint(new SKColor(220, 80, 80, 210)),
+                            Stroke = null,
+                            MaxBarWidth = 24,
+                            IgnoresBarPosition = true,
+                            DataLabelsSize = 10,
+                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsFormatter = p =>
+                            {
+                                var v = p.Coordinate.PrimaryValue;
+                                return v > 0 ? DurationFormatter.Format(v) : string.Empty;
+                            }
+                        };
+                        _pipelineSeriesMap[errorKey] = (series, valuesCollection);
+                        _pipelineSeriesCollection.Add(series);
+                    }
+                }
+
+                // Remove series no longer present
+                foreach (var key in _pipelineSeriesMap.Keys.Where(k => !activeKeys.Contains(k)).ToList())
+                {
+                    _pipelineSeriesCollection.Remove(_pipelineSeriesMap[key].Series);
+                    _pipelineSeriesMap.Remove(key);
+                }
+                var count = filteredHistory.Count;
+                PipelineXAxes = new[]
+                {
+                    new Axis
+                    {
+                        Labeler = v =>
+                        {
+                            var idx = (int)Math.Round(v);
+                            return (Math.Abs(v - idx) < 0.01 && idx >= 0 && idx < count)
+                                ? (idx + 1).ToString()
+                                : string.Empty;
+                        },
+                        MinStep = 1,
+                        ForceStepToMin = true,
+                        MinZoomDelta = 1,
+                        TextSize = 12
+                    }
+                };
+                var maxDuration = filteredHistory.Where(op => op.Success).Select(op => op.DurationMs).DefaultIfEmpty(0).Max();
+                PipelineYAxes = new[]
+                {
+                    new Axis
+                    {
+                        Labeler = v => DurationFormatter.Format(v),
+                        MinLimit = 0,
+                        MaxLimit = maxDuration * 1.3
+                    }
+                };
+            }
+            else
+            {
+                foreach (var key in _pipelineSeriesMap.Keys.ToList())
+                {
+                    _pipelineSeriesCollection.Remove(_pipelineSeriesMap[key].Series);
+                    _pipelineSeriesMap.Remove(key);
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Failed to refresh metrics: {ex.Message}");
+        }
+    }
+
+    private static string FormatMetricName(string name)
+    {
+        var cleaned = System.Text.RegularExpressions.Regex.Replace(name, @"\[.*?\]", "").TrimEnd('_', ' ');
+        if (cleaned.EndsWith("_success", StringComparison.OrdinalIgnoreCase))
+        {
+            cleaned = cleaned[..^"_success".Length];
+        }
+        cleaned = cleaned.TrimEnd('_');
+        return string.Join(" ", cleaned.Split('_')
+            .Select(w => string.Equals(w, "iis", StringComparison.OrdinalIgnoreCase)
+                ? "IIS"
+                : (w.Length > 0 ? char.ToUpper(w[0]) + w[1..] : w)));
+    }
 }

@@ -302,23 +302,36 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                         ? "Performing schema regeneration and full compilation (Compile All)..."
                         : "Performing incremental compilation (Compile)...");
                     bool success = false;
-                    _metricsService.Measure("schema_operations", () =>
+                    if (fullRebuild)
                     {
-                        if (fullRebuild)
+                        _metricsService.Measure("schema_regeneration", () =>
                         {
                             success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
-                            if (!success) return;
+                        });
 
-                            success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            if (!success) return;
-
-                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: true), "[ERROR] Building configuration failed.", cancellationToken);
+                        if (success)
+                        {
+                            _metricsService.Measure("schema_rebuild_workspace", () =>
+                            {
+                                success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
+                            });
                         }
-                        else
+
+                        if (success)
+                        {
+                            _metricsService.Measure("schema_compile_all", () =>
+                            {
+                                success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: true), "[ERROR] Building configuration failed.", cancellationToken);
+                            });
+                        }
+                    }
+                    else
+                    {
+                        _metricsService.Measure("schema_compile", () =>
                         {
                             success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: false), "[ERROR] Building configuration failed.", cancellationToken);
-                        }
-                    });
+                        });
+                    }
 
                     if (!success)
                     {

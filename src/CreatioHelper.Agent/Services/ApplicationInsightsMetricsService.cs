@@ -25,6 +25,12 @@ public class ApplicationInsightsMetricsService : IMetricsService
                                      !string.IsNullOrEmpty(configuration["ApplicationInsights:InstrumentationKey"]);
     }
 
+    public event EventHandler? MetricsUpdated
+    {
+        add => _baseMetricsService.MetricsUpdated += value;
+        remove => _baseMetricsService.MetricsUpdated -= value;
+    }
+
     public async Task<T> MeasureAsync<T>(string operationName, Func<Task<T>> operation, Dictionary<string, string>? tags = null)
     {
         // Always use the base service for local metrics
@@ -229,4 +235,9 @@ public class ApplicationInsightsMetricsService : IMetricsService
     {
         return _baseMetricsService.GetMetricsAsync();
     }
+
+    public IReadOnlyList<OperationRecord> GetOperationHistory(int maxCount = 40)
+        => _baseMetricsService.GetOperationHistory(maxCount);
+
+    public void ClearHistory() => _baseMetricsService.ClearHistory();
 }

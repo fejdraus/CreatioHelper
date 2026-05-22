@@ -18,9 +18,12 @@ namespace CreatioHelper.Infrastructure.Logging
             _writeAction(string.Concat(DateTime.Now, " ", line));
         }
 
+        public event Action? Cleared;
+
         public void Clear()
         {
             _clearAction();
+            Cleared?.Invoke();
         }
     }
 }

@@ -1,10 +1,17 @@
 namespace CreatioHelper.Application.Interfaces;
 
+public record OperationRecord(string Name, DateTime StartedAt, double DurationMs, bool Success);
+
 /// <summary>
 /// Service for collecting and sending performance metrics.
 /// </summary>
 public interface IMetricsService
 {
+    event EventHandler? MetricsUpdated;
+
+    IReadOnlyList<OperationRecord> GetOperationHistory(int maxCount = 40);
+    void ClearHistory();
+
     /// <summary>
     /// Measures execution time of an operation with optional tags.
     /// </summary>

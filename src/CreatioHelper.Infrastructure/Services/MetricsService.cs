@@ -7,10 +7,14 @@ namespace CreatioHelper.Infrastructure.Services;
 
 public class MetricsService : IMetricsService
 {
+    public event EventHandler? MetricsUpdated;
+
     private readonly ILogger<MetricsService> _logger;
     private readonly ConcurrentDictionary<string, long> _counters = new();
     private readonly ConcurrentDictionary<string, List<double>> _durations = new();
     private readonly ConcurrentDictionary<string, double> _gauges = new();
+    private readonly List<OperationRecord> _history = new();
+    private const int MaxHistorySize = 100;
 
     public MetricsService(ILogger<MetricsService> logger)
     {
@@ -22,6 +26,7 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(operationName))
             throw new ArgumentException("Operation name cannot be null or empty", nameof(operationName));
 
+        var startedAt = DateTime.Now;
         var stopwatch = Stopwatch.StartNew();
         var tagsString = tags != null ? string.Join(",", tags.Select(kv => $"{kv.Key}={kv.Value}")) : "";
         var metricKey = string.IsNullOrEmpty(tagsString) ? operationName : $"{operationName}[{tagsString}]";
@@ -30,25 +35,27 @@ public class MetricsService : IMetricsService
         {
             var result = await operation();
             stopwatch.Stop();
-            
+
             RecordDuration(metricKey, stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_success", tags);
-            
-            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, true);
+
+            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
-            
+
             return result;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            
+
             RecordDuration($"{metricKey}_error", stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_error", tags);
-            
-            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, false);
+
+            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
-            
+
             throw;
         }
     }
@@ -58,6 +65,7 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(operationName))
             throw new ArgumentException("Operation name cannot be null or empty", nameof(operationName));
 
+        var startedAt = DateTime.Now;
         var stopwatch = Stopwatch.StartNew();
         var metricKey = BuildMetricKey(operationName, tags);
 
@@ -65,23 +73,25 @@ public class MetricsService : IMetricsService
         {
             operation();
             stopwatch.Stop();
-            
+
             RecordDuration(metricKey, stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_success", tags);
-            
-            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, true);
+
+            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            
+
             RecordDuration($"{metricKey}_error", stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_error", tags);
-            
-            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, false);
+
+            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
-            
+
             throw;
         }
     }
@@ -91,6 +101,7 @@ public class MetricsService : IMetricsService
         if (string.IsNullOrEmpty(operationName))
             throw new ArgumentException("Operation name cannot be null or empty", nameof(operationName));
 
+        var startedAt = DateTime.Now;
         var stopwatch = Stopwatch.StartNew();
         var metricKey = BuildMetricKey(operationName, tags);
 
@@ -98,25 +109,27 @@ public class MetricsService : IMetricsService
         {
             var result = operation();
             stopwatch.Stop();
-            
+
             RecordDuration(metricKey, stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_success", tags);
-            
-            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, true);
+
+            _logger.LogDebug("Operation {OperationName} completed in {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
-            
+
             return result;
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
-            
+
             RecordDuration($"{metricKey}_error", stopwatch.Elapsed, tags);
             IncrementCounter($"{operationName}_error", tags);
-            
-            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms", 
+            AddToHistory(operationName, startedAt, stopwatch.Elapsed.TotalMilliseconds, false);
+
+            _logger.LogWarning(ex, "Operation {OperationName} failed after {Duration}ms",
                 operationName, stopwatch.ElapsedMilliseconds);
-            
+
             throw;
         }
     }
@@ -220,6 +233,39 @@ public class MetricsService : IMetricsService
         metrics["durations"] = durationStats;
         
         return Task.FromResult(metrics);
+    }
+
+    public IReadOnlyList<OperationRecord> GetOperationHistory(int maxCount = 40)
+    {
+        lock (_history)
+        {
+            return _history.TakeLast(maxCount).ToList();
+        }
+    }
+
+    public void ClearHistory()
+    {
+        lock (_history)
+        {
+            _history.Clear();
+        }
+        _counters.Clear();
+        _durations.Clear();
+        _gauges.Clear();
+        MetricsUpdated?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void AddToHistory(string name, DateTime startedAt, double durationMs, bool success)
+    {
+        lock (_history)
+        {
+            _history.Add(new OperationRecord(name, startedAt, durationMs, success));
+            if (_history.Count > MaxHistorySize)
+            {
+                _history.RemoveAt(0);
+            }
+        }
+        MetricsUpdated?.Invoke(this, EventArgs.Empty);
     }
 
     private void RecordDuration(string metricName, TimeSpan duration, Dictionary<string, string>? tags = null)

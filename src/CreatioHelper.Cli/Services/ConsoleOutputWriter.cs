@@ -4,6 +4,8 @@ namespace CreatioHelper.Cli.Services;
 
 public class ConsoleOutputWriter : IOutputWriter
 {
+    public event Action? Cleared;
+
     private readonly bool _useColor;
     private readonly bool _quiet;
 
@@ -56,5 +58,6 @@ public class ConsoleOutputWriter : IOutputWriter
 
     public void Clear()
     {
+        Cleared?.Invoke();
     }
 }

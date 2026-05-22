@@ -4,6 +4,9 @@
         xmlns:domain="clr-namespace:CreatioHelper.Domain.Entities;assembly=CreatioHelper.Domain"
         xmlns:converters="clr-namespace:CreatioHelper.Converters"
         xmlns:avalonEdit="clr-namespace:AvaloniaEdit;assembly=AvaloniaEdit"
+        xmlns:lvc="clr-namespace:LiveChartsCore.SkiaSharpView.Avalonia;assembly=LiveChartsCore.SkiaSharpView.Avalonia"
+        xmlns:local="clr-namespace:CreatioHelper"
+
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
@@ -30,8 +33,10 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
-        <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="10">
-            <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
+        <TabControl Grid.Column="0" Margin="5">
+            <TabItem Header="Deployment">
+                <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="5">
+                    <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*"/>
@@ -83,14 +88,14 @@
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
-                    <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}" 
-                             PlaceholderText="Enter path to Creatio application folder"
+                    <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}"
+                             Watermark="Enter path to Creatio application folder"
                              Margin="0,0,5,0"/>
                     <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
                 <TextBlock Text="Service Name (for service management):" Margin="0,5,0,0" />
-                <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}" 
-                         PlaceholderText="Enter service name for Linux/Windows service management" />
+                <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}"
+                         Watermark="Enter service name for Linux/Windows service management" />
             </StackPanel>
 
             <!-- Row 2: IIS Mode -->
@@ -133,7 +138,7 @@
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
-                             PlaceholderText="Enter path to packages folder for installation"
+                             Watermark="Enter path to packages folder for installation"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
                             Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
@@ -156,13 +161,13 @@
                 <TextBox Grid.Row="1" Grid.Column="0"
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
-                         PlaceholderText="Package names to delete before installation (comma-separated or one per line)"
+                         Watermark="Package names to delete before installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
-                         PlaceholderText="Package names to delete after installation (comma-separated or one per line)"
+                         Watermark="Package names to delete after installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
@@ -349,7 +354,34 @@
                              HorizontalAlignment="Right"
                              VerticalAlignment="Center"
                              Margin="0,3,0,0"/>
-        </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="Statistics">
+                <Grid RowDefinitions="Auto,*">
+                    <TextBlock Grid.Row="0"
+                               Text="{Binding TotalDurationText}"
+                               FontSize="22"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               Margin="0,0,0,8"
+                               IsVisible="{Binding TotalDurationText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <Grid Grid.Row="1" ColumnDefinitions="*,*">
+                        <StackPanel Grid.Column="0" Margin="5">
+                            <TextBlock Text="Operation Durations (seconds)" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <lvc:PieChart Series="{Binding DurationsSeries}" LegendPosition="Bottom" Height="400" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="5">
+                            <TextBlock Text="Execution Pipeline" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+                            <lvc:CartesianChart Series="{Binding PipelineSeries}" YAxes="{Binding PipelineYAxes}" XAxes="{Binding PipelineXAxes}" TooltipPosition="Center" ZoomMode="X" Height="400">
+    <lvc:CartesianChart.Tooltip>
+        <local:PipelineTooltip/>
+    </lvc:CartesianChart.Tooltip>
+</lvc:CartesianChart>
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
 
         <!-- Right panel: server list (static) -->
         <Border Grid.Column="1"
