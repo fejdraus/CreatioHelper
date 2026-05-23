@@ -11,7 +11,7 @@
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
         Width="1130" Height="670"
-        MinWidth="1130" MinHeight="400"
+        MinWidth="1130" MinHeight="620"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -357,7 +357,7 @@
                 </Grid>
             </TabItem>
             <TabItem Header="Statistics">
-                <Grid RowDefinitions="Auto,*">
+                <Grid RowDefinitions="Auto,Auto,Auto">
                     <TextBlock Grid.Row="0"
                                Text="{Binding TotalDurationText}"
                                FontSize="22"
@@ -368,7 +368,7 @@
                     <Grid Grid.Row="1" ColumnDefinitions="*,*">
                         <StackPanel Grid.Column="0" Margin="5">
                             <TextBlock Text="Operation Durations (seconds)" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
-                            <lvc:PieChart Series="{Binding DurationsSeries}" LegendPosition="Bottom" Height="400" />
+                            <lvc:PieChart Series="{Binding DurationsSeries}" LegendPosition="Hidden" Height="400" />
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="5">
                             <TextBlock Text="Execution Pipeline" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,10"/>
@@ -379,6 +379,25 @@
 </lvc:CartesianChart>
                         </StackPanel>
                     </Grid>
+                    <ItemsControl Grid.Row="2"
+                                  ItemsSource="{Binding LegendItems}"
+                                  HorizontalAlignment="Center"
+                                  Margin="0,8,0,4">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="6,3">
+                                    <Border Width="12" Height="12" Background="{Binding Brush}" CornerRadius="2" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" FontSize="14" VerticalAlignment="Center" Margin="5,0,0,0"/>
+                                    <TextBlock Text="{Binding Duration}" FontSize="14" Foreground="Gray" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </Grid>
             </TabItem>
         </TabControl>

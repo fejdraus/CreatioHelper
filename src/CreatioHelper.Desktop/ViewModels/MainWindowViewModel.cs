@@ -108,12 +108,18 @@ public partial class MainWindowViewModel : ObservableObject
             _output.WriteLine(message);
         };
 
-        _metricsService.MetricsUpdated += async (_, _) =>
-            await Dispatcher.UIThread.InvokeAsync(RefreshMetricsAsync);
+        _metricsService.MetricsUpdated += (_, _) =>
+            Dispatcher.UIThread.Post(() => _ = RefreshMetricsAsync());
 
         if (_output is INotifyCleared notifyCleared)
         {
             notifyCleared.Cleared += () => Dispatcher.UIThread.InvokeAsync(ClearCharts);
+        }
+
+        if (Avalonia.Application.Current is { } app)
+        {
+            app.ActualThemeVariantChanged += (_, _) =>
+                Dispatcher.UIThread.Post(() => { ClearChartSeries(); _ = RefreshMetricsAsync(); });
         }
 
         // Initialize asynchronously after construction
@@ -392,6 +398,12 @@ public partial class MainWindowViewModel : ObservableObject
     private void ClearCharts()
     {
         _metricsService.ClearHistory();
+        ClearChartSeries();
+    }
+
+    private void ClearChartSeries()
+    {
+        _sessionColorMap.Clear();
         foreach (var key in _pieSeriesMap.Keys.ToList())
         {
             _pieSeriesCollection.Remove(_pieSeriesMap[key].Series);
@@ -405,6 +417,7 @@ public partial class MainWindowViewModel : ObservableObject
         PipelineXAxes = new[] { new Axis() };
         PipelineYAxes = new[] { new Axis() };
         TotalDurationText = string.Empty;
+        LegendItems.Clear();
     }
     
     [RelayCommand(AllowConcurrentExecutions = true)]
@@ -1630,6 +1643,11 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private IEnumerable<Axis> _pipelineXAxes = new[] { new Axis() };
 
+    public record LegendItem(string Name, string Duration, Avalonia.Media.SolidColorBrush Brush);
+
+    [ObservableProperty]
+    private ObservableCollection<LegendItem> _legendItems = new();
+
     private static readonly HashSet<string> _excludedOperations = new(StringComparer.OrdinalIgnoreCase)
     {
         "server_status_refresh",
@@ -1642,44 +1660,84 @@ public partial class MainWindowViewModel : ObservableObject
         return _excludedOperations.Contains(baseName);
     }
 
-    private static readonly SKColor[] _chartPalette =
+    // Light theme: Okabe-Ito (Nature Methods 2011) + Paul Tol bright supplements
+    private static readonly SKColor[] _chartPaletteLight =
     {
-        new SKColor(255, 85,  85),   // red
-        new SKColor(85,  170, 255),  // blue
-        new SKColor(85,  220, 120),  // green
-        new SKColor(255, 165, 0),    // orange
-        new SKColor(200, 100, 255),  // purple
-        new SKColor(0,   210, 210),  // cyan
-        new SKColor(255, 215, 0),    // yellow
-        new SKColor(255, 100, 180),  // hot pink
-        new SKColor(100, 255, 200),  // mint
-        new SKColor(255, 130, 60),   // deep orange
-        new SKColor(130, 100, 255),  // indigo
-        new SKColor(60,  220, 60),   // lime
+        new SKColor(68,  170, 153),  // teal            #44AA99
+        new SKColor(86,  180, 233),  // sky blue        #56B4E9
+        new SKColor(0,   158, 115),  // bluish green    #009E73
+        new SKColor(0,   114, 178),  // blue            #0072B2
+        new SKColor(180, 30,  60),   // crimson         #B41E3C
+        new SKColor(204, 121, 167),  // reddish purple  #CC79A7
+        new SKColor(85,  68,  204),  // indigo          #5544CC
+        new SKColor(68,  119, 170),  // Tol blue        #4477AA
+        new SKColor(238, 102, 119),  // Tol red         #EE6677
+        new SKColor(34,  136, 51),   // Tol green       #228833
+        new SKColor(170, 51,  119),  // Tol purple      #AA3377
+        new SKColor(102, 204, 238),  // Tol cyan        #66CCEE
     };
 
-    private static int StableHash(string s)
+    private static readonly SKColor[] _chartPaletteDark = _chartPaletteLight;
+
+    private static SKColor[] GetActivePalette()
     {
-        unchecked
-        {
-            int h = 17;
-            foreach (var c in s.ToLowerInvariant()) { h = h * 31 + c; }
-            return Math.Abs(h);
-        }
+        var variant = Avalonia.Application.Current?.ActualThemeVariant;
+        return variant == Avalonia.Styling.ThemeVariant.Light
+            ? _chartPaletteLight
+            : _chartPaletteDark;
     }
 
-    private static SKColor PickColor(string formattedName, Dictionary<string, SKColor> map)
+    private static SolidColorPaint GetLabelPaint() =>
+        Avalonia.Application.Current?.ActualThemeVariant == Avalonia.Styling.ThemeVariant.Light
+            ? new SolidColorPaint(new SKColor(30, 30, 30))
+            : new SolidColorPaint(SKColors.White);
+
+    private readonly Dictionary<string, SKColor> _sessionColorMap = new(StringComparer.Ordinal);
+
+    private static double ColorDistance(SKColor a, SKColor b)
     {
-        if (map.TryGetValue(formattedName, out var c)) { return c; }
-        var start = StableHash(formattedName) % _chartPalette.Length;
-        var used = new HashSet<SKColor>(map.Values);
-        for (int i = 0; i < _chartPalette.Length; i++)
+        double dr = a.Red - b.Red, dg = a.Green - b.Green, db = a.Blue - b.Blue;
+        return dr * dr + dg * dg + db * db;
+    }
+
+    private Dictionary<string, SKColor> BuildColorMap(
+        IReadOnlyList<OperationRecord> history,
+        IEnumerable<string> durKeys)
+    {
+        var palette = GetActivePalette();
+
+        // collect names in pipeline order (first appearance)
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        var orderedNames = new List<string>();
+        foreach (var op in history.Where(op => !IsExcludedOperation(op.Name)))
         {
-            var candidate = _chartPalette[(start + i) % _chartPalette.Length];
-            if (!used.Contains(candidate)) { c = candidate; break; }
+            var n = FormatMetricName(op.Name);
+            if (seen.Add(n)) { orderedNames.Add(n); }
         }
-        map[formattedName] = c;
-        return c;
+        foreach (var k in durKeys.Where(k => !IsExcludedOperation(k)))
+        {
+            var n = FormatMetricName(k);
+            if (seen.Add(n)) { orderedNames.Add(n); }
+        }
+
+        // assign: reuse session color if known, else greedy max-distance pick
+        foreach (var name in orderedNames.Where(n => !_sessionColorMap.ContainsKey(n)))
+        {
+            var used = _sessionColorMap.Values.ToList();
+            SKColor best = palette[0];
+            double bestScore = -1;
+            foreach (var candidate in palette)
+            {
+                if (used.Contains(candidate)) { continue; }
+                double score = used.Count == 0
+                    ? double.MaxValue
+                    : used.Min(u => ColorDistance(candidate, u));
+                if (score > bestScore) { bestScore = score; best = candidate; }
+            }
+            _sessionColorMap[name] = best;
+        }
+
+        return orderedNames.ToDictionary(n => n, n => _sessionColorMap[n], StringComparer.Ordinal);
     }
 
     [RelayCommand]
@@ -1690,15 +1748,12 @@ public partial class MainWindowViewModel : ObservableObject
             var metrics = await _metricsService.GetMetricsAsync();
             var history = _metricsService.GetOperationHistory();
 
-            // Build shared color map: same name → same color in both charts
-            var colorMap = new Dictionary<string, SKColor>();
-            if (metrics.TryGetValue("durations", out var durObj) && durObj is Dictionary<string, object> durDict)
-            {
-                foreach (var k in durDict.Keys.Where(k => !IsExcludedOperation(k)))
-                    PickColor(FormatMetricName(k), colorMap);
-            }
-            foreach (var op in history.Where(op => !IsExcludedOperation(op.Name)))
-                PickColor(FormatMetricName(op.Name), colorMap);
+            // Build shared color map: greedy max-distance, pipeline order
+            metrics.TryGetValue("durations", out var durObj);
+            var durDict = durObj as Dictionary<string, object>;
+            var colorMap = BuildColorMap(history, durDict?.Keys ?? Enumerable.Empty<string>());
+
+            var legendData = new Dictionary<string, (double AvgMs, SKColor Color)>();
 
             // ── Pie chart ──────────────────────────────────────────────────
             if (!ReferenceEquals(DurationsSeries, _pieSeriesCollection))
@@ -1726,8 +1781,9 @@ public partial class MainWindowViewModel : ObservableObject
 
                     var newValue = Math.Round(avg / 1000.0, 2);
                     var name = FormatMetricName(kvp.Key);
-                    var color = PickColor(name, colorMap);
+                    var color = colorMap.GetValueOrDefault(name);
                     activeKeys.Add(name);
+                    legendData[name] = (avg, color);
 
                     if (_pieSeriesMap.TryGetValue(name, out var existing))
                     {
@@ -1741,8 +1797,8 @@ public partial class MainWindowViewModel : ObservableObject
                             Values = new[] { obsVal },
                             Name = name,
                             Fill = new SolidColorPaint(color),
-                            DataLabelsSize = 11,
-                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsSize = 15,
+                            DataLabelsPaint = GetLabelPaint(),
                             DataLabelsPosition = LiveChartsCore.Measure.PolarLabelsPosition.Middle,
                             DataLabelsFormatter = p => DurationFormatter.Format(p.Coordinate.PrimaryValue * 1000),
                             ToolTipLabelFormatter = p => $"{p.Context.Series.Name}  {DurationFormatter.Format(p.Coordinate.PrimaryValue * 1000)}"
@@ -1779,7 +1835,7 @@ public partial class MainWindowViewModel : ObservableObject
 
                 foreach (var opName in uniqueNames)
                 {
-                    var color = PickColor(opName, colorMap);
+                    var color = colorMap.GetValueOrDefault(opName);
                     var newPoints = filteredHistory
                         .Select((op, i) => FormatMetricName(op.Name) == opName && op.Success
                             ? (idx: i, dur: Math.Round(op.DurationMs, 1))
@@ -1816,8 +1872,8 @@ public partial class MainWindowViewModel : ObservableObject
                             Stroke = null,
                             MaxBarWidth = 24,
                             IgnoresBarPosition = true,
-                            DataLabelsSize = 10,
-                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsSize = 15,
+                            DataLabelsPaint = GetLabelPaint(),
                             DataLabelsFormatter = p =>
                             {
                                 var v = p.Coordinate.PrimaryValue;
@@ -1868,8 +1924,8 @@ public partial class MainWindowViewModel : ObservableObject
                             Stroke = null,
                             MaxBarWidth = 24,
                             IgnoresBarPosition = true,
-                            DataLabelsSize = 10,
-                            DataLabelsPaint = new SolidColorPaint(SKColors.White),
+                            DataLabelsSize = 15,
+                            DataLabelsPaint = GetLabelPaint(),
                             DataLabelsFormatter = p =>
                             {
                                 var v = p.Coordinate.PrimaryValue;
@@ -1902,7 +1958,8 @@ public partial class MainWindowViewModel : ObservableObject
                         MinStep = 1,
                         ForceStepToMin = true,
                         MinZoomDelta = 1,
-                        TextSize = 12
+                        TextSize = 14,
+                        LabelsPaint = GetLabelPaint()
                     }
                 };
                 var maxDuration = filteredHistory.Where(op => op.Success).Select(op => op.DurationMs).DefaultIfEmpty(0).Max();
@@ -1912,7 +1969,8 @@ public partial class MainWindowViewModel : ObservableObject
                     {
                         Labeler = v => DurationFormatter.Format(v),
                         MinLimit = 0,
-                        MaxLimit = maxDuration * 1.3
+                        MaxLimit = maxDuration * 1.3,
+                        LabelsPaint = GetLabelPaint()
                     }
                 };
             }
@@ -1924,12 +1982,47 @@ public partial class MainWindowViewModel : ObservableObject
                     _pipelineSeriesMap.Remove(key);
                 }
             }
+
+            // Update shared legend with name + duration
+            var legendNames = legendData.Keys.ToHashSet();
+            foreach (var item in LegendItems.Where(i => !legendNames.Contains(i.Name)).ToList())
+            {
+                LegendItems.Remove(item);
+            }
+            foreach (var kvp in legendData)
+            {
+                var existing = LegendItems.FirstOrDefault(i => i.Name == kvp.Key);
+                var dur = DurationFormatter.Format(kvp.Value.AvgMs);
+                var c = kvp.Value.Color;
+                var brush = new Avalonia.Media.SolidColorBrush(
+                    Avalonia.Media.Color.FromArgb(c.Alpha, c.Red, c.Green, c.Blue));
+                if (existing == null)
+                {
+                    LegendItems.Add(new LegendItem(kvp.Key, dur, brush));
+                }
+                else if (existing.Duration != dur)
+                {
+                    var idx = LegendItems.IndexOf(existing);
+                    LegendItems[idx] = new LegendItem(kvp.Key, dur, brush);
+                }
+            }
         }
         catch (Exception ex)
         {
             _output.WriteLine($"[ERROR] Failed to refresh metrics: {ex.Message}");
         }
     }
+
+    private static readonly Dictionary<string, string> _displayNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["schema_regeneration"]      = "Regeneration",
+        ["schema_rebuild_workspace"] = "Rebuild Workspace",
+        ["schema_compile_all"]       = "Compile All",
+        ["schema_compile"]           = "Compile",
+        ["creatio_to_fs"]            = "Creatio to FS",
+        ["fs_to_creatio"]            = "FS to Creatio",
+        ["clean_validate"]           = "Clean & Validate",
+    };
 
     private static string FormatMetricName(string name)
     {
@@ -1939,6 +2032,10 @@ public partial class MainWindowViewModel : ObservableObject
             cleaned = cleaned[..^"_success".Length];
         }
         cleaned = cleaned.TrimEnd('_');
+        if (_displayNames.TryGetValue(cleaned, out var display))
+        {
+            return display;
+        }
         return string.Join(" ", cleaned.Split('_')
             .Select(w => string.Equals(w, "iis", StringComparison.OrdinalIgnoreCase)
                 ? "IIS"
