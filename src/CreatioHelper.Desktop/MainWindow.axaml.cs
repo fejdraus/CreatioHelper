@@ -90,11 +90,12 @@ namespace CreatioHelper
             var packageCleaner = new PackageCleaner(writer);
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
+            var webConfigEditor = provider.GetRequiredService<IWebConfigEditor>();
 
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>
@@ -117,6 +118,21 @@ namespace CreatioHelper
                 }
             };
             SitePathTextBox.TextChanged += SitePathTextBox_TextChanged;
+            _viewModel.PropertyChanged += (_, args) =>
+            {
+                if (args.PropertyName is nameof(MainWindowViewModel.SitePath)
+                    or nameof(MainWindowViewModel.SelectedIisSite)
+                    or nameof(MainWindowViewModel.IsFolderMode)
+                    or nameof(MainWindowViewModel.IsIisMode))
+                {
+                    _viewModel.ToolsVm.LoadConfigCommand.Execute(null);
+                }
+            };
+            _viewModel.ToolsVm.SaveFailed += async (_, msg) =>
+            {
+                var dialog = new SaveErrorWindow(msg);
+                await dialog.ShowDialog(this);
+            };
             Closing += OnMainWindowClosing;
             Closed += OnMainWindowClosed;
 

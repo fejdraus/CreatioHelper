@@ -12,6 +12,7 @@ using CreatioHelper.Models;
 using CreatioHelper.Services;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Mediator;
 using CreatioHelper.Application.Settings;
 using System.Threading;
@@ -46,6 +47,8 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IOutputWriter _output;
     private readonly IMetricsService _metricsService;
 
+    public ToolsViewModel ToolsVm { get; }
+
     public MainWindowViewModel(
         IOutputWriter output,
         IMediator mediator,
@@ -58,9 +61,11 @@ public partial class MainWindowViewModel : ObservableObject
         IRedisManagerFactory redisManagerFactory,
         IWorkspacePreparer workspacePreparer,
         IPackageCleaner packageCleaner,
-        IMetricsService metricsService)
+        IMetricsService metricsService,
+        IWebConfigEditor webConfigEditor)
     {
         _output = output;
+        ToolsVm = new ToolsViewModel(webConfigEditor, GetResolvedSitePath);
         _metricsService = metricsService;
         _mediator = mediator;
         _operationsService = operationsService;

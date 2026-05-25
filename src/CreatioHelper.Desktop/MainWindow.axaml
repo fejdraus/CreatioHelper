@@ -11,7 +11,7 @@
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
         Width="1130" Height="670"
-        MinWidth="1130" MinHeight="620"
+        MinWidth="1130" MinHeight="630"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -33,7 +33,7 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
-        <TabControl Grid.Column="0" Margin="5">
+        <TabControl x:Name="MainTabControl" Grid.Column="0" Margin="5">
             <TabItem Header="Deployment">
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="5">
                     <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
@@ -355,6 +355,92 @@
                              VerticalAlignment="Center"
                              Margin="0,3,0,0"/>
                 </Grid>
+            </TabItem>
+            <TabItem Header="Web.config" IsVisible="{Binding ToolsVm.IsConfigLoaded}">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="16,12" Spacing="0" DataContext="{Binding ToolsVm}">
+
+                        <!-- Form grid -->
+                        <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+
+                            <!-- Server path -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Domain server (IP/name):"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ServerPath}"
+                                     Margin="0,0,0,8" Height="32"/>
+
+                            <!-- Distinguished Name -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Distinguished Name:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DistinguishedName}"
+                                     Margin="0,0,0,8" Height="32"/>
+
+                            <!-- Auth providers -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Auth providers:"
+                                       VerticalAlignment="Top" Margin="0,4,12,8"/>
+                            <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Spacing="4">
+                                <CheckBox Content="InternalUserPassword" IsChecked="{Binding InternalUserPassword}"/>
+                                <CheckBox Content="SSPUserPassword"      IsChecked="{Binding SspUserPassword}"/>
+                                <CheckBox Content="Ldap"                 IsChecked="{Binding Ldap}"/>
+                                <CheckBox Content="SSPLdapProvider"      IsChecked="{Binding SspLdapProvider}"/>
+                                <CheckBox Content="SsoAuthProvider"      IsChecked="{Binding SsoAuthProvider}"/>
+                                <CheckBox Content="SSPSsoAuthProvider"   IsChecked="{Binding SspSsoAuthProvider}"/>
+                            </StackPanel>
+
+                            <!-- DB schema -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="DB schema name:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CurrentSchemaName}"
+                                     Margin="0,0,0,8" Height="32"/>
+
+                            <!-- LDAP pass-through -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="LDAP pass-through auth:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding UsePathThroughAuthentication}"
+                                      Margin="0,0,0,8"/>
+
+                            <!-- File design mode -->
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="File system dev mode:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding FileDesignMode}"
+                                      Margin="0,0,0,8"/>
+
+                            <!-- HTTPS (not applicable for .NET Core) -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Enable HTTPS:"
+                                       IsVisible="{Binding !IsNetCore}"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <StackPanel Grid.Row="6" Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                                        IsVisible="{Binding !IsNetCore}"
+                                        Margin="0,0,0,8" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding HttpsEncrypted}"/>
+                                <NumericUpDown Value="{Binding PortForClientConnection}"
+                                               Minimum="1" Maximum="65535" Increment="1"
+                                               Width="120" Height="32"
+                                               IsVisible="{Binding HttpsEncrypted}"
+                                               ToolTip.Tip="HTTPS port"/>
+                            </StackPanel>
+
+                            <!-- Proxy -->
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="Enable proxy:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="10"
+                                        Margin="0,0,0,8" VerticalAlignment="Center">
+                                <CheckBox IsChecked="{Binding EnableProxy}"/>
+                                <TextBox Text="{Binding ProxyAddress}"
+                                         Width="280" Height="32"
+                                         Watermark="http://proxy:port"
+                                         IsVisible="{Binding EnableProxy}"/>
+                            </StackPanel>
+
+                            <!-- Quartz -->
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Quartz schedulers:"
+                                       VerticalAlignment="Center" Margin="0,0,12,8"/>
+                            <CheckBox Grid.Row="8" Grid.Column="1" IsChecked="{Binding QuartzEnabled}"
+                                      Margin="0,0,0,8"/>
+                        </Grid>
+
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem Header="Statistics">
                 <Grid RowDefinitions="Auto,Auto,Auto">

@@ -33,6 +33,7 @@ public static class ServiceCollectionExtensions
     {
         // Core services
         services.AddSingleton<IMetricsService, MetricsService>();
+        services.AddSingleton<IWebConfigEditor, WebConfigEditor>();
         
         // Health check services
         services.AddSingleton<IHealthCheckService, HealthCheckService>();

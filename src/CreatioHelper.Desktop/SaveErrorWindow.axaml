@@ -1,0 +1,11 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="CreatioHelper.SaveErrorWindow"
+        Width="400" Height="150"
+        WindowStartupLocation="CenterOwner"
+        Title="Save error" CanResize="False">
+    <StackPanel Margin="16" Spacing="12">
+        <TextBlock x:Name="MessageText" TextWrapping="Wrap"/>
+        <Button HorizontalAlignment="Right" Width="80" Content="OK" Click="Ok_Click"/>
+    </StackPanel>
+</Window>
