@@ -91,11 +91,14 @@ namespace CreatioHelper
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
             var webConfigEditor = provider.GetRequiredService<IWebConfigEditor>();
+            var moduleCleanup = provider.GetRequiredService<IModuleCleanupService>();
+            var windowsFeatures = provider.GetRequiredService<IWindowsFeaturesService>();
+            var svnCleanup = provider.GetRequiredService<ITerrasoftSvnCleanupService>();
 
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, moduleCleanup, windowsFeatures, svnCleanup);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>
@@ -132,6 +135,10 @@ namespace CreatioHelper
             {
                 var dialog = new SaveErrorWindow(msg);
                 await dialog.ShowDialog(this);
+            };
+            _viewModel.ScriptsVm.NavigateToLog += (_, _) =>
+            {
+                MainTabControl.SelectedIndex = 0;
             };
             Closing += OnMainWindowClosing;
             Closed += OnMainWindowClosed;

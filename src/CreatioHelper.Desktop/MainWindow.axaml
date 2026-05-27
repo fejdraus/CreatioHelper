@@ -10,8 +10,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="1130" Height="670"
-        MinWidth="1130" MinHeight="630"
+        Width="1145" Height="670"
+        MinWidth="1145" MinHeight="630"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
@@ -33,7 +33,7 @@
     </Window.Resources>
 
     <Grid ColumnDefinitions="*,Auto">
-        <TabControl x:Name="MainTabControl" Grid.Column="0" Margin="5">
+        <TabControl x:Name="MainTabControl" Grid.Column="0">
             <TabItem Header="Deployment">
                 <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,*,Auto" Margin="5">
                     <Grid Grid.Row="0" Margin="0,0,0,5" VerticalAlignment="Center">
@@ -355,6 +355,37 @@
                              VerticalAlignment="Center"
                              Margin="0,3,0,0"/>
                 </Grid>
+            </TabItem>
+            <TabItem Header="Tools">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                    <StackPanel Margin="16,12" Spacing="12" DataContext="{Binding ScriptsVm}">
+                        <Border IsVisible="{x:Static converters:PlatformInfo.IsWindows}"
+                                BorderBrush="{DynamicResource SystemBaseMediumLowColor}" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock FontWeight="SemiBold" Text="Enable Windows features for Creatio (.NET Framework)"/>
+                                <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                                           Text="Enables IIS, WCF, MSMQ, .NET 3.5 and other Windows components required for Creatio on .NET Framework. Requires administrator rights."/>
+                                <Button Content="Run" Command="{Binding RunWindowsFeaturesCommand}" HorizontalAlignment="Left" Width="80"/>
+                            </StackPanel>
+                        </Border>
+                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock FontWeight="SemiBold" Text="Remove redundant module records"/>
+                                <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                                           Text="Deletes orphaned records from SysModuleEdit, SysDetail, SysModuleEntity, SysDetailLcz, SysModuleEditLcz where referenced schemas no longer exist. Supports MSSQL, PostgreSQL and Oracle."/>
+                                <Button Content="Run" Command="{Binding RunModuleCleanupCommand}" HorizontalAlignment="Left" Width="80"/>
+                            </StackPanel>
+                        </Border>
+                        <Border BorderBrush="{DynamicResource SystemBaseMediumLowColor}" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <StackPanel Spacing="8">
+                                <TextBlock FontWeight="SemiBold" Text="Remove Terrasoft SVN settings"/>
+                                <TextBlock TextWrapping="Wrap" Opacity="0.7" FontSize="12"
+                                           Text="Deletes .svn folders inside Crt* packages under the Pkg directory. These SVN settings belong to the Terrasoft vendor and interfere with configuring your own SVN on the Pkg folder."/>
+                                <Button Content="Run" Command="{Binding RunSvnCleanupCommand}" HorizontalAlignment="Left" Width="80"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
             </TabItem>
             <TabItem Header="Web.config" IsVisible="{Binding ToolsVm.IsConfigLoaded}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">

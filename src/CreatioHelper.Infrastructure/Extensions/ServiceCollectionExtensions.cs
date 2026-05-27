@@ -58,6 +58,9 @@ public static class ServiceCollectionExtensions
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
         services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
         services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
+        services.AddTransient<IModuleCleanupService, ModuleCleanupService>();
+        services.AddTransient<IWindowsFeaturesService, WindowsFeaturesService>();
+        services.AddTransient<ITerrasoftSvnCleanupService, TerrasoftSvnCleanupService>();
         
         // Remove SystemMetricsCollector registration here - it is registered in the Agent project
         

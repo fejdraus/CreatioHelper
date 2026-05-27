@@ -48,6 +48,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IMetricsService _metricsService;
 
     public ToolsViewModel ToolsVm { get; }
+    public ScriptsViewModel ScriptsVm { get; }
 
     public MainWindowViewModel(
         IOutputWriter output,
@@ -62,10 +63,14 @@ public partial class MainWindowViewModel : ObservableObject
         IWorkspacePreparer workspacePreparer,
         IPackageCleaner packageCleaner,
         IMetricsService metricsService,
-        IWebConfigEditor webConfigEditor)
+        IWebConfigEditor webConfigEditor,
+        IModuleCleanupService moduleCleanup,
+        IWindowsFeaturesService windowsFeatures,
+        ITerrasoftSvnCleanupService svnCleanup)
     {
         _output = output;
         ToolsVm = new ToolsViewModel(webConfigEditor, GetResolvedSitePath);
+        ScriptsVm = new ScriptsViewModel(_output, windowsFeatures, moduleCleanup, svnCleanup, GetResolvedSitePath);
         _metricsService = metricsService;
         _mediator = mediator;
         _operationsService = operationsService;
@@ -78,7 +83,7 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(CanRestartLocalIis));
                 if (!_operationsService.IsBusy)
                 {
-                    _ = RefreshMetricsAsync();
+                    _ = Dispatcher.UIThread.InvokeAsync(RefreshMetricsAsync);
                 }
             }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
