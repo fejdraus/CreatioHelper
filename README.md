@@ -186,38 +186,6 @@ dotnet run --project src/CreatioHelper.Desktop
 dotnet run --project src/CreatioHelper.Agent
 ```
 
-## CI/CD
-
-Build and release pipelines are configured with GitHub Actions:
-
-- `release.yml` — **Stable**. Auto-runs on push to `main` when `<Version>` in `src/CreatioHelper.Desktop/CreatioHelper.csproj` changes; creates tag `vX.Y.Z` and a non-prerelease GitHub Release with `win-x64` and `linux-x64` ZIPs.
-- `beta.yml` — **Beta**. Manual via `workflow_dispatch` from any branch; produces prerelease tag `vX.Y.Z-beta.<run_number>` and Release flagged as `prerelease`.
-- `_build.yml` — Reusable workflow called by both. Runs the `win-x64` + `linux-x64` matrix, builds self-contained single-file artifacts with native libs bundled and ReadyToRun pre-compilation enabled, then publishes the Release.
-
-The Desktop application is built with Avalonia, providing true cross-platform support for Windows, Linux, and macOS.
-
-## Testing
-
-Testing is done using `xUnit`, `Moq`, and `coverlet`:
-
-- `tests/CreatioHelper.Tests`: unit tests for business logic, utilities, and infrastructure.
-- `tests/CreatioHelper.Agent.Tests`: unit tests for Agent API controllers.
-
-Run tests:
-
-```bash
-dotnet test
-```
-
-## Architecture
-
-The project follows Clean Architecture principles:
-
-- `Domain` — models and business logic without dependencies.
-- `Application` — use-case interfaces and commands.
-- `Infrastructure` — implementation of external integrations.
-- `Desktop` and `Agent` — UI and API clients.
-
 ## Documentation
 
 - **[User Guide](./USER_GUIDE.md)** - Complete guide for using CreatioHelper Desktop application
