@@ -19,7 +19,7 @@
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.8" />
 
     <!-- MudBlazor UI Components -->
-    <PackageReference Include="MudBlazor" Version="9.4.0" />
+    <PackageReference Include="MudBlazor" Version="9.5.0" />
 
     <!-- Local Storage for settings persistence -->
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />

@@ -21,6 +21,7 @@ using CreatioHelper.Infrastructure.DependencyInjection;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Logging;
 using Microsoft.Extensions.DependencyInjection;
+using System.Runtime.Versioning;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Logging;
@@ -59,7 +60,10 @@ public static class ServiceCollectionExtensions
         services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
         services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
         services.AddTransient<IModuleCleanupService, ModuleCleanupService>();
-        services.AddTransient<IWindowsFeaturesService, WindowsFeaturesService>();
+        if (OperatingSystem.IsWindows())
+        {
+            services.AddTransient<IWindowsFeaturesService, WindowsFeaturesService>();
+        }
         services.AddTransient<ITerrasoftSvnCleanupService, TerrasoftSvnCleanupService>();
         
         // Remove SystemMetricsCollector registration here - it is registered in the Agent project

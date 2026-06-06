@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
     <PackageReference Include="Google.Protobuf" Version="3.35.0" />
-    <PackageReference Include="Grpc.Tools" Version="2.80.0" PrivateAssets="All" />
+    <PackageReference Include="Grpc.Tools" Version="2.81.0" PrivateAssets="All" />
 
     <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
@@ -26,12 +26,12 @@
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.8" />
     <PackageReference Include="System.Management.Automation" Version="7.6.2" />
-    <PackageReference Include="StackExchange.Redis" Version="2.13.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.10" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.8" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
-    <PackageReference Include="Npgsql" Version="10.0.2" />
-    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.7.0" />
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+    <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.8" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.8" />
 
@@ -39,7 +39,7 @@
     <PackageReference Include="prometheus-net" Version="8.2.1" />
 
     <!-- GeoIP for relay server selection optimization -->
-    <PackageReference Include="MaxMind.GeoIP2" Version="5.4.1" />
+    <PackageReference Include="MaxMind.GeoIP2" Version="6.0.0" />
 
     <!-- SemVer 2.0 parsing/comparison for auto-update version checks -->
     <PackageReference Include="NuGet.Versioning" Version="7.6.0" />
