@@ -11,6 +11,12 @@ public class DtoServerInfo : INotifyPropertyChanged
     private string? _siteName;
     private List<string> _syncthingFolderIds = new();
     private string? _syncthingDeviceId;
+    private string? _sshHost;
+    private int _sshPort = 22;
+    private string? _sshUser;
+    private string? _sshPassword;
+    private string? _sshKeyPath;
+    private List<string> _fileCopyFolderPaths = new();
 
 
     public string? Name
@@ -37,10 +43,6 @@ public class DtoServerInfo : INotifyPropertyChanged
         set => SetField(ref _siteName, value);
     }
 
-    /// <summary>
-    /// List of Syncthing folder IDs for this server (e.g., ["default", "bin-folder"])
-    /// Supports multiple folders per server
-    /// </summary>
     public List<string> SyncthingFolderIds
     {
         get => _syncthingFolderIds;
@@ -53,9 +55,42 @@ public class DtoServerInfo : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Syncthing device ID for this server (e.g., "XXXXXXX-YYYYYYY-ZZZZZZZ-...")
-    /// </summary>
+    public string? SshHost
+    {
+        get => _sshHost;
+        set => SetField(ref _sshHost, value);
+    }
+
+    public int SshPort
+    {
+        get => _sshPort;
+        set => SetField(ref _sshPort, value);
+    }
+
+    public string? SshUser
+    {
+        get => _sshUser;
+        set => SetField(ref _sshUser, value);
+    }
+
+    public string? SshPassword
+    {
+        get => _sshPassword;
+        set => SetField(ref _sshPassword, value);
+    }
+
+    public string? SshKeyPath
+    {
+        get => _sshKeyPath;
+        set => SetField(ref _sshKeyPath, value);
+    }
+
+    public List<string> FileCopyFolderPaths
+    {
+        get => _fileCopyFolderPaths;
+        set => SetField(ref _fileCopyFolderPaths, value);
+    }
+
     public string? SyncthingDeviceId
     {
         get => _syncthingDeviceId;
@@ -68,9 +103,6 @@ public class DtoServerInfo : INotifyPropertyChanged
         }
     }
 
-    /// <summary>
-    /// Returns "Yes" if both Syncthing Device ID and at least one Folder ID are configured, "No" otherwise
-    /// </summary>
     public string HasSyncthingConfig =>
         !string.IsNullOrEmpty(SyncthingDeviceId) && SyncthingFolderIds.Count > 0
             ? "Yes"

@@ -49,6 +49,19 @@ public partial class AddServerWindow : Window
         }
     }
 
+    private void AddFileCopyFolderButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.AddFolderPath();
+    }
+
+    private void RemoveFileCopyFolderButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.CommandParameter is string path)
+        {
+            ViewModel.RemoveFolderPath(path);
+        }
+    }
+
     private async Task ShowValidationError(string? message)
     {
         if (string.IsNullOrWhiteSpace(message))

@@ -5,11 +5,15 @@ public class CliArgs
     public string? Command { get; set; }
     public string? SubCommand { get; set; }
     public Dictionary<string, string?> Options { get; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, List<string>> MultiOptions { get; } = new(StringComparer.OrdinalIgnoreCase);
     public HashSet<string> Flags { get; } = new(StringComparer.OrdinalIgnoreCase);
     public List<string> Positional { get; } = new();
 
     public string? Get(string key) => Options.TryGetValue(key, out var v) ? v : null;
     public bool HasFlag(string key) => Flags.Contains(key);
+
+    public string[] GetAll(string key) =>
+        MultiOptions.TryGetValue(key, out var list) ? list.ToArray() : [];
 
     public static CliArgs Parse(string[] args)
     {
@@ -35,7 +39,14 @@ public class CliArgs
                 string key = a.Substring(2);
                 if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
                 {
-                    result.Options[key] = args[i + 1];
+                    var value = args[i + 1];
+                    result.Options[key] = value;
+                    if (!result.MultiOptions.TryGetValue(key, out var list))
+                    {
+                        list = new List<string>();
+                        result.MultiOptions[key] = list;
+                    }
+                    list.Add(value);
                     i++;
                 }
                 else

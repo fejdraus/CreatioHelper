@@ -257,7 +257,8 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                 if (string.IsNullOrWhiteSpace(packagesPath) &&
                     string.IsNullOrWhiteSpace(packagesBefore) &&
-                    string.IsNullOrWhiteSpace(packagesAfter))
+                    string.IsNullOrWhiteSpace(packagesAfter) &&
+                    options.Compile != CompileMode.None)
                 {
                     schemaRebuildPerformed = true;
 
@@ -340,12 +341,12 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 bool usedSyncthingOrchestration = false;
                 bool usedManagePoolsOnly = false;
 
-                if (!schemaRebuildPerformed && OperatingSystem.IsWindows() && serverList.Length > 0 && options.HasRemoteServers)
+                if (!schemaRebuildPerformed && serverList.Length > 0 && options.HasRemoteServers)
                 {
                     ui.OnStopButtonEnabledChanged(false);
                     if (!cancellationToken.IsCancellationRequested)
                     {
-                        if (options.Sync == SyncMode.Syncthing && options.SyncthingMonitor != null)
+                        if (options.Sync == SyncMode.Syncthing && OperatingSystem.IsWindows() && options.SyncthingMonitor != null)
                         {
                             await PerformSyncthingOrchestrationAsync(manager, localServerInfo, nestedPath, serverList, options.SyncthingMonitor, cancellationToken).ConfigureAwait(false);
                             usedSyncthingOrchestration = true;
@@ -368,7 +369,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                                 return;
                             }
                         }
-                        else
+                        else if (OperatingSystem.IsWindows())
                         {
                             await ManageServerPoolsOnlyAsync(new List<ServerInfo>(serverList), options.HasRemoteServers, serversAlreadyStopped, cancellationToken).ConfigureAwait(false);
                             usedManagePoolsOnly = true;

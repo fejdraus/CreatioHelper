@@ -44,9 +44,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         {
             return false;
         }
-        string confPath = Path.Combine(sitePath, "Terrasoft.WebApp", "conf");
-        string configPath = Path.Combine(sitePath, "Terrasoft.WebApp", "Terrasoft.Configuration");
-        var copyTasks = targetServers.Select(server => CopyServerFilesAsync(server, confPath, configPath, cancellationToken)).ToList();
+        var copyTasks = targetServers.Select(server => CopyServerFilesAsync(server, sitePath, cancellationToken)).ToList();
         try
         {
             await Task.WhenAll(copyTasks).ConfigureAwait(false);
@@ -141,7 +139,7 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
         return true;
     }
 
-    private async Task CopyServerFilesAsync(ServerInfo server, string confPath, string configPath, CancellationToken cancellationToken)
+    private async Task CopyServerFilesAsync(ServerInfo server, string sitePath, CancellationToken cancellationToken)
     {
         try
         {
@@ -157,20 +155,33 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                         return;
                     }
 
-                    string destConfPath = Path.Combine(networkPath, "Terrasoft.WebApp", "conf");
-                    string destConfigPath = Path.Combine(networkPath, "Terrasoft.WebApp", "Terrasoft.Configuration");
+                    var folders = SyncFolderResolver.Resolve(server, sitePath);
+                    if (folders.Count == 0)
+                    {
+                        _output.WriteLine($"[WARN] No sync folders found for '{server.Name ?? "Unknown"}'");
+                        return;
+                    }
 
                     _output.WriteLine($"[INFO] Starting to copy files to {server.Name ?? "Unknown"}...");
-                    if (cancellationToken.IsCancellationRequested)
+                    foreach (var relPath in folders)
                     {
-                        return;
+                        if (cancellationToken.IsCancellationRequested)
+                        {
+                            return;
+                        }
+
+                        var normalizedRel = relPath.Replace('/', Path.DirectorySeparatorChar);
+                        var srcDir = Path.Combine(sitePath, normalizedRel);
+                        var dstDir = Path.Combine(networkPath, normalizedRel);
+
+                        if (!Directory.Exists(srcDir))
+                        {
+                            _output.WriteLine($"[WARN] Source folder not found, skipping: {srcDir}");
+                            continue;
+                        }
+
+                        await _fileCopyHelper.CopyAsync(server, srcDir, dstDir, cancellationToken).ConfigureAwait(false);
                     }
-                    await _fileCopyHelper.CopyAsync(server, confPath, destConfPath, cancellationToken).ConfigureAwait(false);
-                    if (cancellationToken.IsCancellationRequested)
-                    {
-                        return;
-                    }
-                    await _fileCopyHelper.CopyAsync(server, configPath, destConfigPath, cancellationToken).ConfigureAwait(false);
                     if (cancellationToken.IsCancellationRequested)
                     {
                         return;

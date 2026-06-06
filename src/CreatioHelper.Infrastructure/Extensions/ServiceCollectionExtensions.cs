@@ -32,15 +32,10 @@ public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration? configuration = null)
     {
-        // Core services
         services.AddSingleton<IMetricsService, MetricsService>();
         services.AddSingleton<IWebConfigEditor, WebConfigEditor>();
-        
-        // Health check services
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
         services.AddSingleton<CreatioHelperHealthCheck>();
-        
-        // OutputWriter for logging
         services.AddSingleton<IOutputWriter>(_ =>
         {
             return new BufferingOutputWriter(
@@ -48,14 +43,8 @@ public static class ServiceCollectionExtensions
                 () => OutputWriterHandlers.ClearAction()
             );
         });
-        
-        // File copy service
-        services.AddSingleton<IFileCopyHelper, RobocopyFileCopyHelper>();
-        
-        // Redis Manager Factory for Redis operations
+        services.AddSingleton<IFileCopyHelper, SftpFileCopyHelper>();
         services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
-
-        // Workspace operations
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
         services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
         services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
@@ -65,53 +54,35 @@ public static class ServiceCollectionExtensions
             services.AddTransient<IWindowsFeaturesService, WindowsFeaturesService>();
         }
         services.AddTransient<ITerrasoftSvnCleanupService, TerrasoftSvnCleanupService>();
-        
-        // Remove SystemMetricsCollector registration here - it is registered in the Agent project
-        
-        // Settings service - simple implementation without caching for up-to-date data
         services.AddSingleton<ISettingsService, SettingsService>();
-
-        // Server status - fetch actual data without caching
         services.AddSingleton<IServerStatusService, ServerStatusService>();
-
-        // System service manager
         services.AddSingleton<ISystemServiceManager, SystemServiceManager>();
-
-        // Platform-specific IIS services
         if (OperatingSystem.IsWindows())
         {
             services.AddSingleton<IIisManager, WindowsIisManager>();
-            services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>(); // Keep for backward compatibility
+            services.AddSingleton<IRemoteIisManager, WindowsRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, WindowsSiteSynchronizer>();
         }
         else if (OperatingSystem.IsMacOS())
         {
-            services.AddSingleton<IIisManager, WindowsIisManager>(); // Use WindowsIisManager for cross-platform compatibility
+            services.AddSingleton<IIisManager, WindowsIisManager>();
             services.AddSingleton<IRemoteIisManager, MacOsRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, MacOsSiteSynchronizer>();
         }
         else if (OperatingSystem.IsLinux())
         {
-            services.AddSingleton<IIisManager, WindowsIisManager>(); // Use WindowsIisManager for cross-platform compatibility
+            services.AddSingleton<IIisManager, WindowsIisManager>();
             services.AddSingleton<IRemoteIisManager, LinuxRemoteIisManager>();
             services.AddSingleton<ISiteSynchronizer, LinuxSiteSynchronizer>();
         }
-
-        // Configuration managers
         services.AddSingleton<IAppSettingsManager, AppSettingsManager>();
-
-        // Auto-update service
         services.AddHttpClient(nameof(UpdateService))
             .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<IUpdateService, UpdateService>();
-        
-        // Database services (if configuration is provided)
         if (configuration != null)
         {
             services.AddSyncDatabase(configuration);
         }
-        
-        // NAT traversal services
         services.AddSingleton<INatService, NatService>();
         services.AddSingleton<IPmpService, PmpService>();
         services.AddSingleton<IUPnPService, SyncthingUPnPService>();
@@ -123,14 +94,8 @@ public static class ServiceCollectionExtensions
             var pmpService = provider.GetService<IPmpService>();
             return new CombinedNatService(logger, config, upnpService, pmpService);
         });
-
-        // Pending devices/folders service for Syncthing compatibility
         services.AddSingleton<IPendingService, PendingService>();
-
-        // LDAP authentication service
         services.AddSingleton<ILdapAuthService, LdapAuthService>();
-
-        // Cluster key auto-pairing
         if (configuration != null)
         {
             services.Configure<ClusterKeyConfiguration>(

@@ -72,32 +72,51 @@ If no packages or deletions are specified, the **Start** button triggers:
 
 ## Server Synchronization
 
-### Adding Servers
+CreatioHelper supports two sync modes selectable in Settings:
+
+- **File Copy (SFTP)** — incremental rsync-style sync over SSH. Works from any OS to Linux/macOS targets.
+- **Syncthing** — external Syncthing-based sync via REST API.
+
+### Adding Servers (File Copy / SFTP mode)
 
 1. Open the **Servers Sync** panel.
-2. Add each server's:
+2. Click **Add Server** and fill in:
 
-   - **Name:** Hostname or IP.
-   - **Network Path:** UNC path to the site's root.
-   - **Site Name:** IIS site name.
-   - **Pool Name:** IIS application pool name.
+   - **Name** *(required)*: display label for this server.
+   - **Site Name / Pool Name**: IIS site and pool (Windows targets only).
+   - **Remote site path** *(required)*: absolute path on the target server (e.g. `/var/www/creatio`).
+   - **Service name**: systemd/launchctl service to stop/start during sync (leave empty to skip).
+   - **SSH host** *(required)*: IP address or hostname of the target server.
+   - **Port**: SSH port (default `22`).
+   - **SSH username** *(required)*: login on the target server.
+   - **SSH auth** *(one required)*: either a password **or** a path to a private key file.
+   - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty for auto-detection.
 
-### Synchronization Process
+### Auto-detection of sync folders
 
-When enabled, after main server update:
+When no folders are specified, CreatioHelper detects the Creatio edition automatically:
 
-1. Stop IIS Sites and Pools on all added servers.
-2. Copy updated configuration and binaries from the main server.
-3. Restart Sites and Pools on each server.
-4. Output log reflects success or issues per server.
+| Edition | Synced folders |
+|---------|----------------|
+| .NET Core | `Terrasoft.Configuration` |
+| .NET Framework | `Terrasoft.WebApp/Terrasoft.Configuration`, `Terrasoft.WebApp/conf` |
+
+### Synchronization Process (SFTP)
+
+After the main deployment step:
+
+1. Stop the remote service via SSH (`sudo systemctl stop <service>`), if configured.
+2. Copy only **changed** files via SFTP (compared by size and modification time, 2-second tolerance).
+3. Start the remote service via SSH.
+4. Output log shows each copied file and the total count per server.
 
 ---
 
 ## Tips & Best Practices
 
 - Always **backup** Creatio databases and files before starting.
-- Run as **Administrator** to ensure IIS and remote commands execute correctly.
-- Verify **WinRM** is enabled for remote server commands.
+- Run as **Administrator** on Windows to ensure IIS commands execute correctly.
+- For SFTP sync, ensure the target server has an SSH daemon running and the specified user has write access to the site directory.
 - Prefer **Folder Mode** on Linux or when IIS is not available.
 - Keep Redis available if used, as the tool clears its cache post-deployment.
 
@@ -109,7 +128,7 @@ When enabled, after main server update:
 | ------------------------------- | ----------------------------- | ---------------------------- |
 | _Creatio application not found_ | Incorrect folder or IIS site  | Verify selected path/site    |
 | _Access Denied errors_          | Missing admin privileges      | Run as Administrator         |
-| _Remote servers show Error_     | WinRM not enabled or firewall | Enable WinRM, check firewall |
+| _Remote servers show Error_     | SSH unreachable or wrong credentials | Check host/port/user/password, ensure sshd is running |
 | _Redis flush failed_            | Redis unavailable             | Ensure Redis is running      |
 
 ---

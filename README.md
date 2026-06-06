@@ -29,7 +29,7 @@
 - **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
 - **Redis Integration**: Check Redis status and clear cache after deployments
 - **Multi-Server Synchronization**: Apply changes across multiple Creatio instances simultaneously
-  - Traditional file copy synchronization
+  - **SFTP File Copy**: Incremental rsync-style synchronization over SSH/SFTP (SSH.NET). Works from any OS to any Linux/macOS target — only changed files are transferred (size + mtime comparison). Per-server SSH credentials (password or private key). Configurable folder list per server with auto-detection fallback (`Terrasoft.Configuration` for .NET Core, `Terrasoft.WebApp/Terrasoft.Configuration` + `Terrasoft.WebApp/conf` for .NET Framework).
   - **External Syncthing Integration**: Connect to external Syncthing instance via REST API
     - Real-time synchronization monitoring via Events API
     - Multi-folder support (e.g., separate folders for Terrasoft.WebApp and bin)
@@ -44,16 +44,16 @@
 - **Automation**: Scriptable deployments and operations
 - **Built-in Sync** _(in development)_: Native Syncthing-inspired sync protocol implementation ([planned features](./SYNC_README.md))
 
-### CLI (`creatio-cli`)
+### CLI (`creatio-helper-cli`)
 
 Headless deployment automation following the same "execute what is filled in" philosophy as the Desktop app. Available for `win-x64` and `linux-x64` in every release ZIP.
 
 ```bash
-creatio-cli [options]                          # Run deployment
-creatio-cli redis-clear [options]              # Clear Redis cache
-creatio-cli iis start|stop|restart [options]   # Manage IIS pools/sites (Windows)
-creatio-cli lic load [options]                 # Load license response file into Creatio
-creatio-cli lic request [options]              # Save license request file from Creatio
+creatio-helper-cli [options]                          # Run deployment
+creatio-helper-cli redis-clear [options]              # Clear Redis cache
+creatio-helper-cli iis start|stop|restart [options]   # Manage IIS pools/sites (Windows)
+creatio-helper-cli lic load [options]                 # Load license response file into Creatio
+creatio-helper-cli lic request [options]              # Save license request file from Creatio
 ```
 
 **Options:**
@@ -69,8 +69,10 @@ creatio-cli lic request [options]              # Save license request file from 
 | `--delete-after "A,B"` | Delete packages after installation |
 | `--prevalidate true\|false` | Prevalidate before install |
 | `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
-| `--compile incremental\|full` | Compile strategy (default: incremental) |
+| `--compile incremental\|full\|none` | Compile strategy (`none` skips compilation entirely — useful for file-sync-only runs) |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
+| `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). Keys: `name`, `host`, `port`, `user`, `pass`, `key`, `path`, `service` |
+| `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty for auto-detection. |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
 | `--no-iis-restart` | Skip IIS stop/start during compile (keeps process alive for IDE attach) |
 | `--quick-install` | Skip `RebuildWorkspace` and `BuildConfiguration` after package install (faster, like clio) |
@@ -95,25 +97,39 @@ creatio-cli lic request [options]              # Save license request file from 
 
 ```bash
 # Run a full deploy using a saved settings file
-creatio-cli --settings .\deploy.json
+creatio-helper-cli --settings .\deploy.json
 
 # Compile-only with no Redis clear and no IIS restart (IDE attach scenario)
-creatio-cli --iis-site AstanaMotors --compile incremental --no-redis-clear --no-iis-restart
+creatio-helper-cli --iis-site AstanaMotors --compile incremental --no-redis-clear --no-iis-restart
 
 # Install packages and extend the IsLocked/IsChanged reset to developer packages
-creatio-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --reset-unlocked-flags
+creatio-helper-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --reset-unlocked-flags
 
 # Restart IIS pool + site (no app touch)
-creatio-cli iis restart --iis-site AstanaMotors
+creatio-helper-cli iis restart --iis-site AstanaMotors
 
 # Install packages without full rebuild (faster, incremental only)
-creatio-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --quick-install
+creatio-helper-cli --iis-site AstanaMotors --packages-path C:\drop\pkgs --quick-install
+
+# Sync files to a Linux server via SFTP (skip compilation, skip Redis)
+creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
+  --server "name=PROD,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=creatio" \
+  --sync-folders "Terrasoft.Configuration"
+
+# Same via settings file, with CLI override for a different target
+creatio-helper-cli --settings deploy.json --sync files --compile none \
+  --server "name=STAGING,host=10.0.0.6,port=22,user=deploy,pass=secret,path=/var/www/creatio-staging,service=creatio"
+
+# Sync to multiple servers simultaneously
+creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
+  --server "name=SERVER1,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=" \
+  --server "name=SERVER2,host=10.0.0.6,port=22,user=deploy,pass=secret,path=/var/www/creatio,service="
 
 # Load a license response file
-creatio-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic
+creatio-helper-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic
 
 # Save a license request file
-creatio-cli lic request --iis-site AstanaMotors --destination C:\licenses --customer-id 12345
+creatio-helper-cli lic request --iis-site AstanaMotors --destination C:\licenses --customer-id 12345
 ```
 
 For detailed usage instructions, see the [User Guide](./USER_GUIDE.md).

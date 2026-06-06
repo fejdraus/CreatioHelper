@@ -29,7 +29,7 @@ internal static class CliEntryPoint
         if (args[0] == "--version")
         {
             var ver = typeof(CliEntryPoint).Assembly.GetName().Version?.ToString() ?? "unknown";
-            Console.WriteLine($"creatio-cli {ver}");
+            Console.WriteLine($"creatio-helper-cli {ver}");
             return 0;
         }
 
@@ -196,7 +196,7 @@ internal static class CliEntryPoint
         var action = cli.SubCommand?.ToLowerInvariant();
         if (string.IsNullOrWhiteSpace(action) || (action != "start" && action != "stop" && action != "restart"))
         {
-            output.WriteLine("[ERROR] Use: creatio-cli iis start|stop|restart");
+            output.WriteLine("[ERROR] Use: creatio-helper-cli iis start|stop|restart");
             return 2;
         }
 
@@ -244,7 +244,7 @@ internal static class CliEntryPoint
         var action = cli.SubCommand?.ToLowerInvariant();
         if (action != "load" && action != "request")
         {
-            output.WriteLine("[ERROR] Use: creatio-cli lic load|request");
+            output.WriteLine("[ERROR] Use: creatio-helper-cli lic load|request");
             return 2;
         }
 
@@ -317,6 +317,61 @@ internal static class CliEntryPoint
         {
             s.ResetUnlockedPackageFlags = true;
         }
+
+        var serverArgs = cli.GetAll("server");
+        if (serverArgs.Length > 0)
+        {
+            s.ServerList.Clear();
+            foreach (var arg in serverArgs)
+            {
+                var server = ParseServerArg(arg);
+                if (server != null)
+                {
+                    s.ServerList.Add(server);
+                }
+            }
+            s.IsServerPanelVisible = true;
+            s.EnableFileCopySynchronization = true;
+        }
+
+        if (cli.Get("sync-folders") is { Length: > 0 } syncFolders)
+        {
+            var paths = syncFolders
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            foreach (var server in s.ServerList)
+            {
+                server.FileCopyFolderPaths = paths;
+            }
+        }
+    }
+
+    private static ServerInfo? ParseServerArg(string arg)
+    {
+        var dict = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var part in arg.Split(',', StringSplitOptions.RemoveEmptyEntries))
+        {
+            var eq = part.IndexOf('=');
+            if (eq > 0)
+            {
+                dict[part[..eq].Trim()] = part[(eq + 1)..].Trim();
+            }
+        }
+
+        if (!dict.TryGetValue("name", out var name) || string.IsNullOrWhiteSpace(name))
+        {
+            return null;
+        }
+
+        var server = new ServerInfo { Name = name };
+        if (dict.TryGetValue("host", out var host)) server.SshHost = host;
+        if (dict.TryGetValue("port", out var portStr) && int.TryParse(portStr, out var port)) server.SshPort = port;
+        if (dict.TryGetValue("user", out var user)) server.SshUser = user;
+        if (dict.TryGetValue("pass", out var pass)) server.SshPassword = pass;
+        if (dict.TryGetValue("key", out var key)) server.SshKeyPath = key;
+        if (dict.TryGetValue("path", out var path)) server.NetworkPath = path;
+        if (dict.TryGetValue("service", out var service)) server.ServiceName = service;
+        return server;
     }
 
     private static IisSiteInfo? ResolveSiteContext(AppSettings s, IOutputWriter output)
@@ -433,6 +488,7 @@ internal static class CliEntryPoint
         {
             "full" => CompileMode.Full,
             "incremental" => CompileMode.Incremental,
+            "none" => CompileMode.None,
             _ => CompileMode.Default
         };
     }
@@ -456,14 +512,14 @@ internal static class CliEntryPoint
 
     private static void PrintHelp()
     {
-        Console.WriteLine("creatio-cli — Creatio deployment CLI");
+        Console.WriteLine("creatio-helper-cli — Creatio deployment CLI");
         Console.WriteLine();
         Console.WriteLine("Usage:");
-        Console.WriteLine("  creatio-cli [options]                            Run deployment (only steps with non-empty values)");
-        Console.WriteLine("  creatio-cli redis-clear [options]                Clear Redis cache");
-        Console.WriteLine("  creatio-cli iis start|stop|restart [options]     Manage IIS pools/sites");
-        Console.WriteLine("  creatio-cli lic load [options]                   Load license response file into Creatio");
-        Console.WriteLine("  creatio-cli lic request [options]                Save license request file from Creatio");
+        Console.WriteLine("  creatio-helper-cli [options]                            Run deployment (only steps with non-empty values)");
+        Console.WriteLine("  creatio-helper-cli redis-clear [options]                Clear Redis cache");
+        Console.WriteLine("  creatio-helper-cli iis start|stop|restart [options]     Manage IIS pools/sites");
+        Console.WriteLine("  creatio-helper-cli lic load [options]                   Load license response file into Creatio");
+        Console.WriteLine("  creatio-helper-cli lic request [options]                Save license request file from Creatio");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --settings <path>            Load AppSettings from JSON (same format as Desktop settings.json)");
@@ -477,6 +533,9 @@ internal static class CliEntryPoint
         Console.WriteLine("  --reset-unlocked-flags       Reset IsLocked/IsChanged on unlocked packages (locked are reset by default)");
         Console.WriteLine("  --compile incremental|full        Compile strategy (default: full if packages, incremental otherwise)");
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
+        Console.WriteLine("  --sync-folders \"A,B\"          Relative folder paths to sync (e.g. \"Terrasoft.Configuration,Terrasoft.WebApp/conf\")");
+        Console.WriteLine("  --server \"name=X,...\"         Add target server (repeatable; replaces ServerList from settings)");
+        Console.WriteLine("                               Keys: name, host, port, user, pass, key, path, service");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");
         Console.WriteLine("  --quick-install              Skip RebuildWorkspace and BuildConfiguration after package install (faster, like clio)");
@@ -492,14 +551,14 @@ internal static class CliEntryPoint
         Console.WriteLine("  --file-name <name>           Output file name (optional)");
         Console.WriteLine();
         Console.WriteLine("Examples:");
-        Console.WriteLine("  creatio-cli --settings .\\deploy.json");
-        Console.WriteLine("  creatio-cli --site C:\\Site --compile full");
-        Console.WriteLine("  creatio-cli --site C:\\Site --packages-path C:\\Pkgs");
-        Console.WriteLine("  creatio-cli --site C:\\Site --packages-path C:\\Pkgs --quick-install");
-        Console.WriteLine("  creatio-cli --iis-site \"Default Web Site\"");
-        Console.WriteLine("  creatio-cli --iis-site \"Default Web Site/creatio\" --packages-path C:\\Pkgs");
-        Console.WriteLine("  creatio-cli iis restart --settings .\\deploy.json");
-        Console.WriteLine("  creatio-cli lic load --site C:\\Site --lic-file C:\\license.lic");
-        Console.WriteLine("  creatio-cli lic request --site C:\\Site --destination C:\\Out --customer-id 12345");
+        Console.WriteLine("  creatio-helper-cli --settings .\\deploy.json");
+        Console.WriteLine("  creatio-helper-cli --site C:\\Site --compile full");
+        Console.WriteLine("  creatio-helper-cli --site C:\\Site --packages-path C:\\Pkgs");
+        Console.WriteLine("  creatio-helper-cli --site C:\\Site --packages-path C:\\Pkgs --quick-install");
+        Console.WriteLine("  creatio-helper-cli --iis-site \"Default Web Site\"");
+        Console.WriteLine("  creatio-helper-cli --iis-site \"Default Web Site/creatio\" --packages-path C:\\Pkgs");
+        Console.WriteLine("  creatio-helper-cli iis restart --settings .\\deploy.json");
+        Console.WriteLine("  creatio-helper-cli lic load --site C:\\Site --lic-file C:\\license.lic");
+        Console.WriteLine("  creatio-helper-cli lic request --site C:\\Site --destination C:\\Out --customer-id 12345");
     }
 }
