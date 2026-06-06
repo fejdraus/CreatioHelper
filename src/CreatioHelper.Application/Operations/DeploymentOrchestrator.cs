@@ -78,27 +78,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                                      !string.IsNullOrWhiteSpace(packagesBefore) ||
                                      !string.IsNullOrWhiteSpace(packagesAfter);
 
-                bool fullRebuild = options.Compile switch
-                {
-                    CompileMode.Full => true,
-                    CompileMode.Incremental => false,
-                    CompileMode.Auto => true,
-                    _ => true
-                };
-
-                if (options.Compile == CompileMode.Incremental && hasPackageOps)
-                {
-                    _output.WriteLine("[INFO] Package operations require full rebuild — Compile mode overridden to Compile All.");
-                    fullRebuild = true;
-                }
-                else if (options.Compile == CompileMode.Auto)
-                {
-                    fullRebuild = hasPackageOps;
-                    if (!fullRebuild)
-                    {
-                        fullRebuild = false;
-                    }
-                }
+                bool fullRebuild = options.Compile == CompileMode.Full;
 
                 _output.WriteLine("Prepare WorkspaceConsole ...");
                 preparer.Prepare(sitePath, out quartzIsActiveOriginal);

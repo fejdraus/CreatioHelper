@@ -707,7 +707,9 @@ public class WorkspacePreparer : IWorkspacePreparer
 
     private string GetConfigurationPath(string sitePath) => Path.Combine(GetWebAppPath(sitePath), "Terrasoft.Configuration");
 
-    private bool IsDotNetFramework(string sitePath) => Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"));
+    private bool IsDotNetFramework(string sitePath) =>
+        !File.Exists(Path.Combine(sitePath, "Terrasoft.WebHost.dll.config")) &&
+        Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"));
 
     string SafePath(string path) => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 

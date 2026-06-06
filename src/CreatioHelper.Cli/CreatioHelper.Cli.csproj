@@ -6,7 +6,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <AssemblyName>creatio-cli</AssemblyName>
         <RootNamespace>CreatioHelper.Cli</RootNamespace>
-        <Version>1.0.10</Version>
+        <Version>1.0.11</Version>
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 

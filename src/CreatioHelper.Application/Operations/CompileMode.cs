@@ -2,7 +2,7 @@ namespace CreatioHelper.Application.Operations;
 
 public enum CompileMode
 {
-    Auto,
+    Default,
     Incremental,
     Full
 }

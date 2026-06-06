@@ -20,7 +20,7 @@ public class DeploymentOptions
     public bool ResetUnlockedPackageFlags { get; set; }
     public bool QuickInstall { get; set; }
 
-    public CompileMode Compile { get; set; } = CompileMode.Auto;
+    public CompileMode Compile { get; set; } = CompileMode.Default;
     public SyncMode Sync { get; set; } = SyncMode.None;
 
     public IReadOnlyList<ServerInfo> Servers { get; set; } = Array.Empty<ServerInfo>();

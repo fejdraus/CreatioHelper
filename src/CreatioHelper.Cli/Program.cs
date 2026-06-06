@@ -433,7 +433,7 @@ internal static class CliEntryPoint
         {
             "full" => CompileMode.Full,
             "incremental" => CompileMode.Incremental,
-            _ => CompileMode.Auto
+            _ => CompileMode.Default
         };
     }
 
@@ -475,7 +475,7 @@ internal static class CliEntryPoint
         Console.WriteLine("  --delete-after  \"A,B\"        Delete packages after installation");
         Console.WriteLine("  --prevalidate true|false     Prevalidate before install");
         Console.WriteLine("  --reset-unlocked-flags       Reset IsLocked/IsChanged on unlocked packages (locked are reset by default)");
-        Console.WriteLine("  --compile auto|incremental|full   Compile strategy (default: auto)");
+        Console.WriteLine("  --compile incremental|full        Compile strategy (default: full if packages, incremental otherwise)");
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");

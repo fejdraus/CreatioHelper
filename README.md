@@ -69,7 +69,7 @@ creatio-cli lic request [options]              # Save license request file from 
 | `--delete-after "A,B"` | Delete packages after installation |
 | `--prevalidate true\|false` | Prevalidate before install |
 | `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
-| `--compile auto\|incremental\|full` | Compile strategy (default: `auto`) |
+| `--compile incremental\|full` | Compile strategy (default: incremental) |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
 | `--no-iis-restart` | Skip IIS stop/start during compile (keeps process alive for IDE attach) |

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Management;
+using System.Runtime.Versioning;
 using System.Security.Principal;
 using System.Threading.Tasks;
 using CreatioHelper.Application.Interfaces;
@@ -10,6 +11,7 @@ using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services;
 
+[SupportedOSPlatform("windows")]
 public class WindowsFeaturesService : IWindowsFeaturesService
 {
     private readonly IOutputWriter _output;
