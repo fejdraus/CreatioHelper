@@ -90,16 +90,7 @@ CreatioHelper supports two sync modes selectable in Settings:
    - **Port**: SSH port (default `22`).
    - **SSH username** *(required)*: login on the target server.
    - **SSH auth** *(one required)*: either a password **or** a path to a private key file.
-   - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty for auto-detection.
-
-### Auto-detection of sync folders
-
-When no folders are specified, CreatioHelper detects the Creatio edition automatically:
-
-| Edition | Synced folders |
-|---------|----------------|
-| .NET Core | `Terrasoft.Configuration` |
-| .NET Framework | `Terrasoft.WebApp/Terrasoft.Configuration`, `Terrasoft.WebApp/conf` |
+   - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty to sync the entire site directory.
 
 ### Synchronization Process (SFTP)
 
@@ -109,6 +100,8 @@ After the main deployment step:
 2. Copy only **changed** files via SFTP (compared by size and modification time, 2-second tolerance).
 3. Start the remote service via SSH.
 4. Output log shows each copied file and the total count per server.
+
+**Resume and retry:** If the SSH connection drops mid-transfer, the sync automatically reconnects and resumes each file from the last transferred byte. Up to 10 reconnect attempts are made with increasing delays between them (3 s, 6 s, … capped at 30 s).
 
 ---
 
