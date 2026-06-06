@@ -170,9 +170,13 @@ public class WindowsSiteSynchronizer : ISiteSynchronizer
                             return;
                         }
 
-                        var normalizedRel = relPath.Replace('/', Path.DirectorySeparatorChar);
-                        var srcDir = Path.Combine(sitePath, normalizedRel);
-                        var dstDir = Path.Combine(networkPath, normalizedRel);
+                        var normalizedRel = relPath.Trim('/').Trim('.').Replace('/', Path.DirectorySeparatorChar);
+                        var srcDir = string.IsNullOrEmpty(normalizedRel)
+                            ? sitePath
+                            : Path.Combine(sitePath, normalizedRel);
+                        var dstDir = string.IsNullOrEmpty(normalizedRel)
+                            ? networkPath
+                            : Path.Combine(networkPath, normalizedRel);
 
                         if (!Directory.Exists(srcDir))
                         {

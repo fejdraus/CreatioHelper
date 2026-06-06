@@ -1,5 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Site;
 using CreatioHelper.Shared.Interfaces;
 using Renci.SshNet;
 
@@ -28,13 +29,6 @@ public class MacOsSiteSynchronizer : ISiteSynchronizer
 
         sitePath = sitePath.TrimEnd('/');
 
-        var sourceConfigPath = ResolveSourceConfigPath(sitePath);
-        if (sourceConfigPath == null)
-        {
-            _output.WriteLine($"[ERROR] Terrasoft.Configuration not found under '{sitePath}'");
-            return false;
-        }
-
         _output.WriteLine("[INFO] Stopping services on target servers...");
         foreach (var server in targetServers)
         {
@@ -45,9 +39,9 @@ public class MacOsSiteSynchronizer : ISiteSynchronizer
             await StopServiceAsync(server, cancellationToken).ConfigureAwait(false);
         }
 
-        _output.WriteLine($"[INFO] Syncing '{sourceConfigPath}' to {targetServers.Count} server(s)...");
+        _output.WriteLine($"[INFO] Syncing to {targetServers.Count} server(s)...");
         var copyTasks = targetServers
-            .Select(server => CopyToServerAsync(server, sourceConfigPath, cancellationToken))
+            .Select(server => CopyToServerAsync(server, sitePath, cancellationToken))
             .ToList();
 
         bool allOk;
@@ -81,24 +75,7 @@ public class MacOsSiteSynchronizer : ISiteSynchronizer
         return allOk;
     }
 
-    private static string? ResolveSourceConfigPath(string sitePath)
-    {
-        var netCorePath = Path.Combine(sitePath, "Terrasoft.Configuration");
-        if (Directory.Exists(netCorePath))
-        {
-            return netCorePath;
-        }
-
-        var netFxPath = Path.Combine(sitePath, "Terrasoft.WebApp", "Terrasoft.Configuration");
-        if (Directory.Exists(netFxPath))
-        {
-            return netFxPath;
-        }
-
-        return null;
-    }
-
-    private async Task CopyToServerAsync(ServerInfo server, string sourceConfigPath, CancellationToken cancellationToken)
+    private async Task CopyToServerAsync(ServerInfo server, string sitePath, CancellationToken cancellationToken)
     {
         var remoteBase = server.NetworkPath;
         if (string.IsNullOrEmpty(remoteBase))
@@ -109,24 +86,44 @@ public class MacOsSiteSynchronizer : ISiteSynchronizer
 
         remoteBase = remoteBase.Replace('\\', '/').TrimEnd('/');
 
-        var parentName = Path.GetFileName(Path.GetDirectoryName(sourceConfigPath) ?? "");
-        string remoteConfigPath;
-        if (string.Equals(parentName, "Terrasoft.WebApp", StringComparison.OrdinalIgnoreCase))
+        var folders = SyncFolderResolver.Resolve(server, sitePath);
+        if (folders.Count == 0)
         {
-            remoteConfigPath = remoteBase + "/Terrasoft.WebApp/Terrasoft.Configuration";
-        }
-        else
-        {
-            remoteConfigPath = remoteBase + "/Terrasoft.Configuration";
+            _output.WriteLine($"[WARN] No sync folders found for '{server.Name}', skipping.");
+            return;
         }
 
         await CopySemaphore.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            _output.WriteLine($"[INFO] Copying to {server.Name} → {remoteConfigPath}");
-            int count = await _fileCopyHelper.CopyAsync(server, sourceConfigPath, remoteConfigPath, cancellationToken)
-                .ConfigureAwait(false);
-            _output.WriteLine($"[OK] {server.Name}: {count} file(s) updated.");
+            int total = 0;
+            foreach (var relPath in folders)
+            {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    break;
+                }
+
+                var normalizedRel = relPath.Replace('\\', '/').Trim('/').Trim('.');
+                var srcDir = string.IsNullOrEmpty(normalizedRel)
+                    ? sitePath
+                    : Path.Combine(sitePath, normalizedRel.Replace('/', Path.DirectorySeparatorChar));
+                var dstDir = string.IsNullOrEmpty(normalizedRel)
+                    ? remoteBase
+                    : remoteBase + "/" + normalizedRel;
+
+                if (!Directory.Exists(srcDir))
+                {
+                    _output.WriteLine($"[WARN] Source folder not found, skipping: {srcDir}");
+                    continue;
+                }
+
+                _output.WriteLine($"[INFO] Copying to {server.Name} → {dstDir}");
+                int count = await _fileCopyHelper.CopyAsync(server, srcDir, dstDir, cancellationToken)
+                    .ConfigureAwait(false);
+                total += count;
+            }
+            _output.WriteLine($"[OK] {server.Name}: {total} file(s) updated.");
         }
         catch (OperationCanceledException)
         {
@@ -154,7 +151,6 @@ public class MacOsSiteSynchronizer : ISiteSynchronizer
 
         try
         {
-            // macOS uses launchctl; fall back to systemctl for Linux-style services
             var command = $"sudo launchctl stop {server.ServiceName} 2>/dev/null || sudo systemctl stop {server.ServiceName}";
             await RunSshCommandAsync(server, command, cancellationToken).ConfigureAwait(false);
             _output.WriteLine($"[OK] Stopped '{server.ServiceName}' on {server.Name}.");

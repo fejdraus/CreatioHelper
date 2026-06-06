@@ -104,9 +104,13 @@ public class LinuxSiteSynchronizer : ISiteSynchronizer
                     break;
                 }
 
-                var normalizedRel = relPath.Replace('\\', '/');
-                var srcDir = Path.Combine(sitePath, relPath.Replace('/', Path.DirectorySeparatorChar));
-                var dstDir = remoteBase + "/" + normalizedRel;
+                var normalizedRel = relPath.Replace('\\', '/').Trim('/').Trim('.');
+                var srcDir = string.IsNullOrEmpty(normalizedRel)
+                    ? sitePath
+                    : Path.Combine(sitePath, normalizedRel.Replace('/', Path.DirectorySeparatorChar));
+                var dstDir = string.IsNullOrEmpty(normalizedRel)
+                    ? remoteBase
+                    : remoteBase + "/" + normalizedRel;
 
                 if (!Directory.Exists(srcDir))
                 {
