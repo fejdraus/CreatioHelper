@@ -71,7 +71,7 @@ creatio-helper-cli lic request [options]              # Save license request fil
 | `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
 | `--compile incremental\|full\|none` | Compile strategy (`none` skips compilation entirely — useful for file-sync-only runs) |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
-| `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). Keys: `name`, `host`, `port`, `user`, `pass`, `key`, `path`, `service` |
+| `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). Keys: `name`, `host`, `port`, `user`, `pass`, `key`, `path`, `service`, `sudo`, `owner` |
 | `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty (or omit) to sync the entire site directory. |
 | `--sync-exclude "A,B"` | Comma-separated names or glob patterns to exclude from sync (e.g. `"logs,*.log,App_Data"`). Name-only patterns (no `/`) match at any depth; path patterns (with `/`) match relative to the site root. Applies to both files and directories. |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
@@ -140,6 +140,13 @@ creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redi
 creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
   --server "name=PROD,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=creatio" \
   --sync-exclude "logs,App_Data,*.log,*.bak,Terrasoft.WebApp/Web.config"
+
+# Sync to Linux server where PermitRootLogin is disabled (passwordless sudo required)
+# sudo=true: upload to /tmp, then sudo mv + sudo chown + sudo touch
+# owner=: set file/directory owner after mv (default: root:root)
+creatio-helper-cli --site C:\Site --sync files --compile none \
+  --server "name=prod,host=10.0.0.1,user=croot,key=C:\Users\me\.ssh\id_rsa,path=/var/www/creatio,sudo=true,owner=root:root"
+# sudoers entry (restrictive): croot ALL=(ALL) NOPASSWD: /usr/bin/mv,/usr/bin/chown,/usr/bin/touch,/usr/bin/mkdir,/usr/bin/rm
 
 # Load a license response file
 creatio-helper-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic
