@@ -71,7 +71,22 @@ creatio-helper-cli lic request [options]              # Save license request fil
 | `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
 | `--compile incremental\|full\|none` | Compile strategy (`none` skips compilation entirely — useful for file-sync-only runs) |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
-| `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). Keys: `name`, `host`, `port`, `user`, `pass`, `key`, `path`, `service`, `sudo`, `owner` |
+| `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). See keys below. |
+**`--server` keys:**
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `name` | yes | Display name for the server (used in logs) |
+| `host` | yes | SSH hostname or IP address |
+| `port` | no | SSH port (default: `22`) |
+| `user` | yes | SSH username |
+| `pass` | one of | SSH password (use `pass` or `key`, not both) |
+| `key` | one of | Path to SSH private key file (e.g. `/home/user/.ssh/id_rsa`) |
+| `path` | yes | Absolute path to the Creatio site directory on the remote server |
+| `service` | no | Linux service name to stop before sync and start after (leave empty to skip) |
+| `sudo` | no | Set `sudo=true` to upload via `/tmp` then `sudo mv` — required when the SFTP user cannot write directly to `path` (e.g. `PermitRootLogin no` and site owned by root) |
+| `owner` | no | File/directory owner to set after `sudo mv`, in `user:group` format (default: `root:root`). Only used when `sudo=true`. |
+
 | `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty (or omit) to sync the entire site directory. |
 | `--sync-exclude "A,B"` | Comma-separated names or glob patterns to exclude from sync (e.g. `"logs,*.log,App_Data"`). Name-only patterns (no `/`) match at any depth; path patterns (with `/`) match relative to the site root. Applies to both files and directories. |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
