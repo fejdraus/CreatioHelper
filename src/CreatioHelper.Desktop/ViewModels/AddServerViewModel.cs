@@ -86,6 +86,12 @@ public class AddServerViewModel : INotifyPropertyChanged
         set { Server.SshKeyPath = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
     }
 
+    public bool SshSudoEnabled
+    {
+        get => Server.SshSudoEnabled;
+        set { Server.SshSudoEnabled = value; OnPropertyChanged(); }
+    }
+
     public string SiteName
     {
         get => Server.SiteName ?? string.Empty;

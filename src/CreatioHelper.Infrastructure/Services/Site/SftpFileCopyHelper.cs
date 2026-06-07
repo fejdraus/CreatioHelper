@@ -26,6 +26,8 @@ public class SftpFileCopyHelper : IFileCopyHelper
         int totalCopied = 0;
         Exception? lastException = null;
 
+        bool useSudo = server.SshSudoEnabled;
+
         for (int attempt = 1; attempt <= maxAttempts; attempt++)
         {
             try
@@ -35,15 +37,29 @@ public class SftpFileCopyHelper : IFileCopyHelper
                     using var sftp = new SftpClient(connectionInfo);
                     sftp.KeepAliveInterval = TimeSpan.FromSeconds(15);
                     sftp.Connect();
+
+                    SshClient? ssh = null;
+                    if (useSudo)
+                    {
+                        ssh = new SshClient(connectionInfo);
+                        ssh.Connect();
+                    }
+
                     try
                     {
-                        EnsureRemoteDirectory(sftp, destDir);
+                        if (ssh != null)
+                            SudoEnsureRemoteDirectory(ssh, destDir);
+                        else
+                            EnsureRemoteDirectory(sftp, destDir);
+
                         var excludePatterns = server.FileCopyExcludePatterns;
-                        totalCopied += SyncDirectory(sftp, sourceDir, destDir, excludePatterns, "", cancellationToken);
+                        totalCopied += SyncDirectory(sftp, ssh, sourceDir, destDir, excludePatterns, "", cancellationToken);
                     }
                     finally
                     {
                         sftp.Disconnect();
+                        ssh?.Disconnect();
+                        ssh?.Dispose();
                     }
                 }, cancellationToken).ConfigureAwait(false);
 
@@ -117,13 +133,16 @@ public class SftpFileCopyHelper : IFileCopyHelper
         }
     }
 
-    private int SyncDirectory(SftpClient sftp, string localDir, string remoteDir,
+    private int SyncDirectory(SftpClient sftp, SshClient? ssh, string localDir, string remoteDir,
         IReadOnlyList<string> excludePatterns, string relPath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var normalizedRemote = remoteDir.Replace('\\', '/').TrimEnd('/');
-        EnsureRemoteDirectory(sftp, normalizedRemote);
+        if (ssh != null)
+            SudoEnsureRemoteDirectory(ssh, normalizedRemote);
+        else
+            EnsureRemoteDirectory(sftp, normalizedRemote);
 
         var remoteEntries = sftp.ListDirectory(normalizedRemote)
             .Where(f => f.Name != "." && f.Name != "..")
@@ -161,7 +180,10 @@ public class SftpFileCopyHelper : IFileCopyHelper
                 continue;
             }
 
-            UploadFileAtomic(sftp, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
+            if (ssh != null)
+                UploadFileAtomicSudo(sftp, ssh, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
+            else
+                UploadFileAtomic(sftp, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
             count++;
             _output.WriteLine($"[SFTP] {name}");
         }
@@ -180,7 +202,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
 
             localDirNames.Add(name);
             var remoteSubDir = normalizedRemote + "/" + name;
-            count += SyncDirectory(sftp, localSubDir, remoteSubDir, excludePatterns, dirRelPath, cancellationToken);
+            count += SyncDirectory(sftp, ssh, localSubDir, remoteSubDir, excludePatterns, dirRelPath, cancellationToken);
         }
 
         foreach (var entry in remoteEntries.Values)
@@ -195,17 +217,55 @@ public class SftpFileCopyHelper : IFileCopyHelper
 
             if (entry.IsRegularFile && !entry.Name.EndsWith(".tmp~") && !localFileNames.Contains(entry.Name))
             {
-                sftp.DeleteFile(normalizedRemote + "/" + entry.Name);
+                var filePath = normalizedRemote + "/" + entry.Name;
+                if (ssh != null)
+                    RunSshCommand(ssh, $"sudo rm -f {SQuote(filePath)}");
+                else
+                    sftp.DeleteFile(filePath);
                 _output.WriteLine($"[SFTP] deleted {entry.Name}");
             }
             else if (entry.IsDirectory && !localDirNames.Contains(entry.Name))
             {
-                DeleteRemoteDirectory(sftp, normalizedRemote + "/" + entry.Name, cancellationToken);
+                var dirPath = normalizedRemote + "/" + entry.Name;
+                if (ssh != null)
+                    RunSshCommand(ssh, $"sudo rm -rf {SQuote(dirPath)}");
+                else
+                    DeleteRemoteDirectory(sftp, dirPath, cancellationToken);
+                _output.WriteLine($"[SFTP] deleted dir {entry.Name}");
             }
         }
 
         return count;
     }
+
+    private static void SudoEnsureRemoteDirectory(SshClient ssh, string remotePath)
+    {
+        var normalized = remotePath.Replace('\\', '/').TrimEnd('/');
+        RunSshCommand(ssh, $"sudo mkdir -p {SQuote(normalized)}");
+    }
+
+    private void UploadFileAtomicSudo(SftpClient sftp, SshClient ssh, string localPath, string remotePath, DateTime mtimeUtc)
+    {
+        var tempPath = "/tmp/ch_" + Guid.NewGuid().ToString("N")[..12] + ".tmp~";
+        var localLength = new FileInfo(localPath).Length;
+
+        using var fs = File.OpenRead(localPath);
+        sftp.UploadFile(fs, tempPath, true);
+
+        var unixTs = new DateTimeOffset(mtimeUtc, TimeSpan.Zero).ToUnixTimeSeconds();
+        RunSshCommand(ssh, $"sudo mv {SQuote(tempPath)} {SQuote(remotePath)} && sudo chown root:root {SQuote(remotePath)} && sudo touch -d '@{unixTs}' {SQuote(remotePath)}");
+    }
+
+    private static void RunSshCommand(SshClient ssh, string command)
+    {
+        using var cmd = ssh.RunCommand(command);
+        if (cmd.ExitStatus != 0)
+        {
+            throw new InvalidOperationException($"SSH sudo command failed (exit {cmd.ExitStatus}): {cmd.Error}");
+        }
+    }
+
+    private static string SQuote(string path) => $"'{path.Replace("'", "'\\''")}'";
 
     private static bool IsExcluded(string name, string relPath, IReadOnlyList<string> patterns)
     {
