@@ -91,6 +91,7 @@ CreatioHelper supports two sync modes selectable in Settings:
    - **SSH username** *(required)*: login on the target server.
    - **SSH auth** *(one required)*: either a password **or** a path to a private key file.
    - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty to sync the entire site directory.
+   - **Exclude patterns**: comma-separated names or glob patterns to skip (e.g. `logs,*.log,App_Data`). Name-only patterns match at any depth; path patterns containing `/` match relative to the site root. Applied to both files and directories.
 
 ### Synchronization Process (SFTP)
 

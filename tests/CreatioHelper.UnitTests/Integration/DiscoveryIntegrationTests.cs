@@ -339,16 +339,15 @@ public class DiscoveryIntegrationTests : IDisposable
     /// Tests that GlobalDiscovery creates with correct default configuration.
     /// </summary>
     [Fact]
-    public async Task GlobalDiscovery_DefaultConfiguration_UsesCorrectServers()
+    public async Task GlobalDiscovery_DefaultConfiguration_HasNoServers()
     {
         // Arrange & Act
         var discovery = CreateGlobalDiscovery();
 
         try
         {
-            // Assert - Default servers include Syncthing's discovery servers
-            Assert.Contains(discovery.DiscoveryServers, s => s.Contains("discovery.syncthing.net"));
-            Assert.True(discovery.DiscoveryServers.Count >= 1);
+            // Assert — no servers by default; must be configured explicitly via settings
+            Assert.Empty(discovery.DiscoveryServers);
         }
         finally
         {

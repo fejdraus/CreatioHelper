@@ -63,7 +63,6 @@ public class GlobalDiscovery : IAsyncDisposable
     /// </summary>
     public const int RequestTimeoutSeconds = 30;
 
-    // No hardcoded discovery servers — must be configured explicitly
     private static readonly string[] DefaultDiscoveryServers = Array.Empty<string>();
 
     /// <summary>

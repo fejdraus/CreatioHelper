@@ -17,6 +17,7 @@ public class DtoServerInfo : INotifyPropertyChanged
     private string? _sshPassword;
     private string? _sshKeyPath;
     private List<string> _fileCopyFolderPaths = new();
+    private List<string> _fileCopyExcludePatterns = new();
 
 
     public string? Name
@@ -89,6 +90,12 @@ public class DtoServerInfo : INotifyPropertyChanged
     {
         get => _fileCopyFolderPaths;
         set => SetField(ref _fileCopyFolderPaths, value);
+    }
+
+    public List<string> FileCopyExcludePatterns
+    {
+        get => _fileCopyExcludePatterns;
+        set => SetField(ref _fileCopyExcludePatterns, value);
     }
 
     public string? SyncthingDeviceId

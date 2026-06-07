@@ -1,3 +1,4 @@
+using System.IO.Enumeration;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
@@ -36,7 +37,8 @@ public class SftpFileCopyHelper : IFileCopyHelper
                     try
                     {
                         EnsureRemoteDirectory(sftp, destDir);
-                        totalCopied += SyncDirectory(sftp, sourceDir, destDir, cancellationToken);
+                        var excludePatterns = server.FileCopyExcludePatterns;
+                        totalCopied += SyncDirectory(sftp, sourceDir, destDir, excludePatterns, "", cancellationToken);
                     }
                     finally
                     {
@@ -114,29 +116,40 @@ public class SftpFileCopyHelper : IFileCopyHelper
         }
     }
 
-    private int SyncDirectory(SftpClient sftp, string localDir, string remoteDir, CancellationToken cancellationToken)
+    private int SyncDirectory(SftpClient sftp, string localDir, string remoteDir,
+        IReadOnlyList<string> excludePatterns, string relPath, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var normalizedRemote = remoteDir.Replace('\\', '/').TrimEnd('/');
         EnsureRemoteDirectory(sftp, normalizedRemote);
 
-        var remoteFiles = sftp.ListDirectory(normalizedRemote)
+        var remoteEntries = sftp.ListDirectory(normalizedRemote)
             .Where(f => f.Name != "." && f.Name != "..")
             .ToDictionary(f => f.Name, StringComparer.Ordinal);
 
         int count = 0;
+        var localFileNames = new HashSet<string>(StringComparer.Ordinal);
+        var localDirNames = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var localFilePath in Directory.EnumerateFiles(localDir))
         {
             cancellationToken.ThrowIfCancellationRequested();
 
             var name = Path.GetFileName(localFilePath);
+            var fileRelPath = relPath.Length == 0 ? name : relPath + "/" + name;
+
+            if (IsExcluded(name, fileRelPath, excludePatterns))
+            {
+                continue;
+            }
+
+            localFileNames.Add(name);
             var remotePath = normalizedRemote + "/" + name;
             var localInfo = new FileInfo(localFilePath);
 
             bool needsCopy = true;
-            if (remoteFiles.TryGetValue(name, out var remoteFile) && remoteFile.IsRegularFile)
+            if (remoteEntries.TryGetValue(name, out var remoteFile) && remoteFile.IsRegularFile)
             {
                 var mtimeDiff = Math.Abs((remoteFile.LastWriteTime.ToUniversalTime() - localInfo.LastWriteTimeUtc).TotalSeconds);
                 needsCopy = remoteFile.Length != localInfo.Length || mtimeDiff > 2.0;
@@ -157,11 +170,84 @@ public class SftpFileCopyHelper : IFileCopyHelper
             cancellationToken.ThrowIfCancellationRequested();
 
             var name = Path.GetFileName(localSubDir);
+            var dirRelPath = relPath.Length == 0 ? name : relPath + "/" + name;
+
+            if (IsExcluded(name, dirRelPath, excludePatterns))
+            {
+                continue;
+            }
+
+            localDirNames.Add(name);
             var remoteSubDir = normalizedRemote + "/" + name;
-            count += SyncDirectory(sftp, localSubDir, remoteSubDir, cancellationToken);
+            count += SyncDirectory(sftp, localSubDir, remoteSubDir, excludePatterns, dirRelPath, cancellationToken);
+        }
+
+        foreach (var entry in remoteEntries.Values)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (entry.IsRegularFile && !entry.Name.EndsWith(".tmp~") && !localFileNames.Contains(entry.Name))
+            {
+                sftp.DeleteFile(normalizedRemote + "/" + entry.Name);
+                _output.WriteLine($"[SFTP] deleted {entry.Name}");
+            }
+            else if (entry.IsDirectory && !localDirNames.Contains(entry.Name))
+            {
+                DeleteRemoteDirectory(sftp, normalizedRemote + "/" + entry.Name, cancellationToken);
+            }
         }
 
         return count;
+    }
+
+    private static bool IsExcluded(string name, string relPath, IReadOnlyList<string> patterns)
+    {
+        if (patterns.Count == 0)
+        {
+            return false;
+        }
+
+        foreach (var pattern in patterns)
+        {
+            if (pattern.Contains('/') || pattern.Contains('\\'))
+            {
+                if (FileSystemName.MatchesSimpleExpression(pattern, relPath, ignoreCase: true))
+                {
+                    return true;
+                }
+            }
+            else
+            {
+                if (FileSystemName.MatchesSimpleExpression(pattern, name, ignoreCase: true))
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    private void DeleteRemoteDirectory(SftpClient sftp, string remotePath, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        foreach (var entry in sftp.ListDirectory(remotePath).Where(f => f.Name != "." && f.Name != ".."))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (entry.IsRegularFile)
+            {
+                sftp.DeleteFile(entry.FullName);
+            }
+            else if (entry.IsDirectory)
+            {
+                DeleteRemoteDirectory(sftp, entry.FullName, cancellationToken);
+            }
+        }
+
+        sftp.DeleteDirectory(remotePath);
+        _output.WriteLine($"[SFTP] deleted dir {remotePath}");
     }
 
     private static void UploadFileAtomic(SftpClient sftp, string localPath, string remotePath, DateTime mtimeUtc)
@@ -192,7 +278,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
         if (resumeOffset > 0)
         {
             fs.Seek(resumeOffset, SeekOrigin.Begin);
-            using var remote = sftp.Open(tempPath, FileMode.Append);
+            using var remote = sftp.Open(tempPath, FileMode.Append, FileAccess.Write);
             fs.CopyTo(remote);
         }
         else

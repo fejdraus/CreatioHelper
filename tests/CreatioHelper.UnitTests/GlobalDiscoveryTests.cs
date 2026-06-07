@@ -114,7 +114,7 @@ public class GlobalDiscoveryTests : IDisposable
     /// Reference: lib/discover/global.go - DefaultDiscoveryServers
     /// </summary>
     [Fact]
-    public async Task Constructor_WithNullServers_UsesDefaultServers()
+    public async Task Constructor_WithNullServers_UsesEmptyList()
     {
         // Arrange & Act
         await using var discovery = new GlobalDiscovery(
@@ -123,9 +123,8 @@ public class GlobalDiscoveryTests : IDisposable
             _testCertificate,
             discoveryServers: null);
 
-        // Assert
-        Assert.NotEmpty(discovery.DiscoveryServers);
-        Assert.Contains("https://discovery.syncthing.net/v2", discovery.DiscoveryServers);
+        // Assert — no servers by default; must be configured explicitly via settings
+        Assert.Empty(discovery.DiscoveryServers);
     }
 
     /// <summary>

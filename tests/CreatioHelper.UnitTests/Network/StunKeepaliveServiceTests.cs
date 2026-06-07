@@ -181,8 +181,7 @@ public class StunKeepaliveServiceTests : IDisposable
         Assert.True(config.Enabled);
         Assert.Equal(30, config.KeepaliveIntervalSeconds);
         Assert.Equal(5, config.RequestTimeoutSeconds);
-        Assert.Equal(3, config.Servers.Count);
-        Assert.Contains("stun.syncthing.net:3478", config.Servers);
+        Assert.Empty(config.Servers);
     }
 
     public void Dispose()

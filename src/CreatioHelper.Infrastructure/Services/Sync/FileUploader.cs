@@ -62,46 +62,55 @@ public class FileUploader
         SyncFileInfo fileInfo,
         CancellationToken cancellationToken = default)
     {
-        var result = new UploadResult { FileName = fileInfo.Name };
-        var startTime = DateTime.UtcNow;
-
-        // Use semaphore to prevent concurrent uploads of the same file
         var semaphoreKey = localFilePath.ToLowerInvariant();
         var semaphore = _uploadSemaphores.GetOrAdd(semaphoreKey, _ => new SemaphoreSlim(1, 1));
 
         await semaphore.WaitAsync(cancellationToken);
+        try
+        {
+            return await UploadFileCoreAsync(deviceId, folderId, localFilePath, fileInfo, cancellationToken);
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
+    private async Task<UploadResult> UploadFileCoreAsync(
+        string deviceId,
+        string folderId,
+        string localFilePath,
+        SyncFileInfo fileInfo,
+        CancellationToken cancellationToken)
+    {
+        var result = new UploadResult { FileName = fileInfo.Name };
+        var startTime = DateTime.UtcNow;
 
         try
         {
             _logger.LogInformation("Starting upload of {FileName} ({FileSize} bytes, {BlockCount} blocks) to device {DeviceId}",
                 fileInfo.Name, fileInfo.Size, fileInfo.Blocks.Count, deviceId);
 
-            // Verify file exists
             if (!File.Exists(localFilePath))
             {
                 throw new FileNotFoundException($"Local file not found: {localFilePath}");
             }
 
-            // Calculate blocks if not already done
             if (fileInfo.Blocks.Count == 0 && fileInfo.Size > 0)
             {
                 var blocks = await CalculateFileBlocksAsync(localFilePath, cancellationToken);
                 fileInfo.SetBlocks(blocks);
 
-                // Calculate file hash from blocks
                 var fileHash = CalculateFileHash(blocks);
                 fileInfo.UpdateHash(fileHash);
             }
 
-            // Verify local file matches expected blocks (integrity check)
             var verifyResult = await VerifyLocalFileAsync(localFilePath, fileInfo, cancellationToken);
             if (!verifyResult.IsValid)
             {
                 throw new InvalidOperationException($"Local file verification failed: {verifyResult.Error}");
             }
 
-            // Send IndexUpdate to notify remote device about this file
-            // The remote device will then request blocks as needed
             await _protocol.SendIndexUpdateAsync(deviceId, folderId, new List<SyncFileInfo> { fileInfo });
 
             _logger.LogInformation("Sent IndexUpdate for {FileName} to device {DeviceId} - remote will request blocks",
@@ -115,7 +124,6 @@ public class FileUploader
             _logger.LogInformation("Upload initiated for {FileName}: notified remote of {BytesTransferred} bytes ({BlocksTransferred} blocks) in {Duration}ms",
                 fileInfo.Name, result.BytesTransferred, result.BlocksTransferred, result.Duration.TotalMilliseconds);
 
-            // Record statistics for successful upload
             await RecordUploadStatisticsAsync(deviceId, folderId, fileInfo.Name, result.BytesTransferred,
                 fileInfo.Size, result.BlocksTransferred, 0, false, result.Duration, true, null);
         }
@@ -128,13 +136,8 @@ public class FileUploader
             result.Error = ex.Message;
             result.Duration = DateTime.UtcNow - startTime;
 
-            // Record statistics for failed upload
             await RecordUploadStatisticsAsync(deviceId, folderId, fileInfo.Name, 0,
                 fileInfo.Size, 0, 0, false, result.Duration, false, ex.Message);
-        }
-        finally
-        {
-            semaphore.Release();
         }
 
         return result;
@@ -193,7 +196,7 @@ public class FileUploader
             {
                 _logger.LogInformation("No remote file info available, performing full upload for {FileName}", localFileInfo.Name);
 
-                var fullResult = await UploadFileAsync(deviceId, folderId, localFilePath, localFileInfo, cancellationToken);
+                var fullResult = await UploadFileCoreAsync(deviceId, folderId, localFilePath, localFileInfo, cancellationToken);
                 return new DeltaUploadResult
                 {
                     FileName = fullResult.FileName,

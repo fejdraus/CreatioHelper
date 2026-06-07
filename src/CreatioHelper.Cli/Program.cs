@@ -344,6 +344,17 @@ internal static class CliEntryPoint
                 server.FileCopyFolderPaths = paths;
             }
         }
+
+        if (cli.Get("sync-exclude") is { Length: > 0 } syncExclude)
+        {
+            var patterns = syncExclude
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            foreach (var server in s.ServerList)
+            {
+                server.FileCopyExcludePatterns = patterns;
+            }
+        }
     }
 
     private static ServerInfo? ParseServerArg(string arg)

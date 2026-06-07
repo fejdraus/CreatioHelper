@@ -29,7 +29,7 @@
 - **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
 - **Redis Integration**: Check Redis status and clear cache after deployments
 - **Multi-Server Synchronization**: Apply changes across multiple Creatio instances simultaneously
-  - **SFTP File Copy**: Incremental rsync-style synchronization over SSH/SFTP (SSH.NET). Works from any OS to any Linux/macOS target — only changed files are transferred (size + mtime comparison). Per-server SSH credentials (password or private key). Configurable folder list per server with auto-detection fallback (`Terrasoft.Configuration` for .NET Core, `Terrasoft.WebApp/Terrasoft.Configuration` + `Terrasoft.WebApp/conf` for .NET Framework).
+  - **SFTP File Copy**: Incremental rsync-style synchronization over SSH/SFTP (SSH.NET). Works from any OS to any Linux/macOS target — only changed files are transferred (size + mtime comparison). Per-server SSH credentials (password or private key). Configurable folder list per server; leave empty to sync the entire site directory.
   - **External Syncthing Integration**: Connect to external Syncthing instance via REST API
     - Real-time synchronization monitoring via Events API
     - Multi-folder support (e.g., separate folders for Terrasoft.WebApp and bin)
@@ -72,7 +72,8 @@ creatio-helper-cli lic request [options]              # Save license request fil
 | `--compile incremental\|full\|none` | Compile strategy (`none` skips compilation entirely — useful for file-sync-only runs) |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
 | `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). Keys: `name`, `host`, `port`, `user`, `pass`, `key`, `path`, `service` |
-| `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty for auto-detection. |
+| `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty (or omit) to sync the entire site directory. |
+| `--sync-exclude "A,B"` | Comma-separated names or glob patterns to exclude from sync (e.g. `"logs,*.log,App_Data"`). Name-only patterns (no `/`) match at any depth; path patterns (with `/`) match relative to the site root. Applies to both files and directories. |
 | `--no-redis-clear` | Skip Redis cache clear (useful when attaching IDE to Creatio) |
 | `--no-iis-restart` | Skip IIS stop/start during compile (keeps process alive for IDE attach) |
 | `--quick-install` | Skip `RebuildWorkspace` and `BuildConfiguration` after package install (faster, like clio) |
@@ -124,6 +125,21 @@ creatio-helper-cli --settings deploy.json --sync files --compile none \
 creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
   --server "name=SERVER1,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=" \
   --server "name=SERVER2,host=10.0.0.6,port=22,user=deploy,pass=secret,path=/var/www/creatio,service="
+
+# Sync files excluding logs directory and all .log files
+creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
+  --server "name=PROD,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=creatio" \
+  --sync-exclude "logs,*.log"
+
+# Exclude a specific file inside a specific directory (path pattern with /)
+creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
+  --server "name=PROD,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=creatio" \
+  --sync-exclude "Terrasoft.WebApp/Web.config"
+
+# Exclude multiple directories, file patterns, and a specific nested file
+creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redis-clear \
+  --server "name=PROD,host=10.0.0.5,port=22,user=deploy,pass=secret,path=/var/www/creatio,service=creatio" \
+  --sync-exclude "logs,App_Data,*.log,*.bak,Terrasoft.WebApp/Web.config"
 
 # Load a license response file
 creatio-helper-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic

@@ -21,12 +21,12 @@ public class StunServerConfigServiceTests
     #region GetServers Tests
 
     [Fact]
-    public void GetServers_Default_ReturnsDefaultServers()
+    public void GetServers_Default_ReturnsEmpty()
     {
         var servers = _service.GetServers();
 
-        Assert.NotEmpty(servers);
-        Assert.Contains(servers, s => s.Address == "stun.syncthing.net");
+        // No servers by default — must be configured explicitly via settings
+        Assert.Empty(servers);
     }
 
     [Fact]
@@ -151,15 +151,13 @@ public class StunServerConfigServiceTests
     #region ResetToDefaults Tests
 
     [Fact]
-    public void ResetToDefaults_RestoresDefaultServers()
+    public void ResetToDefaults_RemovesCustomServers()
     {
-        _service.ClearServers();
         _service.AddServer("custom.server");
 
         _service.ResetToDefaults();
 
         var servers = _service.GetServers();
-        Assert.Contains(servers, s => s.Address == "stun.syncthing.net");
         Assert.DoesNotContain(servers, s => s.Address == "custom.server");
     }
 
@@ -170,6 +168,8 @@ public class StunServerConfigServiceTests
     [Fact]
     public void GetNextServer_Enabled_ReturnsServer()
     {
+        _service.AddServer("stun.example.com");
+
         var server = _service.GetNextServer();
 
         Assert.NotNull(server);
@@ -198,20 +198,22 @@ public class StunServerConfigServiceTests
     [Fact]
     public void GetNextServer_RoundRobins()
     {
-        var servers = new HashSet<string>();
+        _service.AddServer("stun1.example.com");
+        _service.AddServer("stun2.example.com");
+        _service.AddServer("stun3.example.com");
 
-        // Get servers multiple times
+        var seen = new HashSet<string>();
+
         for (int i = 0; i < 20; i++)
         {
             var server = _service.GetNextServer();
             if (server != null)
             {
-                servers.Add(server.Address);
+                seen.Add(server.Address);
             }
         }
 
-        // Should have cycled through multiple servers
-        Assert.True(servers.Count > 1);
+        Assert.True(seen.Count > 1);
     }
 
     #endregion
@@ -441,6 +443,6 @@ public class StunServerConfigurationTests
         Assert.Equal(TimeSpan.FromSeconds(5), config.RequestTimeout);
         Assert.Equal(3, config.MaxRetries);
         Assert.Equal(TimeSpan.FromMinutes(5), config.FailedServerCooldown);
-        Assert.NotEmpty(config.DefaultServers);
+        Assert.Empty(config.DefaultServers);
     }
 }

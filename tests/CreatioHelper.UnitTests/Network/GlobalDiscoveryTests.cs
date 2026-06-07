@@ -106,14 +106,13 @@ public class GlobalDiscoveryTests : IAsyncDisposable
     /// Test that default discovery servers include Syncthing official servers
     /// </summary>
     [Fact]
-    public void Constructor_UsesDefaultDiscoveryServers_WhenNotSpecified()
+    public void Constructor_UsesEmptyListWhenNotSpecified()
     {
         // Act
         var discovery = CreateDiscovery();
 
-        // Assert
-        Assert.Contains(discovery.DiscoveryServers, s => s.Contains("discovery.syncthing.net"));
-        Assert.True(discovery.DiscoveryServers.Count >= 1);
+        // Assert — no servers by default; must be configured explicitly via settings
+        Assert.Empty(discovery.DiscoveryServers);
     }
 
     #endregion
@@ -528,16 +527,22 @@ public class GlobalDiscoveryTests : IAsyncDisposable
     /// Test discovery server configuration for production use
     /// </summary>
     [Fact]
-    public void ProductionConfiguration_UsesCorrectServers()
+    public void ExplicitServers_AreStoredCorrectly()
     {
-        // Arrange & Act
-        var discovery = CreateDiscovery();
+        // Arrange
+        var servers = new[]
+        {
+            "https://discovery.example.com/v2",
+            "https://discovery2.example.com/v2"
+        };
 
-        // Assert - Should have Syncthing default servers
-        Assert.Contains(discovery.DiscoveryServers, s =>
-            s.Contains("discovery.syncthing.net") ||
-            s.Contains("discovery-v4.syncthing.net") ||
-            s.Contains("discovery-v6.syncthing.net"));
+        // Act
+        var discovery = CreateDiscovery(discoveryServers: servers);
+
+        // Assert — explicit servers are stored and returned
+        Assert.Equal(2, discovery.DiscoveryServers.Count);
+        Assert.Contains("https://discovery.example.com/v2", discovery.DiscoveryServers);
+        Assert.Contains("https://discovery2.example.com/v2", discovery.DiscoveryServers);
     }
 
     /// <summary>

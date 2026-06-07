@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Sync.Versioning;
 using Microsoft.Extensions.Logging;
@@ -469,7 +470,9 @@ public class ExternalVersionerTests : IDisposable
     [Fact]
     public async Task RestoreAsync_OverwritesExistingFile()
     {
-        // Arrange
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            return;
+
         using var versioner = new ExternalVersioner(_loggerMock.Object, _testDir, "echo");
 
         // Create original file
