@@ -48,14 +48,15 @@ public class SftpFileCopyHelper : IFileCopyHelper
                     try
                     {
                         var sudoOwner = !string.IsNullOrWhiteSpace(server.SshSudoOwner) ? server.SshSudoOwner : "root:root";
+                        var sudoPass = server.SshSudoPassword;
 
                         if (ssh != null)
-                            SudoEnsureRemoteDirectory(ssh, destDir, sudoOwner);
+                            SudoEnsureRemoteDirectory(ssh, destDir, sudoOwner, sudoPass);
                         else
                             EnsureRemoteDirectory(sftp, destDir);
 
                         var excludePatterns = server.FileCopyExcludePatterns;
-                        totalCopied += SyncDirectory(sftp, ssh, sourceDir, destDir, excludePatterns, "", sudoOwner, cancellationToken);
+                        totalCopied += SyncDirectory(sftp, ssh, sourceDir, destDir, excludePatterns, "", sudoOwner, sudoPass, cancellationToken);
                     }
                     finally
                     {
@@ -136,13 +137,13 @@ public class SftpFileCopyHelper : IFileCopyHelper
     }
 
     private int SyncDirectory(SftpClient sftp, SshClient? ssh, string localDir, string remoteDir,
-        IReadOnlyList<string> excludePatterns, string relPath, string sudoOwner, CancellationToken cancellationToken)
+        IReadOnlyList<string> excludePatterns, string relPath, string sudoOwner, string? sudoPass, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var normalizedRemote = remoteDir.Replace('\\', '/').TrimEnd('/');
         if (ssh != null)
-            SudoEnsureRemoteDirectory(ssh, normalizedRemote, sudoOwner);
+            SudoEnsureRemoteDirectory(ssh, normalizedRemote, sudoOwner, sudoPass);
         else
             EnsureRemoteDirectory(sftp, normalizedRemote);
 
@@ -183,7 +184,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
             }
 
             if (ssh != null)
-                UploadFileAtomicSudo(sftp, ssh, localFilePath, remotePath, localInfo.LastWriteTimeUtc, sudoOwner);
+                UploadFileAtomicSudo(sftp, ssh, localFilePath, remotePath, localInfo.LastWriteTimeUtc, sudoOwner, sudoPass);
             else
                 UploadFileAtomic(sftp, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
             count++;
@@ -204,7 +205,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
 
             localDirNames.Add(name);
             var remoteSubDir = normalizedRemote + "/" + name;
-            count += SyncDirectory(sftp, ssh, localSubDir, remoteSubDir, excludePatterns, dirRelPath, sudoOwner, cancellationToken);
+            count += SyncDirectory(sftp, ssh, localSubDir, remoteSubDir, excludePatterns, dirRelPath, sudoOwner, sudoPass, cancellationToken);
         }
 
         foreach (var entry in remoteEntries.Values)
@@ -221,7 +222,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
             {
                 var filePath = normalizedRemote + "/" + entry.Name;
                 if (ssh != null)
-                    RunSshCommand(ssh, $"sudo rm -f {SQuote(filePath)}");
+                    RunSudoCommand(ssh, sudoPass, $"rm -f {SQuote(filePath)}");
                 else
                     sftp.DeleteFile(filePath);
                 _output.WriteLine($"[SFTP] deleted {entry.Name}");
@@ -230,7 +231,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
             {
                 var dirPath = normalizedRemote + "/" + entry.Name;
                 if (ssh != null)
-                    RunSshCommand(ssh, $"sudo rm -rf {SQuote(dirPath)}");
+                    RunSudoCommand(ssh, sudoPass, $"rm -rf {SQuote(dirPath)}");
                 else
                     DeleteRemoteDirectory(sftp, dirPath, cancellationToken);
                 _output.WriteLine($"[SFTP] deleted dir {entry.Name}");
@@ -240,13 +241,13 @@ public class SftpFileCopyHelper : IFileCopyHelper
         return count;
     }
 
-    private static void SudoEnsureRemoteDirectory(SshClient ssh, string remotePath, string owner)
+    private static void SudoEnsureRemoteDirectory(SshClient ssh, string remotePath, string owner, string? sudoPass)
     {
         var normalized = remotePath.Replace('\\', '/').TrimEnd('/');
-        RunSshCommand(ssh, $"sudo mkdir -p {SQuote(normalized)} && sudo chown {owner} {SQuote(normalized)}");
+        RunSudoCommand(ssh, sudoPass, $"mkdir -p {SQuote(normalized)} && chown {owner} {SQuote(normalized)}");
     }
 
-    private void UploadFileAtomicSudo(SftpClient sftp, SshClient ssh, string localPath, string remotePath, DateTime mtimeUtc, string owner)
+    private void UploadFileAtomicSudo(SftpClient sftp, SshClient ssh, string localPath, string remotePath, DateTime mtimeUtc, string owner, string? sudoPass)
     {
         var tempPath = "/tmp/ch_" + Guid.NewGuid().ToString("N")[..12] + ".tmp~";
 
@@ -254,7 +255,22 @@ public class SftpFileCopyHelper : IFileCopyHelper
         sftp.UploadFile(fs, tempPath, true);
 
         var unixTs = new DateTimeOffset(mtimeUtc, TimeSpan.Zero).ToUnixTimeSeconds();
-        RunSshCommand(ssh, $"sudo mv {SQuote(tempPath)} {SQuote(remotePath)} && sudo chown {owner} {SQuote(remotePath)} && sudo touch -d '@{unixTs}' {SQuote(remotePath)}");
+        RunSudoCommand(ssh, sudoPass,
+            $"mv {SQuote(tempPath)} {SQuote(remotePath)} && chown {owner} {SQuote(remotePath)} && touch -d '@{unixTs}' {SQuote(remotePath)}");
+    }
+
+    private static void RunSudoCommand(SshClient ssh, string? sudoPass, string innerCommand)
+    {
+        string fullCommand;
+        if (string.IsNullOrEmpty(sudoPass))
+        {
+            fullCommand = $"sudo bash -c {SQuote(innerCommand)}";
+        }
+        else
+        {
+            fullCommand = $"echo {SQuote(sudoPass)} | sudo -S -p '' bash -c {SQuote(innerCommand)}";
+        }
+        RunSshCommand(ssh, fullCommand);
     }
 
     private static void RunSshCommand(SshClient ssh, string command)
@@ -265,6 +281,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
             throw new InvalidOperationException($"SSH sudo command failed (exit {cmd.ExitStatus}): {cmd.Error}");
         }
     }
+
 
     private static string SQuote(string path) => $"'{path.Replace("'", "'\\''")}'";
 

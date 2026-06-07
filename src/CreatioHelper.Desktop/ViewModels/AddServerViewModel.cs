@@ -98,6 +98,12 @@ public class AddServerViewModel : INotifyPropertyChanged
         set { Server.SshSudoOwner = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
     }
 
+    public string SshSudoPassword
+    {
+        get => Server.SshSudoPassword ?? string.Empty;
+        set { Server.SshSudoPassword = string.IsNullOrWhiteSpace(value) ? null : value; OnPropertyChanged(); }
+    }
+
     public string SiteName
     {
         get => Server.SiteName ?? string.Empty;

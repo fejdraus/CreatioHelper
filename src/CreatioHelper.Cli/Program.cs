@@ -384,6 +384,7 @@ internal static class CliEntryPoint
         if (dict.TryGetValue("service", out var service)) server.ServiceName = service;
         if (dict.TryGetValue("sudo", out var sudo) && sudo == "true") server.SshSudoEnabled = true;
         if (dict.TryGetValue("owner", out var owner)) server.SshSudoOwner = owner;
+        if (dict.TryGetValue("sudo-pass", out var sudoPass)) server.SshSudoPassword = sudoPass;
         return server;
     }
 
@@ -550,6 +551,7 @@ internal static class CliEntryPoint
         Console.WriteLine("  --server \"name=X,...\"         Add target server (repeatable; replaces ServerList from settings)");
         Console.WriteLine("                               Keys: name, host, port, user, pass, key, path, service, sudo, owner");
         Console.WriteLine("                               sudo=true         upload via /tmp then sudo mv (for Linux targets with PermitRootLogin no)");
+        Console.WriteLine("                               sudo-pass=PWD     sudo password (if not using NOPASSWD); passed via sudo -S");
         Console.WriteLine("                               owner=user:group  chown after sudo mv (default: root:root)");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");

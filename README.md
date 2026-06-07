@@ -85,6 +85,7 @@ creatio-helper-cli lic request [options]              # Save license request fil
 | `path` | yes | Absolute path to the Creatio site directory on the remote server |
 | `service` | no | Linux service name to stop before sync and start after (leave empty to skip) |
 | `sudo` | no | Set `sudo=true` to upload via `/tmp` then `sudo mv` — required when the SFTP user cannot write directly to `path` (e.g. `PermitRootLogin no` and site owned by root) |
+| `sudo-pass` | no | Sudo password for the SSH user. If omitted, passwordless sudo (`NOPASSWD`) is assumed. Only used when `sudo=true`. |
 | `owner` | no | File/directory owner to set after `sudo mv`, in `user:group` format (default: `root:root`). Only used when `sudo=true`. |
 
 | `--sync-folders "A,B"` | Relative folder paths to sync for all servers (e.g. `"Terrasoft.Configuration"`). Overrides per-server folder list from settings. Leave empty (or omit) to sync the entire site directory. |
@@ -158,10 +159,14 @@ creatio-helper-cli --site /var/www/creatio --sync files --compile none --no-redi
 
 # Sync to Linux server where PermitRootLogin is disabled (passwordless sudo required)
 # sudo=true: upload to /tmp, then sudo mv + sudo chown + sudo touch
-# owner=: set file/directory owner after mv (default: root:root)
+# sudo=true with private key + NOPASSWD sudoers:
 creatio-helper-cli --site C:\Site --sync files --compile none \
   --server "name=prod,host=10.0.0.1,user=croot,key=C:\Users\me\.ssh\id_rsa,path=/var/www/creatio,sudo=true,owner=root:root"
 # sudoers entry (restrictive): croot ALL=(ALL) NOPASSWD: /usr/bin/mv,/usr/bin/chown,/usr/bin/touch,/usr/bin/mkdir,/usr/bin/rm
+
+# sudo=true with password (no NOPASSWD required):
+creatio-helper-cli --site C:\Site --sync files --compile none \
+  --server "name=prod,host=10.0.0.1,user=croot,pass=secret,path=/var/www/creatio,sudo=true,sudo-pass=mypassword,owner=root:root"
 
 # Load a license response file
 creatio-helper-cli lic load --iis-site AstanaMotors --lic-file C:\licenses\response.lic

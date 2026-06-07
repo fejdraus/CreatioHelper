@@ -90,15 +90,17 @@ CreatioHelper supports two sync modes selectable in Settings:
    - **Port**: SSH port (default `22`).
    - **SSH username** *(required)*: login on the target server.
    - **SSH auth** *(one required)*: either a password **or** a path to a private key file.
-   - **Use sudo**: enable when the SFTP user cannot write directly to the site directory — typically when `PermitRootLogin no` is set on the target server and the site is owned by root. Files are uploaded to `/tmp`, then moved to the final path via `sudo mv`. Requires passwordless sudo for the SSH user (see sudoers note below).
+   - **Use sudo**: enable when the SFTP user cannot write directly to the site directory — typically when `PermitRootLogin no` is set on the target server and the site is owned by root. Files are uploaded to `/tmp`, then moved to the final path via `sudo mv`.
+   - **Sudo password**: sudo password for the SSH user. Leave empty if passwordless sudo (`NOPASSWD`) is configured. If provided, the password is passed via `sudo -S` — no TTY or `NOPASSWD` required.
    - **Owner after sudo mv**: file and directory owner to set after each `sudo mv`, in `user:group` format (e.g. `root:root`, `www-data:www-data`). Only relevant when **Use sudo** is enabled. Defaults to `root:root` if left empty.
    - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty to sync the entire site directory.
    - **Exclude patterns**: comma-separated names or glob patterns to skip (e.g. `logs,*.log,App_Data`). Name-only patterns match at any depth; path patterns containing `/` match relative to the site root. Applied to both files and directories.
 
-> **Sudoers note (for sudo mode):** The SSH user needs passwordless sudo for the following commands. On modern Linux (Ubuntu 20.04+, Debian 12+) use `/usr/bin/` paths:
+> **Sudoers note:** If **Sudo password** is left empty, the SSH user needs passwordless sudo (`NOPASSWD`). On modern Linux (Ubuntu 20.04+, Debian 12+) use `/usr/bin/` paths:
 > ```
 > croot ALL=(ALL) NOPASSWD: /usr/bin/mv,/usr/bin/chown,/usr/bin/touch,/usr/bin/mkdir,/usr/bin/rm
 > ```
+> If **Sudo password** is set, `NOPASSWD` is not required — the password is passed via `sudo -S`.
 
 ### Synchronization Process (SFTP)
 

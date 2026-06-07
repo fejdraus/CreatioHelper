@@ -90,6 +90,12 @@
 
                 <CheckBox IsChecked="{Binding SshSudoEnabled, Mode=TwoWay}"
                           Content="Use sudo (upload to /tmp, then sudo mv — for Linux targets where PermitRootLogin is disabled)" />
+                <TextBlock Text="Sudo password (leave empty if NOPASSWD is configured):"
+                           IsVisible="{Binding SshSudoEnabled}" />
+                <TextBox Text="{Binding SshSudoPassword, Mode=TwoWay}"
+                         PasswordChar="●"
+                         Watermark="sudo password or leave empty for NOPASSWD"
+                         IsVisible="{Binding SshSudoEnabled}" />
                 <TextBlock Text="Owner after sudo mv (user:group, default: root:root):"
                            IsVisible="{Binding SshSudoEnabled}" />
                 <TextBox Text="{Binding SshSudoOwner, Mode=TwoWay}"
