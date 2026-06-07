@@ -90,8 +90,15 @@ CreatioHelper supports two sync modes selectable in Settings:
    - **Port**: SSH port (default `22`).
    - **SSH username** *(required)*: login on the target server.
    - **SSH auth** *(one required)*: either a password **or** a path to a private key file.
+   - **Use sudo**: enable when the SFTP user cannot write directly to the site directory — typically when `PermitRootLogin no` is set on the target server and the site is owned by root. Files are uploaded to `/tmp`, then moved to the final path via `sudo mv`. Requires passwordless sudo for the SSH user (see sudoers note below).
+   - **Owner after sudo mv**: file and directory owner to set after each `sudo mv`, in `user:group` format (e.g. `root:root`, `www-data:www-data`). Only relevant when **Use sudo** is enabled. Defaults to `root:root` if left empty.
    - **Folders to sync**: relative paths from site root (e.g. `Terrasoft.Configuration`). Leave empty to sync the entire site directory.
    - **Exclude patterns**: comma-separated names or glob patterns to skip (e.g. `logs,*.log,App_Data`). Name-only patterns match at any depth; path patterns containing `/` match relative to the site root. Applied to both files and directories.
+
+> **Sudoers note (for sudo mode):** The SSH user needs passwordless sudo for the following commands. On modern Linux (Ubuntu 20.04+, Debian 12+) use `/usr/bin/` paths:
+> ```
+> croot ALL=(ALL) NOPASSWD: /usr/bin/mv,/usr/bin/chown,/usr/bin/touch,/usr/bin/mkdir,/usr/bin/rm
+> ```
 
 ### Synchronization Process (SFTP)
 
@@ -101,6 +108,8 @@ After the main deployment step:
 2. Copy only **changed** files via SFTP (compared by size and modification time, 2-second tolerance).
 3. Start the remote service via SSH.
 4. Output log shows each copied file and the total count per server.
+
+**Sudo mode:** When **Use sudo** is enabled, each file is first uploaded to `/tmp/ch_*.tmp~` via SFTP, then moved to its final path via `sudo mv`, ownership is set via `sudo chown`, and the modification time is preserved via `sudo touch`. Directories are created via `sudo mkdir -p` with the same ownership applied.
 
 **Resume and retry:** If the SSH connection drops mid-transfer, the sync automatically reconnects and resumes each file from the last transferred byte. Up to 10 reconnect attempts are made with increasing delays between them (3 s, 6 s, … capped at 30 s).
 
@@ -123,6 +132,8 @@ After the main deployment step:
 | _Creatio application not found_ | Incorrect folder or IIS site  | Verify selected path/site    |
 | _Access Denied errors_          | Missing admin privileges      | Run as Administrator         |
 | _Remote servers show Error_     | SSH unreachable or wrong credentials | Check host/port/user/password, ensure sshd is running |
+| _SFTP: Permission denied_       | SFTP user has no write access to site directory | Enable **Use sudo** and configure passwordless sudo on the target server |
+| _sudo command failed (exit 1)_  | Missing sudo permissions for mv/chown/touch/mkdir/rm | Add the required commands to `/etc/sudoers.d/` (see sudoers note above) |
 | _Redis flush failed_            | Redis unavailable             | Ensure Redis is running      |
 
 ---
