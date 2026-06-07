@@ -62,6 +62,19 @@ public partial class AddServerWindow : Window
         }
     }
 
+    private void AddExcludePatternButton_Click(object? sender, RoutedEventArgs e)
+    {
+        ViewModel.AddExcludePattern();
+    }
+
+    private void RemoveExcludePatternButton_Click(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button button && button.CommandParameter is string pattern)
+        {
+            ViewModel.RemoveExcludePattern(pattern);
+        }
+    }
+
     private async Task ShowValidationError(string? message)
     {
         if (string.IsNullOrWhiteSpace(message))

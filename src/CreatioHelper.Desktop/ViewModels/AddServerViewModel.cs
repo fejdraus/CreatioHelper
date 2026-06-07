@@ -12,10 +12,12 @@ public class AddServerViewModel : INotifyPropertyChanged
     private readonly bool _enableFileCopySync;
     private string _newFolderId = string.Empty;
     private string _newFolderPath = string.Empty;
+    private string _newExcludePattern = string.Empty;
 
     public ServerInfo Server { get; }
     public ObservableCollection<string> SyncthingFolderIds { get; }
     public ObservableCollection<string> FileCopyFolderPaths { get; }
+    public ObservableCollection<string> FileCopyExcludePatterns { get; }
 
     public AddServerViewModel(ServerInfo? server = null, bool useSyncthingForSync = false, bool enableFileCopySync = false)
     {
@@ -25,6 +27,7 @@ public class AddServerViewModel : INotifyPropertyChanged
 
         SyncthingFolderIds = new ObservableCollection<string>(Server.SyncthingFolderIds ?? new List<string>());
         FileCopyFolderPaths = new ObservableCollection<string>(Server.FileCopyFolderPaths ?? new List<string>());
+        FileCopyExcludePatterns = new ObservableCollection<string>(Server.FileCopyExcludePatterns ?? new List<string>());
     }
 
     // Visibility properties based on global sync settings
@@ -136,6 +139,43 @@ public class AddServerViewModel : INotifyPropertyChanged
         FileCopyFolderPaths.Remove(path);
         OnPropertyChanged(nameof(CanAddFolderPath));
         OnPropertyChanged(nameof(HasFolderPaths));
+    }
+
+    public string NewExcludePattern
+    {
+        get => _newExcludePattern;
+        set
+        {
+            _newExcludePattern = value;
+            OnPropertyChanged();
+            OnPropertyChanged(nameof(CanAddExcludePattern));
+        }
+    }
+
+    public bool CanAddExcludePattern =>
+        !string.IsNullOrWhiteSpace(NewExcludePattern) &&
+        !FileCopyExcludePatterns.Contains(NewExcludePattern.Trim());
+
+    public bool HasExcludePatterns => FileCopyExcludePatterns.Count > 0;
+
+    public void AddExcludePattern()
+    {
+        if (!CanAddExcludePattern)
+        {
+            return;
+        }
+
+        FileCopyExcludePatterns.Insert(0, NewExcludePattern.Trim());
+        NewExcludePattern = string.Empty;
+        OnPropertyChanged(nameof(CanAddExcludePattern));
+        OnPropertyChanged(nameof(HasExcludePatterns));
+    }
+
+    public void RemoveExcludePattern(string pattern)
+    {
+        FileCopyExcludePatterns.Remove(pattern);
+        OnPropertyChanged(nameof(CanAddExcludePattern));
+        OnPropertyChanged(nameof(HasExcludePatterns));
     }
 
     /// <summary>
@@ -256,6 +296,7 @@ public class AddServerViewModel : INotifyPropertyChanged
         }
 
         Server.FileCopyFolderPaths = new List<string>(FileCopyFolderPaths);
+        Server.FileCopyExcludePatterns = new List<string>(FileCopyExcludePatterns);
 
         validationError = null;
         return true;

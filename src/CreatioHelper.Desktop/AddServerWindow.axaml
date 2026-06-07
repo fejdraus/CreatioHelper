@@ -139,6 +139,58 @@
                         </ItemsControl>
                     </ScrollViewer>
                 </Border>
+
+                <TextBlock Text="Exclude patterns:" Margin="0,10,0,0" />
+                <TextBlock Text="Name-only (e.g. logs, *.log) match at any depth. Path with / (e.g. Terrasoft.WebApp/Web.config) matches from site root."
+                           FontSize="11" Foreground="Gray" TextWrapping="Wrap" />
+
+                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
+                    <TextBox Grid.Column="0"
+                             Text="{Binding NewExcludePattern, Mode=TwoWay}"
+                             Watermark="e.g., logs  or  *.log  or  Terrasoft.WebApp/Web.config"
+                             Margin="0,0,8,0"/>
+                    <Button Grid.Column="1"
+                            Content="Add"
+                            Click="AddExcludePatternButton_Click"
+                            IsEnabled="{Binding CanAddExcludePattern}"
+                            Width="60"/>
+                </Grid>
+
+                <Border BorderBrush="#E0E0E0"
+                        BorderThickness="1"
+                        CornerRadius="3"
+                        MaxHeight="120"
+                        IsVisible="{Binding HasExcludePatterns}">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl ItemsSource="{Binding FileCopyExcludePatterns}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="#E0E0E0"
+                                            BorderThickness="0,0,0,1"
+                                            Padding="8,4">
+                                        <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                                            <TextBlock Grid.Column="0"
+                                                       Text="{Binding}"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       VerticalAlignment="Center"/>
+                                            <Button Grid.Column="1"
+                                                    Content="Remove"
+                                                    Padding="6,2"
+                                                    Width="70"
+                                                    Click="RemoveExcludePatternButton_Click"
+                                                    CommandParameter="{Binding}"/>
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Border>
             </StackPanel>
         </Border>
 
