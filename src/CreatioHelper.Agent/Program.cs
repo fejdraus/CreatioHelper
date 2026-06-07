@@ -31,7 +31,6 @@ if (!string.IsNullOrEmpty(appInsightsConnectionString))
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-#if DEBUG
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -48,7 +47,6 @@ builder.Services.AddSwaggerGen(c =>
 4. Now you can call protected endpoints"
     });
 
-    // JWT Authorization
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.OpenApiSecurityScheme
     {
         Description = @"JWT Authorization header using the Bearer scheme.
@@ -60,7 +58,6 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer"
     });
 });
-#endif
 
 builder.Services.AddHealthChecks();
 
@@ -236,8 +233,6 @@ applicationLifetime.ApplicationStopping.Register(() =>
     logger.LogInformation("🛑 Application shutdown initiated - stopping operations gracefully");
 });
 
-#if DEBUG
-// Swagger configuration - only enabled in development for security
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -248,7 +243,6 @@ if (app.Environment.IsDevelopment())
         c.DefaultModelsExpandDepth(-1);
     });
 }
-#endif
 
 // Security Headers middleware
 app.Use(async (context, next) =>

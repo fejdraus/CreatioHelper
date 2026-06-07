@@ -12,6 +12,7 @@ public class SftpFileCopyHelperTests : IDisposable
     private readonly string _user;
     private readonly string _pass;
     private const int Port = 22;
+    private readonly List<string> _remoteTestDirs = new();
 
     public SftpFileCopyHelperTests()
     {
@@ -29,6 +30,39 @@ public class SftpFileCopyHelperTests : IDisposable
         {
             Directory.Delete(_localSrcDir, true);
         }
+
+        if (_remoteTestDirs.Count > 0 && SshReachable(_host, Port))
+        {
+            try
+            {
+                using var sftp = OpenSftp();
+                sftp.Connect();
+                foreach (var dir in _remoteTestDirs)
+                {
+                    DeleteRemoteDir(sftp, dir);
+                }
+                sftp.Disconnect();
+            }
+            catch { }
+        }
+    }
+
+    private static void DeleteRemoteDir(SftpClient sftp, string path)
+    {
+        if (!sftp.Exists(path)) { return; }
+        foreach (var entry in sftp.ListDirectory(path))
+        {
+            if (entry.Name == "." || entry.Name == "..") { continue; }
+            if (entry.IsDirectory)
+            {
+                DeleteRemoteDir(sftp, entry.FullName);
+            }
+            else
+            {
+                sftp.DeleteFile(entry.FullName);
+            }
+        }
+        sftp.DeleteDirectory(path);
     }
 
     private static bool SshReachable(string host, int port)
@@ -62,7 +96,12 @@ public class SftpFileCopyHelperTests : IDisposable
 
     private SftpClient OpenSftp() => new(_host, Port, _user, _pass);
 
-    private static string RemoteDir() => "/tmp/sftp_test_" + Guid.NewGuid().ToString("N")[..8];
+    private string RemoteDir()
+    {
+        var dir = "/tmp/sftp_test_" + Guid.NewGuid().ToString("N")[..8];
+        _remoteTestDirs.Add(dir);
+        return dir;
+    }
 
     // ── Copy: basic ──────────────────────────────────────────────────────────
 
@@ -656,6 +695,59 @@ public class SftpFileCopyHelperTests : IDisposable
         Assert.True(sftp.Exists(remoteDir + "/Root.cs"));
         Assert.True(sftp.Exists(remoteDir + "/conf/app.config"));
         Assert.False(sftp.Exists(remoteDir + "/conf/secret.config"));
+        sftp.Disconnect();
+    }
+
+    [Fact]
+    public async Task CopyAsync_DoesNotDelete_ExcludedFile_ExistingOnRemote()
+    {
+        if (!SshReachable(_host, Port)) return;
+
+        File.WriteAllText(Path.Combine(_localSrcDir, "Keep.cs"), "keep");
+        File.WriteAllText(Path.Combine(_localSrcDir, "Persistent.log"), "log");
+
+        var remoteDir = RemoteDir();
+        var server = MakeServer(remoteDir);
+
+        await MakeHelper().CopyAsync(server, _localSrcDir, remoteDir);
+
+        File.Delete(Path.Combine(_localSrcDir, "Persistent.log"));
+
+        server.FileCopyExcludePatterns = ["*.log"];
+        await MakeHelper().CopyAsync(server, _localSrcDir, remoteDir);
+
+        using var sftp = OpenSftp();
+        sftp.Connect();
+        Assert.True(sftp.Exists(remoteDir + "/Keep.cs"));
+        Assert.True(sftp.Exists(remoteDir + "/Persistent.log"),
+            "excluded file must not be deleted from remote during mirror step");
+        sftp.Disconnect();
+    }
+
+    [Fact]
+    public async Task CopyAsync_DoesNotDelete_ExcludedDirectory_ExistingOnRemote()
+    {
+        if (!SshReachable(_host, Port)) return;
+
+        File.WriteAllText(Path.Combine(_localSrcDir, "Root.cs"), "root");
+        var logsDir = Directory.CreateDirectory(Path.Combine(_localSrcDir, "logs"));
+        File.WriteAllText(Path.Combine(logsDir.FullName, "app.log"), "log");
+
+        var remoteDir = RemoteDir();
+        var server = MakeServer(remoteDir);
+
+        await MakeHelper().CopyAsync(server, _localSrcDir, remoteDir);
+
+        Directory.Delete(Path.Combine(_localSrcDir, "logs"), true);
+
+        server.FileCopyExcludePatterns = ["logs"];
+        await MakeHelper().CopyAsync(server, _localSrcDir, remoteDir);
+
+        using var sftp = OpenSftp();
+        sftp.Connect();
+        Assert.True(sftp.Exists(remoteDir + "/Root.cs"));
+        Assert.True(sftp.Exists(remoteDir + "/logs"),
+            "excluded directory must not be deleted from remote during mirror step");
         sftp.Disconnect();
     }
 }

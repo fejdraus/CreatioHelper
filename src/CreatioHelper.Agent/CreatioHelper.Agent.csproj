@@ -41,8 +41,8 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
   </ItemGroup>
 
-  <!-- OpenAPI packages - for Development or when Swagger is enabled -->
-  <ItemGroup Condition="'$(Configuration)' == 'Debug' OR '$(EnableSwagger)' == 'true'">
+  <!-- OpenAPI packages - always included; Swagger UI is gated at runtime by IsDevelopment() -->
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
   </ItemGroup>

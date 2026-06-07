@@ -33,6 +33,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
                 await Task.Run(() =>
                 {
                     using var sftp = new SftpClient(connectionInfo);
+                    sftp.KeepAliveInterval = TimeSpan.FromSeconds(15);
                     sftp.Connect();
                     try
                     {
@@ -185,6 +186,12 @@ public class SftpFileCopyHelper : IFileCopyHelper
         foreach (var entry in remoteEntries.Values)
         {
             cancellationToken.ThrowIfCancellationRequested();
+
+            var entryRelPath = relPath.Length == 0 ? entry.Name : relPath + "/" + entry.Name;
+            if (IsExcluded(entry.Name, entryRelPath, excludePatterns))
+            {
+                continue;
+            }
 
             if (entry.IsRegularFile && !entry.Name.EndsWith(".tmp~") && !localFileNames.Contains(entry.Name))
             {
