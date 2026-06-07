@@ -19,6 +19,7 @@ public class DtoServerInfo : INotifyPropertyChanged
     private List<string> _fileCopyFolderPaths = new();
     private List<string> _fileCopyExcludePatterns = new();
     private bool _sshSudoEnabled;
+    private string? _sshSudoOwner;
 
 
     public string? Name
@@ -103,6 +104,12 @@ public class DtoServerInfo : INotifyPropertyChanged
     {
         get => _sshSudoEnabled;
         set => SetField(ref _sshSudoEnabled, value);
+    }
+
+    public string? SshSudoOwner
+    {
+        get => _sshSudoOwner;
+        set => SetField(ref _sshSudoOwner, value);
     }
 
     public string? SyncthingDeviceId

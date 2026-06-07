@@ -90,6 +90,11 @@
 
                 <CheckBox IsChecked="{Binding SshSudoEnabled, Mode=TwoWay}"
                           Content="Use sudo (upload to /tmp, then sudo mv — for Linux targets where PermitRootLogin is disabled)" />
+                <TextBlock Text="Owner after sudo mv (user:group, default: root:root):"
+                           IsVisible="{Binding SshSudoEnabled}" />
+                <TextBox Text="{Binding SshSudoOwner, Mode=TwoWay}"
+                         Watermark="root:root"
+                         IsVisible="{Binding SshSudoEnabled}" />
 
                 <TextBlock Text="Folders to sync (relative to site root):" Margin="0,10,0,0" />
                 <TextBlock Text="Leave empty for auto-detection (Terrasoft.Configuration / Terrasoft.WebApp/conf)"

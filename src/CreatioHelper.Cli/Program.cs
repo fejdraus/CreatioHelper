@@ -383,6 +383,7 @@ internal static class CliEntryPoint
         if (dict.TryGetValue("path", out var path)) server.NetworkPath = path;
         if (dict.TryGetValue("service", out var service)) server.ServiceName = service;
         if (dict.TryGetValue("sudo", out var sudo) && sudo == "true") server.SshSudoEnabled = true;
+        if (dict.TryGetValue("owner", out var owner)) server.SshSudoOwner = owner;
         return server;
     }
 
@@ -547,8 +548,9 @@ internal static class CliEntryPoint
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
         Console.WriteLine("  --sync-folders \"A,B\"          Relative folder paths to sync (e.g. \"Terrasoft.Configuration,Terrasoft.WebApp/conf\")");
         Console.WriteLine("  --server \"name=X,...\"         Add target server (repeatable; replaces ServerList from settings)");
-        Console.WriteLine("                               Keys: name, host, port, user, pass, key, path, service, sudo");
-        Console.WriteLine("                               sudo=true  upload via /tmp then sudo mv (for Linux targets with PermitRootLogin no)");
+        Console.WriteLine("                               Keys: name, host, port, user, pass, key, path, service, sudo, owner");
+        Console.WriteLine("                               sudo=true         upload via /tmp then sudo mv (for Linux targets with PermitRootLogin no)");
+        Console.WriteLine("                               owner=user:group  chown after sudo mv (default: root:root)");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");
         Console.WriteLine("  --quick-install              Skip RebuildWorkspace and BuildConfiguration after package install (faster, like clio)");
@@ -576,7 +578,7 @@ internal static class CliEntryPoint
         Console.WriteLine();
         Console.WriteLine("  # Sync to Linux server where PermitRootLogin is disabled (passwordless sudo required):");
         Console.WriteLine("  creatio-helper-cli --site C:\\Site --sync files --compile none");
-        Console.WriteLine("    --server \"name=prod,host=10.0.0.1,user=croot,key=/home/user/.ssh/id_rsa,path=/var/www/creatio,sudo=true\"");
+        Console.WriteLine("    --server \"name=prod,host=10.0.0.1,user=croot,key=/home/user/.ssh/id_rsa,path=/var/www/creatio,sudo=true,owner=root:root\"");
         Console.WriteLine("  # sudoers entry (restrictive): croot ALL=(ALL) NOPASSWD: /usr/bin/mv,/usr/bin/chown,/usr/bin/touch,/usr/bin/mkdir,/usr/bin/rm");
     }
 }

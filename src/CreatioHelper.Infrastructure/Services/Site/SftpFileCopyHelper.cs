@@ -47,13 +47,15 @@ public class SftpFileCopyHelper : IFileCopyHelper
 
                     try
                     {
+                        var sudoOwner = !string.IsNullOrWhiteSpace(server.SshSudoOwner) ? server.SshSudoOwner : "root:root";
+
                         if (ssh != null)
-                            SudoEnsureRemoteDirectory(ssh, destDir);
+                            SudoEnsureRemoteDirectory(ssh, destDir, sudoOwner);
                         else
                             EnsureRemoteDirectory(sftp, destDir);
 
                         var excludePatterns = server.FileCopyExcludePatterns;
-                        totalCopied += SyncDirectory(sftp, ssh, sourceDir, destDir, excludePatterns, "", cancellationToken);
+                        totalCopied += SyncDirectory(sftp, ssh, sourceDir, destDir, excludePatterns, "", sudoOwner, cancellationToken);
                     }
                     finally
                     {
@@ -134,13 +136,13 @@ public class SftpFileCopyHelper : IFileCopyHelper
     }
 
     private int SyncDirectory(SftpClient sftp, SshClient? ssh, string localDir, string remoteDir,
-        IReadOnlyList<string> excludePatterns, string relPath, CancellationToken cancellationToken)
+        IReadOnlyList<string> excludePatterns, string relPath, string sudoOwner, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
         var normalizedRemote = remoteDir.Replace('\\', '/').TrimEnd('/');
         if (ssh != null)
-            SudoEnsureRemoteDirectory(ssh, normalizedRemote);
+            SudoEnsureRemoteDirectory(ssh, normalizedRemote, sudoOwner);
         else
             EnsureRemoteDirectory(sftp, normalizedRemote);
 
@@ -181,7 +183,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
             }
 
             if (ssh != null)
-                UploadFileAtomicSudo(sftp, ssh, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
+                UploadFileAtomicSudo(sftp, ssh, localFilePath, remotePath, localInfo.LastWriteTimeUtc, sudoOwner);
             else
                 UploadFileAtomic(sftp, localFilePath, remotePath, localInfo.LastWriteTimeUtc);
             count++;
@@ -202,7 +204,7 @@ public class SftpFileCopyHelper : IFileCopyHelper
 
             localDirNames.Add(name);
             var remoteSubDir = normalizedRemote + "/" + name;
-            count += SyncDirectory(sftp, ssh, localSubDir, remoteSubDir, excludePatterns, dirRelPath, cancellationToken);
+            count += SyncDirectory(sftp, ssh, localSubDir, remoteSubDir, excludePatterns, dirRelPath, sudoOwner, cancellationToken);
         }
 
         foreach (var entry in remoteEntries.Values)
@@ -238,22 +240,21 @@ public class SftpFileCopyHelper : IFileCopyHelper
         return count;
     }
 
-    private static void SudoEnsureRemoteDirectory(SshClient ssh, string remotePath)
+    private static void SudoEnsureRemoteDirectory(SshClient ssh, string remotePath, string owner)
     {
         var normalized = remotePath.Replace('\\', '/').TrimEnd('/');
-        RunSshCommand(ssh, $"sudo mkdir -p {SQuote(normalized)}");
+        RunSshCommand(ssh, $"sudo mkdir -p {SQuote(normalized)} && sudo chown {owner} {SQuote(normalized)}");
     }
 
-    private void UploadFileAtomicSudo(SftpClient sftp, SshClient ssh, string localPath, string remotePath, DateTime mtimeUtc)
+    private void UploadFileAtomicSudo(SftpClient sftp, SshClient ssh, string localPath, string remotePath, DateTime mtimeUtc, string owner)
     {
         var tempPath = "/tmp/ch_" + Guid.NewGuid().ToString("N")[..12] + ".tmp~";
-        var localLength = new FileInfo(localPath).Length;
 
         using var fs = File.OpenRead(localPath);
         sftp.UploadFile(fs, tempPath, true);
 
         var unixTs = new DateTimeOffset(mtimeUtc, TimeSpan.Zero).ToUnixTimeSeconds();
-        RunSshCommand(ssh, $"sudo mv {SQuote(tempPath)} {SQuote(remotePath)} && sudo chown root:root {SQuote(remotePath)} && sudo touch -d '@{unixTs}' {SQuote(remotePath)}");
+        RunSshCommand(ssh, $"sudo mv {SQuote(tempPath)} {SQuote(remotePath)} && sudo chown {owner} {SQuote(remotePath)} && sudo touch -d '@{unixTs}' {SQuote(remotePath)}");
     }
 
     private static void RunSshCommand(SshClient ssh, string command)
