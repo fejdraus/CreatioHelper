@@ -70,14 +70,21 @@ public class UpdateService : IUpdateService, IDisposable
             return;
         }
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        try
         {
-            await InstallOnWindowsAsync(available, cancellationToken).ConfigureAwait(false);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+            {
+                await InstallOnWindowsAsync(available, cancellationToken).ConfigureAwait(false);
+            }
+            else
+            {
+                OpenReleasePage(available.ReleaseUrl);
+                SetState(new UpdateState.Idle());
+            }
         }
-        else
+        catch (Exception ex)
         {
-            OpenReleasePage(available.ReleaseUrl);
-            SetState(new UpdateState.Idle());
+            SetState(new UpdateState.Idle(Error: ex.Message));
         }
     }
 

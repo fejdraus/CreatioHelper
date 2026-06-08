@@ -17,6 +17,7 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
     private bool _isActionButtonEnabled = true;
     private bool _isDownloadProgressVisible;
     private double _downloadProgressPercent;
+    private bool _isDownloadIndeterminate;
 
     public IReadOnlyList<UpdateChannel> AvailableChannels { get; } = new[] { UpdateChannel.Stable, UpdateChannel.Beta };
 
@@ -156,6 +157,20 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
                 return;
             }
             _downloadProgressPercent = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsDownloadIndeterminate
+    {
+        get => _isDownloadIndeterminate;
+        set
+        {
+            if (_isDownloadIndeterminate == value)
+            {
+                return;
+            }
+            _isDownloadIndeterminate = value;
             OnPropertyChanged();
         }
     }

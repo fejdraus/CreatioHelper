@@ -68,6 +68,7 @@
                                  Maximum="100"
                                  Minimum="0"
                                  Height="6"
+                                 IsIndeterminate="{Binding IsDownloadIndeterminate}"
                                  IsVisible="{Binding IsDownloadProgressVisible}"/>
                 </StackPanel>
             </StackPanel>

@@ -73,6 +73,7 @@ public partial class SettingsWindow : Window
                 _viewModel.ActionButtonText = "Checking…";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.IsDownloadIndeterminate = false;
                 break;
 
             case UpdateState.Available available:
@@ -82,6 +83,7 @@ public partial class SettingsWindow : Window
                 _viewModel.ActionButtonText = "Install update now";
                 _viewModel.IsActionButtonEnabled = true;
                 _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.IsDownloadIndeterminate = false;
                 _viewModel.DownloadProgressPercent = 0;
                 break;
 
@@ -89,9 +91,11 @@ public partial class SettingsWindow : Window
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
                 _viewModel.CheckStatus = null;
-                _viewModel.ActionButtonText = $"Downloading {downloading.Percent:F0}%";
+                var hasProgress = downloading.Percent >= 1;
+                _viewModel.ActionButtonText = hasProgress ? $"Downloading {downloading.Percent:F0}%" : "Downloading…";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = true;
+                _viewModel.IsDownloadIndeterminate = !hasProgress;
                 _viewModel.DownloadProgressPercent = downloading.Percent;
                 break;
 
@@ -102,12 +106,14 @@ public partial class SettingsWindow : Window
                 _viewModel.ActionButtonText = "Restart and apply update";
                 _viewModel.IsActionButtonEnabled = true;
                 _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.IsDownloadIndeterminate = false;
                 _viewModel.DownloadProgressPercent = 100;
                 break;
 
             case UpdateState.Idle idle:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.IsDownloadProgressVisible = false;
+                _viewModel.IsDownloadIndeterminate = false;
                 _viewModel.DownloadProgressPercent = 0;
                 _viewModel.ActionButtonText = "Check for updates now";
                 _viewModel.IsActionButtonEnabled = true;
