@@ -25,6 +25,8 @@
   - Upload packages from filesystem to Creatio DB (FS → Creatio)
   - Clean & Validate package sources
 - **Schema Rebuild**: Regenerate and compile schema sources via WorkspaceConsole integration
+  - **Incremental** (default click): install packages + `BuildConfiguration -force=False` — fast iteration
+  - **Full rebuild** (dropdown): `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`
 - **License Management**: Generate license requests and load licenses into Creatio
 - **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
 - **Redis Integration**: Check Redis status and clear cache after deployments
