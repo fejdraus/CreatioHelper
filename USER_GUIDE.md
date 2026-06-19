@@ -25,7 +25,8 @@ Upon launching CreatioHelper, you will see:
 - **Servers Sync Panel:** Manage additional servers for synchronization after updates.
 - **Control Buttons:**
 
-  - **Start:** Executes the full update or regeneration process.
+  - **Start** *(click)*: Incremental install — packages + `BuildConfiguration -force=False`. Faster iteration.
+  - **Start → Start (Compile All)** *(dropdown)*: Full rebuild — `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`.
   - **Stop:** Aborts ongoing operations.
   - **Refresh Status:** Checks the status of remote servers (IIS Site/Pool).
   - **Log Output:** Displays progress and errors.
@@ -49,24 +50,36 @@ Upon launching CreatioHelper, you will see:
 
 3. **Start Process:**
 
-   - Press **Start** to initiate:
+   The **Start** button is always a split-button with two modes:
 
-     1. IIS Site/Pool stop.
-     2. Pre-deletion of packages.
-     3. Installation of new packages.
-     4. Regeneration of schema sources.
-     5. Rebuild and compilation via WorkspaceConsole.
-     6. Redis cache flush (if Redis is configured).
-     7. IIS Site/Pool restart.
+   **Click — Incremental (default):**
+
+   1. IIS Site/Pool stop.
+   2. Pre-deletion of packages.
+   3. Installation of new packages.
+   4. `BuildConfiguration -force=False`.
+   5. Redis cache flush (if Redis is configured).
+   6. IIS Site/Pool restart.
+
+   **Dropdown → Start (Compile All) — Full rebuild:**
+
+   1. IIS Site/Pool stop.
+   2. Pre-deletion of packages.
+   3. Installation of new packages.
+   4. `RegenerateSchemaSources`.
+   5. `RebuildWorkspace`.
+   6. `BuildConfiguration -force=True`.
+   7. Redis cache flush (if Redis is configured).
+   8. IIS Site/Pool restart.
 
 4. **Monitor Log:** Check the output log for progress and any errors.
 
 ### Schema Rebuild without Packages
 
-If no packages or deletions are specified, the **Start** button triggers:
+When no packages or deletions are specified, the same two modes apply:
 
-- Schema sources regeneration.
-- Full workspace rebuild and compilation.
+- **Start (click):** `BuildConfiguration -force=False` — fast incremental compile.
+- **Start (Compile All):** `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True` — full rebuild.
 
 ---
 
