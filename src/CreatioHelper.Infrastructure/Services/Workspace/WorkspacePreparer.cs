@@ -467,8 +467,9 @@ public class WorkspacePreparer : IWorkspacePreparer
         string logPath = Path.Combine(appDirectory, "WSCLog");
         _output.WriteLine($"Path to log file: {logPath}");
         string configPath = GetConfigurationPath(sitePath);
-        string licSourcePath = Path.GetDirectoryName(licFilePath) ?? string.Empty;
-        string licFileName = Path.GetFileName(licFilePath);
+        string licFullPath = Path.GetFullPath(licFilePath);
+        string licSourcePath = Path.GetDirectoryName(licFullPath) ?? string.Empty;
+        string licFileName = Path.GetFileName(licFullPath);
         string arguments = $"-operation=\"LoadLicResponse\" -sourcePath=\"{SafePath(licSourcePath)}\" -fileName=\"{SafePath(licFileName)}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
         _output.WriteLine("Starting Load License Response...");
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);

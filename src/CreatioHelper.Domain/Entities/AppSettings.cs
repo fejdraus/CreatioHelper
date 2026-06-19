@@ -11,6 +11,8 @@ public class AppSettings
 
     public string? SelectedIisSiteName { get; set; }
 
+    public string? SelectedIisSitePath { get; set; }
+
     public string? PackagesPath { get; set; }
 
     public string? PackagesToDeleteBefore { get; set; }

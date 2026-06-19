@@ -41,13 +41,11 @@ public partial class App : Avalonia.Application
 
             desktop.MainWindow = new MainWindow();
 
-            // Subscribe to single instance activation requests
             var singleInstanceManager = Program.GetSingleInstanceManager();
             if (singleInstanceManager != null)
             {
                 singleInstanceManager.ActivationRequested += (sender, e) =>
                 {
-                    // Activate main window on UI thread
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
                         if (desktop.MainWindow != null)

@@ -202,6 +202,10 @@ public partial class MainWindowViewModel : ObservableObject
             
             if (OperatingSystem.IsWindows())
             {
+                if (!string.IsNullOrWhiteSpace(settings.SelectedIisSitePath))
+                {
+                    IsFileDesignModeEnabled = _workspacePreparer.IsFileDesignModeEnabled(settings.SelectedIisSitePath);
+                }
                 LoadIisSites(settings);
             }
             else
@@ -347,17 +351,6 @@ public partial class MainWindowViewModel : ObservableObject
     public string StartButtonText => _operationsService.StartButtonText;
 
     public bool IsStopButtonEnabled => _operationsService.IsStopButtonEnabled;
-
-    /// <summary>
-    /// True when package paths are empty — user can choose between Compile (default) and Compile All (dropdown).
-    /// When any package path is set, full rebuild is forced and the dropdown is hidden.
-    /// </summary>
-    public bool IsCompileChoiceAvailable =>
-        string.IsNullOrWhiteSpace(PackagesPath) &&
-        string.IsNullOrWhiteSpace(PackagesToDeleteBefore) &&
-        string.IsNullOrWhiteSpace(PackagesToDeleteAfter);
-
-    public bool IsFullRebuildOnly => !IsCompileChoiceAvailable;
 
     public bool HasIisSites => IisSites.Any(site => !string.IsNullOrEmpty(site.Path) && !string.IsNullOrEmpty(site.PoolName));
 
@@ -817,28 +810,13 @@ public partial class MainWindowViewModel : ObservableObject
         SaveServerSettings();
     }
 
-    partial void OnPackagesPathChanged(string? value)
-    {
-        SaveServerSettings();
-        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
-        OnPropertyChanged(nameof(IsFullRebuildOnly));
-    }
+    partial void OnPackagesPathChanged(string? value) => SaveServerSettings();
     partial void OnPrevalidateBeforeInstallChanged(bool value) => SaveServerSettings();
     partial void OnResetUnlockedPackageFlagsChanged(bool value) => SaveServerSettings();
     partial void OnSkipRedisClearChanged(bool value) => SaveServerSettings();
     partial void OnSkipServerRestartChanged(bool value) => SaveServerSettings();
-    partial void OnPackagesToDeleteBeforeChanged(string? value)
-    {
-        SaveServerSettings();
-        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
-        OnPropertyChanged(nameof(IsFullRebuildOnly));
-    }
-    partial void OnPackagesToDeleteAfterChanged(string? value)
-    {
-        SaveServerSettings();
-        OnPropertyChanged(nameof(IsCompileChoiceAvailable));
-        OnPropertyChanged(nameof(IsFullRebuildOnly));
-    }
+    partial void OnPackagesToDeleteBeforeChanged(string? value) => SaveServerSettings();
+    partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
     partial void OnSitePathChanged(string? value)
     {
         SaveServerSettings();
@@ -1011,6 +989,7 @@ public partial class MainWindowViewModel : ObservableObject
             SitePath = IsFolderMode ? SitePath : null,
             ServiceName = IsFolderMode ? ServiceName : null,
             SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
+            SelectedIisSitePath = IsIisMode ? SelectedIisSite?.Path : null,
             PackagesPath = PackagesPath,
             PrevalidateBeforeInstall = PrevalidateBeforeInstall,
             ResetUnlockedPackageFlags = ResetUnlockedPackageFlags,

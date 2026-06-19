@@ -24,32 +24,32 @@
   <ItemGroup>
     <PackageReference Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Serilog.Sinks.File" Version="7.0.0" />
-    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.8" />
+    <PackageReference Include="System.ServiceProcess.ServiceController" Version="10.0.9" />
 
     <!-- Application Insights for telemetry -->
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.1.2" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.15.3" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.16.0" />
 
     <!-- JWT Authentication -->
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
 
     <!-- Password hashing -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.2.0" />
 
     <!-- Blazor WebAssembly Server-side hosting -->
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.9" />
   </ItemGroup>
 
   <!-- OpenAPI packages - always included; Swagger UI is gated at runtime by IsDevelopment() -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.8" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.9" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="10.2.1" />
   </ItemGroup>
 
   <!-- Windows-specific packages -->
   <ItemGroup Condition="$([MSBuild]::IsOSPlatform('Windows'))">
-    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.9" />
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
   </ItemGroup>
 

@@ -7,7 +7,7 @@
         <ApplicationManifest>app.manifest</ApplicationManifest>
         <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
         <ApplicationIcon>icon1.ico</ApplicationIcon>
-        <Version>1.0.18</Version>
+        <Version>1.0.19</Version>
         <LangVersion>default</LangVersion>
     </PropertyGroup>
 
@@ -22,10 +22,10 @@
         <PackageReference Include="LiveChartsCore.SkiaSharpView.Avalonia" Version="2.0.4" />
         <PackageReference Include="MessageBox.Avalonia" Version="3.1.5.1" />
         <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
-        <PackageReference Include="System.Management" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.8" />
-        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.8" />
+        <PackageReference Include="System.Management" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.9" />
+        <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
     </ItemGroup>
     <ItemGroup>
         <AvaloniaXaml Include="Views\*.axaml" />
