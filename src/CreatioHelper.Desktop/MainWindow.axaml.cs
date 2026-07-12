@@ -91,6 +91,7 @@ namespace CreatioHelper
             var redisFactory = provider.GetRequiredService<IRedisManagerFactory>();
             var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
             var webConfigEditor = provider.GetRequiredService<IWebConfigEditor>();
+            var connStringsEditor = provider.GetRequiredService<IConnectionStringsEditor>();
             var moduleCleanup = provider.GetRequiredService<IModuleCleanupService>();
             var windowsFeatures = provider.GetRequiredService<IWindowsFeaturesService>();
             var svnCleanup = provider.GetRequiredService<ITerrasoftSvnCleanupService>();
@@ -98,7 +99,7 @@ namespace CreatioHelper
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, moduleCleanup, windowsFeatures, svnCleanup);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, connStringsEditor, moduleCleanup, windowsFeatures, svnCleanup);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>
@@ -129,9 +130,15 @@ namespace CreatioHelper
                     or nameof(MainWindowViewModel.IsIisMode))
                 {
                     _viewModel.ToolsVm.LoadConfigCommand.Execute(null);
+                    _viewModel.ConnStrVm.LoadConfigCommand.Execute(null);
                 }
             };
             _viewModel.ToolsVm.SaveFailed += async (_, msg) =>
+            {
+                var dialog = new SaveErrorWindow(msg);
+                await dialog.ShowDialog(this);
+            };
+            _viewModel.ConnStrVm.SaveFailed += async (_, msg) =>
             {
                 var dialog = new SaveErrorWindow(msg);
                 await dialog.ShowDialog(this);

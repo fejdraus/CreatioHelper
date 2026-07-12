@@ -33,7 +33,7 @@ public partial class ToolsViewModel : ObservableObject
     [ObservableProperty] private bool _usePathThroughAuthentication;
     [ObservableProperty] private bool _fileDesignMode;
     [ObservableProperty] private bool _httpsEncrypted;
-    [ObservableProperty] private int _portForClientConnection = 443;
+    [ObservableProperty] private int? _portForClientConnection = 443;
     [ObservableProperty] private bool _enableProxy;
     [ObservableProperty] private string _proxyAddress = "";
     [ObservableProperty] private bool _isConfigLoaded;
@@ -180,7 +180,7 @@ public partial class ToolsViewModel : ObservableObject
             UsePathThroughAuthentication = UsePathThroughAuthentication,
             HttpsEncrypted = HttpsEncrypted,
             // Port is 0 when HTTPS is disabled (matches original behaviour)
-            PortForClientConnection = HttpsEncrypted ? PortForClientConnection : 0,
+            PortForClientConnection = HttpsEncrypted ? PortForClientConnection ?? 443 : 0,
             EnableProxy = EnableProxy,
             ProxyAddress = ProxyAddress,
             QuartzEnabled = QuartzEnabled,

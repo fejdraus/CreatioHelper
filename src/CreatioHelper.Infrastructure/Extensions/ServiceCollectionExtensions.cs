@@ -34,6 +34,7 @@ public static class ServiceCollectionExtensions
     {
         services.AddSingleton<IMetricsService, MetricsService>();
         services.AddSingleton<IWebConfigEditor, WebConfigEditor>();
+        services.AddSingleton<IConnectionStringsEditor, ConnectionStringsEditor>();
         services.AddSingleton<IHealthCheckService, HealthCheckService>();
         services.AddSingleton<CreatioHelperHealthCheck>();
         services.AddSingleton<IOutputWriter>(_ =>

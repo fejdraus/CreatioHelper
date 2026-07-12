@@ -10,7 +10,7 @@
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
-    <PackageReference Include="Grpc.Tools" Version="2.81.1" PrivateAssets="All" />
+    <PackageReference Include="Grpc.Tools" Version="2.82.0" PrivateAssets="All" />
 
     <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
@@ -25,15 +25,16 @@
     <PackageReference Include="Microsoft.Extensions.ObjectPool" Version="10.0.9" />
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.9" />
-    <PackageReference Include="System.Management.Automation" Version="7.6.2" />
-    <PackageReference Include="StackExchange.Redis" Version="3.0.0" />
+    <PackageReference Include="System.Management.Automation" Version="7.6.3" />
+    <PackageReference Include="StackExchange.Redis" Version="3.0.17" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.11" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.1" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.200" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.9" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.9" />
+    <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.3" />
 
     <!-- Prometheus metrics for monitoring -->
     <PackageReference Include="prometheus-net" Version="8.2.1" />

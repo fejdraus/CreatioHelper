@@ -49,6 +49,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     public ToolsViewModel ToolsVm { get; }
     public ScriptsViewModel ScriptsVm { get; }
+    public ConnectionStringsViewModel ConnStrVm { get; }
 
     public MainWindowViewModel(
         IOutputWriter output,
@@ -64,6 +65,7 @@ public partial class MainWindowViewModel : ObservableObject
         IPackageCleaner packageCleaner,
         IMetricsService metricsService,
         IWebConfigEditor webConfigEditor,
+        IConnectionStringsEditor connStringsEditor,
         IModuleCleanupService moduleCleanup,
         IWindowsFeaturesService windowsFeatures,
         ITerrasoftSvnCleanupService svnCleanup)
@@ -71,6 +73,7 @@ public partial class MainWindowViewModel : ObservableObject
         _output = output;
         ToolsVm = new ToolsViewModel(webConfigEditor, GetResolvedSitePath);
         ScriptsVm = new ScriptsViewModel(_output, windowsFeatures, moduleCleanup, svnCleanup, GetResolvedSitePath);
+        ConnStrVm = new ConnectionStringsViewModel(connStringsEditor, GetResolvedSitePath, GetResolvedSiteVersion);
         _metricsService = metricsService;
         _mediator = mediator;
         _operationsService = operationsService;
@@ -789,6 +792,31 @@ public partial class MainWindowViewModel : ObservableObject
         if (IsIisMode)
             return SelectedIisSite?.Path;
         return SitePath;
+    }
+
+    private Version? GetResolvedSiteVersion()
+    {
+        if (IsIisMode)
+        {
+            return SelectedIisSite?.Version;
+        }
+        if (SitePathWithVersion.Major > 0)
+        {
+            return SitePathWithVersion;
+        }
+        var sitePath = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            return null;
+        }
+        try
+        {
+            return CreatioHelper.Shared.Utils.AppVersionHelper.GetAppVersion(sitePath);
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private void SetControlsEnabled(bool isEnabled)
