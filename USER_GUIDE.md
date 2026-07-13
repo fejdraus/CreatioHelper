@@ -30,6 +30,27 @@ Upon launching CreatioHelper, you will see:
   - **Stop:** Aborts ongoing operations.
   - **Refresh Status:** Checks the status of remote servers (IIS Site/Pool).
   - **Log Output:** Displays progress and errors.
+  - **Skip Redis Clear / Skip IIS Restart:** Keep Redis and the site process alive during compilation — useful when an IDE debugger is attached. In Folder mode the second option is labelled **Skip Service Restart** and applies to the service named in **Service Name**; it is hidden when no service name is set.
+- **Status Bar** *(below the log)*: shows the Creatio version of the selected site, the state of its IIS pool and site (or of the service in Folder mode), and the application's health. Health is an HTTP check against the application itself, so `Pool: Started · App: Unhealthy` tells you the site is up but the application is failing. Refreshed automatically every 10 seconds and after each deployment.
+
+---
+
+## Connection Strings Tab
+
+Appears when the selected site has a `ConnectionStrings.config` file. It edits that file directly — every field maps to a parameter of a connection string, so no manual XML editing is required.
+
+Sections:
+
+- **Database** — server, port, database, user and password. The database type (MS SQL Server, PostgreSQL, Oracle) is detected from the site's configuration and shown next to the section title; the string is written back in the format of that provider. Oracle TNS descriptors and `Integrated Security` strings are preserved as-is.
+- **Redis** — a **Mode** selector:
+  - **Single node** — host, port, DB index, password.
+  - **Cluster** — an editable list of cluster nodes (host + port), available for Creatio 7.18.0 and later.
+  - **Sentinel** — deprecated; offered only for versions below 7.18.3 or when already configured in the file.
+- **Message Broker (RabbitMQ / AMQP)**, **Elasticsearch**, **InfluxDB**, **S3 / Object Storage**, **Paths** — the remaining optional entries.
+
+Every section has an **Other parameters** field holding the parameters that have no dedicated input (`Pooling`, `Max Pool Size`, `maxReadPoolSize`, `useTls`, …). They are never lost on save, and can be edited or removed there.
+
+Changes are saved to the file as you type. A connection string missing from the file is created only when you fill in at least one of its fields — empty sections leave the file untouched.
 
 ---
 

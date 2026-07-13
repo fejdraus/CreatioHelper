@@ -27,6 +27,13 @@
 - **Schema Rebuild**: Regenerate and compile schema sources via WorkspaceConsole integration
   - **Incremental** (default click): install packages + `BuildConfiguration -force=False` — fast iteration
   - **Full rebuild** (dropdown): `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`
+- **Connection Strings Editor**: Edit `ConnectionStrings.config` of the selected site through a form instead of raw XML
+  - Smart per-field editing for `db`, `redis`, `messageBroker`, `elasticsearchCredentials`, `influx`, `s3Connection` and path entries
+  - Database type detected automatically from `Web.config` / `Terrasoft.WebHost.dll.config` — MS SQL Server, PostgreSQL and Oracle (including TNS descriptors) are all supported
+  - Redis mode selector: Single node / Cluster (Creatio 7.18.0+) / Sentinel (deprecated, hidden on 7.18.3+); cluster nodes are edited as a host:port list
+  - Unknown parameters (`Pooling`, `Max Pool Size`, `maxReadPoolSize`, `useTls`, …) are preserved and editable via an **Other parameters** field per section
+  - Entries missing from the file are created on save only when their fields are filled
+- **Live Status Bar**: Creatio version, IIS pool/site state (or service state in Folder mode) and application health for the selected site, refreshed every 10 seconds and after each deployment. Health is an HTTP check against the application itself, so it catches the case where the pool is running but the app is down.
 - **License Management**: Generate license requests and load licenses into Creatio
 - **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
 - **Redis Integration**: Check Redis status and clear cache after deployments
