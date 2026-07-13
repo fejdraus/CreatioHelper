@@ -59,6 +59,13 @@ public class IisService
 
                 foreach (var site in sites)
                 {
+                    var binding = site.Bindings.FirstOrDefault(b => b.Protocol == "http")
+                        ?? site.Bindings.FirstOrDefault(b => b.Protocol == "https");
+                    var bindingParts = (binding?.BindingInformation ?? "").Split(':');
+                    var bindingPort = bindingParts.Length > 1 ? bindingParts[1] : "";
+                    var bindingHost = bindingParts.Length > 2 ? bindingParts[2] : "";
+                    var bindingProtocol = binding?.Protocol ?? "http";
+
                     var subApp = site.Applications.FirstOrDefault(a => a.Path == "/0");
                     var subAppVdir = subApp?.VirtualDirectories["/"];
                     var rootApp = site.Applications["/"];
@@ -78,7 +85,10 @@ public class IisService
                             Name = site.Name,
                             Path = sitePath,
                             PoolName = poolName,
-                            Version = AppVersionHelper.GetAppVersion(sitePath)
+                            Version = AppVersionHelper.GetAppVersion(sitePath),
+                            Port = bindingPort,
+                            HostName = bindingHost,
+                            Protocol = bindingProtocol
                         });
                     }
 
@@ -95,7 +105,10 @@ public class IisService
                             Name = $"{site.Name}{virtualApp.Path}",
                             Path = virtualPath,
                             PoolName = virtualApp.ApplicationPoolName ?? string.Empty,
-                            Version = AppVersionHelper.GetAppVersion(virtualPath)
+                            Version = AppVersionHelper.GetAppVersion(virtualPath),
+                            Port = bindingPort,
+                            HostName = bindingHost,
+                            Protocol = bindingProtocol
                         });
                     }
                 }

@@ -15,6 +15,10 @@ public class IisSiteInfo
     [JsonPropertyName("Port")]
     public string Port { get; set; } = "";
 
+    public string HostName { get; set; } = "";
+
+    public string Protocol { get; set; } = "http";
+
     public string Path { get; set; } = "";
 
     public string PoolName { get; set; } = "";

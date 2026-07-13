@@ -46,6 +46,22 @@ public partial class MainWindowViewModel : ObservableObject
     private Version _sitePathWithVersion = new();
     private readonly IOutputWriter _output;
     private readonly IMetricsService _metricsService;
+    private int _localStatusRefreshToken;
+
+    private static readonly System.Net.Http.HttpClient _healthClient = new(new System.Net.Http.HttpClientHandler
+    {
+        ServerCertificateCustomValidationCallback = System.Net.Http.HttpClientHandler.DangerousAcceptAnyServerCertificateValidator,
+    })
+    {
+        Timeout = TimeSpan.FromSeconds(5),
+    };
+
+    [ObservableProperty] private bool _isLocalStatusVisible;
+    [ObservableProperty] private string _localVersionText = "";
+    [ObservableProperty] private string _localPoolStatus = "";
+    [ObservableProperty] private string _localSiteStatus = "";
+    [ObservableProperty] private string _localServiceStatus = "";
+    [ObservableProperty] private string _localAppHealth = "";
 
     public ToolsViewModel ToolsVm { get; }
     public ScriptsViewModel ScriptsVm { get; }
@@ -87,6 +103,7 @@ public partial class MainWindowViewModel : ObservableObject
                 if (!_operationsService.IsBusy)
                 {
                     _ = Dispatcher.UIThread.InvokeAsync(RefreshMetricsAsync);
+                    _ = Dispatcher.UIThread.InvokeAsync(RefreshLocalStatusAsync);
                 }
             }
             else if (args.PropertyName == nameof(IOperationsService.StartButtonText))
@@ -830,6 +847,7 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(CanUseIisBulkOperations));
         OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
+        _ = RefreshLocalStatusAsync();
     }
 
     partial void OnIsServerPanelVisibleChanged(bool value)
@@ -849,20 +867,199 @@ public partial class MainWindowViewModel : ObservableObject
     {
         SaveServerSettings();
         RefreshFileDesignMode();
+        _ = RefreshLocalStatusAsync();
     }
-    partial void OnServiceNameChanged(string? value) => SaveServerSettings();
+    partial void OnServiceNameChanged(string? value)
+    {
+        SaveServerSettings();
+        _ = RefreshLocalStatusAsync();
+    }
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
         OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
         RefreshFileDesignMode();
+        _ = RefreshLocalStatusAsync();
     }
 
     private void RefreshFileDesignMode()
     {
         var sitePath = GetResolvedSitePath();
         IsFileDesignModeEnabled = !string.IsNullOrWhiteSpace(sitePath) && _workspacePreparer.IsFileDesignModeEnabled(sitePath);
+    }
+
+    public async Task RefreshLocalStatusAsync()
+    {
+        var token = ++_localStatusRefreshToken;
+        LocalVersionText = "";
+        LocalPoolStatus = "";
+        LocalSiteStatus = "";
+        LocalServiceStatus = "";
+        LocalAppHealth = "";
+
+        if (IsIisMode && SelectedIisSite is not null)
+        {
+            var site = SelectedIisSite;
+            IsLocalStatusVisible = true;
+            LocalVersionText = site.Version is { Major: > 0 } ? $"v{site.Version}" : "";
+            LocalPoolStatus = "Checking...";
+            LocalSiteStatus = "Checking...";
+            LocalAppHealth = "Checking...";
+
+            var siteName = site.IsVirtualApp ? site.Name.Split('/')[0] : site.Name;
+            var poolTask = _iisManager.GetAppPoolStatusAsync("", site.PoolName);
+            var siteTask = _iisManager.GetWebsiteStatusAsync("", siteName);
+            var healthTask = CheckAppHealthAsync(BuildIisAppUrl(site));
+            await Task.WhenAll(poolTask, siteTask, healthTask);
+            if (token != _localStatusRefreshToken)
+            {
+                return;
+            }
+            LocalPoolStatus = poolTask.Result.IsSuccess ? poolTask.Result.Value ?? "Unknown" : "Unknown";
+            LocalSiteStatus = siteTask.Result.IsSuccess ? siteTask.Result.Value ?? "Unknown" : "Unknown";
+            LocalAppHealth = healthTask.Result;
+        }
+        else if (IsFolderMode && !string.IsNullOrWhiteSpace(SitePath) && Directory.Exists(SitePath))
+        {
+            IsLocalStatusVisible = true;
+            LocalVersionText = SitePathWithVersion is { Major: > 0 } ? $"v{SitePathWithVersion}" : "";
+
+            Task<string?>? serviceTask = null;
+            if (!string.IsNullOrWhiteSpace(ServiceName))
+            {
+                LocalServiceStatus = "Checking...";
+                serviceTask = _systemServiceManager.GetServiceStateAsync(ServiceName);
+            }
+
+            Task<string>? healthTask = null;
+            var appUrl = BuildKestrelAppUrl(SitePath);
+            if (appUrl is not null)
+            {
+                LocalAppHealth = "Checking...";
+                healthTask = CheckAppHealthAsync(appUrl);
+            }
+
+            if (serviceTask is not null)
+            {
+                var state = await serviceTask;
+                if (token != _localStatusRefreshToken)
+                {
+                    return;
+                }
+                LocalServiceStatus = string.IsNullOrWhiteSpace(state) ? "Unknown" : state;
+            }
+            if (healthTask is not null)
+            {
+                var health = await healthTask;
+                if (token != _localStatusRefreshToken)
+                {
+                    return;
+                }
+                LocalAppHealth = health;
+            }
+        }
+        else
+        {
+            IsLocalStatusVisible = false;
+        }
+    }
+
+    private static string BuildIisAppUrl(IisSiteInfo site)
+    {
+        var port = int.TryParse(site.Port, out var parsed) && parsed > 0 ? parsed : 80;
+        var scheme = string.IsNullOrWhiteSpace(site.Protocol) ? "http" : site.Protocol;
+        var host = string.IsNullOrWhiteSpace(site.HostName) ? "localhost" : site.HostName;
+        var appPath = site.IsVirtualApp ? "/" + string.Join('/', site.Name.Split('/').Skip(1)) : "";
+        return $"{scheme}://{host}:{port}{appPath}";
+    }
+
+    private static string? BuildKestrelAppUrl(string sitePath)
+    {
+        try
+        {
+            var path = Path.Combine(sitePath, "appsettings.json");
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+            using var doc = JsonDocument.Parse(File.ReadAllText(path));
+            if (!doc.RootElement.TryGetProperty("Kestrel", out var kestrel)
+                || !kestrel.TryGetProperty("Endpoints", out var endpoints))
+            {
+                return null;
+            }
+            string? httpsUrl = null;
+            foreach (var endpoint in endpoints.EnumerateObject())
+            {
+                if (!endpoint.Value.TryGetProperty("Url", out var urlProp))
+                {
+                    continue;
+                }
+                var normalized = NormalizeKestrelUrl(urlProp.GetString() ?? "");
+                if (normalized is null)
+                {
+                    continue;
+                }
+                if (normalized.StartsWith("http://", StringComparison.Ordinal))
+                {
+                    return normalized;
+                }
+                httpsUrl ??= normalized;
+            }
+            return httpsUrl;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static string? NormalizeKestrelUrl(string url)
+    {
+        var schemeEnd = url.IndexOf("://", StringComparison.Ordinal);
+        if (schemeEnd < 0)
+        {
+            return null;
+        }
+        var scheme = url[..schemeEnd];
+        var portIdx = url.LastIndexOf(':');
+        if (portIdx <= schemeEnd || !int.TryParse(url[(portIdx + 1)..].TrimEnd('/'), out var port))
+        {
+            return null;
+        }
+        return $"{scheme}://localhost:{port}";
+    }
+
+    private static async Task<string> CheckAppHealthAsync(string baseUrl)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            using var response = await _healthClient.GetAsync($"{baseUrl}/ping");
+            stopwatch.Stop();
+            if (response.IsSuccessStatusCode)
+            {
+                return $"Healthy ({stopwatch.ElapsedMilliseconds} ms)";
+            }
+
+            stopwatch.Restart();
+            using var rootResponse = await _healthClient.GetAsync(baseUrl + "/");
+            stopwatch.Stop();
+            if (rootResponse.IsSuccessStatusCode)
+            {
+                return $"Healthy ({stopwatch.ElapsedMilliseconds} ms)";
+            }
+            return $"Unhealthy (HTTP {(int)rootResponse.StatusCode})";
+        }
+        catch (TaskCanceledException)
+        {
+            return "No response (timeout)";
+        }
+        catch (Exception)
+        {
+            return "No response";
+        }
     }
 
     public Version? SelectedIisSiteVersion => SelectedIisSite?.Version;

@@ -24,6 +24,12 @@ public class StatusToColorConverter : IValueConverter
         if (statusLower is "starting" or "stopping")
             return Brushes.Orange;
 
+        // App health statuses
+        if (statusLower.StartsWith("unhealthy") || statusLower.StartsWith("no response"))
+            return Brushes.Red;
+        if (statusLower.StartsWith("healthy"))
+            return Brushes.Green;
+
         // Syncthing statuses with emoji
         // Green: Up to Date
         if (statusLower.Contains("up to date") || statusLower.Contains("✅"))
