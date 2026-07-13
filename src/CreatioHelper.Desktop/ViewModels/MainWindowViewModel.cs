@@ -47,8 +47,10 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IOutputWriter _output;
     private readonly IMetricsService _metricsService;
     private int _isLocalStatusRefreshing;
+    private CancellationTokenSource? _localStatusCts;
     private IDisposable? _localStatusTimer;
     private readonly IUIDispatcher _uiDispatcher;
+    private readonly IConnectionStringsEditor _connStringsEditor;
 
     private static readonly System.Net.Http.HttpClient _healthClient = new(new System.Net.Http.HttpClientHandler
     {
@@ -64,6 +66,8 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty] private string _localSiteStatus = "";
     [ObservableProperty] private string _localServiceStatus = "";
     [ObservableProperty] private string _localAppHealth = "";
+    [ObservableProperty] private string _localDbName = "";
+    [ObservableProperty] private string _localRedisDb = "";
 
     public ToolsViewModel ToolsVm { get; }
     public ScriptsViewModel ScriptsVm { get; }
@@ -91,9 +95,11 @@ public partial class MainWindowViewModel : ObservableObject
     {
         _output = output;
         _uiDispatcher = uiDispatcher;
+        _connStringsEditor = connStringsEditor;
         ToolsVm = new ToolsViewModel(webConfigEditor, GetResolvedSitePath);
         ScriptsVm = new ScriptsViewModel(_output, windowsFeatures, moduleCleanup, svnCleanup, GetResolvedSitePath);
         ConnStrVm = new ConnectionStringsViewModel(connStringsEditor, GetResolvedSitePath, GetResolvedSiteVersion);
+        ConnStrVm.ConfigSaved += (_, _) => RefreshDataStores();
         _metricsService = metricsService;
         _mediator = mediator;
         _operationsService = operationsService;
@@ -221,7 +227,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             if (!_operationsService.IsBusy)
             {
-                _ = RefreshLocalStatusAsync();
+                _ = RefreshLocalStatusAsync(fromTimer: true);
             }
             return true;
         }, TimeSpan.FromSeconds(10));
@@ -913,16 +919,26 @@ public partial class MainWindowViewModel : ObservableObject
         LocalSiteStatus = "";
         LocalServiceStatus = "";
         LocalAppHealth = "";
+        LocalDbName = "";
+        LocalRedisDb = "";
         _ = RefreshLocalStatusAsync();
     }
 
-    public async Task RefreshLocalStatusAsync()
+    public Task RefreshLocalStatusAsync() => RefreshLocalStatusAsync(fromTimer: false);
+
+    private async Task RefreshLocalStatusAsync(bool fromTimer)
     {
-        if (Interlocked.CompareExchange(ref _isLocalStatusRefreshing, 1, 0) != 0)
+        if (fromTimer && Volatile.Read(ref _isLocalStatusRefreshing) != 0)
         {
             return;
         }
 
+        var previousCts = Interlocked.Exchange(ref _localStatusCts, new CancellationTokenSource());
+        previousCts?.Cancel();
+        previousCts?.Dispose();
+        var cancellationToken = _localStatusCts!.Token;
+
+        Interlocked.Increment(ref _isLocalStatusRefreshing);
         try
         {
             var isIis = IsIisMode;
@@ -943,20 +959,21 @@ public partial class MainWindowViewModel : ObservableObject
                 });
 
                 var siteName = site.IsVirtualApp ? site.Name.Split('/')[0] : site.Name;
-                var statusTask = Task.Run(() => _iisService.GetLocalStatus(siteName, site.PoolName));
-                var healthTask = CheckAppHealthAsync(BuildIisAppUrl(site));
-                await Task.WhenAll(statusTask, healthTask);
+                bool StillCurrent() => IsIisMode && ReferenceEquals(SelectedIisSite, site);
 
-                await _uiDispatcher.InvokeAsync(() =>
-                {
-                    if (!ReferenceEquals(SelectedIisSite, site) || !IsIisMode)
+                await Task.WhenAll(
+                    ApplyWhenReady(Task.Run(() => _iisService.GetLocalStatus(siteName, site.PoolName)), StillCurrent, status =>
                     {
-                        return;
-                    }
-                    LocalPoolStatus = statusTask.Result.PoolStatus;
-                    LocalSiteStatus = statusTask.Result.SiteStatus;
-                    LocalAppHealth = healthTask.Result;
-                });
+                        LocalPoolStatus = status.PoolStatus;
+                        LocalSiteStatus = status.SiteStatus;
+                    }, cancellationToken),
+                    ApplyWhenReady(Task.Run(() => ReadDataStores(site.Path)), StillCurrent, stores =>
+                    {
+                        LocalDbName = stores.DbName;
+                        LocalRedisDb = stores.RedisDb;
+                    }, cancellationToken),
+                    ApplyWhenReady(CheckAppHealthAsync(BuildIisAppUrl(site), cancellationToken), StillCurrent,
+                        health => LocalAppHealth = health, cancellationToken));
             }
             else if (!isIis && !string.IsNullOrWhiteSpace(sitePath))
             {
@@ -977,39 +994,36 @@ public partial class MainWindowViewModel : ObservableObject
                         SitePathWithVersion = folder.Version;
                     }
                     LocalVersionText = FormatVersion(folder.Version);
+                    LocalDbName = folder.Stores.DbName;
+                    LocalRedisDb = folder.Stores.RedisDb;
                     LocalServiceStatus = string.IsNullOrWhiteSpace(serviceName) ? "" : KeepOrChecking(LocalServiceStatus);
                     LocalAppHealth = folder.AppUrl is null ? "" : KeepOrChecking(LocalAppHealth);
                 });
 
-                var serviceTask = string.IsNullOrWhiteSpace(serviceName)
-                    ? Task.FromResult<string?>(null)
-                    : _systemServiceManager.GetServiceStateAsync(serviceName);
-                var healthTask = folder.AppUrl is null
-                    ? Task.FromResult<string?>(null)
-                    : CheckAppHealthAsync(folder.AppUrl).ContinueWith(t => (string?)t.Result);
-                await Task.WhenAll(serviceTask, healthTask);
+                bool StillCurrent() => !IsIisMode
+                    && string.Equals(SitePath, sitePath, StringComparison.Ordinal)
+                    && string.Equals(ServiceName ?? "", serviceName ?? "", StringComparison.Ordinal);
 
-                await _uiDispatcher.InvokeAsync(() =>
+                var pending = new List<Task>();
+                if (!string.IsNullOrWhiteSpace(serviceName))
                 {
-                    if (IsIisMode || !string.Equals(SitePath, sitePath, StringComparison.Ordinal)
-                        || !string.Equals(ServiceName ?? "", serviceName ?? "", StringComparison.Ordinal))
-                    {
-                        return;
-                    }
-                    if (serviceTask.Result is not null)
-                    {
-                        LocalServiceStatus = string.IsNullOrWhiteSpace(serviceTask.Result) ? "Unknown" : serviceTask.Result;
-                    }
-                    if (healthTask.Result is not null)
-                    {
-                        LocalAppHealth = healthTask.Result;
-                    }
-                });
+                    pending.Add(ApplyWhenReady(_systemServiceManager.GetServiceStateAsync(serviceName), StillCurrent,
+                        state => LocalServiceStatus = string.IsNullOrWhiteSpace(state) ? "Unknown" : state, cancellationToken));
+                }
+                if (folder.AppUrl is not null)
+                {
+                    pending.Add(ApplyWhenReady(CheckAppHealthAsync(folder.AppUrl, cancellationToken), StillCurrent,
+                        health => LocalAppHealth = health, cancellationToken));
+                }
+                await Task.WhenAll(pending);
             }
             else
             {
                 await _uiDispatcher.InvokeAsync(ClearLocalStatus);
             }
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
@@ -1017,8 +1031,34 @@ public partial class MainWindowViewModel : ObservableObject
         }
         finally
         {
-            Interlocked.Exchange(ref _isLocalStatusRefreshing, 0);
+            Interlocked.Decrement(ref _isLocalStatusRefreshing);
         }
+    }
+
+    private async Task ApplyWhenReady<T>(Task<T> task, Func<bool> isStillCurrent, Action<T> apply, CancellationToken cancellationToken)
+    {
+        T result;
+        try
+        {
+            result = await task.ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (cancellationToken.IsCancellationRequested)
+        {
+            return;
+        }
+
+        await _uiDispatcher.InvokeAsync(() =>
+        {
+            if (!cancellationToken.IsCancellationRequested && isStillCurrent())
+            {
+                apply(result);
+            }
+        });
     }
 
     private void ClearLocalStatus()
@@ -1029,15 +1069,19 @@ public partial class MainWindowViewModel : ObservableObject
         LocalSiteStatus = "";
         LocalServiceStatus = "";
         LocalAppHealth = "";
+        LocalDbName = "";
+        LocalRedisDb = "";
     }
 
     private static string KeepOrChecking(string current) => current.Length == 0 ? "Checking..." : current;
 
     private static string FormatVersion(Version? version) => version is { Major: > 0 } ? $"v{version}" : "";
 
-    private sealed record FolderSiteInfo(Version Version, string? AppUrl);
+    private sealed record DataStoreInfo(string DbName, string RedisDb);
 
-    private static FolderSiteInfo? ResolveFolderSite(string sitePath)
+    private sealed record FolderSiteInfo(Version Version, string? AppUrl, DataStoreInfo Stores);
+
+    private FolderSiteInfo? ResolveFolderSite(string sitePath)
     {
         try
         {
@@ -1046,11 +1090,50 @@ public partial class MainWindowViewModel : ObservableObject
                 return null;
             }
             var version = CreatioHelper.Shared.Utils.AppVersionHelper.GetAppVersion(sitePath);
-            return new FolderSiteInfo(version, BuildKestrelAppUrl(sitePath));
+            return new FolderSiteInfo(version, BuildKestrelAppUrl(sitePath), ReadDataStores(sitePath));
         }
         catch
         {
             return null;
+        }
+    }
+
+    private void RefreshDataStores()
+    {
+        if (!IsLocalStatusVisible)
+        {
+            return;
+        }
+        var sitePath = GetResolvedSitePath();
+        _ = Task.Run(() => ReadDataStores(sitePath)).ContinueWith(t =>
+            _uiDispatcher.InvokeAsync(() =>
+            {
+                LocalDbName = t.Result.DbName;
+                LocalRedisDb = t.Result.RedisDb;
+            }), TaskContinuationOptions.OnlyOnRanToCompletion);
+    }
+
+    private DataStoreInfo ReadDataStores(string? sitePath)
+    {
+        if (string.IsNullOrWhiteSpace(sitePath) || !File.Exists(Path.Combine(sitePath, "ConnectionStrings.config")))
+        {
+            return new DataStoreInfo("", "");
+        }
+
+        try
+        {
+            var data = _connStringsEditor.Read(sitePath);
+            var redisDb = data.RedisMode switch
+            {
+                RedisConnectionMode.Cluster => "Cluster",
+                RedisConnectionMode.Sentinel => $"Sentinel ({data.SentinelDb})",
+                _ => data.RedisDb.ToString(),
+            };
+            return new DataStoreInfo(data.DbCatalog, redisDb);
+        }
+        catch
+        {
+            return new DataStoreInfo("", "");
         }
     }
 
@@ -1122,7 +1205,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, string> _healthEndpointCache = new();
 
-    private static async Task<string> CheckAppHealthAsync(string baseUrl)
+    private static async Task<string> CheckAppHealthAsync(string baseUrl, CancellationToken cancellationToken)
     {
         var cachedPath = _healthEndpointCache.GetValueOrDefault(baseUrl);
         var paths = cachedPath is not null ? new[] { cachedPath } : new[] { "/ping", "/" };
@@ -1131,10 +1214,11 @@ public partial class MainWindowViewModel : ObservableObject
         var lastStatus = 0;
         foreach (var path in paths)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 stopwatch.Restart();
-                using var response = await _healthClient.GetAsync(baseUrl + path);
+                using var response = await _healthClient.GetAsync(baseUrl + path, cancellationToken);
                 stopwatch.Stop();
                 if (response.IsSuccessStatusCode)
                 {
@@ -1142,6 +1226,10 @@ public partial class MainWindowViewModel : ObservableObject
                     return $"Healthy ({stopwatch.ElapsedMilliseconds} ms)";
                 }
                 lastStatus = (int)response.StatusCode;
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                throw;
             }
             catch (TaskCanceledException)
             {

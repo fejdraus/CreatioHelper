@@ -335,34 +335,49 @@
             <Grid Grid.Row="8" ColumnDefinitions="*,Auto" Margin="0,3,0,0">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
                             IsVisible="{Binding IsLocalStatusVisible}">
-                    <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding LocalVersionText}"
-                               IsVisible="{Binding LocalVersionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                IsVisible="{Binding LocalVersionText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock FontSize="12" Foreground="Gray" Text="App version:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalVersionText}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                IsVisible="{Binding LocalDbName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· DB:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalDbName}"/>
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                IsVisible="{Binding LocalRedisDb, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· Redis DB:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalRedisDb}"/>
+                    </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
                                 IsVisible="{Binding LocalPoolStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock FontSize="10" Foreground="Gray" Text="· Pool:"/>
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding LocalPoolStatus}"
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· Pool:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalPoolStatus}"
                                    Foreground="{Binding LocalPoolStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
                                 IsVisible="{Binding LocalSiteStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock FontSize="10" Foreground="Gray" Text="· Site:"/>
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding LocalSiteStatus}"
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· Site:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalSiteStatus}"
                                    Foreground="{Binding LocalSiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
                                 IsVisible="{Binding LocalServiceStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock FontSize="10" Foreground="Gray" Text="· Service:"/>
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding LocalServiceStatus}"
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· Service:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalServiceStatus}"
                                    Foreground="{Binding LocalServiceStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
 
                     <StackPanel Orientation="Horizontal" Spacing="4"
                                 IsVisible="{Binding LocalAppHealth, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
-                        <TextBlock FontSize="10" Foreground="Gray" Text="· App:"/>
-                        <TextBlock FontSize="10" FontWeight="SemiBold" Text="{Binding LocalAppHealth}"
+                        <TextBlock FontSize="12" Foreground="Gray" Text="· App:"/>
+                        <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalAppHealth}"
                                    Foreground="{Binding LocalAppHealth, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
                 </StackPanel>
@@ -370,7 +385,7 @@
                 <HyperlinkButton Grid.Column="1"
                                  Content="Powered by Banza"
                                  NavigateUri="https://banzait.com/"
-                                 FontSize="10"
+                                 FontSize="12"
                                  Foreground="Gray"
                                  Opacity="1"
                                  Padding="0"
@@ -496,7 +511,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="Connection Strings" IsVisible="{Binding ConnStrVm.IsConfigLoaded}">
+            <TabItem Header="ConnectionStrings.config" IsVisible="{Binding ConnStrVm.IsConfigLoaded}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="16,12" Spacing="12" DataContext="{Binding ConnStrVm}">
 

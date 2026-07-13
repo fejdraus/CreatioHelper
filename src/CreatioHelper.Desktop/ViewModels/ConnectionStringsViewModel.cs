@@ -111,6 +111,8 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
     public event EventHandler<string>? SaveFailed;
 
+    public event EventHandler? ConfigSaved;
+
     public ConnectionStringsViewModel(IConnectionStringsEditor editor, Func<string?> sitePathProvider, Func<Version?> siteVersionProvider)
     {
         _editor = editor;
@@ -323,6 +325,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
                 DbExtraParams = _loadedData!.DbExtraParams;
                 _isPopulating = false;
             }
+            ConfigSaved?.Invoke(this, EventArgs.Empty);
         }
         catch (Exception ex)
         {
