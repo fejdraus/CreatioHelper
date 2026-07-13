@@ -281,10 +281,11 @@
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                     <CheckBox x:Name="SkipServerRestartCheckBox"
-                              Content="Skip IIS Restart"
-                              ToolTip.Tip="Skip IIS stop/start during compile (keeps the process alive so IDE can stay attached)"
+                              Content="{Binding SkipServerRestartText}"
+                              ToolTip.Tip="Skip stop/start of the site during compile (keeps the process alive so IDE can stay attached)"
                               IsChecked="{Binding SkipServerRestart, Mode=TwoWay}"
                               IsEnabled="{Binding AreControlsEnabled}"
+                              IsVisible="{Binding IsSkipServerRestartAvailable}"
                               VerticalAlignment="Center"
                               Margin="10,0,0,0"/>
                 </StackPanel>

@@ -95,11 +95,12 @@ namespace CreatioHelper
             var moduleCleanup = provider.GetRequiredService<IModuleCleanupService>();
             var windowsFeatures = provider.GetRequiredService<IWindowsFeaturesService>();
             var svnCleanup = provider.GetRequiredService<ITerrasoftSvnCleanupService>();
+            var uiDispatcher = provider.GetRequiredService<IUIDispatcher>();
 
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
             var iisService = new IisService();
-            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, connStringsEditor, moduleCleanup, windowsFeatures, svnCleanup);
+            _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, connStringsEditor, moduleCleanup, windowsFeatures, svnCleanup, uiDispatcher);
 
             // Monitor for Syncthing configuration changes and create/update SyncthingMonitorService
             _viewModel.PropertyChanged += async (_, args) =>
@@ -205,6 +206,8 @@ namespace CreatioHelper
 
         private async void OnMainWindowClosed(object? sender, EventArgs e)
         {
+            _viewModel?.StopLocalStatusTimer();
+
             // Flush all pending logs before exit
             try
             {

@@ -407,14 +407,14 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         {
             _output.WriteLine("[INFO] Operation was cancelled.");
             _metricsService.IncrementCounter("deployment_cancelled");
-            ui.OnStopButtonEnabledChanged(true);
+            ui.OnStopButtonEnabledChanged(false);
             return DeploymentResult.CancelledResult();
         }
         catch (Exception ex)
         {
             _output.WriteLine($"[ERROR] {ex.Message}");
             _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = ex.GetType().Name });
-            ui.OnStopButtonEnabledChanged(true);
+            ui.OnStopButtonEnabledChanged(false);
             return DeploymentResult.Fail(ex.Message);
         }
         finally
@@ -422,7 +422,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             ui.OnBusyChanged(false);
             ui.OnStartButtonText("Start");
             ui.OnServerControlsEnabledChanged(true);
-            ui.OnStopButtonEnabledChanged(true);
+            ui.OnStopButtonEnabledChanged(false);
             if (!quartzIsActiveOriginal)
             {
                 string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))

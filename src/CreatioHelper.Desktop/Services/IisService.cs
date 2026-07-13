@@ -39,6 +39,45 @@ public class IisService
         }
     }
     
+    public (string PoolStatus, string SiteStatus) GetLocalStatus(string siteName, string poolName)
+    {
+        if (!OperatingSystem.IsWindows() || !IsIisAvailable())
+        {
+            return ("Unknown", "Unknown");
+        }
+
+        try
+        {
+            using var manager = new ServerManager();
+
+            var poolStatus = "Unknown";
+            if (!string.IsNullOrWhiteSpace(poolName))
+            {
+                var pool = manager.ApplicationPools[poolName];
+                if (pool != null)
+                {
+                    poolStatus = pool.State.ToString();
+                }
+            }
+
+            var siteStatus = "Unknown";
+            if (!string.IsNullOrWhiteSpace(siteName))
+            {
+                var site = manager.Sites[siteName];
+                if (site != null)
+                {
+                    siteStatus = site.State.ToString();
+                }
+            }
+
+            return (poolStatus, siteStatus);
+        }
+        catch
+        {
+            return ("Unknown", "Unknown");
+        }
+    }
+
     public void LoadIisSites(ObservableCollection<IisSiteInfo> iisSites, Action<bool> onCompletion)
     {
         if (!OperatingSystem.IsWindows() || !IsIisAvailable())
