@@ -4,7 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
     <LangVersion>default</LangVersion>
     <!-- Enable dynamic culture switching for localization -->
     <BlazorWebAssemblyLoadAllGlobalizationData>true</BlazorWebAssemblyLoadAllGlobalizationData>
@@ -12,11 +11,11 @@
 
   <ItemGroup>
     <!-- Blazor WebAssembly -->
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.9" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.10" />
 
     <!-- SignalR for real-time updates -->
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.10" />
 
     <!-- MudBlazor UI Components -->
     <PackageReference Include="MudBlazor" Version="9.7.0" />
@@ -31,11 +30,6 @@
   <ItemGroup>
     <!-- Reference shared contracts for API models -->
     <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
-  </ItemGroup>
-
-  <!-- PWA Service Worker -->
-  <ItemGroup>
-    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
   </ItemGroup>
 
 </Project>
