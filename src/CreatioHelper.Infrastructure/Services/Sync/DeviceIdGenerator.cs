@@ -168,7 +168,7 @@ public static class DeviceIdGenerator
             // Add Luhn check digit after each 13-char group
             if (chunk.Length == 13)
             {
-                char checkDigit = CalculateLuhn32CheckDigit(result.ToString());
+                char checkDigit = CalculateLuhn32CheckDigit(chunk);
                 result.Append(checkDigit);
             }
         }
@@ -186,7 +186,7 @@ public static class DeviceIdGenerator
         int factor = 1;
         int sum = 0;
 
-        for (int i = input.Length - 1; i >= 0; i--)
+        for (int i = 0; i < input.Length; i++)
         {
             int codePoint = LuhnAlphabet.IndexOf(input[i]);
             if (codePoint < 0) continue;
@@ -255,8 +255,8 @@ public static class DeviceIdGenerator
         {
             if (pos >= cleaned.Length) break;
 
-            var prefix = cleaned.Substring(0, pos);
-            char expected = CalculateLuhn32CheckDigit(prefix);
+            var group = cleaned.Substring(pos - 13, 13);
+            char expected = CalculateLuhn32CheckDigit(group);
 
             if (cleaned[pos] != expected)
                 return false;

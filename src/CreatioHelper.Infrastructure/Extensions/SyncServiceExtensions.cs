@@ -82,8 +82,7 @@ public static class SyncServiceExtensions
             GenerateDeviceId(certificate),
             Environment.MachineName);
 
-        // Ensure DeviceId is set (auto-generate from certificate if empty)
-        if (string.IsNullOrEmpty(syncConfig.DeviceId))
+        if (string.IsNullOrEmpty(syncConfig.DeviceId) || !DeviceIdGenerator.IsValidDeviceId(syncConfig.DeviceId))
         {
             syncConfig.DeviceId = GenerateDeviceId(certificate);
         }
@@ -180,7 +179,6 @@ public static class SyncServiceExtensions
         services.AddSingleton<AdaptiveBlockSizer>();
         services.AddSingleton<DeltaSyncEngine>();
         services.AddSingleton<FileWatcher>();
-        services.AddSingleton<ConflictResolver>();
         services.AddSingleton<FileComparator>();
         services.AddSingleton<FileDownloader>();
         services.AddSingleton<FileUploader>();
@@ -305,7 +303,6 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<ISyncProtocol>(),
                 provider.GetRequiredService<IDeviceDiscovery>(),
                 provider.GetRequiredService<FileWatcher>(),
-                provider.GetRequiredService<ConflictResolver>(),
                 provider.GetRequiredService<FileComparator>(),
                 provider.GetRequiredService<FileDownloader>(),
                 provider.GetRequiredService<FileUploader>(),
