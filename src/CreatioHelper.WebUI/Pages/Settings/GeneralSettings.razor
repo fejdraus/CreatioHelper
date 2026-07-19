@@ -164,6 +164,14 @@ else if (_config != null)
             if (_config != null)
             {
                 _deviceName = _config.Options?.DeviceName ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(_deviceName))
+                {
+                    var localDevice = _config.Devices.FirstOrDefault(d => d.DeviceId == State.SystemStatus?.MyId);
+                    if (localDevice != null && !string.IsNullOrWhiteSpace(localDevice.Name))
+                    {
+                        _deviceName = localDevice.Name;
+                    }
+                }
                 _defaultFolderPath = _config.Options?.DefaultFolderPath ?? string.Empty;
                 _ignorePerms = _config.Options?.IgnorePerms ?? false;
                 _autoNormalize = _config.Options?.AutoNormalizeFilenames ?? true;

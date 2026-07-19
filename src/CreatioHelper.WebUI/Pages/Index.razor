@@ -110,7 +110,7 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@FormatBytes(_totalLocalBytes)</div>
-                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles @L["FolderDetails_Files"], @_totalLocalDirs @L["FolderDetails_Dirs"])</div>
+                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles.ToString("N0") @L["FolderDetails_Files"], @_totalLocalDirs.ToString("N0") @L["FolderDetails_Dirs"])</div>
             </MudCardContent>
         </MudCard>
     </MudItem>

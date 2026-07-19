@@ -1,4 +1,5 @@
 @using CreatioHelper.WebUI.Services
+@inject IStringLocalizer<Localization> L
 
 <MudThemeProvider @ref="_themeProvider" @bind-IsDarkMode="@_isDarkMode" Theme="@_theme" />
 <MudPopoverProvider />
@@ -11,15 +12,15 @@
         <FocusOnNavigate RouteData="@routeData" Selector="h1" />
     </Found>
     <NotFound>
-        <PageTitle>Not found</PageTitle>
+        <PageTitle>@L["NotFound_Title"] - CreatioHelper</PageTitle>
         <LayoutView Layout="@typeof(Layout.MainLayout)">
             <MudContainer MaxWidth="MaxWidth.Small" Class="mt-8">
                 <MudPaper Class="pa-8 text-center" Elevation="2">
                     <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Color="Color.Warning" Class="mb-4" />
-                    <MudText Typo="Typo.h4" Class="mb-4">Page Not Found</MudText>
-                    <MudText Class="mb-6">Sorry, there's nothing at this address.</MudText>
+                    <MudText Typo="Typo.h4" Class="mb-4">@L["NotFound_Title"]</MudText>
+                    <MudText Class="mb-6">@L["NotFound_Message"]</MudText>
                     <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/">
-                        Go to Dashboard
+                        @L["NotFound_GoDashboard"]
                     </MudButton>
                 </MudPaper>
             </MudContainer>

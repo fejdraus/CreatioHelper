@@ -7,9 +7,9 @@
     <OutputType>Exe</OutputType>
 
     <!-- Version info -->
-    <Version>1.0.0</Version>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <FileVersion>1.0.0.0</FileVersion>
+    <Version>1.0.24</Version>
+    <AssemblyVersion>1.0.24.0</AssemblyVersion>
+    <FileVersion>1.0.24.0</FileVersion>
     <Product>CreatioHelper</Product>
     <Description>Syncthing-compatible file synchronization with Creatio management</Description>
 

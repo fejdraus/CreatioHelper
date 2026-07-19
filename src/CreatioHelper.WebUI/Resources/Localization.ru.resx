@@ -1421,7 +1421,7 @@
     <value>Действия</value>
   </data>
   <data name="Connections_Disconnect" xml:space="preserve">
-    <value>Отключить</value>
+    <value>Отключено</value>
   </data>
   <data name="Connections_NoActiveConns" xml:space="preserve">
     <value>Нет активных соединений</value>
@@ -3500,5 +3500,14 @@
   </data>
   <data name="Msg_FailedToUpdateWebServerType" xml:space="preserve">
     <value>Не удалось обновить тип веб-сервера: {0}</value>
+  </data>
+  <data name="NotFound_Title" xml:space="preserve">
+    <value>Страница не найдена</value>
+  </data>
+  <data name="NotFound_Message" xml:space="preserve">
+    <value>К сожалению, по этому адресу ничего нет.</value>
+  </data>
+  <data name="NotFound_GoDashboard" xml:space="preserve">
+    <value>На панель управления</value>
   </data>
 </root>

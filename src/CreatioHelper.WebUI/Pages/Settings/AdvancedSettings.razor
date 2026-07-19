@@ -21,36 +21,6 @@
 else if (_config != null)
 {
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_SyncDefaults"]</MudText>
-
-        <MudTextField @bind-Value="_defaultFolderPath"
-                      Label="@L["Settings_Advanced_DefaultFolderPath"]"
-                      Variant="Variant.Filled"
-                      HelperText="@L["Settings_Advanced_DefaultFolderPath_Help"]" />
-
-        <MudDivider Class="my-4" />
-
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudSwitch @bind-Value="_ignorePerms"
-                           Color="Color.Primary"
-                           Label="@L["Settings_Advanced_IgnorePermissions"]" />
-                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                    @L["Settings_Advanced_IgnorePermissions_Help"]
-                </MudText>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSwitch @bind-Value="_autoNormalizeFilenames"
-                           Color="Color.Primary"
-                           Label="@L["Settings_Advanced_AutoNormalizeFilenames"]" />
-                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                    @L["Settings_Advanced_AutoNormalizeFilenames_Help"]
-                </MudText>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_FileHandling"]</MudText>
 
         <MudGrid>
@@ -230,11 +200,6 @@ else if (_config != null)
     private bool _isSaving;
     private SystemConfig? _config;
 
-    // Sync defaults
-    private string _defaultFolderPath = string.Empty;
-    private bool _ignorePerms;
-    private bool _autoNormalizeFilenames = true;
-
     // File handling
     private int _hashers = 2;
     private int _maxFolderConcurrency = 4;
@@ -273,11 +238,6 @@ else if (_config != null)
             _config = await ApiClient.GetConfigAsync();
             if (_config?.Options != null)
             {
-                // Sync defaults
-                _defaultFolderPath = _config.Options.DefaultFolderPath ?? string.Empty;
-                _ignorePerms = _config.Options.IgnorePerms ?? false;
-                _autoNormalizeFilenames = _config.Options.AutoNormalizeFilenames ?? true;
-
                 // File handling
                 _hashers = _config.Options.Hashers ?? 2;
                 _maxFolderConcurrency = _config.Options.MaxFolderConcurrency ?? 4;
@@ -318,11 +278,6 @@ else if (_config != null)
         {
             if (_config.Options != null)
             {
-                // Sync defaults
-                _config.Options.DefaultFolderPath = string.IsNullOrWhiteSpace(_defaultFolderPath) ? null : _defaultFolderPath;
-                _config.Options.IgnorePerms = _ignorePerms;
-                _config.Options.AutoNormalizeFilenames = _autoNormalizeFilenames;
-
                 // File handling
                 _config.Options.Hashers = _hashers;
                 _config.Options.MaxFolderConcurrency = _maxFolderConcurrency;
@@ -421,11 +376,6 @@ else if (_config != null)
 
     private void ResetToDefaults()
     {
-        // Sync defaults
-        _defaultFolderPath = string.Empty;
-        _ignorePerms = false;
-        _autoNormalizeFilenames = true;
-
         // File handling
         _hashers = 2;
         _maxFolderConcurrency = 4;
