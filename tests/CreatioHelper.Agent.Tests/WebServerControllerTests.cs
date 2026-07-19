@@ -42,7 +42,10 @@ public class WebServerControllerTests
 
         var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        return new WebServerController(factoryMock.Object, platformMock.Object, loggerMock.Object, configuration);
+        var configurationServiceMock = new Mock<IConfigurationService>();
+        var accessStatus = new CreatioHelper.Agent.Services.WebServerAccessStatus();
+
+        return new WebServerController(factoryMock.Object, platformMock.Object, loggerMock.Object, configuration, configurationServiceMock.Object, accessStatus);
     }
 
     [Fact]
@@ -85,7 +88,10 @@ public class WebServerControllerTests
         var loggerMock = new Mock<ILogger<WebServerController>>();
         var configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
 
-        return new WebServerController(factoryMock.Object, platformMock.Object, loggerMock.Object, configuration);
+        var configurationServiceMock = new Mock<IConfigurationService>();
+        var accessStatus = new CreatioHelper.Agent.Services.WebServerAccessStatus();
+
+        return new WebServerController(factoryMock.Object, platformMock.Object, loggerMock.Object, configuration, configurationServiceMock.Object, accessStatus);
     }
 
     [Fact]

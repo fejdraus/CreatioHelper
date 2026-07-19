@@ -1,0 +1,152 @@
+@page "/monitoring/webserver"
+@using CreatioHelper.WebUI.Models
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject NavigationManager Navigation
+
+<PageTitle>@L["WebServer_Title"] - CreatioHelper</PageTitle>
+
+<div class="d-flex align-center mb-4">
+    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["WebServer_Title"]</MudText>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="@(() => Refresh(showLoading: true))">
+        @L["Common_Refresh"]
+    </MudButton>
+</div>
+
+@if (_accessStatus?.RequiresElevation == true)
+{
+    <MudAlert Severity="Severity.Warning" Class="mb-4" Icon="@Icons.Material.Filled.AdminPanelSettings">
+        @L["WebServer_ElevationRequired"]
+    </MudAlert>
+}
+
+@if (_isLoading)
+{
+    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+}
+else if (_sites.Count == 0)
+{
+    <MudPaper Elevation="2" Class="pa-8 d-flex flex-column align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Class="mb-2" />
+        <MudText Typo="Typo.body1">@L["WebServer_NoSites"]</MudText>
+    </MudPaper>
+}
+else
+{
+    <MudPaper Elevation="2">
+        <MudTable Items="@_sites" Dense="true" Hover="true">
+            <HeaderContent>
+                <MudTh>@L["WebServer_Site"]</MudTh>
+                <MudTh>@L["WebServer_DiscoveredType"]</MudTh>
+                <MudTh>@L["WebServer_State"]</MudTh>
+                <MudTh>@L["WebServer_ManagedBy"]</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="@L["WebServer_Site"]">
+                    <MudText Typo="Typo.body2">@context.Name</MudText>
+                    @if (context.AutoDiscovered)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["WebServer_AutoDiscovered"]</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="@L["WebServer_DiscoveredType"]">@context.Type</MudTd>
+                <MudTd DataLabel="@L["WebServer_State"]">
+                    @if (IsRunning(context.Status))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@context.Status</MudChip>
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@context.Status</MudChip>
+                    }
+                </MudTd>
+                <MudTd DataLabel="@L["WebServer_ManagedBy"]">
+                    <MudSelect T="WebServerKindDto"
+                               Value="context.WebServerType"
+                               ValueChanged="@(v => OnTypeChanged(context, v))"
+                               Dense="true"
+                               Variant="Variant.Outlined"
+                               Margin="Margin.Dense"
+                               Style="min-width: 180px;">
+                        <MudSelectItem Value="WebServerKindDto.Auto">@L["WebServer_TypeAuto"]</MudSelectItem>
+                        <MudSelectItem Value="WebServerKindDto.Iis">@L["WebServer_TypeIis"]</MudSelectItem>
+                        <MudSelectItem Value="WebServerKindDto.Service">@L["WebServer_TypeService"]</MudSelectItem>
+                    </MudSelect>
+                </MudTd>
+            </RowTemplate>
+        </MudTable>
+    </MudPaper>
+}
+
+@code {
+    private bool _isLoading;
+    private WebServerAccessStatusInfo? _accessStatus;
+    private List<WebSiteInfoDto> _sites = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await Refresh(showLoading: true);
+    }
+
+    private async Task Refresh(bool showLoading)
+    {
+        if (showLoading)
+        {
+            _isLoading = true;
+            StateHasChanged();
+        }
+
+        try
+        {
+            _accessStatus = await ApiClient.GetWebServerAccessStatusAsync();
+            _sites = (await ApiClient.GetWebSitesAsync()).ToList();
+        }
+        catch (Exception ex)
+        {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToLoadWebServer", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OnTypeChanged(WebSiteInfoDto site, WebServerKindDto type)
+    {
+        var previous = site.WebServerType;
+        site.WebServerType = type;
+
+        try
+        {
+            await ApiClient.SetSiteWebServerTypeAsync(site.Name, type);
+            Snackbar.Add(L["Msg_WebServerTypeUpdated", site.Name], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            site.WebServerType = previous;
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add(L["Msg_FailedToUpdateWebServerType", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
+
+        StateHasChanged();
+    }
+
+    private static bool IsRunning(string? state) =>
+        string.Equals(state, "Started", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase);
+}

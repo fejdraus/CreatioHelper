@@ -1,6 +1,7 @@
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Contracts.Requests;
+using CreatioHelper.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -131,6 +132,34 @@ public class WebSiteController : ControllerBase
         }
     }
     
+    /// <summary>
+    /// Set the effective web server type (Auto / Iis / Service) for a site
+    /// </summary>
+    [HttpPut("{siteName}/webserver-type")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<IActionResult> SetWebServerType(string siteName, [FromBody] SetWebServerTypeRequest request)
+    {
+        if (!Enum.TryParse<WebServerKind>(request.Type, ignoreCase: true, out var kind))
+        {
+            return BadRequest($"Invalid web server type '{request.Type}'. Allowed: Auto, Iis, Service.");
+        }
+
+        try
+        {
+            await _registryService.SetWebServerTypeAsync(siteName, kind);
+            return Ok(new
+            {
+                Message = $"Web server type for '{siteName}' set to {kind}",
+                Site = await _registryService.GetSiteInfoAsync(siteName)
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting web server type for site {SiteName}", siteName);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
     /// <summary>
     /// Remove a site from the registry (only manually registered)
     /// </summary>

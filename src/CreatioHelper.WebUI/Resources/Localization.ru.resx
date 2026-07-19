@@ -3456,4 +3456,49 @@
   <data name="Users_PasswordChangeFailed" xml:space="preserve">
     <value>Не удалось сменить пароль</value>
   </data>
+  <data name="Nav_WebServer" xml:space="preserve">
+    <value>Веб-сервер</value>
+  </data>
+  <data name="WebServer_Title" xml:space="preserve">
+    <value>Веб-сервер</value>
+  </data>
+  <data name="WebServer_ElevationRequired" xml:space="preserve">
+    <value>Для управления веб-сервером нужны права администратора. Запустите агента от имени администратора, чтобы управлять сайтами IIS.</value>
+  </data>
+  <data name="WebServer_NoSites" xml:space="preserve">
+    <value>Веб-сайты не обнаружены.</value>
+  </data>
+  <data name="WebServer_Site" xml:space="preserve">
+    <value>Сайт</value>
+  </data>
+  <data name="WebServer_DiscoveredType" xml:space="preserve">
+    <value>Обнаруженный тип</value>
+  </data>
+  <data name="WebServer_State" xml:space="preserve">
+    <value>Состояние</value>
+  </data>
+  <data name="WebServer_ManagedBy" xml:space="preserve">
+    <value>Управление как</value>
+  </data>
+  <data name="WebServer_AutoDiscovered" xml:space="preserve">
+    <value>авто</value>
+  </data>
+  <data name="WebServer_TypeAuto" xml:space="preserve">
+    <value>Авто (определять)</value>
+  </data>
+  <data name="WebServer_TypeIis" xml:space="preserve">
+    <value>IIS</value>
+  </data>
+  <data name="WebServer_TypeService" xml:space="preserve">
+    <value>Служба / Kestrel</value>
+  </data>
+  <data name="Msg_FailedToLoadWebServer" xml:space="preserve">
+    <value>Не удалось загрузить сведения о веб-сервере: {0}</value>
+  </data>
+  <data name="Msg_WebServerTypeUpdated" xml:space="preserve">
+    <value>Тип веб-сервера для «{0}» обновлён</value>
+  </data>
+  <data name="Msg_FailedToUpdateWebServerType" xml:space="preserve">
+    <value>Не удалось обновить тип веб-сервера: {0}</value>
+  </data>
 </root>

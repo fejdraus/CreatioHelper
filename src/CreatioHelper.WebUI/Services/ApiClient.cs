@@ -54,6 +54,11 @@ public interface IApiClient
     Task<DiscoveryStatus?> GetDiscoveryStatusAsync();
     Task<ListenersStatus> GetListenersStatusAsync();
 
+    // Web server
+    Task<WebServerAccessStatusInfo?> GetWebServerAccessStatusAsync();
+    Task<WebSiteInfoDto[]> GetWebSitesAsync();
+    Task SetSiteWebServerTypeAsync(string siteName, WebServerKindDto type);
+
     // Debug
     Task<DebugInfo?> GetDebugInfoAsync();
     Task<string?> GetLogAsync(int lines = 100);
@@ -313,6 +318,24 @@ public class ApiClient : IApiClient
             // Ignore errors
         }
         return result;
+    }
+
+    public async Task<WebServerAccessStatusInfo?> GetWebServerAccessStatusAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<WebServerAccessStatusInfo>("/api/webserver/access-status");
+    }
+
+    public async Task<WebSiteInfoDto[]> GetWebSitesAsync()
+    {
+        var response = await _httpClient.GetFromJsonAsync<WebSitesResponse>("/api/website");
+        return response?.Sites ?? [];
+    }
+
+    public async Task SetSiteWebServerTypeAsync(string siteName, WebServerKindDto type)
+    {
+        await _httpClient.PutAsJsonAsync(
+            $"/api/website/{Uri.EscapeDataString(siteName)}/webserver-type",
+            new { Type = type.ToString() });
     }
 
     #endregion

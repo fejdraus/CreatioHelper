@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Agent.Services.Windows;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Enums;
 using CreatioHelper.Contracts.Requests;
 
@@ -106,8 +107,10 @@ public class MonitoringService : BackgroundService
         using var scope = _serviceProvider.CreateScope();
         var webServerFactory = scope.ServiceProvider.GetService<IWebServerServiceFactory>();
         var metrics = scope.ServiceProvider.GetService<IMetricsService>();
-    
-        if (webServerFactory == null || !webServerFactory.IsWebServerSupported())
+        var accessStatus = scope.ServiceProvider.GetService<WebServerAccessStatus>();
+        var registry = scope.ServiceProvider.GetService<WebSiteRegistryService>();
+
+        if (webServerFactory == null || registry == null || !webServerFactory.IsWebServerSupported())
             return;
 
         try
@@ -116,72 +119,14 @@ public class MonitoringService : BackgroundService
             {
                 await metrics.MeasureAsync("webserver_overview_broadcast", async () =>
                 {
-                    var webServerService = await webServerFactory.CreateWebServerServiceAsync();
-                
-                    var sitesTask = webServerService.GetAllSitesAsync();
-                    var appPoolsTask = webServerService.GetAllAppPoolsAsync();
-                    await Task.WhenAll(sitesTask, appPoolsTask);
-                
-                    var sites = await sitesTask;
-                    var appPools = await appPoolsTask;
-                
-                    var overview = new
-                    {
-                        ServerName = Environment.MachineName,
-                        Platform = GetPlatformName(),
-                        Timestamp = DateTime.UtcNow,
-                        Sites = sites,
-                        AppPools = appPools,
-                        Summary = new
-                        {
-                            TotalSites = sites.Count,
-                            RunningSites = sites.Count(s => s.IsRunning),
-                            TotalAppPools = appPools.Count,
-                            RunningAppPools = appPools.Count(s => s.IsRunning)
-                        }
-                    };
-                    
-                    // Set state metrics
-                    metrics.SetGauge("webserver_total_sites", sites.Count);
-                    metrics.SetGauge("webserver_running_sites", sites.Count(s => s.IsRunning));
-                    metrics.SetGauge("webserver_total_app_pools", appPools.Count);
-                    metrics.SetGauge("webserver_running_app_pools", appPools.Count(s => s.IsRunning));
-                
-                    await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
-                    
+                    await BuildAndSendOverviewAsync(webServerFactory, registry, accessStatus, metrics);
                     metrics.IncrementCounter("webserver_overview_broadcast_success");
-                    
-                    return 1; // Indicate successful completion
+                    return 1;
                 });
             }
             else
             {
-                var webServerService = await webServerFactory.CreateWebServerServiceAsync();
-            
-                var sitesTask = webServerService.GetAllSitesAsync();
-                var appPoolsTask = webServerService.GetAllAppPoolsAsync();
-                await Task.WhenAll(sitesTask, appPoolsTask);
-            
-                var sites = await sitesTask;
-                var appPools = await appPoolsTask;
-            
-                var overview = new
-                {
-                    ServerName = Environment.MachineName,
-                    Platform = GetPlatformName(),
-                    Timestamp = DateTime.UtcNow,
-                    Sites = sites,
-                    AppPools = appPools,
-                    Summary = new
-                    {
-                        TotalSites = sites.Count,
-                        RunningSites = sites.Count(s => s.IsRunning),
-                        TotalAppPools = appPools.Count,
-                        RunningAppPools = appPools.Count(s => s.IsRunning)
-                    }
-                };
-            
-                await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
+                await BuildAndSendOverviewAsync(webServerFactory, registry, accessStatus, null);
             }
         }
         catch (Exception ex)
@@ -190,6 +135,75 @@ public class MonitoringService : BackgroundService
             metrics?.IncrementCounter("webserver_overview_broadcast_error");
         }
     }
+
+    private async Task BuildAndSendOverviewAsync(
+        IWebServerServiceFactory factory,
+        WebSiteRegistryService registry,
+        WebServerAccessStatus? accessStatus,
+        IMetricsService? metrics)
+    {
+        var registeredSites = await registry.GetAllSitesAsync();
+        var iisSites = registeredSites.Where(s => s.EffectiveKind == WebServerKind.Iis).ToList();
+        var serviceSites = registeredSites.Where(s => s.EffectiveKind == WebServerKind.Service).ToList();
+
+        var sites = new List<WebServerStatus>();
+        var appPools = new List<WebServerStatus>();
+
+        if (iisSites.Count > 0)
+        {
+            var iisManager = await factory.CreateWebServerServiceForSiteAsync(iisSites[0]);
+            sites.AddRange(await iisManager.GetAllSitesAsync());
+            appPools = await iisManager.GetAllAppPoolsAsync();
+        }
+
+        foreach (var site in serviceSites)
+        {
+            var manager = await factory.CreateWebServerServiceForSiteAsync(site);
+            var status = await manager.GetSiteStatusAsync(site.ServiceName);
+            var state = status.Data?.Status ?? site.Status;
+            sites.Add(new WebServerStatus
+            {
+                Name = site.Name,
+                Status = state,
+                Type = "Service",
+                Port = "",
+                IsRunning = IsRunningState(state),
+                LastChecked = DateTime.UtcNow
+            });
+        }
+
+        var overview = new
+        {
+            ServerName = Environment.MachineName,
+            Platform = GetPlatformName(),
+            Timestamp = DateTime.UtcNow,
+            Sites = sites,
+            AppPools = appPools,
+            RequiresElevation = accessStatus?.RequiresElevation ?? false,
+            AccessMessage = accessStatus?.Message,
+            Summary = new
+            {
+                TotalSites = sites.Count,
+                RunningSites = sites.Count(s => s.IsRunning),
+                TotalAppPools = appPools.Count,
+                RunningAppPools = appPools.Count(s => s.IsRunning)
+            }
+        };
+
+        if (metrics != null)
+        {
+            metrics.SetGauge("webserver_total_sites", sites.Count);
+            metrics.SetGauge("webserver_running_sites", sites.Count(s => s.IsRunning));
+            metrics.SetGauge("webserver_total_app_pools", appPools.Count);
+            metrics.SetGauge("webserver_running_app_pools", appPools.Count(s => s.IsRunning));
+        }
+
+        await _hubContext.Clients.Group("webserver-overview").SendAsync("WebServerOverviewUpdate", overview);
+    }
+
+    private static bool IsRunningState(string? state) =>
+        string.Equals(state, "Started", StringComparison.OrdinalIgnoreCase)
+        || string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase);
     
     private string GetPlatformName()
     {

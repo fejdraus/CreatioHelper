@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Agent.Services;
 
 public class WebSiteRegistryService : IDisposable
 {
     private readonly ILogger<WebSiteRegistryService> _logger;
+    private readonly WebServerAccessStatus _accessStatus;
     private readonly string _registryPath;
     private readonly SemaphoreSlim _semaphore = new(1, 1);
     private WebSiteRegistry _registry = new();
@@ -19,9 +21,10 @@ public class WebSiteRegistryService : IDisposable
     private static string EscapeBashString(string value)
         => value.Replace("'", "'\\''");
 
-    public WebSiteRegistryService(ILogger<WebSiteRegistryService> logger, IWebHostEnvironment environment)
+    public WebSiteRegistryService(ILogger<WebSiteRegistryService> logger, WebServerAccessStatus accessStatus, IWebHostEnvironment environment)
     {
         _logger = logger;
+        _accessStatus = accessStatus;
         _registryPath = Path.Combine(environment.ContentRootPath, "website-registry.json");
     }
 
@@ -72,8 +75,48 @@ public class WebSiteRegistryService : IDisposable
                     .Select(g => g.First())
                     .OrderBy(s => s.Name)
                     .ToList();
-        
+
+        foreach (var site in sites)
+        {
+            if (_registry.WebServerTypeOverrides.TryGetValue(site.Name, out var kind))
+            {
+                site.WebServerType = kind;
+            }
+        }
+
         return sites;
+    }
+
+    public async Task SetWebServerTypeAsync(string siteName, WebServerKind kind)
+    {
+        await EnsureLoadedAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            if (kind == WebServerKind.Auto)
+            {
+                _registry.WebServerTypeOverrides.Remove(siteName);
+            }
+            else
+            {
+                _registry.WebServerTypeOverrides[siteName] = kind;
+            }
+
+            var manual = _registry.Sites.FirstOrDefault(s => s.Name.Equals(siteName, StringComparison.OrdinalIgnoreCase));
+            if (manual != null)
+            {
+                manual.WebServerType = kind;
+                manual.LastUpdated = DateTime.UtcNow;
+            }
+
+            _registry.LastUpdated = DateTime.UtcNow;
+            await SaveRegistryAsync().ConfigureAwait(false);
+            _logger.LogInformation("Set web server type for site {SiteName} to {Kind}", siteName, kind);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
     }
 
     public async Task<WebSiteInfo?> GetSiteInfoAsync(string siteName)
@@ -235,6 +278,7 @@ public class WebSiteRegistryService : IDisposable
 
             if (removed > 0)
             {
+                _registry.WebServerTypeOverrides.Remove(siteName);
                 _registry.LastUpdated = DateTime.UtcNow;
                 await SaveRegistryAsync().ConfigureAwait(false);
                 _logger.LogInformation("Unregistered website: {SiteName}", siteName);
@@ -260,7 +304,7 @@ public class WebSiteRegistryService : IDisposable
 
         try
         {
-            var command = $"Import-Module WebAdministration; {script}";
+            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
 
             var startInfo = new ProcessStartInfo
             {
@@ -268,6 +312,8 @@ public class WebSiteRegistryService : IDisposable
                 Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding = System.Text.Encoding.UTF8,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -285,7 +331,18 @@ public class WebSiteRegistryService : IDisposable
 
             if (!string.IsNullOrWhiteSpace(error))
             {
-                _logger.LogWarning("PowerShell warning: {Error}", error);
+                if (WebServerPermission.IsPermissionError(error))
+                {
+                    _accessStatus.ReportPermissionIssue("IIS site discovery", error, _logger);
+                }
+                else
+                {
+                    _logger.LogWarning("PowerShell warning: {Error}", error);
+                }
+            }
+            else
+            {
+                _accessStatus.ReportSuccess();
             }
 
             return output.Trim();

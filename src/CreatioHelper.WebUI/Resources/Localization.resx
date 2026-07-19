@@ -3680,4 +3680,49 @@
   <data name="Users_PasswordChangeFailed" xml:space="preserve">
     <value>Failed to change password</value>
   </data>
+  <data name="Nav_WebServer" xml:space="preserve">
+    <value>Web server</value>
+  </data>
+  <data name="WebServer_Title" xml:space="preserve">
+    <value>Web server</value>
+  </data>
+  <data name="WebServer_ElevationRequired" xml:space="preserve">
+    <value>Web server management requires elevated privileges. Run the agent as Administrator to manage IIS sites.</value>
+  </data>
+  <data name="WebServer_NoSites" xml:space="preserve">
+    <value>No web sites detected.</value>
+  </data>
+  <data name="WebServer_Site" xml:space="preserve">
+    <value>Site</value>
+  </data>
+  <data name="WebServer_DiscoveredType" xml:space="preserve">
+    <value>Detected type</value>
+  </data>
+  <data name="WebServer_State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="WebServer_ManagedBy" xml:space="preserve">
+    <value>Managed as</value>
+  </data>
+  <data name="WebServer_AutoDiscovered" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="WebServer_TypeAuto" xml:space="preserve">
+    <value>Auto (detect)</value>
+  </data>
+  <data name="WebServer_TypeIis" xml:space="preserve">
+    <value>IIS</value>
+  </data>
+  <data name="WebServer_TypeService" xml:space="preserve">
+    <value>Service / Kestrel</value>
+  </data>
+  <data name="Msg_FailedToLoadWebServer" xml:space="preserve">
+    <value>Failed to load web server info: {0}</value>
+  </data>
+  <data name="Msg_WebServerTypeUpdated" xml:space="preserve">
+    <value>Web server type for '{0}' updated</value>
+  </data>
+  <data name="Msg_FailedToUpdateWebServerType" xml:space="preserve">
+    <value>Failed to update web server type: {0}</value>
+  </data>
 </root>

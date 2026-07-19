@@ -1,6 +1,8 @@
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Services.Linux;
 using CreatioHelper.Agent.Services.MacOS;
+using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Enums;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -55,7 +57,37 @@ public class WebServerServiceFactory : IWebServerServiceFactory
         
         throw new NotSupportedException($"Web server management is not supported on {_platformService.GetPlatform()}");
     }
-    
+
+    public Task<IWebServerService> CreateWebServerServiceForSiteAsync(WebSiteInfo site)
+    {
+        if (OperatingSystem.IsWindows())
+        {
+            if (site.EffectiveKind == WebServerKind.Iis
+                && _platformService.IsFeatureSupported(FeatureNames.IisManagement))
+            {
+                var iisService = _serviceProvider.GetService<IisManagerService>();
+                if (iisService != null)
+                {
+                    return Task.FromResult<IWebServerService>(iisService);
+                }
+            }
+
+            return Task.FromResult<IWebServerService>(_serviceProvider.GetRequiredService<WindowsServiceManager>());
+        }
+
+        if (OperatingSystem.IsLinux())
+        {
+            return Task.FromResult<IWebServerService>(_serviceProvider.GetRequiredService<SystemdServiceManager>());
+        }
+
+        if (OperatingSystem.IsMacOS())
+        {
+            return Task.FromResult<IWebServerService>(_serviceProvider.GetRequiredService<LaunchdServiceManager>());
+        }
+
+        throw new NotSupportedException($"Web server management is not supported on {_platformService.GetPlatform()}");
+    }
+
     public async Task<string> GetSupportedWebServerTypeAsync()
     {
         if (_platformService.IsFeatureSupported(FeatureNames.IisManagement) && OperatingSystem.IsWindows())

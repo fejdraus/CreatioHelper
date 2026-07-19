@@ -1,5 +1,7 @@
+using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Services.Windows;
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
 using Microsoft.AspNetCore.Authorization;
@@ -17,18 +19,24 @@ public class WebServerController : ControllerBase
     private readonly IPlatformService _platformService;
     private readonly ILogger<WebServerController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IConfigurationService _configurationService;
+    private readonly WebServerAccessStatus _accessStatus;
 
     public WebServerController(
-        IWebServerServiceFactory webServerFactory, 
+        IWebServerServiceFactory webServerFactory,
         IPlatformService platformService,
         ILogger<WebServerController> logger,
         IConfiguration configuration,
+        IConfigurationService configurationService,
+        WebServerAccessStatus accessStatus,
         IisStatusService? iisStatusService = null)
     {
         _webServerFactory = webServerFactory;
         _platformService = platformService;
         _logger = logger;
         _configuration = configuration;
+        _configurationService = configurationService;
+        _accessStatus = accessStatus;
         _iisStatusService = iisStatusService;
     }
 
@@ -104,11 +112,23 @@ public class WebServerController : ControllerBase
             return BadRequest($"Web server type '{request.Type}' is not available. Available types: {string.Join(", ", availableTypes)}");
         }
 
-        // Optionally save the selection to configuration
         _configuration["WebServer:PreferredType"] = request.Type;
-        
+        await _configurationService.SetWebServerTypeAsync(request.Type);
+
         var currentType = await _webServerFactory.GetSupportedWebServerTypeAsync();
         return Ok(new { Message = $"Web server type set to {request.Type}", CurrentType = currentType });
+    }
+
+    [HttpGet("access-status")]
+    [Authorize(Roles = Roles.ReadRoles)]
+    public IActionResult GetAccessStatus()
+    {
+        return Ok(new
+        {
+            RequiresElevation = _accessStatus.RequiresElevation,
+            Message = _accessStatus.Message,
+            Since = _accessStatus.SinceUtc
+        });
     }
 
     [HttpPost("sites/{siteName}/stop")]

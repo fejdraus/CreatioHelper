@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using CreatioHelper.Agent.Services;
 using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Agent.Services.Windows;
@@ -6,6 +7,7 @@ namespace CreatioHelper.Agent.Services.Windows;
 public class IisManagerService : IWebServerService
 {
     private readonly ILogger<IisManagerService> _logger;
+    private readonly WebServerAccessStatus _accessStatus;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -19,9 +21,10 @@ public class IisManagerService : IWebServerService
     private static string EscapePowerShellString(string value)
         => value.Replace("'", "''");
 
-    public IisManagerService(ILogger<IisManagerService> logger)
+    public IisManagerService(ILogger<IisManagerService> logger, WebServerAccessStatus accessStatus)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _accessStatus = accessStatus ?? throw new ArgumentNullException(nameof(accessStatus));
     }
 
     public bool IsSupported() => OperatingSystem.IsWindows();
@@ -332,7 +335,7 @@ public class IisManagerService : IWebServerService
 
         try
         {
-            var command = $"Import-Module WebAdministration; {script}";
+            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
 
             var startInfo = new ProcessStartInfo
             {
@@ -340,6 +343,8 @@ public class IisManagerService : IWebServerService
                 Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding = System.Text.Encoding.UTF8,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -362,10 +367,17 @@ public class IisManagerService : IWebServerService
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
+                if (WebServerPermission.IsPermissionError(errorText))
+                {
+                    _accessStatus.ReportPermissionIssue("IIS PowerShell command", errorText, _logger);
+                    return false;
+                }
+
                 _logger.LogError("PowerShell error: {Error}", errorText);
                 return false;
             }
 
+            _accessStatus.ReportSuccess();
             return process.ExitCode == 0;
         }
         catch (Exception ex)
@@ -381,7 +393,7 @@ public class IisManagerService : IWebServerService
 
         try
         {
-            var command = $"Import-Module WebAdministration; {script}";
+            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
 
             var startInfo = new ProcessStartInfo
             {
@@ -389,6 +401,8 @@ public class IisManagerService : IWebServerService
                 Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8,
+                StandardErrorEncoding = System.Text.Encoding.UTF8,
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
@@ -411,10 +425,17 @@ public class IisManagerService : IWebServerService
 
             if (!string.IsNullOrWhiteSpace(errorText))
             {
+                if (WebServerPermission.IsPermissionError(errorText))
+                {
+                    _accessStatus.ReportPermissionIssue("IIS PowerShell query", errorText, _logger);
+                    return null;
+                }
+
                 _logger.LogError("PowerShell error: {Error}", errorText);
                 return null;
             }
 
+            _accessStatus.ReportSuccess();
             return outputText.Trim();
         }
         catch (Exception ex)
