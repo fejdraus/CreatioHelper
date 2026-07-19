@@ -29,7 +29,6 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly IEventLogger _eventLogger;
     private readonly IStatisticsCollector _statisticsCollector;
     private readonly FileWatcher _fileWatcher;
-    private readonly ConflictResolver _conflictResolver;
     private readonly FileComparator _fileComparator;
     private readonly FileDownloader _fileDownloader;
     private readonly FileUploader _fileUploader;
@@ -62,12 +61,22 @@ public class SyncEngine : ISyncEngine, IDisposable
     // ISyncEngine properties
     public string DeviceId => _configuration.DeviceId;
 
+    /// <summary>
+    /// Builds a fresh vector clock for a locally-observed file change,
+    /// incremented for the local device.
+    /// </summary>
+    private BepVectorClock NewLocalVersion()
+    {
+        var version = new BepVectorClock();
+        version.Increment(BepVectorClock.ShortIdFromString(_configuration.DeviceId));
+        return version;
+    }
+
     public SyncEngine(
         ILogger<SyncEngine> logger,
         ISyncProtocol protocol,
         IDeviceDiscovery discovery,
         FileWatcher fileWatcher,
-        ConflictResolver conflictResolver,
         FileComparator fileComparator,
         FileDownloader fileDownloader,
         FileUploader fileUploader,
@@ -97,7 +106,6 @@ public class SyncEngine : ISyncEngine, IDisposable
         _eventLogger = eventLogger;
         _statisticsCollector = statisticsCollector;
         _fileWatcher = fileWatcher;
-        _conflictResolver = conflictResolver;
         _fileComparator = fileComparator;
         _fileDownloader = fileDownloader;
         _fileUploader = fileUploader;
@@ -496,6 +504,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
 
         // Update folder settings
+        existingFolder.SetLabel(config.Label);
         existingFolder.RescanIntervalS = config.RescanIntervalS;
         existingFolder.FsWatcherEnabled = config.FsWatcherEnabled;
         existingFolder.FSWatcherDelayS = (int)config.FsWatcherDelayS;
@@ -795,7 +804,7 @@ public class SyncEngine : ISyncEngine, IDisposable
                         ModifiedTime = file.ModifiedTime,
                         DeviceId = _configuration.DeviceId,
                         Sequence = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                        VersionVector = file.Hash ?? string.Empty,
+                        VersionVector = NewLocalVersion(),
                         LocalFlags = file.IsSymlink ? (FileLocalFlags)4 : FileLocalFlags.None
                     };
 

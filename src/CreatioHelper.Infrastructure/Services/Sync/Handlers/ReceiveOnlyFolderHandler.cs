@@ -174,7 +174,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
 
                     // Помечаем файл как удаленный с пустой версией
                     localFile.IsDeleted = true;
-                    localFile.VersionVector = string.Empty;
+                    localFile.VersionVector = new BepVectorClock();
                     filesToUpdate.Add(localFile);
                     revertedCount++;
                 }
@@ -186,7 +186,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
                     localFile.FileName);
 
                 // Используем глобальную версию
-                localFile.VersionVector = globalFile.VersionVector;
+                localFile.VersionVector = globalFile.VersionVector.Copy();
                 localFile.Hash = globalFile.Hash;
                 localFile.Size = globalFile.Size;
                 localFile.ModifiedTime = globalFile.ModifiedTime;
@@ -199,7 +199,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
                 _logger.LogDebug("Revert: File {FileName} differs from global, resetting version for re-pull",
                     localFile.FileName);
 
-                localFile.VersionVector = string.Empty; // Empty version = needs to be pulled
+                localFile.VersionVector = new BepVectorClock(); // Empty version = needs to be pulled
                 filesToUpdate.Add(localFile);
                 revertedCount++;
             }
@@ -231,7 +231,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
                             FileName = dirName,
                             FileType = FileType.Directory,
                             IsDeleted = true,
-                            VersionVector = string.Empty,
+                            VersionVector = new BepVectorClock(),
                             ModifiedTime = DateTime.UtcNow,
                             UpdatedAt = DateTime.UtcNow
                         });

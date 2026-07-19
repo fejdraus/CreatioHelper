@@ -61,9 +61,9 @@ public class ConflictResolutionEngine
     public bool IsInConflict(FileMetadata local, FileMetadata remote)
     {
         // Если файлы имеют разные векторные часы и они конкурентны
-        if (local.Version != null && remote.Version != null)
+        if (local.VersionVector.IsConcurrentWith(remote.VersionVector))
         {
-            return AreVersionsConcurrent(local.Version, remote.Version);
+            return true;
         }
         
         // Если времена модификации одинаковы, но содержимое разное
@@ -191,26 +191,68 @@ public class ConflictResolutionEngine
     
     private ConflictResolution ResolveBidirectionalConflict(FileMetadata local, FileMetadata remote)
     {
-        if (IsInConflict(local, remote))
+        // Causal ordering decides first: a strictly-newer version wins cleanly, with no
+        // conflict copy. Only genuinely concurrent edits are a real conflict. This matches
+        // Syncthing's vector-clock semantics and keeps this path consistent with the
+        // detection in IsInConflict (both use the vector clock, not mtime/hash).
+        switch (local.VersionVector.Compare(remote.VersionVector))
         {
-            return CreateConflictCopyResolution(local, remote);
+            case VectorClockComparison.Greater:
+                return new ConflictResolution
+                {
+                    Action = ConflictAction.UseLocal,
+                    Winner = local,
+                    Reason = "Local version is causally newer (vector clock)"
+                };
+
+            case VectorClockComparison.Lesser:
+                return new ConflictResolution
+                {
+                    Action = ConflictAction.UseRemote,
+                    Winner = remote,
+                    Reason = "Remote version is causally newer (vector clock)"
+                };
+
+            case VectorClockComparison.Concurrent:
+                return CreateConflictCopyResolution(local, remote);
+
+            case VectorClockComparison.Equal:
+            default:
+                // Same version vector: if content is identical there is nothing to do,
+                // otherwise fall back to a deterministic tie-break.
+                if (ContentEquals(local, remote))
+                {
+                    return new ConflictResolution
+                    {
+                        Action = ConflictAction.Skip,
+                        Winner = local,
+                        Reason = "Files are identical"
+                    };
+                }
+
+                var winner = DetermineWinner(local, remote);
+                return new ConflictResolution
+                {
+                    Action = winner == local ? ConflictAction.UseLocal : ConflictAction.UseRemote,
+                    Winner = winner,
+                    Reason = "Equal version vectors; resolved by deterministic tie-break"
+                };
         }
-        
-        var winner = DetermineWinner(local, remote);
-        return new ConflictResolution
+    }
+
+    private static bool ContentEquals(FileMetadata local, FileMetadata remote)
+    {
+        if (local.IsDeleted || remote.IsDeleted)
         {
-            Action = winner == local ? ConflictAction.UseLocal : ConflictAction.UseRemote,
-            Winner = winner,
-            Reason = "Resolved using winner determination algorithm"
-        };
+            return local.IsDeleted == remote.IsDeleted;
+        }
+        if (local.Size != remote.Size)
+        {
+            return false;
+        }
+        var lh = local.Hash ?? Array.Empty<byte>();
+        var rh = remote.Hash ?? Array.Empty<byte>();
+        return lh.AsSpan().SequenceEqual(rh);
     }
     
-    private bool AreVersionsConcurrent(string version1, string version2)
-    {
-        // Упрощенная проверка векторных часов
-        // В полной реализации здесь была бы логика сравнения векторных часов
-        return version1 != version2 && 
-               !string.IsNullOrEmpty(version1) && 
-               !string.IsNullOrEmpty(version2);
-    }
 }

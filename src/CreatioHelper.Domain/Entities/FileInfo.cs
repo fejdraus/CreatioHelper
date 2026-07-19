@@ -20,7 +20,7 @@ public class SyncFileInfo : Entity
     public bool IsInvalid { get; private set; }
     public bool IsSymlink { get; private set; }
     public string? SymlinkTarget { get; private set; }
-    public VectorClock Vector { get; private set; } = new();
+    public BepVectorClock Vector { get; private set; } = new();
     public string Platform { get; private set; } = string.Empty;
     public long Sequence { get; private set; }
     
@@ -85,7 +85,7 @@ public class SyncFileInfo : Entity
         Type = FileType.Directory;
     }
 
-    public void UpdateVector(VectorClock vector)
+    public void UpdateVector(BepVectorClock vector)
     {
         Vector = vector;
     }
@@ -173,86 +173,6 @@ public class BlockInfo
     }
 }
 
-public class VectorClock
-{
-    public Dictionary<string, long> Counters { get; set; } = new();
-
-    public void Update(string deviceId, long counter)
-    {
-        Counters[deviceId] = Math.Max(Counters.GetValueOrDefault(deviceId), counter);
-    }
-
-    public void Increment(string deviceId)
-    {
-        var currentValue = Counters.GetValueOrDefault(deviceId);
-        var timestamp = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        var newValue = Math.Max(currentValue + 1, timestamp);
-        Counters[deviceId] = newValue;
-    }
-
-    public void Merge(VectorClock other)
-    {
-        foreach (var (deviceId, value) in other.Counters)
-        {
-            Counters[deviceId] = Math.Max(Counters.GetValueOrDefault(deviceId), value);
-        }
-    }
-
-    public long GetCounter(string deviceId)
-    {
-        return Counters.TryGetValue(deviceId, out var counter) ? counter : 0;
-    }
-
-    public bool IsNewerThan(VectorClock other)
-    {
-        var allDevices = Counters.Keys.Union(other.Counters.Keys).ToHashSet();
-        
-        bool thisNewer = false;
-        bool otherNewer = false;
-
-        foreach (var deviceId in allDevices)
-        {
-            var thisValue = GetCounter(deviceId);
-            var otherValue = other.GetCounter(deviceId);
-
-            if (thisValue > otherValue)
-            {
-                thisNewer = true;
-            }
-            else if (otherValue > thisValue)
-            {
-                otherNewer = true;
-            }
-        }
-
-        return thisNewer && !otherNewer;
-    }
-
-    public bool IsConcurrentWith(VectorClock other)
-    {
-        var allDevices = Counters.Keys.Union(other.Counters.Keys).ToHashSet();
-        
-        bool thisNewer = false;
-        bool otherNewer = false;
-
-        foreach (var deviceId in allDevices)
-        {
-            var thisValue = GetCounter(deviceId);
-            var otherValue = other.GetCounter(deviceId);
-
-            if (thisValue > otherValue)
-            {
-                thisNewer = true;
-            }
-            else if (otherValue > thisValue)
-            {
-                otherNewer = true;
-            }
-        }
-
-        return thisNewer && otherNewer; // Conflict situation
-    }
-}
 
 /// <summary>
 /// File type enumeration compatible with Syncthing's FileInfoType

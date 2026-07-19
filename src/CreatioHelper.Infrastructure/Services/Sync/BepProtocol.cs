@@ -272,7 +272,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 Size = f.Size,
                 ModifiedS = (long)f.ModifiedTime.Subtract(DateTime.UnixEpoch).TotalSeconds,
                 ModifiedNs = (int)(f.ModifiedTime.Ticks % TimeSpan.TicksPerSecond * 100),
-                Version = VectorClockToBep(f.Vector),
+                Version = f.Vector.ToBepVector(),
                 Sequence = f.Sequence,
                 Blocks = f.Blocks.Select(b => new BepBlockInfo
                 {
@@ -309,7 +309,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 Size = f.Size,
                 ModifiedS = (long)f.ModifiedTime.Subtract(DateTime.UnixEpoch).TotalSeconds,
                 ModifiedNs = (int)(f.ModifiedTime.Ticks % TimeSpan.TicksPerSecond * 100),
-                Version = VectorClockToBep(f.Vector),
+                Version = f.Vector.ToBepVector(),
                 Sequence = f.Sequence,
                 Blocks = f.Blocks.Select(b => new BepBlockInfo
                 {
@@ -723,18 +723,6 @@ public class BepProtocol : ISyncProtocol, IDisposable
         }
     }
 
-    private BepVector VectorClockToBep(VectorClock vector)
-    {
-        return new BepVector
-        {
-            Counters = vector.Counters.Select(c => new BepCounter
-            {
-                Id = StringToShortId(c.Key),
-                Value = (ulong)c.Value
-            }).ToList()
-        };
-    }
-
     private int GenerateRequestId()
     {
         return Random.Shared.Next(1, int.MaxValue);
@@ -846,12 +834,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
             syncFile.UpdateHash(Convert.ToHexString(f.BlocksHash).ToLower());
             
             // Convert vector clock
-            var vector = new VectorClock();
-            foreach (var counter in f.Version.Counters)
-            {
-                vector.Update(counter.Id.ToString("x16"), (long)counter.Value);
-            }
-            syncFile.UpdateVector(vector);
+            syncFile.UpdateVector(BepVectorClockWireExtensions.FromBepVector(f.Version));
             
             if (f.Deleted) syncFile.MarkAsDeleted();
             if (f.Invalid) syncFile.MarkAsInvalid();

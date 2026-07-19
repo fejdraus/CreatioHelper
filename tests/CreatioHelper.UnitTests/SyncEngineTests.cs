@@ -44,10 +44,7 @@ public class SyncEngineTests : IDisposable
         
         var fileWatcherLogger = Mock.Of<ILogger<FileWatcher>>();
         var fileWatcher = new FileWatcher(fileWatcherLogger, blockSizer);
-        
-        var conflictResolverLogger = Mock.Of<ILogger<ConflictResolver>>();
-        var conflictResolver = new ConflictResolver(conflictResolverLogger);
-        
+
         var fileComparatorLogger = Mock.Of<ILogger<FileComparator>>();
         var fileComparator = new FileComparator(fileComparatorLogger);
         
@@ -102,7 +99,6 @@ public class SyncEngineTests : IDisposable
                 _mockProtocol.Object,
                 _mockDiscovery.Object,
                 fileWatcher,
-                conflictResolver,
                 fileComparator,
                 fileDownloader,
                 fileUploader,
@@ -169,6 +165,26 @@ public class SyncEngineTests : IDisposable
         Assert.Equal(path, folder.Path);
         Assert.Equal(type, folder.Type);
         Assert.True(Directory.Exists(path));
+    }
+
+    [Fact]
+    public async Task UpdateFolderAsync_ShouldPersistNewLabel_WhenLabelChanged()
+    {
+        var folderId = "test-folder-label";
+        var path = Path.Combine(_testDirectory, "LabelFolder");
+        await _syncEngine.AddFolderAsync(folderId, "Old Label", path);
+
+        var updated = await _syncEngine.UpdateFolderAsync(new CreatioHelper.Application.DTOs.FolderConfiguration
+        {
+            Id = folderId,
+            Label = "New Label",
+            Path = path
+        });
+
+        Assert.Equal("New Label", updated.Label);
+
+        var folders = await _syncEngine.GetFoldersAsync();
+        Assert.Equal("New Label", folders.First(f => f.Id == folderId).Label);
     }
 
     [Fact]
@@ -367,75 +383,5 @@ public class SyncEngineTests : IDisposable
                 // Ignore cleanup errors in tests
             }
         }
-    }
-}
-
-/// <summary>
-/// Tests for conflict resolution logic
-/// </summary>
-public class ConflictResolverTests
-{
-    private readonly Mock<ILogger<ConflictResolver>> _mockLogger;
-    private readonly ConflictResolver _conflictResolver;
-
-    public ConflictResolverTests()
-    {
-        _mockLogger = new Mock<ILogger<ConflictResolver>>();
-        _conflictResolver = new ConflictResolver(_mockLogger.Object);
-    }
-
-    [Fact]
-    public async Task ResolveConflictAsync_ShouldReturnNoAction_WhenFilesAreIdentical()
-    {
-        // Arrange
-        var localFile = CreateTestFileInfo("test.txt", "hash123", 1000);
-        var remoteFile = CreateTestFileInfo("test.txt", "hash123", 1000);
-
-        // Act
-        var resolution = await _conflictResolver.ResolveConflictAsync(localFile, remoteFile, "device123");
-
-        // Assert
-        Assert.Equal(ConflictAction.NoAction, resolution.Action);
-        Assert.Contains("identical", resolution.Reason);
-    }
-
-    [Fact]
-    public async Task ResolveConflictAsync_ShouldPreferNewer_WhenUsingPreferNewerStrategy()
-    {
-        // Arrange
-        var localFile = CreateTestFileInfo("test.txt", "hash1", 1000, DateTime.UtcNow.AddHours(-1));
-        var remoteFile = CreateTestFileInfo("test.txt", "hash2", 1000, DateTime.UtcNow);
-
-        // Act
-        var resolution = await _conflictResolver.ResolveConflictAsync(
-            localFile, remoteFile, "device123", ConflictResolutionStrategy.PreferNewer);
-
-        // Assert
-        Assert.Equal(ConflictAction.AcceptRemote, resolution.Action);
-        Assert.Contains("newer", resolution.Reason);
-    }
-
-    [Fact]
-    public async Task ResolveConflictAsync_ShouldCreateConflictCopy_WhenUsingDefaultStrategy()
-    {
-        // Arrange
-        var localFile = CreateTestFileInfo("test.txt", "hash1", 1000);
-        var remoteFile = CreateTestFileInfo("test.txt", "hash2", 1000);
-
-        // Act
-        var resolution = await _conflictResolver.ResolveConflictAsync(
-            localFile, remoteFile, "device123", ConflictResolutionStrategy.Default);
-
-        // Assert
-        Assert.Equal(ConflictAction.CreateConflictCopy, resolution.Action);
-        Assert.NotNull(resolution.ConflictCopyName);
-        Assert.Contains("sync-conflict", resolution.ConflictCopyName);
-    }
-
-    private SyncFileInfo CreateTestFileInfo(string name, string hash, long size, DateTime? modifiedTime = null)
-    {
-        var fileInfo = new SyncFileInfo("test-folder", name, name, size, modifiedTime ?? DateTime.UtcNow);
-        fileInfo.UpdateHash(hash);
-        return fileInfo;
     }
 }

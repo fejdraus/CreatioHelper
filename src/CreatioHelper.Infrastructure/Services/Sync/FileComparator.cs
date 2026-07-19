@@ -116,9 +116,7 @@ public class FileComparator
         }
 
         // Compare vector clocks to determine which is newer
-        var localVectorClock = ConvertToBepVectorClock(localFile.Vector);
-        var remoteVectorClock = ConvertToBepVectorClock(remoteFile.Vector);
-        var vectorComparison = localVectorClock.Compare(remoteVectorClock);
+        var vectorComparison = localFile.Vector.Compare(remoteFile.Vector);
         
         switch (vectorComparison)
         {
@@ -209,22 +207,6 @@ public class FileComparator
                !remoteFile.IsDeleted;
     }
 
-    /// <summary>
-    /// Converts VectorClock to BepVectorClock for comparison
-    /// </summary>
-    private BepVectorClock ConvertToBepVectorClock(VectorClock vectorClock)
-    {
-        var bepVectorClock = new BepVectorClock();
-        
-        foreach (var counter in vectorClock.Counters)
-        {
-            // Convert device ID string to ulong (simple hash for now)
-            var deviceIdHash = (ulong)counter.Key.GetHashCode();
-            bepVectorClock.Update(deviceIdHash, (ulong)counter.Value);
-        }
-        
-        return bepVectorClock;
-    }
 }
 
 /// <summary>

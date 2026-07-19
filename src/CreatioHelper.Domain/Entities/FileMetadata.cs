@@ -15,7 +15,7 @@ public class FileMetadata
     public FileType FileType { get; set; } = FileType.File;
     public DateTime ModifiedTime { get; set; }
     public long Size { get; set; }
-    public string VersionVector { get; set; } = string.Empty;
+    public BepVectorClock VersionVector { get; set; } = new();
     public bool IsDeleted { get; set; }
     public bool IsInvalid { get; set; }
     public FileLocalFlags LocalFlags { get; set; } = FileLocalFlags.None;
@@ -31,7 +31,6 @@ public class FileMetadata
     // Additional fields for CreatioHelper
     public string DeviceId { get; set; } = string.Empty;
     public string? DeviceName { get; set; }
-    public string? Version { get; set; }
     public bool LocallyChanged { get; set; }
     public byte[]? ProtobufData { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

@@ -263,7 +263,7 @@ public class FileMetadataRepository : IFileMetadataRepository
             IsInvalid = reader.GetBoolean(reader.GetOrdinal("is_invalid")),
             SymlinkTarget = reader.IsDBNull(reader.GetOrdinal("symlink_target")) ? null : reader.GetString(reader.GetOrdinal("symlink_target")),
             Sequence = reader.GetInt64(reader.GetOrdinal("sequence")),
-            VersionVector = reader.GetString(reader.GetOrdinal("version_vector")),
+            VersionVector = BepVectorClock.ParseOrEmpty(reader.GetString(reader.GetOrdinal("version_vector"))),
             BlockSize = reader.GetInt32(reader.GetOrdinal("block_size")),
             Hash = string.IsNullOrEmpty(hashString) ? Array.Empty<byte>() : Convert.FromBase64String(hashString),
             ModifiedBy = reader.GetString(reader.GetOrdinal("modified_by")),
@@ -315,9 +315,9 @@ public class FileMetadataRepository : IFileMetadataRepository
         command.Parameters.Add(symlinkParam);
 
         command.Parameters.Add(new SqliteParameter("@sequence", metadata.Sequence));
-        command.Parameters.Add(new SqliteParameter("@versionVector", (object?)metadata.VersionVector ?? "[]"));
+        command.Parameters.Add(new SqliteParameter("@versionVector", metadata.VersionVector.ToString()));
         command.Parameters.Add(new SqliteParameter("@blockHashes", JsonSerializer.Serialize(metadata.BlockHashes ?? new List<string>())));
-        command.Parameters.Add(new SqliteParameter("@blockSize", metadata.BlockSize));
+        command.Parameters.Add(new SqliteParameter("@blockSize", metadata.BlockSize ?? 0));
 
         var hashParam = new SqliteParameter("@hash", SqliteType.Text);
         hashParam.Value = metadata.Hash != null && metadata.Hash.Length > 0 ? Convert.ToBase64String(metadata.Hash) : (object)DBNull.Value;

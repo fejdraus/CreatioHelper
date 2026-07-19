@@ -151,6 +151,11 @@ public class SyncFolder : AggregateRoot
         Paused = paused;
     }
 
+    public void SetLabel(string label)
+    {
+        Label = label ?? string.Empty;
+    }
+
     public void UpdateStatistics(long fileCount, long totalSize)
     {
         FileCount = fileCount;

@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 
-namespace CreatioHelper.Infrastructure.Services.Sync;
+namespace CreatioHelper.Domain.Entities;
 
 /// <summary>
 /// Vector clock implementation according to Syncthing BEP protocol.
@@ -21,55 +21,20 @@ public class BepVectorClock
 
     public IReadOnlyDictionary<ulong, ulong> Counters => _counters;
 
-    /// <summary>
-    /// Creates a new vector clock
-    /// </summary>
     public BepVectorClock()
     {
     }
 
-    /// <summary>
-    /// Creates a vector clock from BEP wire format.
-    /// Parses the (device_short_id, counter_value) pairs from the wire format.
-    /// Matches Syncthing's VectorFromWire() in lib/protocol/vector.go.
-    /// </summary>
-    /// <param name="vector">BEP vector from wire protocol</param>
-    public BepVectorClock(BepVector vector)
-    {
-        foreach (var counter in vector.Counters)
-        {
-            _counters[counter.Id] = counter.Value;
-        }
-    }
-
-    /// <summary>
-    /// Creates a vector clock from a dictionary of (device_short_id, counter_value) pairs.
-    /// </summary>
-    /// <param name="counters">Dictionary mapping device_short_id to counter_value</param>
     public BepVectorClock(Dictionary<ulong, ulong> counters)
     {
         _counters = new Dictionary<ulong, ulong>(counters);
     }
 
-    /// <summary>
-    /// Updates the vector clock for a device, keeping the maximum value.
-    /// This is part of the (device_short_id, counter) pair where:
-    /// - deviceShortId: First 8 bytes of device ID as big-endian uint64
-    /// - value: Counter value (logical timestamp)
-    /// </summary>
-    /// <param name="deviceShortId">Short device ID (first 8 bytes of device ID)</param>
-    /// <param name="value">Counter value to set (will only update if greater than current)</param>
     public void Update(ulong deviceShortId, ulong value)
     {
         _counters[deviceShortId] = Math.Max(_counters.GetValueOrDefault(deviceShortId), value);
     }
 
-    /// <summary>
-    /// Increments the counter for a device using max(current+1, unix_timestamp).
-    /// This ensures monotonic progression even with clock skew.
-    /// Matches Syncthing's Vector.Update() in lib/protocol/vector.go.
-    /// </summary>
-    /// <param name="deviceShortId">Short device ID (first 8 bytes of device ID as big-endian uint64)</param>
     public void Increment(ulong deviceShortId)
     {
         var currentValue = _counters.GetValueOrDefault(deviceShortId);
@@ -78,12 +43,6 @@ public class BepVectorClock
         _counters[deviceShortId] = newValue;
     }
 
-    /// <summary>
-    /// Merges another vector clock into this one.
-    /// Takes the maximum counter value for each device_short_id.
-    /// Matches Syncthing's Vector.Merge() in lib/protocol/vector.go.
-    /// </summary>
-    /// <param name="other">Vector clock to merge</param>
     public void Merge(BepVectorClock other)
     {
         foreach (var (deviceShortId, value) in other._counters)
@@ -92,13 +51,10 @@ public class BepVectorClock
         }
     }
 
-    /// <summary>
-    /// Compares this vector clock with another
-    /// </summary>
     public VectorClockComparison Compare(BepVectorClock other)
     {
         var allDevices = _counters.Keys.Union(other._counters.Keys).ToHashSet();
-        
+
         bool thisGreater = false;
         bool otherGreater = false;
 
@@ -118,69 +74,43 @@ public class BepVectorClock
         }
 
         if (thisGreater && !otherGreater)
+        {
             return VectorClockComparison.Greater;
-        
+        }
+
         if (otherGreater && !thisGreater)
+        {
             return VectorClockComparison.Lesser;
-        
+        }
+
         if (!thisGreater && !otherGreater)
+        {
             return VectorClockComparison.Equal;
-        
+        }
+
         return VectorClockComparison.Concurrent;
     }
 
-    /// <summary>
-    /// Checks if this vector clock is newer than another
-    /// </summary>
     public bool IsNewerThan(BepVectorClock other)
     {
         return Compare(other) == VectorClockComparison.Greater;
     }
 
-    /// <summary>
-    /// Checks if this vector clock is older than another
-    /// </summary>
     public bool IsOlderThan(BepVectorClock other)
     {
         return Compare(other) == VectorClockComparison.Lesser;
     }
 
-    /// <summary>
-    /// Checks if this vector clock is concurrent with another (conflict)
-    /// </summary>
     public bool IsConcurrentWith(BepVectorClock other)
     {
         return Compare(other) == VectorClockComparison.Concurrent;
     }
 
-    /// <summary>
-    /// Converts to BEP wire format for protocol transmission.
-    /// Each counter is a (device_short_id, counter_value) pair.
-    /// Counters are sorted by device_short_id for deterministic ordering.
-    /// Matches Syncthing's Vector.ToWire() in lib/protocol/vector.go.
-    /// </summary>
-    /// <returns>BepVector containing sorted list of BepCounter (Id, Value) pairs</returns>
-    public BepVector ToBepVector()
-    {
-        var counters = _counters
-            .OrderBy(kvp => kvp.Key) // Sort by device_short_id for deterministic ordering
-            .Select(kvp => new BepCounter { Id = kvp.Key, Value = kvp.Value })
-            .ToList();
-
-        return new BepVector { Counters = counters };
-    }
-
-    /// <summary>
-    /// Creates a copy of this vector clock
-    /// </summary>
     public BepVectorClock Copy()
     {
         return new BepVectorClock(new Dictionary<ulong, ulong>(_counters));
     }
 
-    /// <summary>
-    /// Generates device ID from certificate bytes (Syncthing method)
-    /// </summary>
     public static string GenerateDeviceId(byte[] certificateBytes)
     {
         using var sha256 = SHA256.Create();
@@ -188,13 +118,6 @@ public class BepVectorClock
         return Convert.ToHexString(hash).ToLower();
     }
 
-    /// <summary>
-    /// Converts device ID string (hex) to short ID for vector clocks.
-    /// Uses first 8 bytes of the 32-byte device ID, interpreted as big-endian uint64.
-    /// Matches Syncthing's DeviceID.Short() in lib/protocol/deviceid.go.
-    /// </summary>
-    /// <param name="deviceIdHex">64-character hex string (32 bytes) of device ID</param>
-    /// <returns>Short ID as uint64</returns>
     public static ulong DeviceIdToShortId(string deviceIdHex)
     {
         var deviceIdBytes = Convert.FromHexString(deviceIdHex);
@@ -205,10 +128,6 @@ public class BepVectorClock
         return BinaryPrimitives.ReadUInt64BigEndian(deviceIdBytes.AsSpan(0, 8));
     }
 
-    /// <summary>
-    /// Converts short ID back to hex string (first 8 bytes of device ID).
-    /// Returns lowercase hex representation matching Syncthing format.
-    /// </summary>
     public static string ShortIdToHex(ulong shortId)
     {
         var bytes = new byte[8];
@@ -216,19 +135,27 @@ public class BepVectorClock
         return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 
-    /// <summary>
-    /// Alias for ShortIdToHex for backwards compatibility.
-    /// </summary>
     public static string ShortIdToPartialDeviceId(ulong shortId) => ShortIdToHex(shortId);
 
     /// <summary>
-    /// Parses a vector clock from its string representation.
-    /// Format: "hex_shortid:counter,hex_shortid:counter,..."
-    /// Matches Syncthing's VectorFromString in lib/protocol/vector.go
+    /// Derives a deterministic device short id from an arbitrary device identifier.
+    /// A 64-char hex device id uses its first 8 bytes (Syncthing semantics); any other
+    /// string falls back to the first 8 bytes of its SHA-256 hash. Deterministic across
+    /// processes and machines (unlike string.GetHashCode).
     /// </summary>
-    /// <param name="s">String representation of vector clock</param>
-    /// <returns>Parsed vector clock</returns>
-    /// <exception cref="FormatException">If the string format is invalid</exception>
+    public static ulong ShortIdFromString(string deviceId)
+    {
+        try
+        {
+            return DeviceIdToShortId(deviceId);
+        }
+        catch
+        {
+            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(deviceId ?? string.Empty));
+            return BinaryPrimitives.ReadUInt64BigEndian(hash.AsSpan(0, 8));
+        }
+    }
+
     public static BepVectorClock FromString(string s)
     {
         var vectorClock = new BepVectorClock();
@@ -250,13 +177,11 @@ public class BepVectorClock
             var idStr = pair.Substring(0, colonIndex).Trim();
             var valStr = pair.Substring(colonIndex + 1).Trim();
 
-            // Parse hex ID to ulong (big-endian, pad to 8 bytes if needed)
             if (idStr.Length > 16)
             {
                 throw new FormatException($"Invalid short ID (too long): \"{idStr}\"");
             }
 
-            // Pad to 16 hex chars (8 bytes) from the left
             var paddedId = idStr.PadLeft(16, '0');
             if (!ulong.TryParse(paddedId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out var shortId))
             {
@@ -275,10 +200,23 @@ public class BepVectorClock
     }
 
     /// <summary>
-    /// Returns the string representation of the vector clock.
-    /// Format: "hex_shortid:counter,hex_shortid:counter,..."
-    /// Matches Syncthing's Vector.String() in lib/protocol/vector.go
+    /// Lenient parse for persistence boundaries: returns an empty clock instead of
+    /// throwing on malformed input (e.g. legacy rows that stored a file hash rather
+    /// than a serialized vector clock). An empty clock forces a re-pull, which is the
+    /// desired behaviour for such rows.
     /// </summary>
+    public static BepVectorClock ParseOrEmpty(string? s)
+    {
+        try
+        {
+            return FromString(s ?? string.Empty);
+        }
+        catch (FormatException)
+        {
+            return new BepVectorClock();
+        }
+    }
+
     public override string ToString()
     {
         if (_counters.Count == 0)
@@ -302,10 +240,6 @@ public class BepVectorClock
         return sb.ToString();
     }
 
-    /// <summary>
-    /// Returns a human-readable string representation.
-    /// Format: "[shortid:counter, shortid:counter, ...]"
-    /// </summary>
     public string ToHumanString()
     {
         var parts = _counters
@@ -316,10 +250,13 @@ public class BepVectorClock
 
     public override bool Equals(object? obj)
     {
-        if (obj is not BepVectorClock other) return false;
-        
+        if (obj is not BepVectorClock other)
+        {
+            return false;
+        }
+
         var allDevices = _counters.Keys.Union(other._counters.Keys);
-        return allDevices.All(deviceId => 
+        return allDevices.All(deviceId =>
             _counters.GetValueOrDefault(deviceId) == other._counters.GetValueOrDefault(deviceId));
     }
 
@@ -340,23 +277,8 @@ public class BepVectorClock
 /// </summary>
 public enum VectorClockComparison
 {
-    /// <summary>
-    /// Vector clocks are identical
-    /// </summary>
     Equal,
-    
-    /// <summary>
-    /// This vector clock is newer (happens-after)
-    /// </summary>
     Greater,
-    
-    /// <summary>
-    /// This vector clock is older (happens-before)
-    /// </summary>
     Lesser,
-    
-    /// <summary>
-    /// Vector clocks are concurrent (conflict)
-    /// </summary>
     Concurrent
 }

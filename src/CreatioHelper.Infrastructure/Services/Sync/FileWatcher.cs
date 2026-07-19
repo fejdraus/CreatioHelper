@@ -216,7 +216,7 @@ public class FileWatcher : IDisposable
                     _logger.LogDebug("File no longer exists, marking as deleted: {FileName}", trackedFile.RelativePath);
                     trackedFile.MarkAsDeleted();
                     // Update vector clock for deletion
-                    trackedFile.Vector.Increment(Environment.MachineName); // Simple device ID for now
+                    trackedFile.Vector.Increment(BepVectorClock.ShortIdFromString(Environment.MachineName)); // Simple device ID for now
                 }
             }
             
@@ -543,7 +543,7 @@ public class FileWatcher : IDisposable
                         null, folderId, relativePath);
 
                     deletedFile.MarkAsDeleted();
-                    deletedFile.Vector.Increment(Environment.MachineName);
+                    deletedFile.Vector.Increment(BepVectorClock.ShortIdFromString(Environment.MachineName));
                 }
             }
             else if (File.Exists(filePath))

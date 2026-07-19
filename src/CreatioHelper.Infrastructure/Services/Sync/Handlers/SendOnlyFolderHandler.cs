@@ -169,9 +169,11 @@ public class SendOnlyFolderHandler : SyncFolderHandlerBase
                 _logger.LogDebug("Override: Replacing global version of {FileName} with local",
                     neededFile.FileName);
 
-                // Объединяем версии (merge) и обновляем
-                var mergedVersion = MergeVersionVectors(localFile.VersionVector, neededFile.VersionVector);
-                localFile.VersionVector = IncrementVersion(mergedVersion, GetLocalDeviceId());
+                // Объединяем версии (merge) и инкрементируем для локального устройства
+                var mergedVersion = localFile.VersionVector.Copy();
+                mergedVersion.Merge(neededFile.VersionVector);
+                mergedVersion.Increment(BepVectorClock.ShortIdFromString(GetLocalDeviceId()));
+                localFile.VersionVector = mergedVersion;
                 localFile.Sequence = 0;
                 localFile.UpdatedAt = DateTime.UtcNow;
                 filesToUpdate.Add(localFile);
@@ -197,61 +199,6 @@ public class SendOnlyFolderHandler : SyncFolderHandlerBase
     private string GetLocalDeviceId()
     {
         return _configuration.DeviceId;
-    }
-
-    /// <summary>
-    /// Объединить два вектора версий
-    /// </summary>
-    private string MergeVersionVectors(string v1, string v2)
-    {
-        // Простая реализация - берем максимальную версию
-        // В реальности нужно объединять компоненты вектора
-        if (string.IsNullOrEmpty(v1)) return v2;
-        if (string.IsNullOrEmpty(v2)) return v1;
-
-        // Парсим версии и объединяем
-        // Формат: "device1:seq1,device2:seq2,..."
-        var result = new Dictionary<string, long>();
-
-        foreach (var part in (v1 + "," + v2).Split(',', StringSplitOptions.RemoveEmptyEntries))
-        {
-            var kv = part.Split(':');
-            if (kv.Length == 2 && long.TryParse(kv[1], out var seq))
-            {
-                var device = kv[0];
-                if (!result.ContainsKey(device) || result[device] < seq)
-                {
-                    result[device] = seq;
-                }
-            }
-        }
-
-        return string.Join(",", result.Select(kv => $"{kv.Key}:{kv.Value}"));
-    }
-
-    /// <summary>
-    /// Инкрементировать версию для устройства
-    /// </summary>
-    private string IncrementVersion(string version, string deviceId)
-    {
-        var parts = new Dictionary<string, long>();
-
-        if (!string.IsNullOrEmpty(version))
-        {
-            foreach (var part in version.Split(',', StringSplitOptions.RemoveEmptyEntries))
-            {
-                var kv = part.Split(':');
-                if (kv.Length == 2 && long.TryParse(kv[1], out var seq))
-                {
-                    parts[kv[0]] = seq;
-                }
-            }
-        }
-
-        // Инкрементируем версию для нашего устройства
-        parts[deviceId] = parts.GetValueOrDefault(deviceId, 0) + 1;
-
-        return string.Join(",", parts.Select(kv => $"{kv.Key}:{kv.Value}"));
     }
 
     public override bool CanApplyFileChange(SyncFolder folder, FileMetadata file, bool isIncoming)
