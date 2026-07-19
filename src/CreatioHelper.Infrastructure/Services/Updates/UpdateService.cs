@@ -230,8 +230,7 @@ public class UpdateService : IUpdateService, IDisposable
                 continue;
             }
 
-            var versionString = StripTagPrefix(tag);
-            if (!NuGetVersion.TryParse(versionString, out var version))
+            if (!TryParseDesktopVersion(tag, out var version))
             {
                 continue;
             }
@@ -395,27 +394,22 @@ del ""%~f0""
         StateChanged?.Invoke(this, newState);
     }
 
-    public static string StripTagPrefix(string tag)
+    // Desktop releases are tagged "desktop-v<semver>" (e.g. desktop-v1.0.25, desktop-v1.0.25-beta.3).
+    // The legacy "v<semver>" tags and other components ("cli-v*") are ignored on purpose.
+    public static bool TryParseDesktopVersion(string tag, out NuGetVersion version)
     {
-        // Accept both the legacy "v1.0.24" and the component-prefixed "desktop-v1.0.25" / "cli-v1.0.0"
-        var dashIndex = tag.IndexOf('-');
-        if (dashIndex > 0 && dashIndex + 1 < tag.Length && tag[dashIndex + 1] == 'v' && IsAllLetters(tag, dashIndex))
+        version = null!;
+        const string prefix = "desktop-v";
+        if (string.IsNullOrEmpty(tag) || !tag.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
         {
-            tag = tag[(dashIndex + 1)..];
+            return false;
         }
-        return tag.StartsWith('v') ? tag[1..] : tag;
-    }
-
-    private static bool IsAllLetters(string value, int length)
-    {
-        for (var i = 0; i < length; i++)
+        if (NuGetVersion.TryParse(tag[prefix.Length..], out var parsed) && parsed != null)
         {
-            if (!char.IsLetter(value[i]))
-            {
-                return false;
-            }
+            version = parsed;
+            return true;
         }
-        return true;
+        return false;
     }
 
     private static string ReadCurrentInformationalVersion()

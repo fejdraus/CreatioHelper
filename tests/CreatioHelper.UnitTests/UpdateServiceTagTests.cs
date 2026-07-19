@@ -7,24 +7,25 @@ namespace CreatioHelper.UnitTests;
 public class UpdateServiceTagTests
 {
     [Theory]
-    [InlineData("v1.0.24", "1.0.24")]
     [InlineData("desktop-v1.0.25", "1.0.25")]
-    [InlineData("cli-v0.4.0", "0.4.0")]
-    [InlineData("agent-v2.1.0", "2.1.0")]
     [InlineData("desktop-v1.0.25-beta.3", "1.0.25-beta.3")]
-    [InlineData("v1.0.25-beta.3", "1.0.25-beta.3")]
-    [InlineData("1.0.24", "1.0.24")]
-    public void StripTagPrefix_HandlesLegacyAndPrefixedTags(string tag, string expected)
+    [InlineData("Desktop-V2.0.0", "2.0.0")]
+    public void TryParseDesktopVersion_AcceptsDesktopTags(string tag, string expected)
     {
-        Assert.Equal(expected, UpdateService.StripTagPrefix(tag));
+        Assert.True(UpdateService.TryParseDesktopVersion(tag, out var version));
+        Assert.Equal(NuGetVersion.Parse(expected), version);
     }
 
     [Theory]
     [InlineData("v1.0.24")]
-    [InlineData("desktop-v1.0.25")]
-    [InlineData("desktop-v1.0.25-beta.3")]
-    public void StrippedTag_IsParsableAsVersion(string tag)
+    [InlineData("v1.0.25-beta.3")]
+    [InlineData("cli-v0.4.0")]
+    [InlineData("agent-v2.1.0")]
+    [InlineData("1.0.24")]
+    [InlineData("")]
+    [InlineData("desktop-1.0.25")]
+    public void TryParseDesktopVersion_RejectsNonDesktopTags(string tag)
     {
-        Assert.True(NuGetVersion.TryParse(UpdateService.StripTagPrefix(tag), out _));
+        Assert.False(UpdateService.TryParseDesktopVersion(tag, out _));
     }
 }
