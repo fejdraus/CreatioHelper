@@ -22,6 +22,7 @@ public interface IAuthService
     Task<bool> LoginWithApiKeyAsync(string apiKey);
     Task LogoutAsync();
     Task<bool> ValidateSessionAsync();
+    Task RestoreSessionAsync();
     Task InitializeAsync();
 }
 
@@ -59,6 +60,33 @@ public class AuthService : IAuthService
     public async Task InitializeAsync()
     {
         await ValidateSessionAsync();
+    }
+
+    public async Task RestoreSessionAsync()
+    {
+        try
+        {
+            var token = await _localStorage.GetItemAsync<string>(AuthTokenKey);
+            if (string.IsNullOrEmpty(token))
+            {
+                return;
+            }
+
+            var expiresAt = await _localStorage.GetItemAsync<DateTime?>(TokenExpiresKey);
+            if (expiresAt.HasValue && expiresAt.Value < DateTime.UtcNow)
+            {
+                return;
+            }
+
+            _token = token;
+            _username = await _localStorage.GetItemAsync<string>(UsernameKey);
+            _role = await _localStorage.GetItemAsync<string>(RoleKey);
+            _isAuthenticated = true;
+            SetAuthorizationHeader(token);
+        }
+        catch
+        {
+        }
     }
 
     public async Task<bool> LoginAsync(string username, string password)

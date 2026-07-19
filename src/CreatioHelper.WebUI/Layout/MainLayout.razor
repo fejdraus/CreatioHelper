@@ -84,6 +84,7 @@
     private bool _isConnected;
     private bool _isLoading;
     private string _syncStatus = "idle";
+    private bool? _lastConnectionState;
 
     protected override async Task OnInitializedAsync()
     {
@@ -123,7 +124,8 @@
     {
         if (!isAuthenticated)
         {
-            Navigation.NavigateTo("/login");
+            var returnUrl = Uri.EscapeDataString(Navigation.ToBaseRelativePath(Navigation.Uri));
+            Navigation.NavigateTo($"/login?returnUrl={returnUrl}");
         }
         InvokeAsync(StateHasChanged);
     }
@@ -268,15 +270,19 @@
         _isConnected = connected;
         State.IsConnected = connected;
 
-        if (!connected)
+        if (_lastConnectionState.HasValue && _lastConnectionState.Value != connected)
         {
-            Snackbar.Add(L["Msg_LostConnectionToAgent"], Severity.Warning);
-        }
-        else
-        {
-            Snackbar.Add(L["Msg_ReconnectedToAgent"], Severity.Success);
+            if (connected)
+            {
+                Snackbar.Add(L["Msg_ReconnectedToAgent"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(L["Msg_LostConnectionToAgent"], Severity.Warning);
+            }
         }
 
+        _lastConnectionState = connected;
         InvokeAsync(StateHasChanged);
     }
 

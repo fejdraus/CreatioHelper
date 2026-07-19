@@ -55,6 +55,8 @@ var host = builder.Build();
 // Initialize localization from saved settings before app runs
 await SetCultureFromStorageAsync(host.Services);
 
+await host.Services.GetRequiredService<IAuthService>().RestoreSessionAsync();
+
 await host.RunAsync();
 
 // Helper method to set culture from LocalStorage before app starts
