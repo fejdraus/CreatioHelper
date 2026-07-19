@@ -230,7 +230,7 @@ public class UpdateService : IUpdateService, IDisposable
                 continue;
             }
 
-            var versionString = tag.StartsWith('v') ? tag[1..] : tag;
+            var versionString = StripTagPrefix(tag);
             if (!NuGetVersion.TryParse(versionString, out var version))
             {
                 continue;
@@ -393,6 +393,29 @@ del ""%~f0""
     {
         _state = newState;
         StateChanged?.Invoke(this, newState);
+    }
+
+    public static string StripTagPrefix(string tag)
+    {
+        // Accept both the legacy "v1.0.24" and the component-prefixed "desktop-v1.0.25" / "cli-v1.0.0"
+        var dashIndex = tag.IndexOf('-');
+        if (dashIndex > 0 && dashIndex + 1 < tag.Length && tag[dashIndex + 1] == 'v' && IsAllLetters(tag, dashIndex))
+        {
+            tag = tag[(dashIndex + 1)..];
+        }
+        return tag.StartsWith('v') ? tag[1..] : tag;
+    }
+
+    private static bool IsAllLetters(string value, int length)
+    {
+        for (var i = 0; i < length; i++)
+        {
+            if (!char.IsLetter(value[i]))
+            {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static string ReadCurrentInformationalVersion()
