@@ -58,6 +58,15 @@ public interface IApiClient
     Task<WebServerAccessStatusInfo?> GetWebServerAccessStatusAsync();
     Task<WebSiteInfoDto[]> GetWebSitesAsync();
     Task SetSiteWebServerTypeAsync(string siteName, WebServerKindDto type);
+    Task RegisterSiteAsync(SiteRegistrationDto site);
+    Task UpdateSiteAsync(string siteName, SiteRegistrationDto site);
+    Task DeleteSiteAsync(string siteName);
+    Task<string?> DetectIisSiteAsync(string path);
+    Task StartSiteAsync(string siteName);
+    Task StopSiteAsync(string siteName);
+
+    // File system browse (on the agent host)
+    Task<string[]> BrowseAsync(string? current);
 
     // Debug
     Task<DebugInfo?> GetDebugInfoAsync();
@@ -336,6 +345,53 @@ public class ApiClient : IApiClient
         await _httpClient.PutAsJsonAsync(
             $"/api/website/{Uri.EscapeDataString(siteName)}/webserver-type",
             new { Type = type.ToString() });
+    }
+
+    public async Task RegisterSiteAsync(SiteRegistrationDto site)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/website/register", site);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task UpdateSiteAsync(string siteName, SiteRegistrationDto site)
+    {
+        var response = await _httpClient.PutAsJsonAsync(
+            $"/api/website/{Uri.EscapeDataString(siteName)}",
+            new { site.Type, site.ServiceName, site.FolderIds });
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DeleteSiteAsync(string siteName)
+    {
+        var response = await _httpClient.DeleteAsync($"/api/website/{Uri.EscapeDataString(siteName)}");
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<string?> DetectIisSiteAsync(string path)
+    {
+        var result = await _httpClient.GetFromJsonAsync<DetectSiteResponse>(
+            $"/api/website/detect?path={Uri.EscapeDataString(path)}");
+        return result?.SiteName;
+    }
+
+    public async Task StartSiteAsync(string siteName)
+    {
+        var response = await _httpClient.PostAsync($"/api/website/{Uri.EscapeDataString(siteName)}/start", null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task StopSiteAsync(string siteName)
+    {
+        var response = await _httpClient.PostAsync($"/api/website/{Uri.EscapeDataString(siteName)}/stop", null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<string[]> BrowseAsync(string? current)
+    {
+        var url = string.IsNullOrEmpty(current)
+            ? "/rest/system/browse"
+            : $"/rest/system/browse?current={Uri.EscapeDataString(current)}";
+        return await _httpClient.GetFromJsonAsync<string[]>(url) ?? Array.Empty<string>();
     }
 
     #endregion

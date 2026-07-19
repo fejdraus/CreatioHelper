@@ -1,0 +1,190 @@
+@using CreatioHelper.WebUI.Models
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@(IsEditMode ? Icons.Material.Filled.Edit : Icons.Material.Filled.Add)" Class="mr-2" />
+            @(IsEditMode ? L["WebServer_EditSite"] : L["WebServer_AddSite"])
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="_isValid">
+            <MudTextField @bind-Value="_displayName"
+                          Label="@L["WebServer_DisplayName"]"
+                          Required="true"
+                          RequiredError="@L["WebServer_DisplayNameRequired"]"
+                          ReadOnly="@IsEditMode"
+                          Immediate="true"
+                          Class="mb-4" />
+
+            <MudSelect @bind-Value="_type"
+                       Label="@L["WebServer_ManagedBy"]"
+                       Class="mb-4">
+                <MudSelectItem Value="@("IIS")">@L["WebServer_TypeIis"]</MudSelectItem>
+                <MudSelectItem Value="@("Service")">@L["WebServer_TypeService"]</MudSelectItem>
+            </MudSelect>
+
+            <MudSelect T="string"
+                       @bind-SelectedValues="_selectedFolderIds"
+                       MultiSelection="true"
+                       Label="@L["WebServer_LinkedFolders"]"
+                       Class="mb-4">
+                @foreach (var folder in _folders)
+                {
+                    <MudSelectItem T="string" Value="@folder.Id">@folder.DisplayName</MudSelectItem>
+                }
+            </MudSelect>
+
+            <div class="d-flex align-center gap-2">
+                <MudTextField @bind-Value="_serviceName"
+                              Label="@(_type == "IIS" ? L["WebServer_IisSiteName"] : L["WebServer_ServiceName"])"
+                              Required="true"
+                              RequiredError="@L["WebServer_HostNameRequired"]"
+                              Immediate="true"
+                              Class="flex-grow-1" />
+                @if (_type == "IIS")
+                {
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               StartIcon="@Icons.Material.Filled.Search"
+                               Disabled="@(_detecting || !_selectedFolderIds.Any())"
+                               OnClick="DetectByFolder">
+                        @L["WebServer_DetectByFolder"]
+                    </MudButton>
+                }
+            </div>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(!_isValid || _saving)"
+                   OnClick="Submit">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsEditMode ? L["Common_Save"] : L["WebServer_AddSite"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public bool IsEditMode { get; set; }
+    [Parameter] public WebSiteInfoDto? EditSite { get; set; }
+
+    private MudForm _form = null!;
+    private bool _isValid;
+    private bool _saving;
+    private bool _detecting;
+
+    private string _displayName = string.Empty;
+    private string _type = "IIS";
+    private string _serviceName = string.Empty;
+    private IReadOnlyCollection<string> _selectedFolderIds = new List<string>();
+
+    private FolderConfig[] _folders = Array.Empty<FolderConfig>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _folders = await ApiClient.GetFoldersAsync();
+        }
+        catch
+        {
+            _folders = Array.Empty<FolderConfig>();
+        }
+
+        if (IsEditMode && EditSite != null)
+        {
+            _displayName = EditSite.Name;
+            _type = EditSite.WebServerType == WebServerKindDto.Iis ? "IIS" : "Service";
+            _serviceName = EditSite.ServiceName;
+            _selectedFolderIds = EditSite.FolderIds.ToList();
+        }
+    }
+
+    private async Task DetectByFolder()
+    {
+        var folderId = _selectedFolderIds.FirstOrDefault();
+        var folder = _folders.FirstOrDefault(f => f.Id == folderId);
+        if (folder == null)
+        {
+            return;
+        }
+
+        _detecting = true;
+        try
+        {
+            var detected = await ApiClient.DetectIisSiteAsync(folder.Path);
+            if (!string.IsNullOrEmpty(detected))
+            {
+                _serviceName = detected;
+                Snackbar.Add(L["WebServer_DetectedSite", detected], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(L["WebServer_DetectNotFound"], Severity.Warning);
+            }
+        }
+        catch
+        {
+            Snackbar.Add(L["WebServer_DetectNotFound"], Severity.Warning);
+        }
+        finally
+        {
+            _detecting = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        await _form.ValidateAsync();
+        if (!_isValid)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var dto = new SiteRegistrationDto
+            {
+                DisplayName = _displayName,
+                Type = _type,
+                ServiceName = _serviceName,
+                FolderIds = _selectedFolderIds.ToList()
+            };
+
+            if (IsEditMode)
+            {
+                await ApiClient.UpdateSiteAsync(_displayName, dto);
+                Snackbar.Add(L["WebServer_SiteSaved", _displayName], Severity.Success);
+            }
+            else
+            {
+                await ApiClient.RegisterSiteAsync(dto);
+                Snackbar.Add(L["WebServer_SiteSaved", _displayName], Severity.Success);
+            }
+
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(L["WebServer_SiteSaveFailed", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

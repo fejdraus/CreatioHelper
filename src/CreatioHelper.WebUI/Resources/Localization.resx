@@ -3687,7 +3687,10 @@
     <value>Web server</value>
   </data>
   <data name="WebServer_ElevationRequired" xml:space="preserve">
-    <value>Web server management requires elevated privileges. Run the agent as Administrator to manage IIS sites.</value>
+    <value>Managing IIS sites requires administrator rights — run the agent as Administrator. Service-based sites remain available without it.</value>
+  </data>
+  <data name="WebServer_NeedsAdmin" xml:space="preserve">
+    <value>Requires administrator</value>
   </data>
   <data name="WebServer_NoSites" xml:space="preserve">
     <value>No web sites detected.</value>
@@ -3736,5 +3739,140 @@
   </data>
   <data name="NotFound_GoDashboard" xml:space="preserve">
     <value>Go to dashboard</value>
+  </data>
+  <data name="Plural_Files_one" xml:space="preserve">
+    <value>file</value>
+  </data>
+  <data name="Plural_Files_few" xml:space="preserve">
+    <value>files</value>
+  </data>
+  <data name="Plural_Files_many" xml:space="preserve">
+    <value>files</value>
+  </data>
+  <data name="Plural_Dirs_one" xml:space="preserve">
+    <value>directory</value>
+  </data>
+  <data name="Plural_Dirs_few" xml:space="preserve">
+    <value>directories</value>
+  </data>
+  <data name="Plural_Dirs_many" xml:space="preserve">
+    <value>directories</value>
+  </data>
+  <data name="Unit_B" xml:space="preserve">
+    <value>B</value>
+  </data>
+  <data name="Unit_KB" xml:space="preserve">
+    <value>KB</value>
+  </data>
+  <data name="Unit_MB" xml:space="preserve">
+    <value>MB</value>
+  </data>
+  <data name="Unit_GB" xml:space="preserve">
+    <value>GB</value>
+  </data>
+  <data name="Unit_TB" xml:space="preserve">
+    <value>TB</value>
+  </data>
+  <data name="Unit_PB" xml:space="preserve">
+    <value>PB</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="WebServer_AddSite" xml:space="preserve">
+    <value>Add site</value>
+  </data>
+  <data name="WebServer_EditSite" xml:space="preserve">
+    <value>Edit site</value>
+  </data>
+  <data name="WebServer_DisplayName" xml:space="preserve">
+    <value>Display name</value>
+  </data>
+  <data name="WebServer_DisplayNameRequired" xml:space="preserve">
+    <value>Display name is required</value>
+  </data>
+  <data name="WebServer_LinkedFolders" xml:space="preserve">
+    <value>Linked folders</value>
+  </data>
+  <data name="WebServer_IisSiteName" xml:space="preserve">
+    <value>IIS site name</value>
+  </data>
+  <data name="WebServer_ServiceName" xml:space="preserve">
+    <value>Service name</value>
+  </data>
+  <data name="WebServer_HostNameRequired" xml:space="preserve">
+    <value>Host name is required</value>
+  </data>
+  <data name="WebServer_DetectByFolder" xml:space="preserve">
+    <value>Detect by folder</value>
+  </data>
+  <data name="WebServer_DetectedSite" xml:space="preserve">
+    <value>Detected IIS site: {0}</value>
+  </data>
+  <data name="WebServer_DetectNotFound" xml:space="preserve">
+    <value>No matching IIS site found</value>
+  </data>
+  <data name="WebServer_SiteSaved" xml:space="preserve">
+    <value>Site '{0}' saved</value>
+  </data>
+  <data name="WebServer_SiteSaveFailed" xml:space="preserve">
+    <value>Failed to save site: {0}</value>
+  </data>
+  <data name="WebServer_NoConfiguredSites" xml:space="preserve">
+    <value>No sites configured yet.</value>
+  </data>
+  <data name="WebServer_Host" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="WebServer_Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="WebServer_Start" xml:space="preserve">
+    <value>Start</value>
+  </data>
+  <data name="WebServer_Stop" xml:space="preserve">
+    <value>Stop</value>
+  </data>
+  <data name="WebServer_DeleteTitle" xml:space="preserve">
+    <value>Delete site</value>
+  </data>
+  <data name="WebServer_DeleteConfirm" xml:space="preserve">
+    <value>Delete site '{0}'?</value>
+  </data>
+  <data name="WebServer_SiteDeleted" xml:space="preserve">
+    <value>Site '{0}' deleted</value>
+  </data>
+  <data name="WebServer_StopTitle" xml:space="preserve">
+    <value>Stop site</value>
+  </data>
+  <data name="WebServer_StopConfirm" xml:space="preserve">
+    <value>Stop site '{0}'? It will become unavailable.</value>
+  </data>
+  <data name="WebServer_Started" xml:space="preserve">
+    <value>Site '{0}' started</value>
+  </data>
+  <data name="WebServer_Stopped" xml:space="preserve">
+    <value>Site '{0}' stopped</value>
+  </data>
+  <data name="WebServer_ActionFailed" xml:space="preserve">
+    <value>Action failed: {0}</value>
+  </data>
+  <data name="FolderBrowser_Title" xml:space="preserve">
+    <value>Select folder</value>
+  </data>
+  <data name="FolderBrowser_CurrentPath" xml:space="preserve">
+    <value>Path</value>
+  </data>
+  <data name="FolderBrowser_Go" xml:space="preserve">
+    <value>Go</value>
+  </data>
+  <data name="FolderBrowser_Select" xml:space="preserve">
+    <value>Select</value>
+  </data>
+  <data name="FolderBrowser_Empty" xml:space="preserve">
+    <value>No subfolders</value>
   </data>
 </root>

@@ -1,7 +1,9 @@
 @page "/monitoring/webserver"
 @using CreatioHelper.WebUI.Models
+@using CreatioHelper.WebUI.Components.Settings
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
+@inject IDialogService DialogService
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
@@ -12,6 +14,13 @@
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["WebServer_Title"]</MudText>
     <MudButton Variant="Variant.Filled"
                Color="Color.Primary"
+               StartIcon="@Icons.Material.Filled.Add"
+               OnClick="AddSite"
+               Class="mr-2">
+        @L["WebServer_AddSite"]
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Default"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="@(() => Refresh(showLoading: true))">
         @L["Common_Refresh"]
@@ -33,7 +42,10 @@ else if (_sites.Count == 0)
 {
     <MudPaper Elevation="2" Class="pa-8 d-flex flex-column align-center">
         <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Class="mb-2" />
-        <MudText Typo="Typo.body1">@L["WebServer_NoSites"]</MudText>
+        <MudText Typo="Typo.body1" Class="mb-4">@L["WebServer_NoConfiguredSites"]</MudText>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSite">
+            @L["WebServer_AddSite"]
+        </MudButton>
     </MudPaper>
 }
 else
@@ -42,21 +54,25 @@ else
         <MudTable Items="@_sites" Dense="true" Hover="true">
             <HeaderContent>
                 <MudTh>@L["WebServer_Site"]</MudTh>
-                <MudTh>@L["WebServer_DiscoveredType"]</MudTh>
-                <MudTh>@L["WebServer_State"]</MudTh>
                 <MudTh>@L["WebServer_ManagedBy"]</MudTh>
+                <MudTh>@L["WebServer_Host"]</MudTh>
+                <MudTh>@L["WebServer_State"]</MudTh>
+                <MudTh Style="text-align: right;">@L["WebServer_Actions"]</MudTh>
             </HeaderContent>
             <RowTemplate>
-                <MudTd DataLabel="@L["WebServer_Site"]">
-                    <MudText Typo="Typo.body2">@context.Name</MudText>
-                    @if (context.AutoDiscovered)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["WebServer_AutoDiscovered"]</MudChip>
-                    }
+                <MudTd DataLabel="@L["WebServer_Site"]">@context.Name</MudTd>
+                <MudTd DataLabel="@L["WebServer_ManagedBy"]">
+                    @(context.WebServerType == WebServerKindDto.Iis ? L["WebServer_TypeIis"] : L["WebServer_TypeService"])
                 </MudTd>
-                <MudTd DataLabel="@L["WebServer_DiscoveredType"]">@context.Type</MudTd>
+                <MudTd DataLabel="@L["WebServer_Host"]">@context.ServiceName</MudTd>
                 <MudTd DataLabel="@L["WebServer_State"]">
-                    @if (IsRunning(context.Status))
+                    @if (NeedsElevation(context))
+                    {
+                        <MudTooltip Text="@L["WebServer_ElevationRequired"]">
+                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.AdminPanelSettings">@L["WebServer_NeedsAdmin"]</MudChip>
+                        </MudTooltip>
+                    }
+                    else if (IsRunning(context.Status))
                     {
                         <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@context.Status</MudChip>
                     }
@@ -65,18 +81,32 @@ else
                         <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@context.Status</MudChip>
                     }
                 </MudTd>
-                <MudTd DataLabel="@L["WebServer_ManagedBy"]">
-                    <MudSelect T="WebServerKindDto"
-                               Value="context.WebServerType"
-                               ValueChanged="@(v => OnTypeChanged(context, v))"
-                               Dense="true"
-                               Variant="Variant.Outlined"
-                               Margin="Margin.Dense"
-                               Style="min-width: 180px;">
-                        <MudSelectItem Value="WebServerKindDto.Auto">@L["WebServer_TypeAuto"]</MudSelectItem>
-                        <MudSelectItem Value="WebServerKindDto.Iis">@L["WebServer_TypeIis"]</MudSelectItem>
-                        <MudSelectItem Value="WebServerKindDto.Service">@L["WebServer_TypeService"]</MudSelectItem>
-                    </MudSelect>
+                <MudTd DataLabel="@L["WebServer_Actions"]" Style="text-align: right;">
+                    <MudTooltip Text="@L["WebServer_Start"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
+                                       Color="Color.Success"
+                                       Size="Size.Small"
+                                       Disabled="@(_busy.Contains(context.Name) || IsRunning(context.Status) || NeedsElevation(context))"
+                                       OnClick="@(() => StartSite(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@L["WebServer_Stop"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Stop"
+                                       Color="Color.Warning"
+                                       Size="Size.Small"
+                                       Disabled="@(_busy.Contains(context.Name) || !IsRunning(context.Status) || NeedsElevation(context))"
+                                       OnClick="@(() => StopSite(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@L["Common_Edit"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                       Size="Size.Small"
+                                       OnClick="@(() => EditSite(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@L["Common_Delete"]">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                       Color="Color.Error"
+                                       Size="Size.Small"
+                                       OnClick="@(() => DeleteSite(context))" />
+                    </MudTooltip>
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -87,6 +117,7 @@ else
     private bool _isLoading;
     private WebServerAccessStatusInfo? _accessStatus;
     private List<WebSiteInfoDto> _sites = new();
+    private readonly HashSet<string> _busy = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -122,31 +153,108 @@ else
         }
     }
 
-    private async Task OnTypeChanged(WebSiteInfoDto site, WebServerKindDto type)
+    private async Task AddSite()
     {
-        var previous = site.WebServerType;
-        site.WebServerType = type;
+        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_AddSite"]);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await Refresh(showLoading: false);
+        }
+    }
+
+    private async Task EditSite(WebSiteInfoDto site)
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(AddSiteDialog.IsEditMode), true },
+            { nameof(AddSiteDialog.EditSite), site }
+        };
+        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_EditSite"], parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await Refresh(showLoading: false);
+        }
+    }
+
+    private async Task DeleteSite(WebSiteInfoDto site)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            L["WebServer_DeleteTitle"],
+            L["WebServer_DeleteConfirm", site.Name],
+            yesText: L["Common_Delete"],
+            cancelText: L["Common_Cancel"]);
+
+        if (confirmed != true)
+        {
+            return;
+        }
 
         try
         {
-            await ApiClient.SetSiteWebServerTypeAsync(site.Name, type);
-            Snackbar.Add(L["Msg_WebServerTypeUpdated", site.Name], Severity.Success);
+            await ApiClient.DeleteSiteAsync(site.Name);
+            Snackbar.Add(L["WebServer_SiteDeleted", site.Name], Severity.Success);
+            await Refresh(showLoading: false);
         }
         catch (Exception ex)
         {
-            site.WebServerType = previous;
-            if (ErrorHelper.IsAuthenticationError(ex))
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return;
-            }
-            Snackbar.Add(L["Msg_FailedToUpdateWebServerType", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+            Snackbar.Add(L["WebServer_SiteSaveFailed", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
+    }
+
+    private async Task StartSite(WebSiteInfoDto site)
+    {
+        await ChangeState(site, start: true);
+    }
+
+    private async Task StopSite(WebSiteInfoDto site)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            L["WebServer_StopTitle"],
+            L["WebServer_StopConfirm", site.Name],
+            yesText: L["WebServer_Stop"],
+            cancelText: L["Common_Cancel"]);
+
+        if (confirmed != true)
+        {
+            return;
         }
 
+        await ChangeState(site, start: false);
+    }
+
+    private async Task ChangeState(WebSiteInfoDto site, bool start)
+    {
+        _busy.Add(site.Name);
         StateHasChanged();
+        try
+        {
+            if (start)
+            {
+                await ApiClient.StartSiteAsync(site.Name);
+            }
+            else
+            {
+                await ApiClient.StopSiteAsync(site.Name);
+            }
+            Snackbar.Add(start ? L["WebServer_Started", site.Name] : L["WebServer_Stopped", site.Name], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(L["WebServer_ActionFailed", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
+        finally
+        {
+            _busy.Remove(site.Name);
+            await Refresh(showLoading: false);
+        }
     }
 
     private static bool IsRunning(string? state) =>
         string.Equals(state, "Started", StringComparison.OrdinalIgnoreCase)
         || string.Equals(state, "Running", StringComparison.OrdinalIgnoreCase);
+
+    private bool NeedsElevation(WebSiteInfoDto site) =>
+        site.WebServerType == WebServerKindDto.Iis && (_accessStatus?.RequiresElevation ?? false);
 }

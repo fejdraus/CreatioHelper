@@ -1,6 +1,8 @@
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Requests;
+using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 
@@ -11,12 +13,32 @@ namespace CreatioHelper.Agent.Controllers;
 public class WebSiteController : ControllerBase
 {
     private readonly WebSiteRegistryService _registryService;
+    private readonly IWebServerServiceFactory _webServerFactory;
     private readonly ILogger<WebSiteController> _logger;
 
-    public WebSiteController(WebSiteRegistryService registryService, ILogger<WebSiteController> logger)
+    public WebSiteController(
+        WebSiteRegistryService registryService,
+        IWebServerServiceFactory webServerFactory,
+        ILogger<WebSiteController> logger)
     {
         _registryService = registryService;
+        _webServerFactory = webServerFactory;
         _logger = logger;
+    }
+
+    private async Task<string> GetLiveStateAsync(WebSiteInfo site)
+    {
+        try
+        {
+            var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+            var status = await manager.GetSiteStatusAsync(site.ServiceName);
+            return status.Data?.Status ?? site.Status;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read live state for site {SiteName}", site.Name);
+            return "Unknown";
+        }
     }
     
     /// <summary>
@@ -29,17 +51,28 @@ public class WebSiteController : ControllerBase
         try
         {
             var sites = await _registryService.GetAllSitesAsync();
-            
+
+            var enriched = new List<object>();
+            foreach (var site in sites)
+            {
+                enriched.Add(new
+                {
+                    site.Name,
+                    site.Type,
+                    site.WebServerType,
+                    site.ServiceName,
+                    site.AutoDiscovered,
+                    site.FolderIds,
+                    Status = await GetLiveStateAsync(site)
+                });
+            }
+
             var response = new
             {
                 TotalSites = sites.Count,
-                AutoDiscovered = sites.Count(s => s.AutoDiscovered),
-                ManuallyRegistered = sites.Count(s => !s.AutoDiscovered),
-                ByType = sites.GroupBy(s => s.Type)
-                             .ToDictionary(g => g.Key, g => g.Count()),
-                Sites = sites
+                Sites = enriched
             };
-            
+
             return Ok(response);
         }
         catch (Exception ex)
@@ -71,11 +104,12 @@ public class WebSiteController : ControllerBase
             }
             
             await _registryService.RegisterWebSiteAsync(
-                request.DisplayName, 
-                request.Type, 
+                request.DisplayName,
+                request.Type,
                 request.ServiceName,
+                request.FolderIds,
                 request.Properties);
-                
+
             _logger.LogInformation("Successfully registered site: {DisplayName}", request.DisplayName);
             return Ok(new { 
                 Message = $"Site '{request.DisplayName}' registered successfully",
@@ -115,12 +149,13 @@ public class WebSiteController : ControllerBase
             }
             
             await _registryService.RegisterWebSiteAsync(
-                siteName, 
-                request.Type, 
+                siteName,
+                request.Type,
                 request.ServiceName,
+                request.FolderIds,
                 request.Properties);
-                
-            return Ok(new { 
+
+            return Ok(new {
                 Message = $"Site '{siteName}' updated successfully",
                 Site = await _registryService.GetSiteInfoAsync(siteName)
             });
@@ -156,6 +191,62 @@ public class WebSiteController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error setting web server type for site {SiteName}", siteName);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Suggest the IIS site whose physical path contains the given folder path
+    /// </summary>
+    [HttpGet("detect")]
+    [Authorize(Roles = Roles.ReadRoles)]
+    public async Task<IActionResult> DetectIisSite([FromQuery] string path)
+    {
+        try
+        {
+            var siteName = await _registryService.DetectIisSiteByPathAsync(path);
+            return Ok(new { SiteName = siteName });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error detecting IIS site by path {Path}", path);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    [HttpPost("{siteName}/start")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public Task<IActionResult> StartSite(string siteName) => ChangeSiteStateAsync(siteName, start: true);
+
+    [HttpPost("{siteName}/stop")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public Task<IActionResult> StopSite(string siteName) => ChangeSiteStateAsync(siteName, start: false);
+
+    private async Task<IActionResult> ChangeSiteStateAsync(string siteName, bool start)
+    {
+        var site = await _registryService.GetSiteInfoAsync(siteName);
+        if (site == null)
+        {
+            return NotFound($"Site '{siteName}' not found");
+        }
+
+        try
+        {
+            var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+            var result = start
+                ? await manager.StartSiteAsync(site.ServiceName)
+                : await manager.StopSiteAsync(site.ServiceName);
+
+            if (result.Success)
+            {
+                return Ok(new { result.Success, result.Message });
+            }
+
+            return BadRequest(new { result.Success, result.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error changing state for site {SiteName}", siteName);
             return StatusCode(500, new { error = "Internal server error" });
         }
     }

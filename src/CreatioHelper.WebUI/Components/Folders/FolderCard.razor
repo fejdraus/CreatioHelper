@@ -1,5 +1,6 @@
 @* FolderCard - Detailed folder card for folder list *@
 @using CreatioHelper.WebUI.Models
+@inject IStringLocalizer<Localization> L
 
 <MudCard Elevation="2" Class="@($"folder-card {Class}")">
     <MudCardHeader>
@@ -190,11 +191,8 @@
         };
     }
 
-    private static string FormatBytes(long bytes)
+    private string FormatBytes(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
-        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
-        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return ByteFormatter.Format(bytes, L);
     }
 }

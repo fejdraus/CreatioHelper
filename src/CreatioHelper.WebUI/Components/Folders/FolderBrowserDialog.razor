@@ -1,0 +1,138 @@
+@inject IApiClient ApiClient
+@inject IStringLocalizer<Localization> L
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Class="mr-2" />
+            @L["FolderBrowser_Title"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex align-center gap-2 mb-3">
+            <MudTextField @bind-Value="_current"
+                          Label="@L["FolderBrowser_CurrentPath"]"
+                          Variant="Variant.Filled"
+                          Immediate="true"
+                          Class="flex-grow-1" />
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => LoadAsync(_current))">
+                @L["FolderBrowser_Go"]
+            </MudButton>
+        </div>
+
+        @if (_loading)
+        {
+            <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
+        }
+        else
+        {
+            <MudPaper Elevation="0" Outlined="true" Style="max-height: 320px; overflow-y: auto;">
+                <MudList T="string" Dense="true">
+                    @if (Parent(_current) != null)
+                    {
+                        <MudListItem T="string" Icon="@Icons.Material.Filled.ArrowUpward" OnClick="GoUp">..</MudListItem>
+                    }
+                    @if (_entries.Length == 0)
+                    {
+                        <MudListItem T="string" Disabled="true">@L["FolderBrowser_Empty"]</MudListItem>
+                    }
+                    else
+                    {
+                        @foreach (var entry in _entries)
+                        {
+                            <MudListItem T="string" Icon="@Icons.Material.Filled.Folder" OnClick="@(() => LoadAsync(Trim(entry)))">
+                                @LeafName(entry)
+                            </MudListItem>
+                        }
+                    }
+                </MudList>
+            </MudPaper>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@string.IsNullOrWhiteSpace(_current)"
+                   OnClick="Select">
+            @L["FolderBrowser_Select"]
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    [Parameter] public string? InitialPath { get; set; }
+
+    private string _current = string.Empty;
+    private string[] _entries = Array.Empty<string>();
+    private bool _loading;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync(InitialPath ?? string.Empty);
+    }
+
+    private async Task LoadAsync(string path)
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _entries = await ApiClient.BrowseAsync(path);
+            if (string.IsNullOrEmpty(path) && _entries.Length > 0)
+            {
+                _current = Parent(Trim(_entries[0])) ?? path;
+            }
+            else
+            {
+                _current = path;
+            }
+        }
+        catch
+        {
+            _entries = Array.Empty<string>();
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task GoUp()
+    {
+        var parent = Parent(_current);
+        if (parent != null)
+        {
+            await LoadAsync(parent);
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private void Select() => MudDialog.Close(DialogResult.Ok(Trim(_current)));
+
+    private static string Trim(string path) => path.TrimEnd('/', '\\');
+
+    private static string LeafName(string path)
+    {
+        var p = Trim(path);
+        var idx = p.LastIndexOfAny(new[] { '/', '\\' });
+        return idx < 0 ? p : p[(idx + 1)..];
+    }
+
+    private static string? Parent(string path)
+    {
+        var p = Trim(path);
+        var idx = p.LastIndexOfAny(new[] { '/', '\\' });
+        if (idx <= 0)
+        {
+            return null;
+        }
+
+        var parent = p[..idx];
+        return parent.EndsWith(":") ? parent + "\\" : parent;
+    }
+}

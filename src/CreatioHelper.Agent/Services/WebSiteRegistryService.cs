@@ -51,30 +51,11 @@ public class WebSiteRegistryService : IDisposable
     public async Task<List<WebSiteInfo>> GetAllSitesAsync()
     {
         await EnsureLoadedAsync().ConfigureAwait(false);
-        var sites = new List<WebSiteInfo>();
 
-        // 1. Auto-discover IIS sites
-        if (OperatingSystem.IsWindows())
-        {
-            var iisSites = await DiscoverIisSitesAsync().ConfigureAwait(false);
-            sites.AddRange(iisSites);
-        }
-
-        // 2. Auto-discover Systemd services
-        if (OperatingSystem.IsLinux())
-        {
-            var systemdSites = await DiscoverSystemdSitesAsync().ConfigureAwait(false);
-            sites.AddRange(systemdSites);
-        }
-        
-        // 3. Add manually configured sites (not auto-discovered)
-        sites.AddRange(_registry.Sites.Where(s => !s.AutoDiscovered));
-        
-        // 4. Remove duplicates by name
-        sites = sites.GroupBy(s => s.Name)
-                    .Select(g => g.First())
-                    .OrderBy(s => s.Name)
-                    .ToList();
+        var sites = _registry.Sites
+            .Where(s => !s.AutoDiscovered)
+            .OrderBy(s => s.Name)
+            .ToList();
 
         foreach (var site in sites)
         {
@@ -86,6 +67,61 @@ public class WebSiteRegistryService : IDisposable
 
         return sites;
     }
+
+    public async Task<string?> DetectIisSiteByPathAsync(string path)
+    {
+        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(path))
+        {
+            return null;
+        }
+
+        var script = "Get-Website | Select-Object Name, @{Name='PhysicalPath';Expression={$_.physicalPath}} | ConvertTo-Json";
+        var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            return null;
+        }
+
+        var target = NormalizePath(path);
+
+        try
+        {
+            var json = JsonSerializer.Deserialize<JsonElement>(result);
+            var elements = json.ValueKind == JsonValueKind.Array
+                ? json.EnumerateArray().ToList()
+                : new List<JsonElement> { json };
+
+            string? bestName = null;
+            var bestLength = -1;
+
+            foreach (var element in elements)
+            {
+                var name = element.TryGetProperty("Name", out var n) ? n.GetString() : null;
+                var physical = element.TryGetProperty("PhysicalPath", out var p) ? p.GetString() : null;
+                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(physical))
+                {
+                    continue;
+                }
+
+                var normalized = NormalizePath(Environment.ExpandEnvironmentVariables(physical));
+                if (target.StartsWith(normalized, StringComparison.OrdinalIgnoreCase) && normalized.Length > bestLength)
+                {
+                    bestLength = normalized.Length;
+                    bestName = name;
+                }
+            }
+
+            return bestName;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to detect IIS site by path {Path}", path);
+            return null;
+        }
+    }
+
+    private static string NormalizePath(string path)
+        => path.Replace('/', '\\').TrimEnd('\\');
 
     public async Task SetWebServerTypeAsync(string siteName, WebServerKind kind)
     {
@@ -230,17 +266,23 @@ public class WebSiteRegistryService : IDisposable
     }
     
     // Manual site registration
-    public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, Dictionary<string, string>? properties = null)
+    public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, List<string>? folderIds = null, Dictionary<string, string>? properties = null)
     {
         await EnsureLoadedAsync().ConfigureAwait(false);
         await _semaphore.WaitAsync().ConfigureAwait(false);
         try
         {
+            var kind = string.Equals(type, "IIS", StringComparison.OrdinalIgnoreCase)
+                ? WebServerKind.Iis
+                : WebServerKind.Service;
+
             var existing = _registry.Sites.FirstOrDefault(s => s.Name.Equals(displayName, StringComparison.OrdinalIgnoreCase));
             if (existing != null)
             {
                 existing.Type = type;
+                existing.WebServerType = kind;
                 existing.ServiceName = serviceName;
+                existing.FolderIds = folderIds ?? new List<string>();
                 existing.Properties = properties ?? new Dictionary<string, string>();
                 existing.LastUpdated = DateTime.UtcNow;
             }
@@ -250,13 +292,15 @@ public class WebSiteRegistryService : IDisposable
                 {
                     Name = displayName,
                     Type = type,
+                    WebServerType = kind,
                     ServiceName = serviceName,
                     AutoDiscovered = false,
+                    FolderIds = folderIds ?? new List<string>(),
                     Properties = properties ?? new Dictionary<string, string>(),
                     LastUpdated = DateTime.UtcNow
                 });
             }
-            
+
             _registry.LastUpdated = DateTime.UtcNow;
             await SaveRegistryAsync().ConfigureAwait(false);
             _logger.LogInformation("Registered website: {DisplayName} -> {ServiceName} ({Type})", displayName, serviceName, type);

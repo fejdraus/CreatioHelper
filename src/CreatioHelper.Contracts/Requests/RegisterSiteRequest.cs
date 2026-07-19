@@ -9,12 +9,14 @@ public class RegisterSiteRequest
     public string DisplayName { get; set; } = "";
 
     [Required]
-    [AllowedValues("IIS", "WindowsService", "Systemd", "Launchd")]
+    [AllowedValues("IIS", "Service", "WindowsService", "Systemd", "Launchd")]
     public string Type { get; set; } = "";
 
     [Required]
     [MaxLength(100)]
     public string ServiceName { get; set; } = "";
+
+    public List<string>? FolderIds { get; set; }
 
     public Dictionary<string, string>? Properties { get; set; }
 }

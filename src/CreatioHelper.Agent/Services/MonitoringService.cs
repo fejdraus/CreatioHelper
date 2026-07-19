@@ -143,20 +143,11 @@ public class MonitoringService : BackgroundService
         IMetricsService? metrics)
     {
         var registeredSites = await registry.GetAllSitesAsync();
-        var iisSites = registeredSites.Where(s => s.EffectiveKind == WebServerKind.Iis).ToList();
-        var serviceSites = registeredSites.Where(s => s.EffectiveKind == WebServerKind.Service).ToList();
 
         var sites = new List<WebServerStatus>();
         var appPools = new List<WebServerStatus>();
 
-        if (iisSites.Count > 0)
-        {
-            var iisManager = await factory.CreateWebServerServiceForSiteAsync(iisSites[0]);
-            sites.AddRange(await iisManager.GetAllSitesAsync());
-            appPools = await iisManager.GetAllAppPoolsAsync();
-        }
-
-        foreach (var site in serviceSites)
+        foreach (var site in registeredSites)
         {
             var manager = await factory.CreateWebServerServiceForSiteAsync(site);
             var status = await manager.GetSiteStatusAsync(site.ServiceName);
@@ -165,7 +156,7 @@ public class MonitoringService : BackgroundService
             {
                 Name = site.Name,
                 Status = state,
-                Type = "Service",
+                Type = site.Type,
                 Port = "",
                 IsRunning = IsRunningState(state),
                 LastChecked = DateTime.UtcNow

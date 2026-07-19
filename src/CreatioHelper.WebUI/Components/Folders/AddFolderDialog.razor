@@ -4,6 +4,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@inject IDialogService DialogService
 
 <MudDialog Style="max-height: 90vh;">
     <TitleContent>
@@ -38,6 +39,9 @@
                                   Required="true"
                                   RequiredError="@L["FolderDialog_FolderPathRequired"]"
                                   Immediate="true"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@Icons.Material.Filled.FolderOpen"
+                                  OnAdornmentClick="OpenBrowser"
                                   Class="mb-4" />
                 </MudForm>
             </MudTabPanel>
@@ -435,6 +439,20 @@
             _selectedDevices.Add(deviceId);
         else
             _selectedDevices.Remove(deviceId);
+    }
+
+    private async Task OpenBrowser()
+    {
+        var parameters = new DialogParameters
+        {
+            { nameof(FolderBrowserDialog.InitialPath), _path }
+        };
+        var dialog = await DialogService.ShowAsync<FolderBrowserDialog>(L["FolderBrowser_Title"], parameters);
+        var result = await dialog.Result;
+        if (result is { Canceled: false, Data: string path })
+        {
+            _path = path;
+        }
     }
 
     private async Task Submit()

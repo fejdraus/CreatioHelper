@@ -10,6 +10,7 @@ public class WebSiteInfo
     public WebServerKind WebServerType { get; set; } = WebServerKind.Auto;
     public string ServiceName { get; set; } = "";    // Actual service/site name
     public bool AutoDiscovered { get; set; }         // true for IIS, false for manual
+    public List<string> FolderIds { get; set; } = new();
     public Dictionary<string, string> Properties { get; set; } = new();
     public DateTime LastUpdated { get; set; } = DateTime.UtcNow;
     public string Status { get; set; } = "Unknown";

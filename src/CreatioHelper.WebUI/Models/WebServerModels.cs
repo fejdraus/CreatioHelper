@@ -21,10 +21,24 @@ public class WebSiteInfoDto
     public WebServerKindDto WebServerType { get; set; }
     public string ServiceName { get; set; } = "";
     public bool AutoDiscovered { get; set; }
+    public List<string> FolderIds { get; set; } = new();
     public string Status { get; set; } = "Unknown";
 }
 
 public class WebSitesResponse
 {
     public WebSiteInfoDto[] Sites { get; set; } = Array.Empty<WebSiteInfoDto>();
+}
+
+public class SiteRegistrationDto
+{
+    public string DisplayName { get; set; } = "";
+    public string Type { get; set; } = "IIS";
+    public string ServiceName { get; set; } = "";
+    public List<string> FolderIds { get; set; } = new();
+}
+
+public class DetectSiteResponse
+{
+    public string? SiteName { get; set; }
 }

@@ -110,7 +110,7 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@FormatBytes(_totalLocalBytes)</div>
-                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles.ToString("N0") @L["FolderDetails_Files"], @_totalLocalDirs.ToString("N0") @L["FolderDetails_Dirs"])</div>
+                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles.ToString("N0") @PluralHelper.Get(L, "Plural_Files", _totalLocalFiles), @_totalLocalDirs.ToString("N0") @PluralHelper.Get(L, "Plural_Dirs", _totalLocalDirs))</div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -353,10 +353,7 @@
 
     private string FormatBytes(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
-        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
-        return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
+        return ByteFormatter.Format(bytes, L);
     }
 
     private async Task LoadDashboardExtrasAsync()

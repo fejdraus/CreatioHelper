@@ -3463,7 +3463,10 @@
     <value>Веб-сервер</value>
   </data>
   <data name="WebServer_ElevationRequired" xml:space="preserve">
-    <value>Для управления веб-сервером нужны права администратора. Запустите агента от имени администратора, чтобы управлять сайтами IIS.</value>
+    <value>Управление IIS-сайтами требует прав администратора — запустите агента от имени администратора. Сайты на службах доступны без этого.</value>
+  </data>
+  <data name="WebServer_NeedsAdmin" xml:space="preserve">
+    <value>Нужны права администратора</value>
   </data>
   <data name="WebServer_NoSites" xml:space="preserve">
     <value>Веб-сайты не обнаружены.</value>
@@ -3509,5 +3512,140 @@
   </data>
   <data name="NotFound_GoDashboard" xml:space="preserve">
     <value>На панель управления</value>
+  </data>
+  <data name="Plural_Files_one" xml:space="preserve">
+    <value>файл</value>
+  </data>
+  <data name="Plural_Files_few" xml:space="preserve">
+    <value>файла</value>
+  </data>
+  <data name="Plural_Files_many" xml:space="preserve">
+    <value>файлов</value>
+  </data>
+  <data name="Plural_Dirs_one" xml:space="preserve">
+    <value>каталог</value>
+  </data>
+  <data name="Plural_Dirs_few" xml:space="preserve">
+    <value>каталога</value>
+  </data>
+  <data name="Plural_Dirs_many" xml:space="preserve">
+    <value>каталогов</value>
+  </data>
+  <data name="Unit_B" xml:space="preserve">
+    <value>Б</value>
+  </data>
+  <data name="Unit_KB" xml:space="preserve">
+    <value>КБ</value>
+  </data>
+  <data name="Unit_MB" xml:space="preserve">
+    <value>МБ</value>
+  </data>
+  <data name="Unit_GB" xml:space="preserve">
+    <value>ГБ</value>
+  </data>
+  <data name="Unit_TB" xml:space="preserve">
+    <value>ТБ</value>
+  </data>
+  <data name="Unit_PB" xml:space="preserve">
+    <value>ПБ</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Изменить</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Удалить</value>
+  </data>
+  <data name="WebServer_AddSite" xml:space="preserve">
+    <value>Добавить сайт</value>
+  </data>
+  <data name="WebServer_EditSite" xml:space="preserve">
+    <value>Изменить сайт</value>
+  </data>
+  <data name="WebServer_DisplayName" xml:space="preserve">
+    <value>Отображаемое имя</value>
+  </data>
+  <data name="WebServer_DisplayNameRequired" xml:space="preserve">
+    <value>Укажите отображаемое имя</value>
+  </data>
+  <data name="WebServer_LinkedFolders" xml:space="preserve">
+    <value>Связанные папки</value>
+  </data>
+  <data name="WebServer_IisSiteName" xml:space="preserve">
+    <value>Имя сайта в IIS</value>
+  </data>
+  <data name="WebServer_ServiceName" xml:space="preserve">
+    <value>Имя службы</value>
+  </data>
+  <data name="WebServer_HostNameRequired" xml:space="preserve">
+    <value>Укажите имя хоста</value>
+  </data>
+  <data name="WebServer_DetectByFolder" xml:space="preserve">
+    <value>Определить по папке</value>
+  </data>
+  <data name="WebServer_DetectedSite" xml:space="preserve">
+    <value>Найден сайт IIS: {0}</value>
+  </data>
+  <data name="WebServer_DetectNotFound" xml:space="preserve">
+    <value>Подходящий сайт IIS не найден</value>
+  </data>
+  <data name="WebServer_SiteSaved" xml:space="preserve">
+    <value>Сайт «{0}» сохранён</value>
+  </data>
+  <data name="WebServer_SiteSaveFailed" xml:space="preserve">
+    <value>Не удалось сохранить сайт: {0}</value>
+  </data>
+  <data name="WebServer_NoConfiguredSites" xml:space="preserve">
+    <value>Сайты ещё не настроены.</value>
+  </data>
+  <data name="WebServer_Host" xml:space="preserve">
+    <value>Хост</value>
+  </data>
+  <data name="WebServer_Actions" xml:space="preserve">
+    <value>Действия</value>
+  </data>
+  <data name="WebServer_Start" xml:space="preserve">
+    <value>Запустить</value>
+  </data>
+  <data name="WebServer_Stop" xml:space="preserve">
+    <value>Остановить</value>
+  </data>
+  <data name="WebServer_DeleteTitle" xml:space="preserve">
+    <value>Удалить сайт</value>
+  </data>
+  <data name="WebServer_DeleteConfirm" xml:space="preserve">
+    <value>Удалить сайт «{0}»?</value>
+  </data>
+  <data name="WebServer_SiteDeleted" xml:space="preserve">
+    <value>Сайт «{0}» удалён</value>
+  </data>
+  <data name="WebServer_StopTitle" xml:space="preserve">
+    <value>Остановить сайт</value>
+  </data>
+  <data name="WebServer_StopConfirm" xml:space="preserve">
+    <value>Остановить сайт «{0}»? Он станет недоступен.</value>
+  </data>
+  <data name="WebServer_Started" xml:space="preserve">
+    <value>Сайт «{0}» запущен</value>
+  </data>
+  <data name="WebServer_Stopped" xml:space="preserve">
+    <value>Сайт «{0}» остановлен</value>
+  </data>
+  <data name="WebServer_ActionFailed" xml:space="preserve">
+    <value>Действие не выполнено: {0}</value>
+  </data>
+  <data name="FolderBrowser_Title" xml:space="preserve">
+    <value>Выбор папки</value>
+  </data>
+  <data name="FolderBrowser_CurrentPath" xml:space="preserve">
+    <value>Путь</value>
+  </data>
+  <data name="FolderBrowser_Go" xml:space="preserve">
+    <value>Перейти</value>
+  </data>
+  <data name="FolderBrowser_Select" xml:space="preserve">
+    <value>Выбрать</value>
+  </data>
+  <data name="FolderBrowser_Empty" xml:space="preserve">
+    <value>Нет подпапок</value>
   </data>
 </root>

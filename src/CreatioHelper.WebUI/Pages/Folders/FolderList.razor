@@ -50,7 +50,7 @@ else
     {
         var status = GetFolderStatus(folder.Id);
         var isExpanded = _expandedFolders.Contains(folder.Id);
-        <MudPaper Elevation="2" Class="mb-3">
+        <MudPaper @key="folder.Id" Elevation="2" Class="mb-3">
             @* Header row - always visible *@
             <div class="d-flex align-center pa-3 cursor-pointer" @onclick="@(() => ToggleFolderExpand(folder.Id))">
                 <MudIcon Icon="@Icons.Material.Filled.Folder"
@@ -62,12 +62,12 @@ else
                 <MudText Typo="Typo.body2" Color="@GetStatusColor(folder, status)" Class="mr-2">
                     @GetStatusText(folder, status)
                 </MudText>
-                <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                               Size="Size.Small" />
+                <MudIcon Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                         Size="Size.Small" />
             </div>
 
-            @* Expandable details *@
-            <MudCollapse Expanded="@isExpanded">
+            @if (isExpanded)
+            {
                 <MudDivider />
                 <div class="pa-3">
                     @if (status != null)
@@ -78,7 +78,7 @@ else
                             <div class="mb-3">
                                 <div class="d-flex justify-space-between mb-1">
                                     <MudText Typo="Typo.caption" Color="Color.Info">
-                                        @GetScanPhaseText(status.ScanProgress.ScanPhase) - @status.ScanProgress.FilesScanned.ToString("N0") / @status.ScanProgress.FilesTotal.ToString("N0") @L["Folders_Files"]
+                                        @GetScanPhaseText(status.ScanProgress.ScanPhase) - @status.ScanProgress.FilesScanned.ToString("N0") / @status.ScanProgress.FilesTotal.ToString("N0") @PluralHelper.Get(L, "Plural_Files", status.ScanProgress.FilesTotal)
                                     </MudText>
                                     <MudText Typo="Typo.caption" Color="Color.Info">@status.ScanProgress.PercentComplete.ToString("F0")%</MudText>
                                 </div>
@@ -220,9 +220,16 @@ else
                                    OnClick="@(() => EditIgnores(folder))">
                             @L["Folders_Ignores"]
                         </MudButton>
+                        <MudButton Variant="Variant.Filled"
+                                   Size="Size.Small"
+                                   Color="Color.Error"
+                                   StartIcon="@Icons.Material.Filled.DeleteForever"
+                                   OnClick="@(() => DeleteFolder(folder))">
+                            @L["Action_Delete"]
+                        </MudButton>
                     </div>
                 </div>
-            </MudCollapse>
+            }
         </MudPaper>
     }
 }
@@ -245,8 +252,11 @@ else
 
     private void OnFolderStatusChanged(FolderStatus status)
     {
-        State.UpdateFolderStatus(status);
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(() =>
+        {
+            State.UpdateFolderStatus(status);
+            StateHasChanged();
+        });
     }
 
     private async Task LoadFolderStatusesAsync()
@@ -470,11 +480,7 @@ else
 
     private string FormatBytes(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} B";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:F1} KB";
-        if (bytes < 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024):F1} MB";
-        if (bytes < 1024L * 1024 * 1024 * 1024) return $"{bytes / (1024.0 * 1024 * 1024):F2} GB";
-        return $"{bytes / (1024.0 * 1024 * 1024 * 1024):F2} TB";
+        return ByteFormatter.Format(bytes, L);
     }
 
     private void ToggleFolderExpand(string folderId)
@@ -483,6 +489,8 @@ else
             _expandedFolders.Remove(folderId);
         else
             _expandedFolders.Add(folderId);
+
+        StateHasChanged();
     }
 
     private string GetFolderTypeDisplay(string? type)
