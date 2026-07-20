@@ -60,6 +60,6 @@ jobs:
     with:
       version: ${{ needs.prepare.outputs.beta_version }}
       ref: ${{ inputs.branch }}
-      tag_name: v${{ needs.prepare.outputs.beta_version }}
+      tag_name: desktop-v${{ needs.prepare.outputs.beta_version }}
       is_prerelease: true
       make_latest: false
