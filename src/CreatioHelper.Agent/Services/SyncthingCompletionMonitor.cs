@@ -1,6 +1,7 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -159,10 +160,7 @@ public class SyncthingCompletionMonitor
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var status = JsonSerializer.Deserialize<SyncthingFolderStatus>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var status = JsonSerializer.Deserialize<SyncthingFolderStatus>(json, JsonDefaults.CaseInsensitive);
 
             return status;
         }

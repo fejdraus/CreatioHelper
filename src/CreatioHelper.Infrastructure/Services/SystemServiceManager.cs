@@ -1,5 +1,6 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Shared.Utils;
 using CreatioHelper.Shared.Interfaces;
 
 namespace CreatioHelper.Infrastructure.Services
@@ -115,7 +116,7 @@ namespace CreatioHelper.Infrastructure.Services
         {
             if (OperatingSystem.IsWindows())
             {
-                return $"Start-Service -Name '{serviceName}'";
+                return $"Start-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}'";
             }
             else if (OperatingSystem.IsLinux())
             {
@@ -129,7 +130,7 @@ namespace CreatioHelper.Infrastructure.Services
         {
             if (OperatingSystem.IsWindows())
             {
-                return $"Stop-Service -Name '{serviceName}' -Force";
+                return $"Stop-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}' -Force";
             }
             else if (OperatingSystem.IsLinux())
             {
@@ -143,7 +144,7 @@ namespace CreatioHelper.Infrastructure.Services
         {
             if (OperatingSystem.IsWindows())
             {
-                return $"(Get-Service -Name '{serviceName}').Status";
+                return $"(Get-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}').Status";
             }
             else if (OperatingSystem.IsLinux())
             {
@@ -173,25 +174,20 @@ namespace CreatioHelper.Infrastructure.Services
         {
             try
             {
-                var processInfo = GetProcessStartInfo(command);
-                
-                using var process = Process.Start(processInfo);
-                if (process == null)
+                var result = await ShellRunner.RunAsync(GetProcessStartInfo(command)).ConfigureAwait(false);
+                if (result is null)
                 {
                     _output.WriteLine("[ERROR] Failed to start process for service management.");
                     return false;
                 }
 
-                var errorText = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await process.WaitForExitAsync().ConfigureAwait(false);
-
-                if (!string.IsNullOrWhiteSpace(errorText))
+                if (result.HasError)
                 {
-                    _output.WriteLine($"[ERROR] Service operation failed: {errorText.Trim()}");
+                    _output.WriteLine($"[ERROR] Service operation failed: {result.Error.Trim()}");
                     return false;
                 }
 
-                return process.ExitCode == 0;
+                return result.ExitCode == 0;
             }
             catch (Exception ex)
             {
@@ -204,26 +200,20 @@ namespace CreatioHelper.Infrastructure.Services
         {
             try
             {
-                var processInfo = GetProcessStartInfo(command);
-                
-                using var process = Process.Start(processInfo);
-                if (process == null)
+                var result = await ShellRunner.RunAsync(GetProcessStartInfo(command)).ConfigureAwait(false);
+                if (result is null)
                 {
                     _output.WriteLine("[ERROR] Failed to start process for service status check.");
                     return null;
                 }
 
-                var outputText = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
-                var errorText = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
-                await process.WaitForExitAsync().ConfigureAwait(false);
-
-                if (!string.IsNullOrWhiteSpace(errorText))
+                if (result.HasError)
                 {
                     // Don't log error for status check - service might not exist
                     return null;
                 }
 
-                return outputText;
+                return result.Output;
             }
             catch (Exception ex)
             {

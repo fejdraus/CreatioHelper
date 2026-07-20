@@ -1,8 +1,9 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
 
@@ -353,10 +354,7 @@ public class FeatureFlagsService : IFeatureFlagsService, IDisposable
             if (File.Exists(_storagePath))
             {
                 var json = await File.ReadAllTextAsync(_storagePath);
-                var flags = JsonSerializer.Deserialize<List<FeatureFlag>>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var flags = JsonSerializer.Deserialize<List<FeatureFlag>>(json, JsonDefaults.CaseInsensitive);
 
                 if (flags != null)
                 {

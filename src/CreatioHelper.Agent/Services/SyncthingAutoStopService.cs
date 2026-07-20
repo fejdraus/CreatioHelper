@@ -1,8 +1,9 @@
-using CreatioHelper.Agent.Configuration;
+﻿using CreatioHelper.Agent.Configuration;
 using Microsoft.Extensions.Options;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -448,10 +449,7 @@ public class SyncthingAutoStopService : BackgroundService
                 return new List<SyncthingEvent>();
             }
 
-            var events = JsonSerializer.Deserialize<List<SyncthingEvent>>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var events = JsonSerializer.Deserialize<List<SyncthingEvent>>(json, JsonDefaults.CaseInsensitive);
 
             return events ?? new List<SyncthingEvent>();
         }

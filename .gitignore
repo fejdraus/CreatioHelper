@@ -52,3 +52,6 @@ graphify-out/
 
 # Agent runtime data
 website-registry.json
+
+# Test run artifacts
+TestResults/

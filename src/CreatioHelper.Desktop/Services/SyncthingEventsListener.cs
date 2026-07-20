@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text.Json;
@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Models;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Services;
 
@@ -132,10 +133,7 @@ public class SyncthingEventsListener : IDisposable
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
                 // Parse event array
-                var events = JsonSerializer.Deserialize<List<SyncthingEvent>>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
+                var events = JsonSerializer.Deserialize<List<SyncthingEvent>>(json, JsonDefaults.CaseInsensitive);
 
                 if (events is not { Count: > 0 }) continue;
                 foreach (var evt in events)
@@ -180,7 +178,7 @@ public class SyncthingEventsListener : IDisposable
                 case "StateChanged":
                     var stateData = JsonSerializer.Deserialize<StateChangedEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (stateData != null)
                     {
@@ -191,7 +189,7 @@ public class SyncthingEventsListener : IDisposable
                 case "FolderCompletion":
                     var completionData = JsonSerializer.Deserialize<FolderCompletionEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (completionData != null)
                     {
@@ -202,7 +200,7 @@ public class SyncthingEventsListener : IDisposable
                 case "ItemStarted":
                     var itemStartedData = JsonSerializer.Deserialize<ItemStartedEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (itemStartedData != null)
                     {
@@ -213,7 +211,7 @@ public class SyncthingEventsListener : IDisposable
                 case "ItemFinished":
                     var itemFinishedData = JsonSerializer.Deserialize<ItemFinishedEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (itemFinishedData != null)
                     {
@@ -224,7 +222,7 @@ public class SyncthingEventsListener : IDisposable
                 case "DeviceConnected":
                     var deviceConnectedData = JsonSerializer.Deserialize<DeviceConnectedEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (deviceConnectedData != null)
                     {
@@ -235,7 +233,7 @@ public class SyncthingEventsListener : IDisposable
                 case "DeviceDisconnected":
                     var deviceDisconnectedData = JsonSerializer.Deserialize<DeviceDisconnectedEventData>(
                         evt.Data.GetRawText(),
-                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+                        JsonDefaults.CaseInsensitive
                     );
                     if (deviceDisconnectedData != null)
                     {

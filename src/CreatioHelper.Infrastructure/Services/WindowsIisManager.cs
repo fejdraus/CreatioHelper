@@ -1,8 +1,9 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Text.Json;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Utils;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services;
@@ -28,11 +29,7 @@ public class WindowsIisManager : IIisManager
 
     public bool IsSupported() => OperatingSystem.IsWindows();
     
-    public bool IsLocal(string serverName) =>
-        string.IsNullOrWhiteSpace(serverName) ||
-        string.Equals(serverName, "localhost", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(serverName, "127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
-        string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+    public bool IsLocal(string serverName) => PowerShellRunner.IsLocalServer(serverName);
 
     #region App Pool Management
 
@@ -62,13 +59,13 @@ public class WindowsIisManager : IIisManager
 
                 if (currentState == "Stopped")
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{poolName}'", cancellationToken))
+                    if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
                     {
                         return Result.Failure($"Failed to start app pool {poolName}.");
                     }
                 }
 
-                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"Application pool {poolName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Started", $"Application pool {poolName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start app pool {poolName}.");
@@ -111,13 +108,13 @@ public class WindowsIisManager : IIisManager
 
                 if (currentState == "Started")
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{poolName}'", cancellationToken))
+                    if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
                     {
                         return Result.Failure($"Failed to stop app pool {poolName}.");
                     }
                 }
 
-                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"Application pool {poolName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Stopped", $"Application pool {poolName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop app pool {poolName}.");
@@ -178,13 +175,13 @@ public class WindowsIisManager : IIisManager
 
                 if (currentState == "Stopped")
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{siteName}'", cancellationToken))
+                    if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
                     {
                         return Result.Failure($"Failed to start website {siteName}.");
                     }
                 }
 
-                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Started", $"Website {siteName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start website {siteName}.");
@@ -227,13 +224,13 @@ public class WindowsIisManager : IIisManager
 
                 if (currentState == "Started")
                 {
-                    if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{siteName}'", cancellationToken))
+                    if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
                     {
                         return Result.Failure($"Failed to stop website {siteName}.");
                     }
                 }
 
-                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Stopped", $"Website {siteName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop website {siteName}.");
@@ -278,8 +275,8 @@ public class WindowsIisManager : IIisManager
             try
             {
                 var script = IsLocal(serverName) 
-                    ? $"Start-Service -Name '{serviceName}'"
-                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Start-Service -Name '{serviceName}' }}";
+                    ? $"Start-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}'"
+                    : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{ Start-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}' }}";
 
                 if (!await ExecuteScriptAsync(serverName, script, cancellationToken))
                 {
@@ -310,8 +307,8 @@ public class WindowsIisManager : IIisManager
             try
             {
                 var script = IsLocal(serverName) 
-                    ? $"Stop-Service -Name '{serviceName}'"
-                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{ Stop-Service -Name '{serviceName}' }}";
+                    ? $"Stop-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}'"
+                    : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{ Stop-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}' }}";
 
                 if (!await ExecuteScriptAsync(serverName, script, cancellationToken))
                 {
@@ -439,37 +436,20 @@ public class WindowsIisManager : IIisManager
 
         try
         {
-            var command = IsLocal(serverName)
-                ? $"Import-Module WebAdministration; {script}"
-                : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return false;
             }
 
-            var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken);
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, errorText);
+                _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, result.Error);
                 return false;
             }
 
-            return process.ExitCode == 0;
+            return result.ExitCode == 0;
         }
         catch (Exception ex)
         {
@@ -485,38 +465,20 @@ public class WindowsIisManager : IIisManager
 
         try
         {
-            var command = IsLocal(serverName)
-                ? $"Import-Module WebAdministration; {script}"
-                : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return null;
             }
 
-            var outputText = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-            var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
-            await process.WaitForExitAsync(cancellationToken);
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, errorText);
+                _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, result.Error);
                 return null;
             }
 
-            return outputText.Trim();
+            return result.Output.Trim();
         }
         catch (Exception ex)
         {
@@ -525,16 +487,24 @@ public class WindowsIisManager : IIisManager
         }
     }
 
+    private Task<ShellResult?> RunWebAdministrationAsync(string serverName, string script, CancellationToken cancellationToken)
+    {
+        var command = IsLocal(serverName)
+            ? $"Import-Module WebAdministration; {script}"
+            : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
+        return PowerShellRunner.RunAsync(command, cancellationToken: cancellationToken);
+    }
+
     private async Task<string?> GetAppPoolStateAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
-        var script = $"(Get-WebAppPoolState -Name '{poolName}').Value";
+        var script = $"(Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}').Value";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
     }
 
     private async Task<string?> GetWebsiteStateAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
-        var script = $"(Get-Website -Name '{siteName}').State";
+        var script = $"(Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}').State";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
         return result?.Split('\n', '\r').LastOrDefault()?.Trim();
     }

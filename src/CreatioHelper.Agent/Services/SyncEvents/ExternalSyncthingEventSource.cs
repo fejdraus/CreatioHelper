@@ -1,7 +1,8 @@
-using System.Net.Http;
+﻿using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.SyncEvents;
 
@@ -193,10 +194,7 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var folders = JsonSerializer.Deserialize<List<SyncthingFolderConfig>>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var folders = JsonSerializer.Deserialize<List<SyncthingFolderConfig>>(json, JsonDefaults.CaseInsensitive);
 
             if (folders == null)
             {
@@ -576,10 +574,7 @@ public class ExternalSyncthingEventSource : ISyncEventSource
                 return new List<SyncthingApiEvent>();
             }
 
-            return JsonSerializer.Deserialize<List<SyncthingApiEvent>>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            }) ?? new List<SyncthingApiEvent>();
+            return JsonSerializer.Deserialize<List<SyncthingApiEvent>>(json, JsonDefaults.CaseInsensitive) ?? new List<SyncthingApiEvent>();
         }
         catch (OperationCanceledException)
         {
@@ -601,10 +596,7 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             }
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            return JsonSerializer.Deserialize<SyncthingFolderStatusDto>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            return JsonSerializer.Deserialize<SyncthingFolderStatusDto>(json, JsonDefaults.CaseInsensitive);
         }
         catch (Exception ex)
         {

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Shared.Interfaces;
 using Microsoft.Extensions.Http;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Services;
 
@@ -329,10 +330,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            var connections = JsonSerializer.Deserialize<SyncthingConnectionsDto>(json, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
+            var connections = JsonSerializer.Deserialize<SyncthingConnectionsDto>(json, JsonDefaults.CaseInsensitive);
 
             if (connections?.Connections != null && connections.Connections.TryGetValue(deviceId, out var connection))
             {
@@ -413,10 +411,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             response.EnsureSuccessStatusCode();
         }
         var json = await response.Content.ReadAsStringAsync(cancellationToken);
-        var completion = JsonSerializer.Deserialize<SyncthingCompletionDto>(json, new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true
-        });
+        var completion = JsonSerializer.Deserialize<SyncthingCompletionDto>(json, JsonDefaults.CaseInsensitive);
         return completion ?? new SyncthingCompletionDto();
     }
 }

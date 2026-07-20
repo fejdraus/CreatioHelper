@@ -1,5 +1,6 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
@@ -12,7 +13,7 @@ public class WindowsServiceManager : IWebServerService
     /// Single quotes are escaped by doubling them.
     /// </summary>
     private static string EscapePowerShellString(string value)
-        => value.Replace("'", "''");
+        => PowerShellRunner.EscapeSingleQuoted(value);
 
     public WindowsServiceManager(ILogger<WindowsServiceManager> logger)
     {
@@ -145,7 +146,7 @@ public class WindowsServiceManager : IWebServerService
             {
                 try
                 {
-                    var servicesData = JsonSerializer.Deserialize<WindowsServiceInfo[]>(result, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    var servicesData = JsonSerializer.Deserialize<WindowsServiceInfo[]>(result, JsonDefaults.CaseInsensitive);
                     
                     if (servicesData != null)
                     {
@@ -187,33 +188,22 @@ public class WindowsServiceManager : IWebServerService
     {
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await PowerShellRunner
+                .RunAsync(command, executionPolicy: "RemoteSigned")
+                .ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return false;
             }
 
-            var errorText = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                _logger.LogError("PowerShell error: {Error}", errorText);
+                _logger.LogError("PowerShell error: {Error}", result.Error);
                 return false;
             }
 
-            return process.ExitCode == 0;
+            return result.ExitCode == 0;
         }
         catch (Exception ex)
         {
@@ -226,34 +216,22 @@ public class WindowsServiceManager : IWebServerService
     {
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await PowerShellRunner
+                .RunAsync(command, executionPolicy: "RemoteSigned")
+                .ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return null;
             }
 
-            var outputText = await process.StandardOutput.ReadToEndAsync();
-            var errorText = await process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync();
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                _logger.LogError("PowerShell error: {Error}", errorText);
+                _logger.LogError("PowerShell error: {Error}", result.Error);
                 return null;
             }
 
-            return outputText.Trim();
+            return result.Output.Trim();
         }
         catch (Exception ex)
         {

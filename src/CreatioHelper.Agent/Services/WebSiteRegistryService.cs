@@ -1,6 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Enums;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services;
 
@@ -19,7 +20,7 @@ public class WebSiteRegistryService : IDisposable
     /// Single quotes are escaped by ending the string, adding an escaped single quote, and starting a new string.
     /// </summary>
     private static string EscapeBashString(string value)
-        => value.Replace("'", "'\\''");
+        => BashRunner.EscapeSingleQuoted(value);
 
     public WebSiteRegistryService(ILogger<WebSiteRegistryService> logger, WebServerAccessStatus accessStatus, IWebHostEnvironment environment)
     {
@@ -448,10 +449,7 @@ public class WebSiteRegistryService : IDisposable
                 
                 if (json.ValueKind == JsonValueKind.Array)
                 {
-                    var iisSites = JsonSerializer.Deserialize<IisSiteInfo[]>(result, new JsonSerializerOptions 
-                    { 
-                        PropertyNameCaseInsensitive = true 
-                    });
+                    var iisSites = JsonSerializer.Deserialize<IisSiteInfo[]>(result, JsonDefaults.CaseInsensitive);
                     
                     foreach (var site in iisSites ?? Array.Empty<IisSiteInfo>())
                     {
@@ -460,10 +458,7 @@ public class WebSiteRegistryService : IDisposable
                 }
                 else if (json.ValueKind == JsonValueKind.Object)
                 {
-                    var iisSite = JsonSerializer.Deserialize<IisSiteInfo>(result, new JsonSerializerOptions 
-                    { 
-                        PropertyNameCaseInsensitive = true 
-                    });
+                    var iisSite = JsonSerializer.Deserialize<IisSiteInfo>(result, JsonDefaults.CaseInsensitive);
                     
                     if (iisSite != null)
                     {
@@ -654,40 +649,23 @@ public class WebSiteRegistryService : IDisposable
 
         try
         {
-            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
+            var command = PowerShellRunner.Utf8OutputPrologue + PowerShellRunner.ImportWebAdministration + script;
+            var result = await PowerShellRunner
+                .RunAsync(command, executionPolicy: "RemoteSigned", useUtf8: true)
+                .ConfigureAwait(false);
 
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8,
-                StandardErrorEncoding = System.Text.Encoding.UTF8,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            if (result is null)
                 return null;
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync().ConfigureAwait(false);
-
-            var output = await outputTask.ConfigureAwait(false);
-            var error = await errorTask.ConfigureAwait(false);
-
-            if (!string.IsNullOrWhiteSpace(error))
+            if (result.HasError)
             {
-                if (WebServerPermission.IsPermissionError(error))
+                if (WebServerPermission.IsPermissionError(result.Error))
                 {
-                    _accessStatus.ReportPermissionIssue("IIS site discovery", error, _logger);
+                    _accessStatus.ReportPermissionIssue("IIS site discovery", result.Error, _logger);
                 }
                 else
                 {
-                    _logger.LogWarning("PowerShell warning: {Error}", error);
+                    _logger.LogWarning("PowerShell warning: {Error}", result.Error);
                 }
             }
             else
@@ -695,7 +673,7 @@ public class WebSiteRegistryService : IDisposable
                 _accessStatus.ReportSuccess();
             }
 
-            return output.Trim();
+            return result.Output.Trim();
         }
         catch (Exception ex)
         {
@@ -712,33 +690,16 @@ public class WebSiteRegistryService : IDisposable
 
         try
         {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "/bin/bash",
-                Arguments = $"-c \"{script}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await BashRunner.RunAsync(script).ConfigureAwait(false);
+            if (result is null)
                 return null;
 
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-            await process.WaitForExitAsync().ConfigureAwait(false);
-
-            var output = await outputTask.ConfigureAwait(false);
-            var error = await errorTask.ConfigureAwait(false);
-
-            if (!string.IsNullOrWhiteSpace(error))
+            if (result.HasError)
             {
-                _logger.LogWarning("Bash warning: {Error}", error);
+                _logger.LogWarning("Bash warning: {Error}", result.Error);
             }
 
-            return output.Trim();
+            return result.Output.Trim();
         }
         catch (Exception ex)
         {

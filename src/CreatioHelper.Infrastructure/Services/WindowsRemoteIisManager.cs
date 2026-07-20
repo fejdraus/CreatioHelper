@@ -1,7 +1,8 @@
-using CreatioHelper.Domain.Common;
+﻿using CreatioHelper.Domain.Common;
 using System.Diagnostics;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services
 {
@@ -18,7 +19,7 @@ namespace CreatioHelper.Infrastructure.Services
             _systemServiceManager = new SystemServiceManager(output);
         }
 
-        private bool IsLocal(string serverName) => string.Equals(serverName, Environment.MachineName, StringComparison.OrdinalIgnoreCase);
+        private static bool IsLocal(string serverName) => PowerShellRunner.IsLocalServer(serverName);
 
         public async Task<Result> StopAppPoolAsync(string poolName, CancellationToken cancellationToken = default)
         {
@@ -41,15 +42,15 @@ namespace CreatioHelper.Infrastructure.Services
                     if (cancellationToken.IsCancellationRequested)
                         return Result.Failure("Operation was cancelled");
 
-                    var currentState = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                    var currentState = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken);
                     if (currentState == "Started")
                     {
-                        if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{poolName}'", cancellationToken))
+                        if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
                         {
                             return Result.Failure($"Failed to stop app pool {poolName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Stopped", $"Application pool {poolName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Stopped", $"Application pool {poolName}", cancellationToken))
                         {
                             return Result.Failure($"Application pool {poolName} did not reach stopped state");
                         }
@@ -95,15 +96,15 @@ namespace CreatioHelper.Infrastructure.Services
                     if (cancellationToken.IsCancellationRequested)
                         return Result.Failure("Operation was cancelled");
 
-                    var currentState = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                    var currentState = await GetStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken);
                     if (currentState == "Started")
                     {
-                        if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{siteName}'", cancellationToken))
+                        if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
                         {
                             return Result.Failure($"Failed to stop website {siteName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Stopped", $"Website {siteName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Stopped", $"Website {siteName}", cancellationToken))
                         {
                             return Result.Failure($"Website {siteName} did not reach stopped state");
                         }
@@ -149,15 +150,15 @@ namespace CreatioHelper.Infrastructure.Services
                     if (cancellationToken.IsCancellationRequested)
                         return Result.Failure("Operation was cancelled");
 
-                    var poolStatus = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                    var poolStatus = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken);
                     if (poolStatus == "Stopped")
                     {
-                        if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{poolName}'", cancellationToken))
+                        if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
                         {
                             return Result.Failure($"Failed to start app pool {poolName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", "Started", $"Application pool {poolName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Started", $"Application pool {poolName}", cancellationToken))
                         {
                             return Result.Failure($"Application pool {poolName} did not reach started state");
                         }
@@ -203,15 +204,15 @@ namespace CreatioHelper.Infrastructure.Services
                     if (cancellationToken.IsCancellationRequested)
                         return Result.Failure("Operation was cancelled");
 
-                    var siteStatus = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                    var siteStatus = await GetStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken);
                     if (siteStatus == "Stopped")
                     {
-                        if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{siteName}'", cancellationToken))
+                        if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
                         {
                             return Result.Failure($"Failed to start website {siteName}");
                         }
 
-                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", "Started", $"Website {siteName}", cancellationToken))
+                        if (!await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Started", $"Website {siteName}", cancellationToken))
                         {
                             return Result.Failure($"Website {siteName} did not reach started state");
                         }
@@ -327,7 +328,7 @@ namespace CreatioHelper.Infrastructure.Services
             try
             {
                 var serverName = Environment.MachineName;
-                var status = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{poolName}'", cancellationToken);
+                var status = await GetStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken);
                 return Result<string>.Success(status ?? "Unknown");
             }
             catch (Exception ex)
@@ -353,7 +354,7 @@ namespace CreatioHelper.Infrastructure.Services
             try
             {
                 var serverName = Environment.MachineName;
-                var status = await GetStateAsync(serverName, false, $"Get-Website -Name '{siteName}'", cancellationToken);
+                var status = await GetStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken);
                 return Result<string>.Success(status ?? "Unknown");
             }
             catch (Exception ex)
@@ -365,37 +366,28 @@ namespace CreatioHelper.Infrastructure.Services
         }
 
         // Private helper methods
+        private Task<ShellResult?> RunWebAdministrationAsync(string serverName, string script, CancellationToken cancellationToken)
+        {
+            var command = IsLocal(serverName)
+                ? $"Import-Module WebAdministration; {script}"
+                : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
+            return PowerShellRunner.RunAsync(command, cancellationToken: cancellationToken);
+        }
+
         private async Task<bool> ExecuteScriptAsync(string serverName, string script, CancellationToken cancellationToken = default)
         {
             try
             {
-                var command = IsLocal(serverName)
-                    ? $"Import-Module WebAdministration; {script}"
-                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
-
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(startInfo);
-                if (process == null)
+                var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
+                if (result is null)
                 {
                     _output.WriteLine("[ERROR] Failed to start PowerShell process.");
                     return false;
                 }
 
-                await process.WaitForExitAsync(cancellationToken);
-
-                if (process.ExitCode != 0)
+                if (result.ExitCode != 0)
                 {
-                    var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
-                    _output.WriteLine($"[PS-ERROR] Script execution failed: {errorText}");
+                    _output.WriteLine($"[PS-ERROR] Script execution failed: {result.Error}");
                     return false;
                 }
 
@@ -420,41 +412,23 @@ namespace CreatioHelper.Infrastructure.Services
                     ? $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).Value"
                     : $"Write-Output \"IsAdmin: $([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\"; ({expression}).State";
 
-                var command = IsLocal(serverName)
-                    ? $"Import-Module WebAdministration; {script}"
-                    : $"Invoke-Command -ComputerName '{serverName}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
-
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = "powershell.exe",
-                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"",
-                    RedirectStandardOutput = true,
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                    CreateNoWindow = true
-                };
-
-                using var process = Process.Start(startInfo);
-                if (process == null)
+                var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
+                if (result is null)
                 {
                     _output.WriteLine("[ERROR] Failed to start PowerShell process.");
                     return null;
                 }
 
-                var outputText = await process.StandardOutput.ReadToEndAsync(cancellationToken);
-                var errorText = await process.StandardError.ReadToEndAsync(cancellationToken);
-                await process.WaitForExitAsync(cancellationToken);
-
-                if (!string.IsNullOrWhiteSpace(errorText))
+                if (result.HasError)
                 {
-                    if (errorText.Contains("ObjectNotFound") || errorText.Contains("PathNotFound"))
+                    if (result.Error.Contains("ObjectNotFound") || result.Error.Contains("PathNotFound"))
                     {
                         return "not found";
                     }
-                    return $"State check failed: {errorText}";
+                    return $"State check failed: {result.Error}";
                 }
 
-                var lines = outputText.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                var lines = result.Output.Trim().Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 if (lines.Length < 3)
                 {
                     return "not found";

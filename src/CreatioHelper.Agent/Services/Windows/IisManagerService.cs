@@ -1,6 +1,7 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.Windows;
 
@@ -19,7 +20,7 @@ public class IisManagerService : IWebServerService
     /// Single quotes are escaped by doubling them.
     /// </summary>
     private static string EscapePowerShellString(string value)
-        => value.Replace("'", "''");
+        => PowerShellRunner.EscapeSingleQuoted(value);
 
     public IisManagerService(ILogger<IisManagerService> logger, WebServerAccessStatus accessStatus)
     {
@@ -335,50 +336,27 @@ public class IisManagerService : IWebServerService
 
         try
         {
-            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8,
-                StandardErrorEncoding = System.Text.Encoding.UTF8,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await RunWebAdministrationAsync(script).ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return false;
             }
 
-            // Read streams concurrently to avoid deadlock, then wait for process exit
-            var errorTask = process.StandardError.ReadToEndAsync();
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-
-            await process.WaitForExitAsync();
-
-            var errorText = await errorTask;
-            _ = await outputTask; // Consume output to prevent buffer deadlock
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                if (WebServerPermission.IsPermissionError(errorText))
+                if (WebServerPermission.IsPermissionError(result.Error))
                 {
-                    _accessStatus.ReportPermissionIssue("IIS PowerShell command", errorText, _logger);
+                    _accessStatus.ReportPermissionIssue("IIS PowerShell command", result.Error, _logger);
                     return false;
                 }
 
-                _logger.LogError("PowerShell error: {Error}", errorText);
+                _logger.LogError("PowerShell error: {Error}", result.Error);
                 return false;
             }
 
             _accessStatus.ReportSuccess();
-            return process.ExitCode == 0;
+            return result.ExitCode == 0;
         }
         catch (Exception ex)
         {
@@ -393,50 +371,27 @@ public class IisManagerService : IWebServerService
 
         try
         {
-            var command = $"[Console]::OutputEncoding=[System.Text.Encoding]::UTF8; Import-Module WebAdministration; {script}";
-
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "powershell.exe",
-                Arguments = $"-NoProfile -ExecutionPolicy RemoteSigned -Command \"{command}\"",
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8,
-                StandardErrorEncoding = System.Text.Encoding.UTF8,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process == null)
+            var result = await RunWebAdministrationAsync(script).ConfigureAwait(false);
+            if (result is null)
             {
                 _logger.LogError("Failed to start PowerShell process");
                 return null;
             }
 
-            // Read streams concurrently to avoid deadlock, then wait for process exit
-            var outputTask = process.StandardOutput.ReadToEndAsync();
-            var errorTask = process.StandardError.ReadToEndAsync();
-
-            await process.WaitForExitAsync();
-
-            var outputText = await outputTask;
-            var errorText = await errorTask;
-
-            if (!string.IsNullOrWhiteSpace(errorText))
+            if (result.HasError)
             {
-                if (WebServerPermission.IsPermissionError(errorText))
+                if (WebServerPermission.IsPermissionError(result.Error))
                 {
-                    _accessStatus.ReportPermissionIssue("IIS PowerShell query", errorText, _logger);
+                    _accessStatus.ReportPermissionIssue("IIS PowerShell query", result.Error, _logger);
                     return null;
                 }
 
-                _logger.LogError("PowerShell error: {Error}", errorText);
+                _logger.LogError("PowerShell error: {Error}", result.Error);
                 return null;
             }
 
             _accessStatus.ReportSuccess();
-            return outputText.Trim();
+            return result.Output.Trim();
         }
         catch (Exception ex)
         {
@@ -444,6 +399,12 @@ public class IisManagerService : IWebServerService
             return null;
         }
     }
+
+    private static Task<ShellResult?> RunWebAdministrationAsync(string script)
+        => PowerShellRunner.RunAsync(
+            PowerShellRunner.Utf8OutputPrologue + PowerShellRunner.ImportWebAdministration + script,
+            executionPolicy: "RemoteSigned",
+            useUtf8: true);
 
     private async Task<string?> GetSiteStateAsync(string siteName)
     {
