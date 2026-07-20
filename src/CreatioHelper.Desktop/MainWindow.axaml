@@ -578,10 +578,9 @@
 
                         <Expander IsVisible="{Binding HasRedisSection}" IsExpanded="False"
                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
-                                  Margin="0,16,0,0"
-                                  ToolTip.Tip="Stored in the redis section of Web.config / Terrasoft.WebHost.dll.config.">
+                                  Margin="0,16,0,0">
                             <Expander.Header>
-                                <TextBlock Text="Advanced Redis settings" FontWeight="SemiBold"/>
+                                <TextBlock Text="{Binding RedisSectionHeader}" FontWeight="SemiBold"/>
                             </Expander.Header>
 
                             <StackPanel>
@@ -592,8 +591,12 @@
 
                             <Border IsVisible="{Binding ShowClientsManagerWarning}"
                                     Background="#40FFA000" CornerRadius="4" Padding="8" Margin="0,8,0,0">
-                                <TextBlock TextWrapping="Wrap"
-                                           Text="Cluster mode requires clientsManager to be the StackExchange adapter. The current value will not work with a Redis Cluster."/>
+                                <StackPanel Spacing="8">
+                                    <TextBlock TextWrapping="Wrap"
+                                               Text="This site uses a Redis clients manager that cannot work with a cluster. Cluster mode requires the StackExchange adapter."/>
+                                    <Button Content="Switch to the StackExchange adapter" HorizontalAlignment="Left"
+                                            Command="{Binding UseStackExchangeAdapterCommand}"/>
+                                </StackPanel>
                             </Border>
 
                             <ItemsControl ItemsSource="{Binding RedisSectionAttributes}" Margin="0,8,0,0">

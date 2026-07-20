@@ -79,10 +79,15 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
     private sealed record RedisSettingInfo(string DisplayName, string Description, string Recommended, bool IsBoolean);
 
+    private const string ClientsManagerKey = "clientsManager";
+
     private static readonly HashSet<string> HiddenRedisSettings = new(StringComparer.OrdinalIgnoreCase)
     {
         "connectionStringName",
+        ClientsManagerKey,
     };
+
+    private readonly Dictionary<string, string> _hiddenRedisAttributes = new(StringComparer.OrdinalIgnoreCase);
 
     private static readonly Dictionary<string, RedisSettingInfo> RedisSettingCatalog = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -154,6 +159,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
     public ObservableCollection<RedisSectionAttributeViewModel> RedisSectionAttributes { get; } = new();
 
     [ObservableProperty] private bool _hasRedisSection;
+    [ObservableProperty] private string _redisSectionHeader = "Advanced Redis settings";
     [ObservableProperty] private bool _showClientsManagerWarning;
     [ObservableProperty] private bool _showRedisRecommendations;
     [ObservableProperty] private bool _hasMq;
@@ -346,9 +352,15 @@ public partial class ConnectionStringsViewModel : ObservableObject
             attribute.PropertyChanged -= OnRedisSectionAttributeChanged;
         }
         RedisSectionAttributes.Clear();
+        _hiddenRedisAttributes.Clear();
 
         var attributes = _webConfigEditor.ReadRedisSection(sitePath);
         HasRedisSection = attributes is { Count: > 0 };
+
+        var fileName = _webConfigEditor.GetRedisSectionFileName(sitePath);
+        RedisSectionHeader = string.IsNullOrEmpty(fileName)
+            ? "Advanced Redis settings"
+            : $"Advanced Redis settings ({fileName})";
         if (attributes is null)
         {
             UpdateClientsManagerWarning();
@@ -359,6 +371,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
         {
             if (HiddenRedisSettings.Contains(attribute.Key))
             {
+                _hiddenRedisAttributes[attribute.Key] = attribute.Value;
                 continue;
             }
             RedisSectionAttributes.Add(CreateRedisAttribute(attribute.Key, attribute.Value));
@@ -394,8 +407,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
     private void UpdateClientsManagerWarning()
     {
         var isCluster = SelectedRedisMode == RedisModeCluster;
-        var clientsManager = RedisSectionAttributes
-            .FirstOrDefault(a => string.Equals(a.Name, "clientsManager", StringComparison.OrdinalIgnoreCase))?.Value ?? "";
+        var clientsManager = _hiddenRedisAttributes.GetValueOrDefault(ClientsManagerKey, "");
         ShowClientsManagerWarning = isCluster
             && !clientsManager.Contains("StackExchangeAdapters", StringComparison.OrdinalIgnoreCase);
 
@@ -404,6 +416,19 @@ public partial class ConnectionStringsViewModel : ObservableObject
         {
             attribute.ShowRecommendations = isCluster;
         }
+    }
+
+    [RelayCommand]
+    private void UseStackExchangeAdapter()
+    {
+        if (!HasRedisSection)
+        {
+            return;
+        }
+
+        _hiddenRedisAttributes[ClientsManagerKey] = StackExchangeClientsManager;
+        UpdateClientsManagerWarning();
+        SaveConfig();
     }
 
     [RelayCommand]
@@ -419,6 +444,12 @@ public partial class ConnectionStringsViewModel : ObservableObject
         {
             if (info.Recommended.Length == 0)
             {
+                continue;
+            }
+
+            if (HiddenRedisSettings.Contains(name))
+            {
+                _hiddenRedisAttributes[name] = info.Recommended;
                 continue;
             }
 
@@ -536,9 +567,11 @@ public partial class ConnectionStringsViewModel : ObservableObject
                 SelectedRedisMode == RedisModeCluster || UseRetryRedisOperation);
             if (HasRedisSection)
             {
-                _webConfigEditor.WriteRedisSection(
-                    _lastSitePath,
-                    RedisSectionAttributes.Select(a => new KeyValuePair<string, string>(a.Name, a.Value)).ToList());
+                var redisAttributes = RedisSectionAttributes
+                    .Select(a => new KeyValuePair<string, string>(a.Name, a.Value))
+                    .Concat(_hiddenRedisAttributes)
+                    .ToList();
+                _webConfigEditor.WriteRedisSection(_lastSitePath, redisAttributes);
             }
             if (DbExtraParams != _loadedData!.DbExtraParams)
             {
