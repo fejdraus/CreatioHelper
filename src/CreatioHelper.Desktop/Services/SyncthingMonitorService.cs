@@ -14,18 +14,11 @@ using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Services;
 
-/// <summary>
-/// Service for monitoring Syncthing synchronization completion for remote servers
-/// Uses LOCAL Syncthing API to track REMOTE device completion status
-/// Based on Syncthing GUI implementation (syncthingController.js)
-/// </summary>
 public class SyncthingMonitorService : ISyncthingMonitorService
 {
     private readonly HttpClient _httpClient;
     private readonly IOutputWriter _output;
-    private readonly string _apiUrl;
-    private readonly string? _apiKey;
-
+    private readonly SyncthingRequestFactory _requests;
     public SyncthingMonitorService(
         IHttpClientFactory httpClientFactory,
         IOutputWriter output,
@@ -34,28 +27,11 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         _httpClient = httpClientFactory.CreateClient("Syncthing");
         _output = output;
-        _apiUrl = apiUrl.TrimEnd('/');
-        _apiKey = apiKey;
+        _requests = new SyncthingRequestFactory(apiUrl, apiKey);
     }
-
-    /// <summary>
-    /// Create an HttpRequestMessage with the API key header
-    /// </summary>
     private HttpRequestMessage CreateRequest(HttpMethod method, string relativeUrl)
-    {
-        var request = new HttpRequestMessage(method, $"{_apiUrl}{relativeUrl}");
-        if (!string.IsNullOrEmpty(_apiKey))
-        {
-            request.Headers.Add("X-API-Key", _apiKey);
-        }
-        return request;
-    }
-
-    /// <summary>
-    /// Wait for synchronization completion for a single server
-    /// Queries LOCAL Syncthing API for REMOTE device completion status
-    /// </summary>
-    public async Task<bool> WaitForServerSyncCompletionAsync(
+        => _requests.Create(method, relativeUrl);
+        public async Task<bool> WaitForServerSyncCompletionAsync(
         ServerInfo server,
         CancellationToken cancellationToken)
     {
@@ -64,7 +40,6 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             _output.WriteLine($"[WARNING] Server {server.Name} has no Syncthing device ID configured");
             return false;
         }
-
         if (server.SyncthingFolderIds.Count == 0)
         {
             _output.WriteLine($"[WARNING] Server {server.Name} has no Syncthing folder IDs configured");
@@ -72,29 +47,24 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         }
         var folderIdsStr = string.Join(", ", server.SyncthingFolderIds);
         _output.WriteLine($"       Folders: [{folderIdsStr}], Device: {server.SyncthingDeviceId}");
-
         var pollingInterval = TimeSpan.FromSeconds(5);
         var stableChecks = 0;
         const int requiredStableChecks = 2;
-
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                // Query LOCAL Syncthing about REMOTE device completion for ALL folders
+
                 bool allFoldersCompleted = true;
                 var folderStatuses = new List<string>();
-
                 foreach (var folderId in server.SyncthingFolderIds)
                 {
                     var completion = await GetRemoteDeviceCompletionAsync(
                         folderId,
                         server.SyncthingDeviceId,
                         cancellationToken);
-
                     folderStatuses.Add($"{folderId}: {completion.Completion:F1}%");
 
-                    // Update folder-specific state in server
                     server.UpdateFolderSyncState(
                         folderId,
                         completion.Completion,
@@ -102,7 +72,6 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                         completion.NeedItems,
                         completion.RemoteState ?? "unknown");
 
-                    // Check completion criteria for this folder
                     var isFolderCompleted = CheckRemoteCompletionCriteria(completion, server.Name ?? "Unknown");
                     if (!isFolderCompleted)
                     {
@@ -110,20 +79,15 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                     }
                 }
 
-                // Clean up any stale folder states (folders that were removed from config)
                 server.PruneStaleFolderStates();
-
-                // Check if ALL folders completed
                 if (allFoldersCompleted && server.AreAllFoldersSynced())
                 {
                     stableChecks++;
-
                     if (stableChecks >= requiredStableChecks)
                     {
                         _output.WriteLine($"[OK] Server {server.Name} ALL folders sync completed!");
                         return true;
                     }
-
                     await Task.Delay(2000, cancellationToken);
                 }
                 else
@@ -138,20 +102,14 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 await Task.Delay(pollingInterval, cancellationToken);
             }
         }
-
         return false;
     }
-
-    /// <summary>
-    /// Monitor multiple servers in parallel and invoke callback when each completes
-    /// </summary>
-    public async Task<List<ServerInfo>> WaitForMultipleServersAsync(
+        public async Task<List<ServerInfo>> WaitForMultipleServersAsync(
         List<ServerInfo> servers,
-        Action<ServerInfo> onServerCompleted,
+        Func<ServerInfo, Task> onServerCompleted,
         CancellationToken cancellationToken)
     {
         var completedServers = new ConcurrentBag<ServerInfo>();
-
         var tasks = servers.Select(server => Task.Run(async () =>
         {
             try
@@ -160,7 +118,10 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 if (completed)
                 {
                     completedServers.Add(server);
-                    onServerCompleted?.Invoke(server);
+                    if (onServerCompleted != null)
+                    {
+                        await onServerCompleted(server);
+                    }
                 }
                 else
                 {
@@ -172,17 +133,10 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 _output.WriteLine($"[ERROR] Exception monitoring server {server.Name}: {ex.Message}");
             }
         }, cancellationToken));
-
         await Task.WhenAll(tasks);
-
         return completedServers.ToList();
     }
-
-    /// <summary>
-    /// Get current status of a Syncthing device and folder
-    /// Returns status string with icon: "✅ Up to Date", "🔄 Syncing", etc.
-    /// </summary>
-    public async Task<string> GetDeviceAndFolderStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
+        public async Task<string> GetDeviceAndFolderStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrEmpty(server.SyncthingDeviceId) || server.SyncthingFolderIds.Count == 0)
         {
@@ -191,28 +145,23 @@ public class SyncthingMonitorService : ISyncthingMonitorService
 
         try
         {
-            // Get device connection status
             var deviceConnected = await IsDeviceConnectedAsync(server.SyncthingDeviceId, cancellationToken);
             if (!deviceConnected)
             {
                 return "❌ Offline";
             }
-
-            // Check all folders
             double totalCompletion = 0;
             long totalNeedItems = 0;
             long totalNeedBytes = 0;
             bool anyPaused = false;
             bool anyNotSharing = false;
             bool anyInvalid = false;
-
             foreach (var folderId in server.SyncthingFolderIds)
             {
                 var completion = await GetRemoteDeviceCompletionAsync(
                     folderId,
                     server.SyncthingDeviceId,
                     cancellationToken);
-
                 if (completion.RemoteState == "paused")
                 {
                     anyPaused = true;
@@ -225,16 +174,11 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 {
                     anyInvalid = true;
                 }
-
                 totalCompletion += completion.Completion;
                 totalNeedBytes += completion.NeedBytes;
                 totalNeedItems += completion.NeedItems;
             }
-
-            // Calculate average completion
             double avgCompletion = totalCompletion / server.SyncthingFolderIds.Count;
-
-            // Return status based on aggregated state
             if (anyPaused)
             {
                 return "⏸️ Paused";
@@ -262,12 +206,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             return $"❌ Error: {ex.Message}";
         }
     }
-
-    /// <summary>
-    /// Pause synchronization for a specific folder
-    /// Uses PATCH /rest/config/folders/{folder-id} with { "paused": true }
-    /// </summary>
-    public async Task<bool> PauseFolderAsync(string folderId, CancellationToken cancellationToken = default)
+        public async Task<bool> PauseFolderAsync(string folderId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -276,10 +215,8 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 "{\"paused\":true}",
                 System.Text.Encoding.UTF8,
                 "application/json");
-
             var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
-
             _output.WriteLine($"[OK] Paused folder: {folderId}");
             return true;
         }
@@ -289,12 +226,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             return false;
         }
     }
-
-    /// <summary>
-    /// Resume synchronization for a specific folder
-    /// Uses PATCH /rest/config/folders/{folder-id} with { "paused": false }
-    /// </summary>
-    public async Task<bool> ResumeFolderAsync(string folderId, CancellationToken cancellationToken = default)
+        public async Task<bool> ResumeFolderAsync(string folderId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -306,7 +238,6 @@ public class SyncthingMonitorService : ISyncthingMonitorService
 
             var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
-
             _output.WriteLine($"[OK] Resumed folder: {folderId}");
             return true;
         }
@@ -316,19 +247,13 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             return false;
         }
     }
-
-    /// <summary>
-    /// Check if a device is currently connected
-    /// Endpoint: GET /rest/system/connections
-    /// </summary>
-    private async Task<bool> IsDeviceConnectedAsync(string deviceId, CancellationToken cancellationToken)
+        private async Task<bool> IsDeviceConnectedAsync(string deviceId, CancellationToken cancellationToken)
     {
         try
         {
             using var request = CreateRequest(HttpMethod.Get, "/rest/system/connections");
             var response = await _httpClient.SendAsync(request, cancellationToken);
             response.EnsureSuccessStatusCode();
-
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var connections = JsonSerializer.Deserialize<SyncthingConnectionsDto>(json, JsonDefaults.CaseInsensitive);
 
@@ -336,7 +261,6 @@ public class SyncthingMonitorService : ISyncthingMonitorService
             {
                 return connection.Connected;
             }
-
             return false;
         }
         catch
@@ -345,34 +269,24 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         }
     }
 
-    /// <summary>
-    /// Check completion criteria for REMOTE device (same logic as Syncthing GUI)
-    /// Based on syncthingController.js line 1161: completion._total === 100
-    /// </summary>
-    private bool CheckRemoteCompletionCriteria(SyncthingCompletionDto completion, string serverName)
+        private bool CheckRemoteCompletionCriteria(SyncthingCompletionDto completion, string serverName)
     {
-        // 1. RemoteState should be "valid" (device connected and syncing)
         if (completion.RemoteState != "valid")
         {
             return false;
         }
-
-        // 2. NeedBytes should be 0 (remote device received all files)
         if (completion.NeedBytes > 0)
         {
             return false;
         }
 
-        // 3. NeedItems should be 0 (all files synchronized)
         if (completion.NeedItems > 0)
         {
             return false;
         }
 
-        // 4. Handle Syncthing's special case with deletes (see syncthingController.js:674-678)
         if (completion.NeedDeletes > 0)
         {
-            // If there are deletes, completion will be 95%
             if (completion.Completion < 95.0)
             {
                 return false;
@@ -380,7 +294,6 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         }
         else
         {
-            // Without deletes, require >= 99.99%
             if (completion.Completion < 99.99)
             {
                 return false;
@@ -389,11 +302,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         return true;
     }
 
-    /// <summary>
-    /// Get completion for REMOTE device via LOCAL Syncthing API
-    /// Endpoint: GET /rest/db/completion?folder={folder}&device={remoteDeviceId}
-    /// </summary>
-    private async Task<SyncthingCompletionDto> GetRemoteDeviceCompletionAsync(
+        private async Task<SyncthingCompletionDto> GetRemoteDeviceCompletionAsync(
         string folderId,
         string remoteDeviceId,
         CancellationToken cancellationToken)
@@ -415,65 +324,38 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         return completion ?? new SyncthingCompletionDto();
     }
 }
-
-/// <summary>
-/// DTO for Syncthing completion response
-/// Maps to Syncthing API response from /rest/db/completion
-/// </summary>
 internal class SyncthingCompletionDto
 {
     [JsonPropertyName("completion")]
     public double Completion { get; set; }
-
     [JsonPropertyName("globalBytes")]
     public long GlobalBytes { get; set; }
-
     [JsonPropertyName("needBytes")]
     public long NeedBytes { get; set; }
-
     [JsonPropertyName("globalItems")]
     public long GlobalItems { get; set; }
-
     [JsonPropertyName("needItems")]
     public long NeedItems { get; set; }
-
     [JsonPropertyName("needDeletes")]
     public long NeedDeletes { get; set; }
-
     [JsonPropertyName("sequence")]
     public long Sequence { get; set; }
-
-    /// <summary>
-    /// Remote device state: "valid", "paused", "notSharing", "unknown"
-    /// </summary>
-    [JsonPropertyName("remoteState")]
+        [JsonPropertyName("remoteState")]
     public string RemoteState { get; set; } = string.Empty;
 }
-
-/// <summary>
-/// DTO for Syncthing connections response
-/// Maps to Syncthing API response from /rest/system/connections
-/// </summary>
 internal class SyncthingConnectionsDto
 {
     [JsonPropertyName("connections")]
     public Dictionary<string, SyncthingConnectionDto>? Connections { get; set; }
 }
-
-/// <summary>
-/// DTO for single device connection info
-/// </summary>
 internal class SyncthingConnectionDto
 {
     [JsonPropertyName("connected")]
     public bool Connected { get; set; }
-
     [JsonPropertyName("paused")]
     public bool Paused { get; set; }
-
     [JsonPropertyName("clientVersion")]
     public string ClientVersion { get; set; } = string.Empty;
-
     [JsonPropertyName("type")]
     public string Type { get; set; } = string.Empty;
 }

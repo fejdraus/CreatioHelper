@@ -10,23 +10,15 @@ using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Services;
 
-/// <summary>
-/// Service for listening to Syncthing Events API in real-time
-/// Uses long polling to receive events as they occur
-/// Based on Syncthing Events API: GET /rest/events
-/// </summary>
 public class SyncthingEventsListener : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly IOutputWriter _output;
-    private readonly string _apiUrl;
-    private readonly string? _apiKey;
+    private readonly SyncthingRequestFactory _requests;
     private long _lastEventId;
     private CancellationTokenSource? _cts;
     private Task? _listenerTask;
     private bool _isRunning;
-
-    // Events for external subscription
     public event Action<StateChangedEventData>? OnStateChanged;
     public event Action<FolderCompletionEventData>? OnFolderCompletion;
     public event Action<ItemStartedEventData>? OnItemStarted;
@@ -34,7 +26,6 @@ public class SyncthingEventsListener : IDisposable
     public event Action<DeviceConnectedEventData>? OnDeviceConnected;
     public event Action<DeviceDisconnectedEventData>? OnDeviceDisconnected;
     public event Action<Exception>? OnError;
-
     public SyncthingEventsListener(
         IHttpClientFactory httpClientFactory,
         IOutputWriter output,
@@ -43,14 +34,9 @@ public class SyncthingEventsListener : IDisposable
     {
         _httpClient = httpClientFactory.CreateClient("Syncthing");
         _output = output;
-        _apiUrl = apiUrl.TrimEnd('/');
-        _apiKey = apiKey;
+        _requests = new SyncthingRequestFactory(apiUrl, apiKey);
     }
-
-    /// <summary>
-    /// Start listening to Syncthing events in background
-    /// </summary>
-    public void Start()
+        public void Start()
     {
         if (_isRunning)
         {
@@ -59,19 +45,12 @@ public class SyncthingEventsListener : IDisposable
         }
         _cts = new CancellationTokenSource();
         _isRunning = true;
-
-        // Start background listener task
         _listenerTask = Task.Run(async () => await ListenLoopAsync(_cts.Token), _cts.Token);
     }
-
-    /// <summary>
-    /// Stop listening to events
-    /// </summary>
-    public async Task StopAsync()
+        public async Task StopAsync()
     {
         if (!_isRunning)
             return;
-
         _output.WriteLine("[INFO] Stopping Syncthing Events Listener");
         _isRunning = false;
 
@@ -79,7 +58,6 @@ public class SyncthingEventsListener : IDisposable
         {
             await _cts.CancelAsync();
         }
-
         if (_listenerTask != null)
         {
             try
@@ -88,51 +66,32 @@ public class SyncthingEventsListener : IDisposable
             }
             catch (OperationCanceledException)
             {
-                // Expected when stopping
             }
         }
-
         _cts?.Dispose();
         _cts = null;
         _listenerTask = null;
     }
-
-    /// <summary>
-    /// Main long polling loop
-    /// </summary>
-    private async Task ListenLoopAsync(CancellationToken cancellationToken)
+        private async Task ListenLoopAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                // Build request URL with event filters
-                // We're interested in: StateChanged, FolderCompletion, ItemStarted, ItemFinished, DeviceConnected, DeviceDisconnected
                 var eventTypes = string.Join(",", "StateChanged", "FolderCompletion", "ItemStarted", "ItemFinished", "DeviceConnected", "DeviceDisconnected");
-
-                var url = $"{_apiUrl}/rest/events?since={_lastEventId}&events={eventTypes}&timeout=60";
-
-                using var request = new HttpRequestMessage(HttpMethod.Get, url);
-                if (!string.IsNullOrEmpty(_apiKey))
-                {
-                    request.Headers.Add("X-API-Key", _apiKey);
-                }
-
+                using var request = _requests.Get(
+                    $"/rest/events?since={_lastEventId}&events={eventTypes}&timeout=60");
                 using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                cts.CancelAfter(TimeSpan.FromSeconds(70)); // Syncthing timeout is 60s + buffer
-
+                cts.CancelAfter(TimeSpan.FromSeconds(70));
                 var response = await _httpClient.SendAsync(request, cts.Token);
-
                 if (!response.IsSuccessStatusCode)
                 {
                     _output.WriteLine($"[ERROR] Events API returned {response.StatusCode}");
-                    await Task.Delay(5000, cancellationToken); // Wait 5s before retry
+                    await Task.Delay(5000, cancellationToken);
                     continue;
                 }
-
                 var json = await response.Content.ReadAsStringAsync(cancellationToken);
 
-                // Parse event array
                 var events = JsonSerializer.Deserialize<List<SyncthingEvent>>(json, JsonDefaults.CaseInsensitive);
 
                 if (events is not { Count: > 0 }) continue;
@@ -144,32 +103,24 @@ public class SyncthingEventsListener : IDisposable
             }
             catch (OperationCanceledException)
             {
-                // Expected when stopping
                 break;
             }
             catch (HttpRequestException ex)
             {
                 _output.WriteLine($"[ERROR] HTTP error in events listener: {ex.Message}");
                 OnError?.Invoke(ex);
-
-                // Wait before retry
                 await Task.Delay(5000, cancellationToken);
             }
             catch (Exception ex)
             {
                 _output.WriteLine($"[ERROR] Unexpected error in events listener: {ex.Message}");
                 OnError?.Invoke(ex);
-
-                // Wait before retry
                 await Task.Delay(5000, cancellationToken);
             }
         }
     }
 
-    /// <summary>
-    /// Process a single event and invoke appropriate event handlers
-    /// </summary>
-    private void ProcessEvent(SyncthingEvent evt)
+        private void ProcessEvent(SyncthingEvent evt)
     {
         try
         {
@@ -185,7 +136,6 @@ public class SyncthingEventsListener : IDisposable
                         OnStateChanged?.Invoke(stateData);
                     }
                     break;
-
                 case "FolderCompletion":
                     var completionData = JsonSerializer.Deserialize<FolderCompletionEventData>(
                         evt.Data.GetRawText(),
@@ -196,7 +146,6 @@ public class SyncthingEventsListener : IDisposable
                         OnFolderCompletion?.Invoke(completionData);
                     }
                     break;
-
                 case "ItemStarted":
                     var itemStartedData = JsonSerializer.Deserialize<ItemStartedEventData>(
                         evt.Data.GetRawText(),
@@ -207,7 +156,6 @@ public class SyncthingEventsListener : IDisposable
                         OnItemStarted?.Invoke(itemStartedData);
                     }
                     break;
-
                 case "ItemFinished":
                     var itemFinishedData = JsonSerializer.Deserialize<ItemFinishedEventData>(
                         evt.Data.GetRawText(),
@@ -218,7 +166,6 @@ public class SyncthingEventsListener : IDisposable
                         OnItemFinished?.Invoke(itemFinishedData);
                     }
                     break;
-
                 case "DeviceConnected":
                     var deviceConnectedData = JsonSerializer.Deserialize<DeviceConnectedEventData>(
                         evt.Data.GetRawText(),
@@ -229,7 +176,6 @@ public class SyncthingEventsListener : IDisposable
                         OnDeviceConnected?.Invoke(deviceConnectedData);
                     }
                     break;
-
                 case "DeviceDisconnected":
                     var deviceDisconnectedData = JsonSerializer.Deserialize<DeviceDisconnectedEventData>(
                         evt.Data.GetRawText(),
@@ -247,7 +193,6 @@ public class SyncthingEventsListener : IDisposable
             _output.WriteLine($"[ERROR] Failed to process event {evt.Type}: {ex.Message}");
         }
     }
-
     public void Dispose()
     {
         StopAsync().GetAwaiter().GetResult();

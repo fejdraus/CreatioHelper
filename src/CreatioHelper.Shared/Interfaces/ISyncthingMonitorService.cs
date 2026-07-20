@@ -17,7 +17,7 @@ public interface ISyncthingMonitorService
     /// </summary>
     Task<List<ServerInfo>> WaitForMultipleServersAsync(
         List<ServerInfo> servers,
-        Action<ServerInfo> onServerCompleted,
+        Func<ServerInfo, Task> onServerCompleted,
         CancellationToken cancellationToken);
 
     /// <summary>

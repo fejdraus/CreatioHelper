@@ -840,7 +840,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         {
             var completedList = await syncthingMonitor.WaitForMultipleServersAsync(
                 serversToMonitor,
-                async void (completedServer) =>
+                async (completedServer) =>
                 {
                     _output.WriteLine($"[ORCHESTRATION] Server {completedServer.Name} sync completed! Starting services...");
 

@@ -6,10 +6,6 @@ using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.SyncEvents;
 
-/// <summary>
-/// Sync event source implementation that uses external Syncthing HTTP API.
-/// Connects to Syncthing's /rest/events endpoint for real-time event streaming.
-/// </summary>
 public class ExternalSyncthingEventSource : ISyncEventSource
 {
     private readonly IHttpClientFactory _httpClientFactory;
@@ -18,29 +14,19 @@ public class ExternalSyncthingEventSource : ISyncEventSource
     private readonly Dictionary<string, FolderSyncState> _folderStates = new();
     private readonly Dictionary<string, bool> _folderSyncingStatus = new();
     private readonly object _stateLock = new();
-
     private CancellationTokenSource? _cts;
     private Task? _eventProcessingTask;
     private int _lastEventId;
     private bool _isConnected;
     private bool _disposed;
-
     public string SourceName => "ExternalSyncthing";
     public bool IsConnected => _isConnected;
-
     public event EventHandler<SyncActivityEventArgs>? SyncStarted;
     public event EventHandler<SyncActivityEventArgs>? SyncCompleted;
     public event EventHandler<FileTransferEventArgs>? FileTransferStarted;
     public event EventHandler<FileTransferEventArgs>? FileTransferCompleted;
     public event EventHandler<FolderStateEventArgs>? FolderStateChanged;
-
-    /// <summary>
-    /// Creates a new ExternalSyncthingEventSource
-    /// </summary>
-    /// <param name="httpClientFactory">HTTP client factory</param>
-    /// <param name="logger">Logger</param>
-    /// <param name="httpClientName">Name of the HTTP client to use (must be configured with Syncthing API URL and API key)</param>
-    public ExternalSyncthingEventSource(
+        public ExternalSyncthingEventSource(
         IHttpClientFactory httpClientFactory,
         ILogger<ExternalSyncthingEventSource> logger,
         string httpClientName = "Syncthing")
@@ -49,7 +35,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         _logger = logger;
         _httpClientName = httpClientName;
     }
-
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         if (_isConnected)
@@ -57,23 +42,17 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             _logger.LogWarning("ExternalSyncthingEventSource is already started");
             return;
         }
-
         _logger.LogInformation("Starting ExternalSyncthingEventSource");
         _cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-
-        // Test connection to Syncthing
         if (!await TestConnectionAsync(_cts.Token))
         {
             _logger.LogError("Failed to connect to external Syncthing API");
             throw new InvalidOperationException("Cannot connect to external Syncthing API");
         }
 
-        // Initialize folder states
         await InitializeFolderStatesAsync(_cts.Token);
 
-        // Start processing events in background
         _eventProcessingTask = ProcessEventsAsync(_cts.Token);
-
         _isConnected = true;
         _logger.LogInformation("ExternalSyncthingEventSource started successfully");
     }
@@ -84,13 +63,9 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         _logger.LogInformation("Stopping ExternalSyncthingEventSource");
 
-        // Cancel event processing
         _cts?.Cancel();
-
-        // Wait for event processing to complete
         if (_eventProcessingTask != null)
         {
             try
@@ -103,17 +78,13 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             }
             catch (OperationCanceledException)
             {
-                // Expected
             }
         }
-
         _cts?.Dispose();
         _cts = null;
-
         _isConnected = false;
         _logger.LogInformation("ExternalSyncthingEventSource stopped");
     }
-
     public async Task<bool> IsFolderSyncingAsync(string folderId, CancellationToken cancellationToken = default)
     {
         try
@@ -126,20 +97,17 @@ public class ExternalSyncthingEventSource : ISyncEventSource
                     return _folderSyncingStatus.TryGetValue(folderId, out var isSyncing) && isSyncing;
                 }
             }
-
             return status.State != "idle" || status.NeedBytes > 0 || status.NeedFiles > 0;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error checking folder sync status for {FolderId}", folderId);
-
             lock (_stateLock)
             {
                 return _folderSyncingStatus.TryGetValue(folderId, out var isSyncing) && isSyncing;
             }
         }
     }
-
     public async Task<double> GetFolderCompletionAsync(string folderId, CancellationToken cancellationToken = default)
     {
         try
@@ -154,7 +122,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             {
                 return 100.0;
             }
-
             var completedBytes = status.GlobalBytes - status.NeedBytes;
             return (double)completedBytes / status.GlobalBytes * 100.0;
         }
@@ -179,28 +146,23 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             return false;
         }
     }
-
     private async Task InitializeFolderStatesAsync(CancellationToken cancellationToken)
     {
         try
         {
             var httpClient = _httpClientFactory.CreateClient(_httpClientName);
             using var response = await httpClient.GetAsync("/rest/config/folders", cancellationToken);
-
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to get folders from Syncthing API");
                 return;
             }
-
             var json = await response.Content.ReadAsStringAsync(cancellationToken);
             var folders = JsonSerializer.Deserialize<List<SyncthingFolderConfig>>(json, JsonDefaults.CaseInsensitive);
-
             if (folders == null)
             {
                 return;
             }
-
             foreach (var folder in folders)
             {
                 var status = await GetFolderStatusAsync(folder.Id, cancellationToken);
@@ -214,7 +176,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
                     }
                 }
             }
-
             _logger.LogDebug("Initialized states for {Count} folders", folders.Count);
         }
         catch (Exception ex)
@@ -222,25 +183,18 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             _logger.LogError(ex, "Error initializing folder states");
         }
     }
-
     private async Task ProcessEventsAsync(CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             try
             {
-                // Long-polling request - waits up to 60 seconds for new events
                 var events = await GetEventsAsync(_lastEventId, 60, cancellationToken);
-
                 if (events == null || events.Count == 0)
                 {
                     continue;
                 }
-
-                // Update last event ID
                 _lastEventId = events.Max(e => e.Id);
-
-                // Process events
                 foreach (var evt in events)
                 {
                     try
@@ -269,7 +223,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             }
         }
     }
-
     private void ProcessEvent(SyncthingApiEvent evt)
     {
         switch (evt.Type)
@@ -277,27 +230,21 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             case "ItemStarted":
                 HandleItemStarted(evt);
                 break;
-
             case "ItemFinished":
                 HandleItemFinished(evt);
                 break;
-
             case "StateChanged":
                 HandleStateChanged(evt);
                 break;
-
             case "FolderSummary":
                 HandleFolderSummary(evt);
                 break;
-
             case "FolderCompletion":
                 HandleFolderCompletion(evt);
                 break;
-
             case "FolderPaused":
                 HandleFolderPaused(evt);
                 break;
-
             case "FolderResumed":
                 HandleFolderResumed(evt);
                 break;
@@ -311,16 +258,13 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (!TryGetProperty(data.Value, "folder", out var folder) ||
             !TryGetProperty(data.Value, "item", out var item))
         {
             return;
         }
-
         TryGetProperty(data.Value, "action", out var action);
         TryGetLongProperty(data.Value, "size", out var size);
-
         var args = new FileTransferEventArgs
         {
             FolderId = folder,
@@ -329,10 +273,7 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             Size = size,
             Timestamp = evt.Time
         };
-
         FileTransferStarted?.Invoke(this, args);
-
-        // Mark folder as syncing
         bool wasIdle;
         lock (_stateLock)
         {
@@ -340,7 +281,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             _folderSyncingStatus[folder] = true;
         }
 
-        // Fire SyncStarted if this is the first item
         if (wasIdle)
         {
             var syncArgs = new SyncActivityEventArgs
@@ -352,7 +292,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             UpdateFolderState(folder, FolderSyncState.Syncing);
         }
     }
-
     private void HandleItemFinished(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -360,13 +299,11 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (!TryGetProperty(data.Value, "folder", out var folder) ||
             !TryGetProperty(data.Value, "item", out var item))
         {
             return;
         }
-
         TryGetProperty(data.Value, "action", out var action);
         TryGetLongProperty(data.Value, "size", out var size);
         TryGetProperty(data.Value, "error", out var error);
@@ -383,7 +320,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
 
         FileTransferCompleted?.Invoke(this, args);
     }
-
     private void HandleStateChanged(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -391,27 +327,22 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (!TryGetProperty(data.Value, "folder", out var folder) ||
             !TryGetProperty(data.Value, "to", out var toState))
         {
             return;
         }
-
         var newState = MapStateToFolderState(toState);
         UpdateFolderState(folder, newState);
 
-        // Update syncing status
         var isSyncing = toState != "idle" && toState != "error";
         bool wasSyncing;
-
         lock (_stateLock)
         {
             wasSyncing = _folderSyncingStatus.TryGetValue(folder, out var s) && s;
             _folderSyncingStatus[folder] = isSyncing;
         }
 
-        // Fire events
         if (!wasSyncing && isSyncing)
         {
             var args = new SyncActivityEventArgs
@@ -431,7 +362,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             SyncCompleted?.Invoke(this, args);
         }
     }
-
     private void HandleFolderSummary(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -439,24 +369,18 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (!TryGetProperty(data.Value, "folder", out var folder))
         {
             return;
         }
-
-        // Check if folder has pending items
         TryGetLongProperty(data.Value, "needBytes", out var needBytes);
         TryGetIntProperty(data.Value, "needFiles", out var needFiles);
-
         bool isSyncing = needBytes > 0 || needFiles > 0;
-
         lock (_stateLock)
         {
             _folderSyncingStatus[folder] = isSyncing;
         }
     }
-
     private void HandleFolderCompletion(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -464,13 +388,10 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (!TryGetProperty(data.Value, "folder", out var folder))
         {
             return;
         }
-
-        // Completion of 100% means sync is done
         if (TryGetDoubleProperty(data.Value, "completion", out var completion) && completion >= 100.0)
         {
             bool wasSyncing;
@@ -492,7 +413,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             }
         }
     }
-
     private void HandleFolderPaused(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -500,13 +420,11 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (TryGetProperty(data.Value, "id", out var folder))
         {
             UpdateFolderState(folder, FolderSyncState.Paused);
         }
     }
-
     private void HandleFolderResumed(SyncthingApiEvent evt)
     {
         var data = evt.Data as JsonElement?;
@@ -514,13 +432,11 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         {
             return;
         }
-
         if (TryGetProperty(data.Value, "id", out var folder))
         {
             UpdateFolderState(folder, FolderSyncState.Idle);
         }
     }
-
     private void UpdateFolderState(string folderId, FolderSyncState newState)
     {
         FolderSyncState previousState;
@@ -528,15 +444,12 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         lock (_stateLock)
         {
             _folderStates.TryGetValue(folderId, out previousState);
-
             if (previousState == newState)
             {
                 return;
             }
-
             _folderStates[folderId] = newState;
         }
-
         var args = new FolderStateEventArgs
         {
             FolderId = folderId,
@@ -544,10 +457,8 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             PreviousState = previousState,
             Timestamp = DateTime.UtcNow
         };
-
         FolderStateChanged?.Invoke(this, args);
     }
-
     private async Task<List<SyncthingApiEvent>?> GetEventsAsync(int since, int timeoutSeconds, CancellationToken cancellationToken)
     {
         try
@@ -555,25 +466,20 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             var httpClient = _httpClientFactory.CreateClient(_httpClientName);
             var url = $"/rest/events?since={since}&timeout={timeoutSeconds}";
 
-            // Use longer timeout for long-polling
             using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds + 10));
             using var combinedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
-
             using var response = await httpClient.GetAsync(url, combinedCts.Token);
-
             if (!response.IsSuccessStatusCode)
             {
                 _logger.LogWarning("Failed to get events: {StatusCode}", response.StatusCode);
                 return null;
             }
-
             var json = await response.Content.ReadAsStringAsync(combinedCts.Token);
 
             if (string.IsNullOrWhiteSpace(json) || json == "null" || json == "[]")
             {
                 return new List<SyncthingApiEvent>();
             }
-
             return JsonSerializer.Deserialize<List<SyncthingApiEvent>>(json, JsonDefaults.CaseInsensitive) ?? new List<SyncthingApiEvent>();
         }
         catch (OperationCanceledException)
@@ -581,30 +487,11 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             return new List<SyncthingApiEvent>();
         }
     }
-
-    private async Task<SyncthingFolderStatusDto?> GetFolderStatusAsync(string folderId, CancellationToken cancellationToken)
+    private async Task<SyncthingFolderStatus?> GetFolderStatusAsync(string folderId, CancellationToken cancellationToken)
     {
-        try
-        {
-            var httpClient = _httpClientFactory.CreateClient(_httpClientName);
-            var url = $"/rest/db/status?folder={Uri.EscapeDataString(folderId)}";
-            using var response = await httpClient.GetAsync(url, cancellationToken);
-
-            if (!response.IsSuccessStatusCode)
-            {
-                return null;
-            }
-
-            var json = await response.Content.ReadAsStringAsync(cancellationToken);
-            return JsonSerializer.Deserialize<SyncthingFolderStatusDto>(json, JsonDefaults.CaseInsensitive);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting folder status for {FolderId}", folderId);
-            return null;
-        }
+        return await SyncthingFolderStatusClient.GetFolderStatusAsync(
+            _httpClientFactory, _httpClientName, folderId, _logger, cancellationToken).ConfigureAwait(false);
     }
-
     private static FolderSyncState MapStateToFolderState(string state)
     {
         return state?.ToLowerInvariant() switch
@@ -622,7 +509,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
             _ => FolderSyncState.Unknown
         };
     }
-
     private static bool TryGetProperty(JsonElement element, string name, out string value)
     {
         value = string.Empty;
@@ -633,7 +519,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         }
         return false;
     }
-
     private static bool TryGetLongProperty(JsonElement element, string name, out long value)
     {
         value = 0;
@@ -647,7 +532,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         }
         return false;
     }
-
     private static bool TryGetIntProperty(JsonElement element, string name, out int value)
     {
         value = 0;
@@ -661,7 +545,6 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         }
         return false;
     }
-
     private static bool TryGetDoubleProperty(JsonElement element, string name, out double value)
     {
         value = 0;
@@ -675,71 +558,35 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         }
         return false;
     }
-
     public async ValueTask DisposeAsync()
     {
         if (_disposed)
         {
             return;
         }
-
         _disposed = true;
-
         await StopAsync();
-
         GC.SuppressFinalize(this);
     }
-
-    /// <summary>
-    /// Syncthing API event
-    /// </summary>
-    private class SyncthingApiEvent
+        private class SyncthingApiEvent
     {
         [JsonPropertyName("id")]
         public int Id { get; set; }
 
         [JsonPropertyName("globalID")]
         public long GlobalId { get; set; }
-
         [JsonPropertyName("time")]
         public DateTime Time { get; set; }
-
         [JsonPropertyName("type")]
         public string Type { get; set; } = string.Empty;
-
         [JsonPropertyName("data")]
         public object? Data { get; set; }
     }
 
-    /// <summary>
-    /// Syncthing folder status DTO
-    /// </summary>
-    private class SyncthingFolderStatusDto
-    {
-        [JsonPropertyName("state")]
-        public string State { get; set; } = string.Empty;
-
-        [JsonPropertyName("globalBytes")]
-        public long GlobalBytes { get; set; }
-
-        [JsonPropertyName("needBytes")]
-        public long NeedBytes { get; set; }
-
-        [JsonPropertyName("needFiles")]
-        public int NeedFiles { get; set; }
-
-        [JsonPropertyName("needDeletes")]
-        public int NeedDeletes { get; set; }
-    }
-
-    /// <summary>
-    /// Syncthing folder config DTO
-    /// </summary>
-    private class SyncthingFolderConfig
+        private class SyncthingFolderConfig
     {
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
-
         [JsonPropertyName("label")]
         public string? Label { get; set; }
     }
