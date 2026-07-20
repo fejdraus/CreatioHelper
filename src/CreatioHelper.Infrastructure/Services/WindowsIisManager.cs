@@ -8,36 +8,26 @@ using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services;
 
-/// <summary>
-/// Unified Windows IIS Manager supporting both local and remote servers
-/// </summary>
 public class WindowsIisManager : IIisManager
 {
     private readonly ILogger<WindowsIisManager> _logger;
     private readonly IMetricsService _metrics;
-    
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNameCaseInsensitive = true
     };
-
     public WindowsIisManager(ILogger<WindowsIisManager> logger, IMetricsService metrics)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _metrics = metrics ?? throw new ArgumentNullException(nameof(metrics));
     }
-
     public bool IsSupported() => OperatingSystem.IsWindows();
-    
     public bool IsLocal(string serverName) => PowerShellRunner.IsLocalServer(serverName);
-
     #region App Pool Management
-
     public async Task<Result> StartAppPoolAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
         if (!IsSupported())
             return Result.Failure("IIS management is only available on Windows.");
-
         if (string.IsNullOrWhiteSpace(poolName))
             return Result.Failure("Pool name is required.");
 
@@ -45,18 +35,15 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
-                // Check if app pool exists
                 if (!await AppPoolExistsAsync(serverName, poolName, cancellationToken))
                 {
                     return Result.Failure($"Application pool '{poolName}' does not exist on server {serverName}.");
                 }
-
                 var currentState = await GetAppPoolStateAsync(serverName, poolName, cancellationToken);
                 if (currentState == "Started")
                 {
                     return Result.Success();
                 }
-
                 if (currentState == "Stopped")
                 {
                     if (!await ExecuteScriptAsync(serverName, $"Start-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
@@ -64,8 +51,7 @@ public class WindowsIisManager : IIisManager
                         return Result.Failure($"Failed to start app pool {poolName}.");
                     }
                 }
-
-                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Started", $"Application pool {poolName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, true, poolName, "Started", $"Application pool {poolName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start app pool {poolName}.");
@@ -81,12 +67,10 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     public async Task<Result> StopAppPoolAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
         if (!IsSupported())
             return Result.Failure("IIS management is only available on Windows.");
-
         if (string.IsNullOrWhiteSpace(poolName))
             return Result.Failure("Pool name is required.");
 
@@ -94,18 +78,15 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
-                // Check if app pool exists
                 if (!await AppPoolExistsAsync(serverName, poolName, cancellationToken))
                 {
                     return Result.Failure($"Application pool '{poolName}' does not exist on server {serverName}.");
                 }
-
                 var currentState = await GetAppPoolStateAsync(serverName, poolName, cancellationToken);
                 if (currentState == "Stopped")
                 {
                     return Result.Success();
                 }
-
                 if (currentState == "Started")
                 {
                     if (!await ExecuteScriptAsync(serverName, $"Stop-WebAppPool -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", cancellationToken))
@@ -113,8 +94,7 @@ public class WindowsIisManager : IIisManager
                         return Result.Failure($"Failed to stop app pool {poolName}.");
                     }
                 }
-
-                var success = await WaitForStateAsync(serverName, true, $"Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}'", "Stopped", $"Application pool {poolName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, true, poolName, "Stopped", $"Application pool {poolName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop app pool {poolName}.");
@@ -130,7 +110,6 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     public async Task<Result<string>> GetAppPoolStatusAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
         try
@@ -144,16 +123,12 @@ public class WindowsIisManager : IIisManager
             return Result<string>.Failure($"Failed to get app pool status: {ex.Message}", ex);
         }
     }
-
     #endregion
-
     #region Website Management
-
     public async Task<Result> StartWebsiteAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
         if (!IsSupported())
             return Result.Failure("IIS management is only available on Windows.");
-
         if (string.IsNullOrWhiteSpace(siteName))
             return Result.Failure("Site name is required.");
 
@@ -161,18 +136,15 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
-                // Check if website exists
                 if (!await WebsiteExistsAsync(serverName, siteName, cancellationToken))
                 {
                     return Result.Failure($"Website '{siteName}' does not exist on server {serverName}.");
                 }
-
                 var currentState = await GetWebsiteStateAsync(serverName, siteName, cancellationToken);
                 if (currentState == "Started")
                 {
                     return Result.Success();
                 }
-
                 if (currentState == "Stopped")
                 {
                     if (!await ExecuteScriptAsync(serverName, $"Start-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
@@ -180,8 +152,7 @@ public class WindowsIisManager : IIisManager
                         return Result.Failure($"Failed to start website {siteName}.");
                     }
                 }
-
-                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Started", $"Website {siteName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, false, siteName, "Started", $"Website {siteName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to start website {siteName}.");
@@ -197,12 +168,10 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     public async Task<Result> StopWebsiteAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
         if (!IsSupported())
             return Result.Failure("IIS management is only available on Windows.");
-
         if (string.IsNullOrWhiteSpace(siteName))
             return Result.Failure("Site name is required.");
 
@@ -210,18 +179,15 @@ public class WindowsIisManager : IIisManager
         {
             try
             {
-                // Check if website exists
                 if (!await WebsiteExistsAsync(serverName, siteName, cancellationToken))
                 {
                     return Result.Failure($"Website '{siteName}' does not exist on server {serverName}.");
                 }
-
                 var currentState = await GetWebsiteStateAsync(serverName, siteName, cancellationToken);
                 if (currentState == "Stopped")
                 {
                     return Result.Success();
                 }
-
                 if (currentState == "Started")
                 {
                     if (!await ExecuteScriptAsync(serverName, $"Stop-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", cancellationToken))
@@ -229,8 +195,7 @@ public class WindowsIisManager : IIisManager
                         return Result.Failure($"Failed to stop website {siteName}.");
                     }
                 }
-
-                var success = await WaitForStateAsync(serverName, false, $"Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}'", "Stopped", $"Website {siteName}", cancellationToken);
+                var success = await WaitForStateAsync(serverName, false, siteName, "Stopped", $"Website {siteName}", cancellationToken);
                 return success
                     ? Result.Success()
                     : Result.Failure($"Failed to stop website {siteName}.");
@@ -246,7 +211,6 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     public async Task<Result<string>> GetWebsiteStatusAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
         try
@@ -260,29 +224,23 @@ public class WindowsIisManager : IIisManager
             return Result<string>.Failure($"Failed to get website status: {ex.Message}", ex);
         }
     }
-
     #endregion
-
     #region Service Management
-
     public async Task<Result> StartServiceAsync(string serverName, string serviceName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(serviceName))
             return Result.Failure("Service name is required");
-
         return await _metrics.MeasureAsync("service_start", async () =>
         {
             try
             {
-                var script = IsLocal(serverName) 
+                var script = IsLocal(serverName)
                     ? $"Start-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}'"
                     : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{ Start-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}' }}";
-
                 if (!await ExecuteScriptAsync(serverName, script, cancellationToken))
                 {
                     return Result.Failure($"Failed to start service {serviceName}");
                 }
-
                 return Result.Success();
             }
             catch (OperationCanceledException)
@@ -296,25 +254,21 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     public async Task<Result> StopServiceAsync(string serverName, string serviceName, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(serviceName))
             return Result.Failure("Service name is required");
-
         return await _metrics.MeasureAsync("service_stop", async () =>
         {
             try
             {
-                var script = IsLocal(serverName) 
+                var script = IsLocal(serverName)
                     ? $"Stop-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}'"
                     : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{ Stop-Service -Name '{PowerShellRunner.EscapeSingleQuoted(serviceName)}' }}";
-
                 if (!await ExecuteScriptAsync(serverName, script, cancellationToken))
                 {
                     return Result.Failure($"Failed to stop service {serviceName}");
                 }
-
                 return Result.Success();
             }
             catch (OperationCanceledException)
@@ -328,32 +282,24 @@ public class WindowsIisManager : IIisManager
             }
         });
     }
-
     #endregion
-
     #region Bulk Operations (Local Only)
-
     public async Task<List<WebServerStatus>> GetAllSitesAsync()
     {
         var sites = new List<WebServerStatus>();
-        
         try
         {
             var script = "Get-Website | Select-Object Name, State, @{Name='Port';Expression={($_.bindings.Collection.bindingInformation.Split(':')[1])}} | ConvertTo-Json";
             var result = await ExecuteScriptWithOutputAsync(Environment.MachineName, script);
-            
             if (!string.IsNullOrWhiteSpace(result))
             {
                 _logger.LogDebug("Sites JSON data: {Result}", result);
-                
                 var sitesData = JsonSerializer.Deserialize<IisSiteInfo[]>(result, JsonOptions);
-                
                 if (sitesData != null)
                 {
                     foreach (var siteInfo in sitesData)
                     {
                         var isRunning = string.Equals(siteInfo.State, "Started", StringComparison.OrdinalIgnoreCase);
-                        
                         sites.Add(new WebServerStatus
                         {
                             Name = siteInfo.Name,
@@ -375,37 +321,31 @@ public class WindowsIisManager : IIisManager
         {
             _logger.LogError(ex, "Error getting all sites");
         }
-
         return sites;
     }
 
     public async Task<List<WebServerStatus>> GetAllAppPoolsAsync()
     {
         var appPools = new List<WebServerStatus>();
-        
         try
         {
             var script = "Get-WebAppPoolState | Select-Object Name, Value | ConvertTo-Json";
             var result = await ExecuteScriptWithOutputAsync(Environment.MachineName, script);
-            
             if (!string.IsNullOrWhiteSpace(result))
             {
                 _logger.LogDebug("App pools JSON data: {Result}", result);
-                
                 var appPoolsData = JsonSerializer.Deserialize<IisAppPoolInfo[]>(result, JsonOptions);
-                
                 if (appPoolsData != null)
                 {
                     foreach (var poolInfo in appPoolsData)
                     {
                         var isRunning = string.Equals(poolInfo.Value, "Started", StringComparison.OrdinalIgnoreCase);
-                        
                         appPools.Add(new WebServerStatus
                         {
                             Name = poolInfo.Name,
                             Status = poolInfo.Value,
                             Type = "AppPool",
-                            Port = "", // App Pools do not have ports
+                            Port = "",
                             IsRunning = isRunning,
                             LastChecked = DateTime.UtcNow
                         });
@@ -421,19 +361,15 @@ public class WindowsIisManager : IIisManager
         {
             _logger.LogError(ex, "Error getting all app pools");
         }
-
         return appPools;
     }
 
     #endregion
-
     #region Private Helper Methods
-
     private async Task<bool> ExecuteScriptAsync(string serverName, string script, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(script)) 
+        if (string.IsNullOrEmpty(script))
             throw new ArgumentNullException(nameof(script));
-
         try
         {
             var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
@@ -442,13 +378,11 @@ public class WindowsIisManager : IIisManager
                 _logger.LogError("Failed to start PowerShell process");
                 return false;
             }
-
             if (result.HasError)
             {
                 _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, result.Error);
                 return false;
             }
-
             return result.ExitCode == 0;
         }
         catch (Exception ex)
@@ -457,12 +391,10 @@ public class WindowsIisManager : IIisManager
             return false;
         }
     }
-
     private async Task<string?> ExecuteScriptWithOutputAsync(string serverName, string script, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(script)) 
+        if (string.IsNullOrEmpty(script))
             throw new ArgumentNullException(nameof(script));
-
         try
         {
             var result = await RunWebAdministrationAsync(serverName, script, cancellationToken).ConfigureAwait(false);
@@ -471,13 +403,11 @@ public class WindowsIisManager : IIisManager
                 _logger.LogError("Failed to start PowerShell process");
                 return null;
             }
-
             if (result.HasError)
             {
                 _logger.LogError("PowerShell error on server {ServerName}: {Error}", serverName, result.Error);
                 return null;
             }
-
             return result.Output.Trim();
         }
         catch (Exception ex)
@@ -486,7 +416,6 @@ public class WindowsIisManager : IIisManager
             return null;
         }
     }
-
     private Task<ShellResult?> RunWebAdministrationAsync(string serverName, string script, CancellationToken cancellationToken)
     {
         var command = IsLocal(serverName)
@@ -494,63 +423,39 @@ public class WindowsIisManager : IIisManager
             : $"Invoke-Command -ComputerName '{PowerShellRunner.EscapeSingleQuoted(serverName)}' -ScriptBlock {{\r\n    Import-Module WebAdministration\r\n    {script}\r\n}} -ErrorAction Stop";
         return PowerShellRunner.RunAsync(command, cancellationToken: cancellationToken);
     }
-
     private async Task<string?> GetAppPoolStateAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
         var script = $"(Get-WebAppPoolState -Name '{PowerShellRunner.EscapeSingleQuoted(poolName)}').Value";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
-        return result?.Split('\n', '\r').LastOrDefault()?.Trim();
+        return ShellResult.LastLineOf(result);
     }
-
     private async Task<string?> GetWebsiteStateAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
         var script = $"(Get-Website -Name '{PowerShellRunner.EscapeSingleQuoted(siteName)}').State";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
-        return result?.Split('\n', '\r').LastOrDefault()?.Trim();
+        return ShellResult.LastLineOf(result);
     }
-
     private async Task<bool> AppPoolExistsAsync(string serverName, string poolName, CancellationToken cancellationToken = default)
     {
         var script = $"Test-Path 'IIS:\\AppPools\\{poolName}'";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
         return result?.Trim().Equals("True", StringComparison.OrdinalIgnoreCase) == true;
     }
-
     private async Task<bool> WebsiteExistsAsync(string serverName, string siteName, CancellationToken cancellationToken = default)
     {
         var script = $"Test-Path 'IIS:\\Sites\\{siteName}'";
         var result = await ExecuteScriptWithOutputAsync(serverName, script, cancellationToken);
         return result?.Trim().Equals("True", StringComparison.OrdinalIgnoreCase) == true;
     }
-
-    private async Task<bool> WaitForStateAsync(string serverName, bool isPool, string expression, string desiredState, string displayName, CancellationToken cancellationToken = default)
-    {
-        var attempts = 0;
-        const int maxAttempts = 240; // wait up to 20 minutes for slow-stopping pools
-        
-        while (attempts < maxAttempts)
-        {
-            if (cancellationToken.IsCancellationRequested)
-                return false;
-
-            var currentState = isPool 
-                ? await GetAppPoolStateAsync(serverName, expression.Split('\'')[1], cancellationToken)
-                : await GetWebsiteStateAsync(serverName, expression.Split('\'')[1], cancellationToken);
-
-            if (string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase))
-            {
-                return true;
-            }
-
-            _logger.LogInformation("Waiting for {DisplayName} on server {ServerName} to reach state {DesiredState}, current: {CurrentState}", 
-                displayName, serverName, desiredState, currentState ?? "unknown");
-            
-            await Task.Delay(5000, cancellationToken);
-            attempts++;
-        }
-
-        return false;
-    }
-
+    private Task<bool> WaitForStateAsync(string serverName, bool isPool, string objectName, string desiredState, string displayName, CancellationToken cancellationToken = default)
+        => StatePolling.WaitForStateAsync(
+            ct => isPool
+                ? GetAppPoolStateAsync(serverName, objectName, ct)
+                : GetWebsiteStateAsync(serverName, objectName, ct),
+            desiredState,
+            currentState => _logger.LogInformation(
+                "Waiting for {DisplayName} on server {ServerName} to reach state {DesiredState}, current: {CurrentState}",
+                displayName, serverName, desiredState, currentState ?? "unknown"),
+            cancellationToken: cancellationToken);
     #endregion
 }

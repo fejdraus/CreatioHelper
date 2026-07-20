@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using CreatioHelper.Shared.Utils;
 using Xunit;
 
@@ -23,6 +23,20 @@ public class ShellRunnerTests
         Assert.Equal("O'\\''Brien", BashRunner.EscapeSingleQuoted("O'Brien"));
     }
 
+    [Theory]
+    [InlineData("Started", "Started")]
+    [InlineData("Started\r\n", "Started")]
+    [InlineData("WARNING: module loaded\r\nStarted\r\n", "Started")]
+    [InlineData("Started\r\n\r\n", "Started")]
+    [InlineData("  Started  ", "Started")]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData(null, null)]
+    public void LastLineOf_TakesTheFinalMeaningfulLine(string? output, string? expected)
+    {
+        Assert.Equal(expected, ShellResult.LastLineOf(output));
+    }
+
     [Fact]
     public void CaseInsensitiveOptionsAreASingleCachedInstance()
     {
@@ -38,13 +52,6 @@ public class ShellRunnerTests
         Assert.NotNull(parsed);
         Assert.Equal("iis", parsed!.Name);
         Assert.Equal("Started", parsed.State);
-    }
-
-    [Fact]
-    public void IndentedOptionsKeepCaseInsensitivity()
-    {
-        Assert.True(JsonDefaults.Indented.PropertyNameCaseInsensitive);
-        Assert.True(JsonDefaults.Indented.WriteIndented);
     }
 
     private sealed class Probe

@@ -250,7 +250,7 @@ namespace CreatioHelper.Infrastructure.Services
                     return Result.Failure("Operation was cancelled");
 
                 var result = await _systemServiceManager.StartServiceAsync(serviceName);
-                
+
                 if (result)
                 {
                     _output.WriteLine($"[INFO] Service {serviceName} started successfully");
@@ -288,7 +288,7 @@ namespace CreatioHelper.Infrastructure.Services
                     return Result.Failure("Operation was cancelled");
 
                 var result = await _systemServiceManager.StopServiceAsync(serviceName);
-                
+
                 if (result)
                 {
                     _output.WriteLine($"[INFO] Service {serviceName} stopped successfully");
@@ -365,7 +365,6 @@ namespace CreatioHelper.Infrastructure.Services
             }
         }
 
-        // Private helper methods
         private Task<ShellResult?> RunWebAdministrationAsync(string serverName, string script, CancellationToken cancellationToken)
         {
             var command = IsLocal(serverName)
@@ -452,26 +451,12 @@ namespace CreatioHelper.Infrastructure.Services
             if (string.IsNullOrEmpty(query)) throw new ArgumentNullException(nameof(query));
             if (string.IsNullOrEmpty(desiredState)) throw new ArgumentNullException(nameof(desiredState));
             if (string.IsNullOrEmpty(name)) throw new ArgumentNullException(nameof(name));
-            string? currentState;
-            var maxAttempts = 240; // wait up to 20 minutes for slow-stopping pools
-            var attempts = 0;
-            do
-            {
-                if (cancellationToken.IsCancellationRequested)
-                    return false;
 
-                currentState = await GetStateAsync(serverName, isPool, query, cancellationToken);
-                if (string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                _output.WriteLine($"[WAIT] {name} current state: {currentState ?? "unknown"}, waiting...");
-                await Task.Delay(5000, cancellationToken);
-                attempts++;
-            }
-            while (attempts < maxAttempts && !string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase));
-            return string.Equals(currentState, desiredState, StringComparison.OrdinalIgnoreCase);
+            return await StatePolling.WaitForStateAsync(
+                ct => GetStateAsync(serverName, isPool, query, ct),
+                desiredState,
+                currentState => _output.WriteLine($"[WAIT] {name} current state: {currentState ?? "unknown"}, waiting..."),
+                cancellationToken: cancellationToken).ConfigureAwait(false);
         }
     }
 }
