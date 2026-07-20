@@ -21,6 +21,7 @@ public class SyncthingSystemController : ControllerBase
     private readonly ISyncEngine _syncEngine;
     private readonly ILogger<SyncthingSystemController> _logger;
     private readonly IConfiguration _configuration;
+    private readonly IConfigXmlService _configXmlService;
 
     // Store enabled log facilities in memory (in production, this would be persisted)
     private static readonly HashSet<string> _enabledLogFacilities = new();
@@ -28,11 +29,13 @@ public class SyncthingSystemController : ControllerBase
     public SyncthingSystemController(
         ISyncEngine syncEngine,
         ILogger<SyncthingSystemController> logger,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IConfigXmlService configXmlService)
     {
         _syncEngine = syncEngine;
         _logger = logger;
         _configuration = configuration;
+        _configXmlService = configXmlService;
     }
 
     /// <summary>
@@ -1132,16 +1135,14 @@ public class SyncthingSystemController : ControllerBase
     {
         try
         {
-            var configDir = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-                "CreatioHelper");
+            var configDir = _configXmlService.GetConfigDirectory();
 
             return Ok(new
             {
                 auditLog = Path.Combine(configDir, "audit.log"),
                 baseDir = configDir,
                 certFile = Path.Combine(configDir, "cert.pem"),
-                config = Path.Combine(configDir, "config.xml"),
+                config = _configXmlService.ConfigPath,
                 csrfTokens = Path.Combine(configDir, ".csrf-tokens"),
                 database = Path.Combine(configDir, "index-v0.14.0.db"),
                 defFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),

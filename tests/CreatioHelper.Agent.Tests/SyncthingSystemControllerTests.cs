@@ -1,3 +1,4 @@
+using System.IO;
 using CreatioHelper.Agent.Controllers;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
@@ -13,6 +14,7 @@ public class SyncthingSystemControllerTests
     private readonly Mock<ISyncEngine> _syncEngineMock;
     private readonly Mock<ILogger<SyncthingSystemController>> _loggerMock;
     private readonly IConfiguration _configuration;
+    private readonly Mock<IConfigXmlService> _configXmlServiceMock;
     private readonly SyncthingSystemController _controller;
 
     public SyncthingSystemControllerTests()
@@ -20,6 +22,10 @@ public class SyncthingSystemControllerTests
         _syncEngineMock = new Mock<ISyncEngine>();
         _loggerMock = new Mock<ILogger<SyncthingSystemController>>();
         _configuration = new ConfigurationBuilder().AddInMemoryCollection().Build();
+        _configXmlServiceMock = new Mock<IConfigXmlService>();
+        var configDir = Path.Combine(Path.GetTempPath(), "cfgtest");
+        _configXmlServiceMock.Setup(s => s.GetConfigDirectory()).Returns(configDir);
+        _configXmlServiceMock.Setup(s => s.ConfigPath).Returns(Path.Combine(configDir, "config.xml"));
 
         _syncEngineMock.Setup(s => s.DeviceId).Returns("TEST-DEVICE-ID");
         _syncEngineMock.Setup(s => s.GetStatisticsAsync())
@@ -40,7 +46,8 @@ public class SyncthingSystemControllerTests
         _controller = new SyncthingSystemController(
             _syncEngineMock.Object,
             _loggerMock.Object,
-            _configuration);
+            _configuration,
+            _configXmlServiceMock.Object);
     }
 
     #region Browse Tests
