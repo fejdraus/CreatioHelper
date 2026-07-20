@@ -20,7 +20,9 @@
                           Immediate="true"
                           Class="mb-4" />
 
-            <MudSelect @bind-Value="_type"
+            <MudSelect T="string"
+                       Value="_type"
+                       ValueChanged="OnTypeChanged"
                        Label="@L["WebServer_ManagedBy"]"
                        Class="mb-4">
                 <MudSelectItem Value="@("IIS")">@L["WebServer_TypeIis"]</MudSelectItem>
@@ -30,35 +32,45 @@
             <MudSelect T="string"
                        @bind-SelectedValues="_selectedFolderIds"
                        MultiSelection="true"
+                       MultiSelectionTextFunc="@GetLinkedFoldersText"
                        Label="@L["WebServer_LinkedFolders"]"
                        Class="mb-4">
-                @foreach (var folder in _folders)
+                @foreach (var folder in _folders.Where(IsFolderVisible))
                 {
                     <MudSelectItem T="string" Value="@folder.Id">@folder.DisplayName</MudSelectItem>
                 }
             </MudSelect>
 
-            <div class="d-flex align-center gap-2">
-                <MudTextField @bind-Value="_serviceName"
-                              Label="@(_type == "IIS" ? L["WebServer_IisSiteName"] : L["WebServer_ServiceName"])"
-                              Required="true"
-                              RequiredError="@L["WebServer_HostNameRequired"]"
-                              Immediate="true"
-                              Class="flex-grow-1" />
-                @if (_type == "IIS")
-                {
-                    <MudButton Variant="Variant.Outlined"
-                               Color="Color.Primary"
-                               StartIcon="@Icons.Material.Filled.Search"
-                               Disabled="@(_detecting || !_selectedFolderIds.Any())"
-                               OnClick="DetectByFolder">
-                        @L["WebServer_DetectByFolder"]
-                    </MudButton>
-                }
-            </div>
+            <MudTextField @bind-Value="_serviceName"
+                          Label="@(_type == "IIS" ? L["WebServer_IisSiteName"] : L["WebServer_ServiceName"])"
+                          Required="true"
+                          RequiredError="@L["WebServer_HostNameRequired"]"
+                          ReadOnly="@(_type == "IIS")"
+                          HelperText="@(_type == "IIS" ? L["WebServer_IisSiteNameHint"] : null)"
+                          Immediate="true" />
+
+            @if (_type == "IIS")
+            {
+                <MudTextField @bind-Value="_appPool"
+                              Label="@L["WebServer_AppPool"]"
+                              HelperText="@L["WebServer_AppPoolHint"]"
+                              ReadOnly="true"
+                              Class="mt-2" />
+            }
         </MudForm>
     </DialogContent>
     <DialogActions>
+        @if (_type == "IIS")
+        {
+            <MudButton Variant="Variant.Outlined"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Search"
+                       Class="mr-auto"
+                       Disabled="@(_detecting || !_selectedFolderIds.Any())"
+                       OnClick="DetectByFolder">
+                @L["WebServer_DetectByFolder"]
+            </MudButton>
+        }
         <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
         <MudButton Variant="Variant.Filled"
                    Color="Color.Primary"
@@ -87,9 +99,11 @@
     private string _displayName = string.Empty;
     private string _type = "IIS";
     private string _serviceName = string.Empty;
+    private string _appPool = string.Empty;
     private IReadOnlyCollection<string> _selectedFolderIds = new List<string>();
 
     private FolderConfig[] _folders = Array.Empty<FolderConfig>();
+    private readonly Dictionary<string, string?> _folderSites = new();
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,15 +121,86 @@
             _displayName = EditSite.Name;
             _type = EditSite.WebServerType == WebServerKindDto.Iis ? "IIS" : "Service";
             _serviceName = EditSite.ServiceName;
+            _appPool = EditSite.AppPool;
             _selectedFolderIds = EditSite.FolderIds.ToList();
+        }
+
+        await LoadFolderSitesAsync();
+    }
+
+    private async Task LoadFolderSitesAsync()
+    {
+        try
+        {
+            var paths = _folders
+                .Where(f => !string.IsNullOrEmpty(f.Path))
+                .Select(f => f.Path)
+                .Distinct()
+                .ToList();
+            if (paths.Count == 0)
+            {
+                return;
+            }
+
+            var batch = await ApiClient.DetectIisSitesAsync(paths);
+            if (batch?.Sites == null)
+            {
+                return;
+            }
+
+            foreach (var folder in _folders)
+            {
+                if (!string.IsNullOrEmpty(folder.Path) && batch.Sites.TryGetValue(folder.Path, out var site))
+                {
+                    _folderSites[folder.Id] = site;
+                }
+            }
+        }
+        catch
+        {
+            // Filtering by site is best-effort; ignore failures (e.g. no elevation)
         }
     }
 
+    private string? GetLockedSite()
+    {
+        if (_type != "IIS")
+        {
+            return null;
+        }
+
+        foreach (var id in _selectedFolderIds)
+        {
+            if (_folderSites.TryGetValue(id, out var site) && !string.IsNullOrEmpty(site))
+            {
+                return site;
+            }
+        }
+
+        return null;
+    }
+
+    private bool IsFolderVisible(FolderConfig folder)
+    {
+        var locked = GetLockedSite();
+        if (locked == null || _selectedFolderIds.Contains(folder.Id))
+        {
+            return true;
+        }
+
+        return _folderSites.TryGetValue(folder.Id, out var site) && site == locked;
+    }
+
+    private string GetLinkedFoldersText(IReadOnlyList<string> selected)
+        => string.Join(", ", selected.Select(id => _folders.FirstOrDefault(f => f.Id == id)?.DisplayName ?? id));
+
     private async Task DetectByFolder()
     {
-        var folderId = _selectedFolderIds.FirstOrDefault();
-        var folder = _folders.FirstOrDefault(f => f.Id == folderId);
-        if (folder == null)
+        var folders = _selectedFolderIds
+            .Select(id => _folders.FirstOrDefault(f => f.Id == id))
+            .Where(f => f != null && !string.IsNullOrEmpty(f!.Path))
+            .ToList();
+        if (folders.Count == 0)
         {
             return;
         }
@@ -123,15 +208,43 @@
         _detecting = true;
         try
         {
-            var detected = await ApiClient.DetectIisSiteAsync(folder.Path);
-            if (!string.IsNullOrEmpty(detected))
+            var requiresElevation = false;
+            var detectedSites = new List<string>();
+            var detectedPool = string.Empty;
+            foreach (var folder in folders)
             {
-                _serviceName = detected;
-                Snackbar.Add(L["WebServer_DetectedSite", detected], Severity.Success);
+                var detected = await ApiClient.DetectIisSiteAsync(folder!.Path);
+                if (!string.IsNullOrEmpty(detected?.SiteName))
+                {
+                    if (!detectedSites.Contains(detected.SiteName))
+                    {
+                        detectedSites.Add(detected.SiteName);
+                        detectedPool = detected.AppPool;
+                    }
+                }
+                else if (detected?.RequiresElevation == true)
+                {
+                    requiresElevation = true;
+                }
+            }
+
+            if (detectedSites.Count == 1)
+            {
+                _serviceName = detectedSites[0];
+                _appPool = detectedPool;
+                if (string.IsNullOrWhiteSpace(_displayName))
+                {
+                    _displayName = detectedSites[0];
+                }
+                Snackbar.Add(L["WebServer_DetectedSite", detectedSites[0]], Severity.Success);
+            }
+            else if (detectedSites.Count > 1)
+            {
+                Snackbar.Add(L["WebServer_DetectMultipleSites", string.Join(", ", detectedSites)], Severity.Warning);
             }
             else
             {
-                Snackbar.Add(L["WebServer_DetectNotFound"], Severity.Warning);
+                Snackbar.Add(requiresElevation ? L["WebServer_DetectRequiresAdmin"] : L["WebServer_DetectNotFound"], Severity.Warning);
             }
         }
         catch
@@ -141,6 +254,15 @@
         finally
         {
             _detecting = false;
+        }
+    }
+
+    private void OnTypeChanged(string type)
+    {
+        _type = type;
+        if (_type != "IIS")
+        {
+            _appPool = string.Empty;
         }
     }
 
@@ -162,6 +284,7 @@
                 DisplayName = _displayName,
                 Type = _type,
                 ServiceName = _serviceName,
+                AppPool = _type == "IIS" ? (_appPool ?? string.Empty) : string.Empty,
                 FolderIds = _selectedFolderIds.ToList()
             };
 

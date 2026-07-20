@@ -16,6 +16,9 @@ public class RegisterSiteRequest
     [MaxLength(100)]
     public string ServiceName { get; set; } = "";
 
+    [MaxLength(100)]
+    public string? AppPool { get; set; }
+
     public List<string>? FolderIds { get; set; }
 
     public Dictionary<string, string>? Properties { get; set; }

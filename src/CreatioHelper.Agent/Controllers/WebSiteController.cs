@@ -14,15 +14,18 @@ public class WebSiteController : ControllerBase
 {
     private readonly WebSiteRegistryService _registryService;
     private readonly IWebServerServiceFactory _webServerFactory;
+    private readonly WebServerAccessStatus _accessStatus;
     private readonly ILogger<WebSiteController> _logger;
 
     public WebSiteController(
         WebSiteRegistryService registryService,
         IWebServerServiceFactory webServerFactory,
+        WebServerAccessStatus accessStatus,
         ILogger<WebSiteController> logger)
     {
         _registryService = registryService;
         _webServerFactory = webServerFactory;
+        _accessStatus = accessStatus;
         _logger = logger;
     }
 
@@ -46,15 +49,40 @@ public class WebSiteController : ControllerBase
     /// </summary>
     [HttpGet("")]
     [Authorize(Roles = Roles.ReadRoles)]
-    public async Task<IActionResult> GetAllSites()
+    public async Task<IActionResult> GetAllSites([FromQuery] bool liveState = true)
     {
         try
         {
             var sites = await _registryService.GetAllSitesAsync();
 
+            var controlMap = liveState
+                ? await _registryService.GetIisControlMapAsync()
+                : new Dictionary<string, SiteControlInfo>();
+
             var enriched = new List<object>();
             foreach (var site in sites)
             {
+                controlMap.TryGetValue(site.ServiceName, out var control);
+
+                // A nested application has no site state of its own; its effective state is the pool state.
+                var effectiveState = control == null
+                    ? string.Empty
+                    : (control.IsNested ? control.PoolState : control.SiteState);
+
+                string status;
+                if (!liveState)
+                {
+                    status = site.Status;
+                }
+                else if (!string.IsNullOrEmpty(effectiveState))
+                {
+                    status = effectiveState;
+                }
+                else
+                {
+                    status = await GetLiveStateAsync(site);
+                }
+
                 enriched.Add(new
                 {
                     site.Name,
@@ -63,7 +91,13 @@ public class WebSiteController : ControllerBase
                     site.ServiceName,
                     site.AutoDiscovered,
                     site.FolderIds,
-                    Status = await GetLiveStateAsync(site)
+                    Status = status,
+                    AppPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : (control?.AppPool ?? string.Empty),
+                    SiteState = control?.SiteState ?? string.Empty,
+                    PoolState = control?.PoolState ?? string.Empty,
+                    CanManage = control?.CanManage ?? true,
+                    PoolShared = control?.PoolShared ?? false,
+                    IsNested = control?.IsNested ?? false
                 });
             }
 
@@ -108,7 +142,8 @@ public class WebSiteController : ControllerBase
                 request.Type,
                 request.ServiceName,
                 request.FolderIds,
-                request.Properties);
+                request.Properties,
+                request.AppPool);
 
             _logger.LogInformation("Successfully registered site: {DisplayName}", request.DisplayName);
             return Ok(new { 
@@ -153,7 +188,8 @@ public class WebSiteController : ControllerBase
                 request.Type,
                 request.ServiceName,
                 request.FolderIds,
-                request.Properties);
+                request.Properties,
+                request.AppPool);
 
             return Ok(new {
                 Message = $"Site '{siteName}' updated successfully",
@@ -205,11 +241,58 @@ public class WebSiteController : ControllerBase
         try
         {
             var siteName = await _registryService.DetectIisSiteByPathAsync(path);
-            return Ok(new { SiteName = siteName });
+
+            var appPool = string.Empty;
+            if (!string.IsNullOrEmpty(siteName))
+            {
+                var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(siteName);
+                appPool = control?.AppPool ?? string.Empty;
+            }
+
+            return Ok(new { SiteName = siteName, AppPool = appPool, RequiresElevation = _accessStatus.RequiresElevation });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error detecting IIS site by path {Path}", path);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Discover Creatio sites in IIS that are not yet configured (with conf / Terrasoft.Configuration folders)
+    /// </summary>
+    [HttpGet("discover")]
+    [Authorize(Roles = Roles.ReadRoles)]
+    public async Task<IActionResult> DiscoverSites()
+    {
+        try
+        {
+            var configured = (await _registryService.GetAllSitesAsync()).Select(s => s.ServiceName).ToList();
+            var sites = await _registryService.DiscoverCreatioSitesAsync(configured);
+            return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error discovering Creatio sites");
+            return StatusCode(500, new { error = "Internal server error" });
+        }
+    }
+
+    /// <summary>
+    /// Resolve the owning IIS site for several folder paths in a single IIS enumeration
+    /// </summary>
+    [HttpPost("detect-batch")]
+    [Authorize(Roles = Roles.ReadRoles)]
+    public async Task<IActionResult> DetectIisSitesBatch([FromBody] string[] paths)
+    {
+        try
+        {
+            var sites = await _registryService.DetectIisSitesByPathsAsync(paths ?? Array.Empty<string>());
+            return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error detecting IIS sites by paths");
             return StatusCode(500, new { error = "Internal server error" });
         }
     }
@@ -222,7 +305,11 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public Task<IActionResult> StopSite(string siteName) => ChangeSiteStateAsync(siteName, start: false);
 
-    private async Task<IActionResult> ChangeSiteStateAsync(string siteName, bool start)
+    [HttpPost("{siteName}/restart")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public Task<IActionResult> RestartSite(string siteName) => ChangeSiteStateAsync(siteName, start: true, restart: true);
+
+    private async Task<IActionResult> ChangeSiteStateAsync(string siteName, bool start, bool restart = false)
     {
         var site = await _registryService.GetSiteInfoAsync(siteName);
         if (site == null)
@@ -232,17 +319,84 @@ public class WebSiteController : ControllerBase
 
         try
         {
-            var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
-            var result = start
-                ? await manager.StartSiteAsync(site.ServiceName)
-                : await manager.StopSiteAsync(site.ServiceName);
+            var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(site.ServiceName);
 
-            if (result.Success)
+            // IIS site/application: pool-aware, nesting-safe handling
+            if (control != null)
             {
-                return Ok(new { result.Success, result.Message });
+                if (!control.CanManage)
+                {
+                    return BadRequest(new
+                    {
+                        Success = false,
+                        Message = $"'{site.ServiceName}' is a nested application on a shared app pool ('{control.AppPool}'). Stopping the pool would affect other sites, so start/stop is disabled."
+                    });
+                }
+
+                var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+                var steps = new List<(bool Ok, string Message)>();
+
+                // The app pool is only touched when it is dedicated; a shared pool is left alone
+                // so stopping one site cannot take down other sites/applications on the same pool.
+                var targetPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : control.AppPool;
+                var canControlPool = !string.IsNullOrEmpty(targetPool) && !control.PoolShared;
+
+                async Task ApplyAsync(bool doStart)
+                {
+                    if (doStart)
+                    {
+                        if (canControlPool)
+                        {
+                            steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: true));
+                        }
+                        if (!control.IsNested)
+                        {
+                            var r = await manager.StartSiteAsync(site.ServiceName);
+                            steps.Add((r.Success, r.Message));
+                        }
+                    }
+                    else
+                    {
+                        if (!control.IsNested)
+                        {
+                            var r = await manager.StopSiteAsync(site.ServiceName);
+                            steps.Add((r.Success, r.Message));
+                        }
+                        if (canControlPool)
+                        {
+                            steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: false));
+                        }
+                    }
+                }
+
+                if (restart)
+                {
+                    await ApplyAsync(false);
+                    await ApplyAsync(true);
+                }
+                else
+                {
+                    await ApplyAsync(start);
+                }
+
+                var ok = steps.All(s => s.Ok);
+                var message = string.Join("; ", steps.Select(s => s.Message));
+                return ok ? Ok(new { Success = ok, Message = message }) : BadRequest(new { Success = ok, Message = message });
             }
 
-            return BadRequest(new { result.Success, result.Message });
+            // Non-IIS (service-managed) sites keep the original behavior
+            var mgr = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+            if (restart)
+            {
+                await mgr.StopSiteAsync(site.ServiceName);
+            }
+            var result = start
+                ? await mgr.StartSiteAsync(site.ServiceName)
+                : await mgr.StopSiteAsync(site.ServiceName);
+
+            return result.Success
+                ? Ok(new { result.Success, result.Message })
+                : BadRequest(new { result.Success, result.Message });
         }
         catch (Exception ex)
         {

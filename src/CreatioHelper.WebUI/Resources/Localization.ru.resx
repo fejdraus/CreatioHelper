@@ -923,6 +923,18 @@
   <data name="Msg_DeleteFolderConfirm" xml:space="preserve">
     <value>Вы уверены, что хотите удалить папку "{0}"?</value>
   </data>
+  <data name="Msg_DeleteFolderUsedInSite" xml:space="preserve">
+    <value>Папка "{0}" связана с сайтом(ами): {1}. Связь будет удалена. Удалить папку?</value>
+  </data>
+  <data name="Msg_DeleteFolderSiteEmpty" xml:space="preserve">
+    <value>Папка "{0}" — последняя у сайта(ов): {1}. У этих сайтов не останется папок. Удалить также эти сайты?</value>
+  </data>
+  <data name="Msg_DeleteFolderAndSite" xml:space="preserve">
+    <value>Удалить папку и сайт(ы)</value>
+  </data>
+  <data name="Msg_DeleteFolderOnly" xml:space="preserve">
+    <value>Только папку</value>
+  </data>
 
   <data name="Time_JustNow" xml:space="preserve">
     <value>Только что</value>
@@ -3588,6 +3600,39 @@
   <data name="WebServer_DetectNotFound" xml:space="preserve">
     <value>Подходящий сайт IIS не найден</value>
   </data>
+  <data name="WebServer_DetectRequiresAdmin" xml:space="preserve">
+    <value>Не удаётся прочитать сайты IIS. Запустите агент от имени администратора для определения и управления IIS.</value>
+  </data>
+  <data name="WebServer_DetectMultipleSites" xml:space="preserve">
+    <value>Выбранные папки относятся к разным сайтам IIS: {0}. Связывайте папки одного сайта.</value>
+  </data>
+  <data name="WebServer_DiscoverSites" xml:space="preserve">
+    <value>Автодетект сайтов</value>
+  </data>
+  <data name="WebServer_DiscoverTitle" xml:space="preserve">
+    <value>Автодетект сайтов Creatio</value>
+  </data>
+  <data name="WebServer_DiscoverHint" xml:space="preserve">
+    <value>Найденные в IIS сайты Creatio, которые ещё не настроены. При выборе сайта его папки conf и Terrasoft.Configuration автоматически добавляются в синхронизацию.</value>
+  </data>
+  <data name="WebServer_DiscoverEmpty" xml:space="preserve">
+    <value>Новых сайтов Creatio в IIS не найдено.</value>
+  </data>
+  <data name="WebServer_DiscoverColumnSite" xml:space="preserve">
+    <value>Сайт IIS</value>
+  </data>
+  <data name="WebServer_DiscoverColumnFolders" xml:space="preserve">
+    <value>Папки для синхронизации</value>
+  </data>
+  <data name="WebServer_DiscoverAddSelected" xml:space="preserve">
+    <value>Добавить выбранные</value>
+  </data>
+  <data name="WebServer_DiscoverAdded" xml:space="preserve">
+    <value>Добавлено сайтов: {0}</value>
+  </data>
+  <data name="WebServer_DiscoverFound" xml:space="preserve">
+    <value>Найдено</value>
+  </data>
   <data name="WebServer_SiteSaved" xml:space="preserve">
     <value>Сайт «{0}» сохранён</value>
   </data>
@@ -3599,6 +3644,42 @@
   </data>
   <data name="WebServer_Host" xml:space="preserve">
     <value>Хост</value>
+  </data>
+  <data name="WebServer_AppPool" xml:space="preserve">
+    <value>Пул приложений</value>
+  </data>
+  <data name="WebServer_IisSiteNameHint" xml:space="preserve">
+    <value>Имя сайта в IIS. Заполняется кнопкой «Определить по папке».</value>
+  </data>
+  <data name="WebServer_AppPoolShort" xml:space="preserve">
+    <value>Пул</value>
+  </data>
+  <data name="WebServer_AppPoolHint" xml:space="preserve">
+    <value>Пул приложений IIS. Заполняется автоматически при определении по папке.</value>
+  </data>
+  <data name="WebServer_SiteState" xml:space="preserve">
+    <value>Состояние сайта</value>
+  </data>
+  <data name="WebServer_PoolState" xml:space="preserve">
+    <value>Состояние пула</value>
+  </data>
+  <data name="WebServer_Restart" xml:space="preserve">
+    <value>Перезагрузить</value>
+  </data>
+  <data name="WebServer_RestartTitle" xml:space="preserve">
+    <value>Перезагрузить сайт</value>
+  </data>
+  <data name="WebServer_RestartConfirm" xml:space="preserve">
+    <value>Перезагрузить сайт «{0}»? Он будет кратковременно недоступен.</value>
+  </data>
+  <data name="WebServer_Restarted" xml:space="preserve">
+    <value>Сайт «{0}» перезагружен</value>
+  </data>
+  <data name="WebServer_SharedPoolHint" xml:space="preserve">
+    <value>Пул общий с другими сайтами/приложениями — он никогда не запускается и не останавливается, управляется только сам сайт.</value>
+  </data>
+  <data name="WebServer_NestedSharedPoolHint" xml:space="preserve">
+    <value>Вложенное приложение на общем пуле: в IIS нет старт/стоп для отдельного приложения, а общий пул трогать нельзя.</value>
   </data>
   <data name="WebServer_Actions" xml:space="preserve">
     <value>Действия</value>

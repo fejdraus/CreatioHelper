@@ -10,21 +10,99 @@
 
 <PageTitle>@L["WebServer_Title"] - CreatioHelper</PageTitle>
 
-<div class="d-flex align-center mb-4">
-    <MudText Typo="Typo.h4" Class="flex-grow-1">@L["WebServer_Title"]</MudText>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Primary"
-               StartIcon="@Icons.Material.Filled.Add"
-               OnClick="AddSite"
-               Class="mr-2">
-        @L["WebServer_AddSite"]
-    </MudButton>
-    <MudButton Variant="Variant.Filled"
-               Color="Color.Default"
-               StartIcon="@Icons.Material.Filled.Refresh"
-               OnClick="@(() => Refresh(showLoading: true))">
-        @L["Common_Refresh"]
-    </MudButton>
+<style>
+    /* Measured against the real available width (container query), so the sidebar and the
+       display scaling are taken into account instead of guessing from the window size. */
+    .ws-header-host { container-type: inline-size; }
+
+    .ws-header { display: flex; align-items: center; gap: .5rem; }
+    .ws-header__title { flex-grow: 1; }
+    .ws-header__actions { display: flex; gap: .5rem; margin-left: auto; }
+
+    /* Title and actions no longer fit together: the title moves to its own row while the
+       actions keep their natural width on a single row. */
+    @@container (max-width: 780px) {
+        .ws-header { flex-direction: column; align-items: flex-start; }
+        .ws-header__actions { margin-left: 0; align-self: flex-end; }
+    }
+
+    /* The three actions themselves no longer fit on one row: stack them full width. */
+    @@container (max-width: 570px) {
+        .ws-header { align-items: stretch; }
+        .ws-header__actions { flex-direction: column; align-self: stretch; }
+    }
+
+    /* The table switches to the stacked card layout on its own width instead of the
+       viewport breakpoint, so it never overflows into a horizontal scrollbar. */
+    .ws-table-host { container-type: inline-size; }
+
+    @@container (max-width: 720px) {
+        .ws-table .mud-table-root > thead { display: none !important; }
+
+        .ws-table .mud-table-container { overflow-x: hidden !important; }
+
+        .ws-table .mud-table-root,
+        .ws-table .mud-table-root > tbody,
+        .ws-table .mud-table-root > tbody > tr {
+            display: block !important;
+            width: 100% !important;
+            min-width: 0 !important;
+        }
+
+        .ws-table .mud-table-root > tbody > tr { border-bottom: 1px solid var(--mud-palette-table-lines); }
+        .ws-table .mud-table-root > tbody > tr:last-child { border-bottom: none; }
+
+        .ws-table .mud-table-root > tbody > tr > td {
+            display: flex !important;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: .25rem 1rem;
+            width: 100% !important;
+            border: none !important;
+            text-align: right;
+        }
+
+        /* When the label and the value no longer fit side by side the value moves to its own
+           line instead of being clipped. */
+        .ws-table .mud-table-root > tbody > tr > td > * { min-width: 0; }
+
+        .ws-table .mud-table-root > tbody > tr > td::before {
+            content: attr(data-label);
+            font-weight: 500;
+            text-align: left;
+            color: var(--mud-palette-text-secondary);
+        }
+    }
+
+    .ws-row-actions { display: inline-flex; align-items: center; justify-content: flex-end; }
+</style>
+
+<div class="ws-header-host mb-4">
+<div class="ws-header">
+    <MudText Typo="Typo.h4" Class="ws-header__title">@L["WebServer_Title"]</MudText>
+
+    <div class="ws-header__actions">
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Secondary"
+                   StartIcon="@Icons.Material.Filled.TravelExplore"
+                   OnClick="DiscoverSites">
+            @L["WebServer_DiscoverSites"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   StartIcon="@Icons.Material.Filled.Add"
+                   OnClick="AddSite">
+            @L["WebServer_AddSite"]
+        </MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Default"
+                   StartIcon="@Icons.Material.Filled.Refresh"
+                   OnClick="@(() => Refresh(showLoading: true))">
+            @L["Common_Refresh"]
+        </MudButton>
+    </div>
+</div>
 </div>
 
 @if (_accessStatus?.RequiresElevation == true)
@@ -50,13 +128,13 @@ else if (_sites.Count == 0)
 }
 else
 {
-    <MudPaper Elevation="2">
-        <MudTable Items="@_sites" Dense="true" Hover="true">
+    <MudPaper Elevation="2" Class="ws-table-host">
+        <MudTable Items="@_sites" Dense="true" Hover="true" Breakpoint="Breakpoint.None" Class="ws-table">
             <HeaderContent>
                 <MudTh>@L["WebServer_Site"]</MudTh>
                 <MudTh>@L["WebServer_ManagedBy"]</MudTh>
                 <MudTh>@L["WebServer_Host"]</MudTh>
-                <MudTh>@L["WebServer_State"]</MudTh>
+                <MudTh>@L["WebServer_AppPool"]</MudTh>
                 <MudTh Style="text-align: right;">@L["WebServer_Actions"]</MudTh>
             </HeaderContent>
             <RowTemplate>
@@ -64,37 +142,74 @@ else
                 <MudTd DataLabel="@L["WebServer_ManagedBy"]">
                     @(context.WebServerType == WebServerKindDto.Iis ? L["WebServer_TypeIis"] : L["WebServer_TypeService"])
                 </MudTd>
-                <MudTd DataLabel="@L["WebServer_Host"]">@context.ServiceName</MudTd>
-                <MudTd DataLabel="@L["WebServer_State"]">
-                    @if (NeedsElevation(context))
+                <MudTd DataLabel="@L["WebServer_Host"]">
+                    <div class="d-flex align-center gap-2">
+                        <MudText Typo="Typo.body2">@context.ServiceName</MudText>
+                        @if (NeedsElevation(context))
+                        {
+                            <MudTooltip Text="@L["WebServer_ElevationRequired"]">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.AdminPanelSettings" Class="ma-0">@L["WebServer_NeedsAdmin"]</MudChip>
+                            </MudTooltip>
+                        }
+                        else if (!string.IsNullOrEmpty(context.SiteState))
+                        {
+                            <MudChip T="string" Size="Size.Small"
+                                     Color="@(IsRunning(context.SiteState) ? Color.Success : Color.Default)"
+                                     Variant="@(IsRunning(context.SiteState) ? Variant.Filled : Variant.Outlined)"
+                                     Class="ma-0">@context.SiteState</MudChip>
+                        }
+                    </div>
+                </MudTd>
+                <MudTd DataLabel="@L["WebServer_AppPoolShort"]">
+                    @if (string.IsNullOrEmpty(context.AppPool))
                     {
-                        <MudTooltip Text="@L["WebServer_ElevationRequired"]">
-                            <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.AdminPanelSettings">@L["WebServer_NeedsAdmin"]</MudChip>
-                        </MudTooltip>
-                    }
-                    else if (IsRunning(context.Status))
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@context.Status</MudChip>
+                        <MudText Typo="Typo.body2" Color="Color.Default">—</MudText>
                     }
                     else
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@context.Status</MudChip>
+                        <div class="d-flex align-center gap-2">
+                            @if (context.PoolShared)
+                            {
+                                <MudTooltip Text="@L["WebServer_SharedPoolHint"]">
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Warning" Class="ma-0">@context.AppPool</MudChip>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.body2">@context.AppPool</MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(context.PoolState))
+                            {
+                                <MudChip T="string" Size="Size.Small"
+                                         Color="@(IsRunning(context.PoolState) ? Color.Success : Color.Default)"
+                                         Variant="@(IsRunning(context.PoolState) ? Variant.Filled : Variant.Outlined)"
+                                         Class="ma-0">@context.PoolState</MudChip>
+                            }
+                        </div>
                     }
                 </MudTd>
                 <MudTd DataLabel="@L["WebServer_Actions"]" Style="text-align: right;">
-                    <MudTooltip Text="@L["WebServer_Start"]">
+                    <div class="ws-row-actions">
+                    <MudTooltip Text="@(context.CanManage ? L["WebServer_Start"] : L["WebServer_NestedSharedPoolHint"])">
                         <MudIconButton Icon="@Icons.Material.Filled.PlayArrow"
                                        Color="Color.Success"
                                        Size="Size.Small"
-                                       Disabled="@(_busy.Contains(context.Name) || IsRunning(context.Status) || NeedsElevation(context))"
+                                       Disabled="@(_busy.Contains(context.Name) || IsRunning(context.Status) || NeedsElevation(context) || !context.CanManage)"
                                        OnClick="@(() => StartSite(context))" />
                     </MudTooltip>
-                    <MudTooltip Text="@L["WebServer_Stop"]">
+                    <MudTooltip Text="@(context.CanManage ? L["WebServer_Stop"] : L["WebServer_NestedSharedPoolHint"])">
                         <MudIconButton Icon="@Icons.Material.Filled.Stop"
                                        Color="Color.Warning"
                                        Size="Size.Small"
-                                       Disabled="@(_busy.Contains(context.Name) || !IsRunning(context.Status) || NeedsElevation(context))"
+                                       Disabled="@(_busy.Contains(context.Name) || !IsRunning(context.Status) || NeedsElevation(context) || !context.CanManage)"
                                        OnClick="@(() => StopSite(context))" />
+                    </MudTooltip>
+                    <MudTooltip Text="@(context.CanManage ? L["WebServer_Restart"] : L["WebServer_NestedSharedPoolHint"])">
+                        <MudIconButton Icon="@Icons.Material.Filled.RestartAlt"
+                                       Color="Color.Info"
+                                       Size="Size.Small"
+                                       Disabled="@(_busy.Contains(context.Name) || NeedsElevation(context) || !context.CanManage)"
+                                       OnClick="@(() => RestartSite(context))" />
                     </MudTooltip>
                     <MudTooltip Text="@L["Common_Edit"]">
                         <MudIconButton Icon="@Icons.Material.Filled.Edit"
@@ -107,6 +222,7 @@ else
                                        Size="Size.Small"
                                        OnClick="@(() => DeleteSite(context))" />
                     </MudTooltip>
+                    </div>
                 </MudTd>
             </RowTemplate>
         </MudTable>
@@ -153,9 +269,27 @@ else
         }
     }
 
+    private static readonly DialogOptions SiteDialogOptions = new()
+    {
+        CloseOnEscapeKey = true,
+        MaxWidth = MaxWidth.Small,
+        FullWidth = true
+    };
+
     private async Task AddSite()
     {
-        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_AddSite"]);
+        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_AddSite"], SiteDialogOptions);
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            await Refresh(showLoading: false);
+        }
+    }
+
+    private async Task DiscoverSites()
+    {
+        var options = new DialogOptions { CloseOnEscapeKey = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<SiteDiscoveryDialog>(L["WebServer_DiscoverTitle"], options);
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -170,7 +304,7 @@ else
             { nameof(AddSiteDialog.IsEditMode), true },
             { nameof(AddSiteDialog.EditSite), site }
         };
-        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_EditSite"], parameters);
+        var dialog = await DialogService.ShowAsync<AddSiteDialog>(L["WebServer_EditSite"], parameters, SiteDialogOptions);
         var result = await dialog.Result;
         if (result is { Canceled: false })
         {
@@ -222,6 +356,37 @@ else
         }
 
         await ChangeState(site, start: false);
+    }
+
+    private async Task RestartSite(WebSiteInfoDto site)
+    {
+        var confirmed = await DialogService.ShowMessageBoxAsync(
+            L["WebServer_RestartTitle"],
+            L["WebServer_RestartConfirm", site.Name],
+            yesText: L["WebServer_Restart"],
+            cancelText: L["Common_Cancel"]);
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        _busy.Add(site.Name);
+        StateHasChanged();
+        try
+        {
+            await ApiClient.RestartSiteAsync(site.Name);
+            Snackbar.Add(L["WebServer_Restarted", site.Name], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(L["WebServer_ActionFailed", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
+        finally
+        {
+            _busy.Remove(site.Name);
+            await Refresh(showLoading: false);
+        }
     }
 
     private async Task ChangeState(WebSiteInfoDto site, bool start)

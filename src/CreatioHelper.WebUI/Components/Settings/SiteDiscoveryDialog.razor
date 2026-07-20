@@ -1,0 +1,167 @@
+@inject IApiClient ApiClient
+@inject ISnackbar Snackbar
+@inject IStringLocalizer<Localization> L
+@inject IErrorMessageHelper ErrorHelper
+@inject StateContainer State
+
+<MudDialog Style="max-height: 90vh;">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.TravelExplore" Class="mr-2" />
+            @L["WebServer_DiscoverTitle"]
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="my-4" />
+        }
+        else if (_requiresElevation)
+        {
+            <MudAlert Severity="Severity.Warning">@L["WebServer_DetectRequiresAdmin"]</MudAlert>
+        }
+        else if (_sites.Count == 0)
+        {
+            <MudAlert Severity="Severity.Info">@L["WebServer_DiscoverEmpty"]</MudAlert>
+        }
+        else
+        {
+            <div class="d-flex align-center mb-2">
+                <MudText Typo="Typo.body2" Class="flex-grow-1">@L["WebServer_DiscoverHint"]</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="ml-2">@($"{L["WebServer_DiscoverFound"]}: {_sites.Count}")</MudText>
+            </div>
+            <MudTable Items="_sites" Dense="true" Hover="true" T="DiscoveredSiteDto" Elevation="0"
+                      MultiSelection="true" @bind-SelectedItems="_selectedItems" FixedHeader="true" Height="45vh">
+                <HeaderContent>
+                    <MudTh>@L["WebServer_DiscoverColumnSite"]</MudTh>
+                    <MudTh>@L["WebServer_DiscoverColumnFolders"]</MudTh>
+                </HeaderContent>
+                <RowTemplate>
+                    <MudTd DataLabel="@L["WebServer_DiscoverColumnSite"]">
+                        <MudText Typo="Typo.body2">@context.SiteName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@context.AppRootPath</MudText>
+                    </MudTd>
+                    <MudTd DataLabel="@L["WebServer_DiscoverColumnFolders"]">
+                        @foreach (var folder in context.Folders)
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text" Class="ma-0 mr-1">@folder.Name</MudChip>
+                        }
+                    </MudTd>
+                </RowTemplate>
+            </MudTable>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   Disabled="@(_adding || _selectedItems.Count == 0)"
+                   OnClick="AddSelected">
+            @if (_adding)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(_selectedItems.Count > 0 ? $"{L["WebServer_DiscoverAddSelected"]} ({_selectedItems.Count})" : L["WebServer_DiscoverAddSelected"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = null!;
+
+    private bool _loading = true;
+    private bool _adding;
+    private bool _requiresElevation;
+    private List<DiscoveredSiteDto> _sites = new();
+    private HashSet<DiscoveredSiteDto> _selectedItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await ApiClient.DiscoverSitesAsync();
+            _sites = response?.Sites ?? new List<DiscoveredSiteDto>();
+            _requiresElevation = response?.RequiresElevation ?? false;
+        }
+        catch
+        {
+            _sites = new List<DiscoveredSiteDto>();
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task AddSelected()
+    {
+        _adding = true;
+        try
+        {
+            var existingFolders = (await ApiClient.GetFoldersAsync()).ToList();
+            var addedSites = 0;
+
+            foreach (var site in _selectedItems)
+            {
+                var folderIds = new List<string>();
+                foreach (var folder in site.Folders)
+                {
+                    var existing = existingFolders.FirstOrDefault(f => NormalizePath(f.Path) == NormalizePath(folder.Path));
+                    if (existing != null)
+                    {
+                        folderIds.Add(existing.Id);
+                        continue;
+                    }
+
+                    var config = new FolderConfig
+                    {
+                        Id = GenerateFolderId(),
+                        Label = $"{site.SiteName} {folder.Name}",
+                        Path = folder.Path
+                    };
+                    await ApiClient.AddFolderAsync(config);
+                    existingFolders.Add(config);
+                    folderIds.Add(config.Id);
+                }
+
+                await ApiClient.RegisterSiteAsync(new SiteRegistrationDto
+                {
+                    DisplayName = site.SiteName,
+                    Type = "IIS",
+                    ServiceName = site.SiteName,
+                    FolderIds = folderIds
+                });
+                addedSites++;
+            }
+
+            if (addedSites > 0)
+            {
+                State.Folders = await ApiClient.GetFoldersAsync();
+            }
+
+            Snackbar.Add(string.Format(L["WebServer_DiscoverAdded"], addedSites), Severity.Success);
+            MudDialog.Close(DialogResult.Ok(addedSites));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
+        }
+        finally
+        {
+            _adding = false;
+        }
+    }
+
+    private static string NormalizePath(string path)
+        => path.Replace('/', '\\').TrimEnd('\\').ToLowerInvariant();
+
+    private static string GenerateFolderId()
+    {
+        const string chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+        var random = new Random();
+        string Part() => new string(Enumerable.Range(0, 5).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+        return $"{Part()}-{Part()}";
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

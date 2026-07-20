@@ -385,29 +385,91 @@ else
 
     private async Task DeleteFolder(FolderConfig folder)
     {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            L["Folders_RemoveFolder"],
-            L["Msg_DeleteFolderConfirm", folder.DisplayName],
-            yesText: L["Action_Delete"],
-            cancelText: L["Settings_Cancel"]);
-
-        if (confirmed == true)
+        WebSiteInfoDto[] sites;
+        try
         {
-            try
+            sites = await ApiClient.GetWebSitesAsync(includeLiveState: false);
+        }
+        catch
+        {
+            sites = Array.Empty<WebSiteInfoDto>();
+        }
+
+        var linkedSites = sites.Where(s => s.FolderIds.Contains(folder.Id)).ToList();
+        var emptiedSites = linkedSites.Where(s => s.FolderIds.Count == 1).ToList();
+
+        bool? confirmed;
+        var deleteEmptiedSites = false;
+
+        if (emptiedSites.Count > 0)
+        {
+            var result = await DialogService.ShowMessageBoxAsync(
+                L["Folders_RemoveFolder"],
+                L["Msg_DeleteFolderSiteEmpty", folder.DisplayName, string.Join(", ", emptiedSites.Select(s => s.Name))],
+                yesText: L["Msg_DeleteFolderAndSite"],
+                noText: L["Msg_DeleteFolderOnly"],
+                cancelText: L["Settings_Cancel"]);
+
+            if (result == null)
             {
-                await ApiClient.DeleteFolderAsync(folder.Id);
-                State.Folders = State.Folders.Where(f => f.Id != folder.Id).ToArray();
-                Snackbar.Add(L["Msg_FolderRemoved"], Severity.Success);
+                return;
             }
-            catch (Exception ex)
+
+            deleteEmptiedSites = result == true;
+            confirmed = true;
+        }
+        else if (linkedSites.Count > 0)
+        {
+            confirmed = await DialogService.ShowMessageBoxAsync(
+                L["Folders_RemoveFolder"],
+                L["Msg_DeleteFolderUsedInSite", folder.DisplayName, string.Join(", ", linkedSites.Select(s => s.Name))],
+                yesText: L["Action_Delete"],
+                cancelText: L["Settings_Cancel"]);
+        }
+        else
+        {
+            confirmed = await DialogService.ShowMessageBoxAsync(
+                L["Folders_RemoveFolder"],
+                L["Msg_DeleteFolderConfirm", folder.DisplayName],
+                yesText: L["Action_Delete"],
+                cancelText: L["Settings_Cancel"]);
+        }
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        try
+        {
+            await ApiClient.DeleteFolderAsync(folder.Id);
+            State.Folders = State.Folders.Where(f => f.Id != folder.Id).ToArray();
+
+            if (deleteEmptiedSites)
             {
-                if (ErrorHelper.IsAuthenticationError(ex))
+                foreach (var site in emptiedSites)
                 {
-                    Navigation.NavigateTo("/login", forceLoad: true);
-                    return;
+                    try
+                    {
+                        await ApiClient.DeleteSiteAsync(site.Name);
+                    }
+                    catch (Exception siteEx)
+                    {
+                        Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(siteEx)}", Severity.Warning);
+                    }
                 }
-                Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
             }
+
+            Snackbar.Add(L["Msg_FolderRemoved"], Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return;
+            }
+            Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(ex)}", Severity.Error);
         }
     }
 

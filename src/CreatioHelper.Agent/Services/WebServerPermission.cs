@@ -12,7 +12,10 @@ public static class WebServerPermission
         "run this command as an administrator",
         "elevat",
         "requires elevation",
-        "administrator privilege"
+        "administrator privilege",
+        "cannot find a provider with the name 'webadministration'",
+        "providernotfound",
+        "retrieving the com class factory"
     };
 
     public static bool IsPermissionError(string? stderr)

@@ -56,14 +56,17 @@ public interface IApiClient
 
     // Web server
     Task<WebServerAccessStatusInfo?> GetWebServerAccessStatusAsync();
-    Task<WebSiteInfoDto[]> GetWebSitesAsync();
+    Task<WebSiteInfoDto[]> GetWebSitesAsync(bool includeLiveState = true);
     Task SetSiteWebServerTypeAsync(string siteName, WebServerKindDto type);
     Task RegisterSiteAsync(SiteRegistrationDto site);
     Task UpdateSiteAsync(string siteName, SiteRegistrationDto site);
     Task DeleteSiteAsync(string siteName);
-    Task<string?> DetectIisSiteAsync(string path);
+    Task<DetectSiteResponse?> DetectIisSiteAsync(string path);
+    Task<DetectBatchResponse?> DetectIisSitesAsync(IReadOnlyList<string> paths);
+    Task<DiscoverSitesResponse?> DiscoverSitesAsync();
     Task StartSiteAsync(string siteName);
     Task StopSiteAsync(string siteName);
+    Task RestartSiteAsync(string siteName);
 
     // File system browse (on the agent host)
     Task<string[]> BrowseAsync(string? current);
@@ -334,9 +337,10 @@ public class ApiClient : IApiClient
         return await _httpClient.GetFromJsonAsync<WebServerAccessStatusInfo>("/api/webserver/access-status");
     }
 
-    public async Task<WebSiteInfoDto[]> GetWebSitesAsync()
+    public async Task<WebSiteInfoDto[]> GetWebSitesAsync(bool includeLiveState = true)
     {
-        var response = await _httpClient.GetFromJsonAsync<WebSitesResponse>("/api/website");
+        var url = includeLiveState ? "/api/website" : "/api/website?liveState=false";
+        var response = await _httpClient.GetFromJsonAsync<WebSitesResponse>(url);
         return response?.Sites ?? [];
     }
 
@@ -357,7 +361,7 @@ public class ApiClient : IApiClient
     {
         var response = await _httpClient.PutAsJsonAsync(
             $"/api/website/{Uri.EscapeDataString(siteName)}",
-            new { site.Type, site.ServiceName, site.FolderIds });
+            new { site.Type, site.ServiceName, site.AppPool, site.FolderIds });
         response.EnsureSuccessStatusCode();
     }
 
@@ -367,11 +371,25 @@ public class ApiClient : IApiClient
         response.EnsureSuccessStatusCode();
     }
 
-    public async Task<string?> DetectIisSiteAsync(string path)
+    public async Task<DetectSiteResponse?> DetectIisSiteAsync(string path)
     {
-        var result = await _httpClient.GetFromJsonAsync<DetectSiteResponse>(
+        return await _httpClient.GetFromJsonAsync<DetectSiteResponse>(
             $"/api/website/detect?path={Uri.EscapeDataString(path)}");
-        return result?.SiteName;
+    }
+
+    public async Task<DetectBatchResponse?> DetectIisSitesAsync(IReadOnlyList<string> paths)
+    {
+        var response = await _httpClient.PostAsJsonAsync("/api/website/detect-batch", paths);
+        if (!response.IsSuccessStatusCode)
+        {
+            return null;
+        }
+        return await response.Content.ReadFromJsonAsync<DetectBatchResponse>();
+    }
+
+    public async Task<DiscoverSitesResponse?> DiscoverSitesAsync()
+    {
+        return await _httpClient.GetFromJsonAsync<DiscoverSitesResponse>("/api/website/discover");
     }
 
     public async Task StartSiteAsync(string siteName)
@@ -383,6 +401,12 @@ public class ApiClient : IApiClient
     public async Task StopSiteAsync(string siteName)
     {
         var response = await _httpClient.PostAsync($"/api/website/{Uri.EscapeDataString(siteName)}/stop", null);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task RestartSiteAsync(string siteName)
+    {
+        var response = await _httpClient.PostAsync($"/api/website/{Uri.EscapeDataString(siteName)}/restart", null);
         response.EnsureSuccessStatusCode();
     }
 

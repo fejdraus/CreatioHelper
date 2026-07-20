@@ -70,19 +70,96 @@ public class WebSiteRegistryService : IDisposable
 
     public async Task<string?> DetectIisSiteByPathAsync(string path)
     {
-        if (!OperatingSystem.IsWindows() || string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(path))
         {
             return null;
         }
 
-        var script = "Get-Website | Select-Object Name, @{Name='PhysicalPath';Expression={$_.physicalPath}} | ConvertTo-Json";
+        var candidates = await GetIisCandidatesAsync().ConfigureAwait(false);
+        return ResolveOwningSite(candidates, path);
+    }
+
+    public async Task<Dictionary<string, string?>> DetectIisSitesByPathsAsync(IReadOnlyList<string> paths)
+    {
+        var map = new Dictionary<string, string?>();
+        if (paths == null || paths.Count == 0)
+        {
+            return map;
+        }
+
+        var candidates = await GetIisCandidatesAsync().ConfigureAwait(false);
+        foreach (var path in paths)
+        {
+            if (!string.IsNullOrWhiteSpace(path) && !map.ContainsKey(path))
+            {
+                map[path] = ResolveOwningSite(candidates, path);
+            }
+        }
+
+        return map;
+    }
+
+    public async Task<List<DiscoveredSite>> DiscoverCreatioSitesAsync(IReadOnlyCollection<string> configuredServiceNames)
+    {
+        var result = new List<DiscoveredSite>();
+        if (!OperatingSystem.IsWindows())
+        {
+            return result;
+        }
+
+        var candidates = await GetIisCandidatesAsync().ConfigureAwait(false);
+        var configured = new HashSet<string>(configuredServiceNames ?? Array.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+
+        foreach (var site in candidates.Where(c => !c.Name.Contains('/')))
+        {
+            if (configured.Contains(site.Name))
+            {
+                continue;
+            }
+
+            var webAppAlias = candidates.FirstOrDefault(c => c.Name.Equals(site.Name + "/0", StringComparison.OrdinalIgnoreCase));
+            var appRoot = webAppAlias.Name != null ? webAppAlias.PhysicalPath : site.PhysicalPath;
+
+            // Terrasoft.Configuration is a Creatio-specific marker present in both .NET Framework and .NET Core editions
+            var configurationPath = System.IO.Path.Combine(appRoot, "Terrasoft.Configuration");
+            if (!Directory.Exists(configurationPath))
+            {
+                continue;
+            }
+
+            var folders = new List<DiscoveredFolder>();
+            var confPath = System.IO.Path.Combine(appRoot, "conf");
+            if (Directory.Exists(confPath))
+            {
+                folders.Add(new DiscoveredFolder { Name = "conf", Path = confPath });
+            }
+            folders.Add(new DiscoveredFolder { Name = "Terrasoft.Configuration", Path = configurationPath });
+
+            result.Add(new DiscoveredSite
+            {
+                SiteName = site.Name,
+                AppRootPath = appRoot,
+                Folders = folders
+            });
+        }
+
+        return result;
+    }
+
+    public async Task<Dictionary<string, string>> GetIisSiteStatesAsync()
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        if (!OperatingSystem.IsWindows())
+        {
+            return map;
+        }
+
+        var script = "Get-Website | Select-Object Name, State | ConvertTo-Json";
         var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
         if (string.IsNullOrWhiteSpace(result))
         {
-            return null;
+            return map;
         }
-
-        var target = NormalizePath(path);
 
         try
         {
@@ -91,37 +168,230 @@ public class WebSiteRegistryService : IDisposable
                 ? json.EnumerateArray().ToList()
                 : new List<JsonElement> { json };
 
-            string? bestName = null;
-            var bestLength = -1;
+            foreach (var element in elements)
+            {
+                var name = GetPropertyIgnoreCase(element, "Name");
+                var state = GetPropertyIgnoreCase(element, "State");
+                if (!string.IsNullOrEmpty(name))
+                {
+                    map[name!] = state ?? string.Empty;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to read IIS site states");
+        }
+
+        return map;
+    }
+
+    public async Task<Dictionary<string, SiteControlInfo>> GetIisControlMapAsync()
+    {
+        var map = new Dictionary<string, SiteControlInfo>(StringComparer.OrdinalIgnoreCase);
+        if (!OperatingSystem.IsWindows())
+        {
+            return map;
+        }
+
+        var script = "$items = Get-Website | ForEach-Object { $s=$_; [pscustomobject]@{ Name=$s.name; Pool=$s.applicationPool; State=[string]$s.state }; Get-WebApplication -Site $s.name | ForEach-Object { [pscustomobject]@{ Name=($s.name+$_.path); Pool=$_.applicationPool; State='' } } }; $pools = Get-ChildItem 'IIS:\\AppPools' | ForEach-Object { [pscustomobject]@{ Name=('POOL::'+$_.Name); Pool=$_.Name; State=[string]$_.State } }; @($items) + @($pools) | ConvertTo-Json";
+        var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            return map;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Deserialize<JsonElement>(result);
+            var elements = json.ValueKind == JsonValueKind.Array
+                ? json.EnumerateArray().ToList()
+                : new List<JsonElement> { json };
+
+            var entries = new List<(string Name, string Pool, string State)>();
+            var poolStates = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var element in elements)
             {
-                var name = element.TryGetProperty("Name", out var n) ? n.GetString() : null;
-                var physical = element.TryGetProperty("PhysicalPath", out var p) ? p.GetString() : null;
-                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(physical))
+                var name = GetPropertyIgnoreCase(element, "Name");
+                var pool = GetPropertyIgnoreCase(element, "Pool") ?? string.Empty;
+                var state = GetPropertyIgnoreCase(element, "State") ?? string.Empty;
+                if (string.IsNullOrEmpty(name))
                 {
                     continue;
                 }
 
-                var normalized = NormalizePath(Environment.ExpandEnvironmentVariables(physical));
-                if (target.StartsWith(normalized, StringComparison.OrdinalIgnoreCase) && normalized.Length > bestLength)
+                if (name!.StartsWith("POOL::", StringComparison.Ordinal))
                 {
-                    bestLength = normalized.Length;
-                    bestName = name;
+                    poolStates[pool] = state;
+                }
+                else
+                {
+                    entries.Add((name, pool, state));
                 }
             }
 
-            return bestName;
+            var poolMembers = entries
+                .GroupBy(e => e.Pool, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.Name).ToList(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in entries)
+            {
+                var isNested = entry.Name.Contains('/');
+                var own = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { entry.Name, entry.Name + "/0" };
+                var members = poolMembers.TryGetValue(entry.Pool, out var m) ? m : new List<string>();
+                var shared = members.Any(member => !own.Contains(member));
+                poolStates.TryGetValue(entry.Pool, out var poolState);
+
+                map[entry.Name] = new SiteControlInfo
+                {
+                    ServiceName = entry.Name,
+                    AppPool = entry.Pool,
+                    SiteState = entry.State,
+                    PoolState = poolState ?? string.Empty,
+                    IsNested = isNested,
+                    PoolShared = shared
+                };
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogDebug(ex, "Failed to detect IIS site by path {Path}", path);
+            _logger.LogDebug(ex, "Failed to read IIS control map");
+        }
+
+        return map;
+    }
+
+    public async Task<(bool Success, string Message)> SetAppPoolStateAsync(string appPool, bool start)
+    {
+        if (!OperatingSystem.IsWindows() || string.IsNullOrEmpty(appPool))
+        {
+            return (false, "app pool control unavailable");
+        }
+
+        var escaped = appPool.Replace("'", "''");
+        var target = start ? "Started" : "Stopped";
+        var verb = start ? "Start-WebAppPool" : "Stop-WebAppPool";
+        var script = $"if ((Get-WebAppPoolState -Name '{escaped}').Value -ne '{target}') {{ {verb} -Name '{escaped}' }}; 'ok'";
+
+        var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
+        var ok = result != null && result.Contains("ok");
+        return ok
+            ? (true, $"app pool '{appPool}' {(start ? "started" : "stopped")}")
+            : (false, $"failed to {(start ? "start" : "stop")} app pool '{appPool}'");
+    }
+
+    private async Task<List<(string Name, string PhysicalPath)>> GetIisCandidatesAsync()
+    {
+        var candidates = new List<(string Name, string PhysicalPath)>();
+        if (!OperatingSystem.IsWindows())
+        {
+            return candidates;
+        }
+
+        var script = "Get-Website | ForEach-Object { $s = $_; [pscustomobject]@{ Name = $s.name; PhysicalPath = $s.physicalPath }; Get-WebApplication -Site $s.name | ForEach-Object { [pscustomobject]@{ Name = ($s.name + $_.path); PhysicalPath = $_.PhysicalPath } } } | ConvertTo-Json";
+        var result = await ExecutePowerShellAsync(script).ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(result))
+        {
+            return candidates;
+        }
+
+        try
+        {
+            var json = JsonSerializer.Deserialize<JsonElement>(result);
+            var elements = json.ValueKind == JsonValueKind.Array
+                ? json.EnumerateArray().ToList()
+                : new List<JsonElement> { json };
+
+            foreach (var element in elements)
+            {
+                var name = GetPropertyIgnoreCase(element, "Name");
+                var physical = GetPropertyIgnoreCase(element, "PhysicalPath");
+                if (!string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(physical))
+                {
+                    candidates.Add((name!, Environment.ExpandEnvironmentVariables(physical!)));
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to enumerate IIS sites and applications");
+        }
+
+        return candidates;
+    }
+
+    public static string? ResolveOwningSite(IReadOnlyList<(string Name, string PhysicalPath)> candidates, string targetPath)
+    {
+        if (string.IsNullOrWhiteSpace(targetPath))
+        {
             return null;
         }
+
+        var target = NormalizePath(targetPath);
+        string? bestName = null;
+        var bestLength = -1;
+
+        foreach (var (name, physicalPath) in candidates)
+        {
+            var normalized = NormalizePath(physicalPath);
+            if (IsSameOrAncestor(normalized, target) && normalized.Length > bestLength)
+            {
+                bestLength = normalized.Length;
+                bestName = name;
+            }
+        }
+
+        if (bestName == null)
+        {
+            return null;
+        }
+
+        if (bestName.EndsWith("/0", StringComparison.Ordinal))
+        {
+            bestName = bestName.Substring(0, bestName.Length - 2);
+        }
+
+        return bestName;
+    }
+
+    private static string? GetPropertyIgnoreCase(JsonElement element, string name)
+    {
+        if (element.ValueKind != JsonValueKind.Object)
+        {
+            return null;
+        }
+
+        foreach (var property in element.EnumerateObject())
+        {
+            if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+            {
+                return property.Value.ValueKind == JsonValueKind.String
+                    ? property.Value.GetString()
+                    : property.Value.ToString();
+            }
+        }
+
+        return null;
     }
 
     private static string NormalizePath(string path)
         => path.Replace('/', '\\').TrimEnd('\\');
+
+    private static bool IsSameOrAncestor(string ancestor, string target)
+    {
+        if (string.IsNullOrEmpty(ancestor))
+        {
+            return false;
+        }
+
+        if (target.Equals(ancestor, StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return target.StartsWith(ancestor + "\\", StringComparison.OrdinalIgnoreCase);
+    }
 
     public async Task SetWebServerTypeAsync(string siteName, WebServerKind kind)
     {
@@ -266,7 +536,7 @@ public class WebSiteRegistryService : IDisposable
     }
     
     // Manual site registration
-    public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, List<string>? folderIds = null, Dictionary<string, string>? properties = null)
+    public async Task RegisterWebSiteAsync(string displayName, string type, string serviceName, List<string>? folderIds = null, Dictionary<string, string>? properties = null, string? appPool = null)
     {
         await EnsureLoadedAsync().ConfigureAwait(false);
         await _semaphore.WaitAsync().ConfigureAwait(false);
@@ -282,6 +552,7 @@ public class WebSiteRegistryService : IDisposable
                 existing.Type = type;
                 existing.WebServerType = kind;
                 existing.ServiceName = serviceName;
+                existing.AppPool = appPool ?? string.Empty;
                 existing.FolderIds = folderIds ?? new List<string>();
                 existing.Properties = properties ?? new Dictionary<string, string>();
                 existing.LastUpdated = DateTime.UtcNow;
@@ -294,6 +565,7 @@ public class WebSiteRegistryService : IDisposable
                     Type = type,
                     WebServerType = kind,
                     ServiceName = serviceName,
+                    AppPool = appPool ?? string.Empty,
                     AutoDiscovered = false,
                     FolderIds = folderIds ?? new List<string>(),
                     Properties = properties ?? new Dictionary<string, string>(),
@@ -304,6 +576,40 @@ public class WebSiteRegistryService : IDisposable
             _registry.LastUpdated = DateTime.UtcNow;
             await SaveRegistryAsync().ConfigureAwait(false);
             _logger.LogInformation("Registered website: {DisplayName} -> {ServiceName} ({Type})", displayName, serviceName, type);
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task RemoveFolderFromAllSitesAsync(string folderId)
+    {
+        if (string.IsNullOrEmpty(folderId))
+        {
+            return;
+        }
+
+        await EnsureLoadedAsync().ConfigureAwait(false);
+        await _semaphore.WaitAsync().ConfigureAwait(false);
+        try
+        {
+            var changed = false;
+            foreach (var site in _registry.Sites)
+            {
+                if (site.FolderIds != null && site.FolderIds.Remove(folderId))
+                {
+                    site.LastUpdated = DateTime.UtcNow;
+                    changed = true;
+                }
+            }
+
+            if (changed)
+            {
+                _registry.LastUpdated = DateTime.UtcNow;
+                await SaveRegistryAsync().ConfigureAwait(false);
+                _logger.LogInformation("Removed deleted folder {FolderId} from linked sites", folderId);
+            }
         }
         finally
         {

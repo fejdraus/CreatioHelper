@@ -11,6 +11,8 @@ public class WebServerPermissionTests
     [InlineData("Access is denied")]
     [InlineData("Requested registry access is not allowed.")]
     [InlineData("The requested operation requires elevation.")]
+    [InlineData("Get-Website : Cannot find a provider with the name 'WebAdministration'.")]
+    [InlineData("Get-Website : ProviderNotFound")]
     public void IsPermissionError_DetectsElevationSignatures(string stderr)
     {
         Assert.True(WebServerPermission.IsPermissionError(stderr));

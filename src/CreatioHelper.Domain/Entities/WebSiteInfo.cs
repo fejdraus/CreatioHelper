@@ -9,6 +9,7 @@ public class WebSiteInfo
     public string Type { get; set; } = "";           // IIS, WindowsService, Systemd
     public WebServerKind WebServerType { get; set; } = WebServerKind.Auto;
     public string ServiceName { get; set; } = "";    // Actual service/site name
+    public string AppPool { get; set; } = "";        // IIS application pool name
     public bool AutoDiscovered { get; set; }         // true for IIS, false for manual
     public List<string> FolderIds { get; set; } = new();
     public Dictionary<string, string> Properties { get; set; } = new();
