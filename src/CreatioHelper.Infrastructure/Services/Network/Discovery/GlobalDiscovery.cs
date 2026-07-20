@@ -34,6 +34,7 @@ public class GlobalDiscovery : IAsyncDisposable
     private readonly X509Certificate2? _clientCertificate;
 
     private CancellationTokenSource? _cancellationTokenSource;
+    private CancellationTokenSource? _linkedCancellationTokenSource;
     private Task? _announceTask;
     private readonly Dictionary<string, CachedLookup> _lookupCache = new();
     private readonly object _cacheLock = new();
@@ -209,11 +210,11 @@ public class GlobalDiscovery : IAsyncDisposable
         }
 
         _cancellationTokenSource = new CancellationTokenSource();
-        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+        _linkedCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
             cancellationToken, _cancellationTokenSource.Token);
 
         var addressList = addresses.ToList();
-        _announceTask = AnnounceLoopAsync(addressList, linkedCts.Token);
+        _announceTask = AnnounceLoopAsync(addressList, _linkedCancellationTokenSource.Token);
 
         _logger.LogInformation("Global discovery started with {Count} servers", _discoveryServers.Count);
 
@@ -237,6 +238,9 @@ public class GlobalDiscovery : IAsyncDisposable
 
         _cancellationTokenSource?.Dispose();
         _cancellationTokenSource = null;
+
+        _linkedCancellationTokenSource?.Dispose();
+        _linkedCancellationTokenSource = null;
 
         _logger.LogInformation("Global discovery stopped");
     }

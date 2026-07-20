@@ -486,8 +486,8 @@ public class ApiClient : IApiClient
 
     public async Task<byte[]> GetCpuProfileAsync(int duration = 30)
     {
-        var cts = new CancellationTokenSource(TimeSpan.FromSeconds(duration + 30));
-        var response = await _httpClient.GetAsync($"/rest/debug/cpuprof?duration={duration}", cts.Token);
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(duration + 30));
+        using var response = await _httpClient.GetAsync($"/rest/debug/cpuprof?duration={duration}", cts.Token);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadAsByteArrayAsync(cts.Token);
     }
