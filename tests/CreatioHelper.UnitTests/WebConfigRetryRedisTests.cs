@@ -37,7 +37,17 @@ public class WebConfigRetryRedisTests
         var dir = Path.Combine(Path.GetTempPath(), "chwc_" + Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, fileName), content);
+        if (fileName == "Web.config")
+        {
+            MarkAsNetFramework(dir);
+        }
         return dir;
+    }
+
+    private static void MarkAsNetFramework(string dir)
+    {
+        Directory.CreateDirectory(Path.Combine(dir, "Terrasoft.WebApp", "bin"));
+        File.WriteAllText(Path.Combine(dir, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll"), "");
     }
 
     [Theory]

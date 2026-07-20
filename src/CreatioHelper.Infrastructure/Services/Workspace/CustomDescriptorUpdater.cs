@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services.Workspace;
 
@@ -32,7 +33,7 @@ public class CustomDescriptorUpdater : ICustomDescriptorUpdater
             return 0;
         }
 
-        var descriptorPath = Path.Combine(sitePath, "Terrasoft.WebApp", "Terrasoft.Configuration", "Pkg", "Custom", "descriptor.json");
+        var descriptorPath = Path.Combine(CreatioSiteLayout.GetConfigurationPath(sitePath), "Pkg", "Custom", "descriptor.json");
         if (!File.Exists(descriptorPath))
         {
             _output.WriteLine($"[INFO] Custom descriptor.json not found at {descriptorPath}, skipping cleanup.");

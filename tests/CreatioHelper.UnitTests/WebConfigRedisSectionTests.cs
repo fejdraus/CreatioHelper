@@ -26,6 +26,11 @@ public class WebConfigRedisSectionTests
         var dir = Path.Combine(Path.GetTempPath(), "chrs_" + Path.GetRandomFileName());
         Directory.CreateDirectory(dir);
         File.WriteAllText(Path.Combine(dir, fileName), content);
+        if (fileName == "Web.config")
+        {
+            Directory.CreateDirectory(Path.Combine(dir, "Terrasoft.WebApp", "bin"));
+            File.WriteAllText(Path.Combine(dir, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll"), "");
+        }
         return dir;
     }
 
@@ -43,6 +48,31 @@ public class WebConfigRedisSectionTests
         Assert.Equal("redis", attributes.First(a => a.Key == "connectionStringName").Value);
         Assert.Equal("10", attributes.First(a => a.Key == "operationRetryCount").Value);
         Assert.Equal("true", attributes.First(a => a.Key == "abortOnConnectFail").Value);
+    }
+
+    [Fact]
+    public void GetRedisSectionFileName_ReturnsWebConfig_ForNetFramework()
+    {
+        var dir = CreateSite("Web.config", WithTerrasoftRedis);
+        Assert.Equal("Web.config", new WebConfigEditor().GetRedisSectionFileName(dir));
+    }
+
+    [Fact]
+    public void GetRedisSectionFileName_PrefersCoreConfig_ForNetCore()
+    {
+        var dir = CreateSite("Terrasoft.WebHost.dll.config", WithTerrasoftRedis);
+        File.WriteAllText(Path.Combine(dir, "Web.config"), WithTerrasoftRedis);
+
+        Assert.Equal("Terrasoft.WebHost.dll.config", new WebConfigEditor().GetRedisSectionFileName(dir));
+    }
+
+    [Fact]
+    public void GetRedisSectionFileName_ReturnsNull_WhenNoConfigFile()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "chrs_" + Path.GetRandomFileName());
+        Directory.CreateDirectory(dir);
+
+        Assert.Null(new WebConfigEditor().GetRedisSectionFileName(dir));
     }
 
     [Fact]

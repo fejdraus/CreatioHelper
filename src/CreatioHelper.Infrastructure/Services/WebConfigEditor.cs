@@ -1,6 +1,7 @@
 using System.Xml;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services;
 
@@ -9,17 +10,16 @@ public class WebConfigEditor : IWebConfigEditor
     public WebConfigData Read(string sitePath)
     {
         var data = new WebConfigData();
-        var corePath = Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
-        if (File.Exists(corePath))
+        if (CreatioSiteLayout.IsDotNetCore(sitePath))
         {
             data.IsNetCore = true;
-            ReadCoreConfig(corePath, data);
-            ReadCoreRootConfig(Path.Combine(sitePath, "Web.config"), data);
+            ReadCoreConfig(Path.Combine(sitePath, CreatioSiteLayout.CoreConfigFileName), data);
+            ReadCoreRootConfig(Path.Combine(sitePath, CreatioSiteLayout.FrameworkConfigFileName), data);
         }
         else
         {
-            ReadRootConfig(Path.Combine(sitePath, "Web.config"), data);
-            ReadAppConfig(Path.Combine(sitePath, "Terrasoft.WebApp", "Web.config"), data);
+            ReadRootConfig(Path.Combine(sitePath, CreatioSiteLayout.FrameworkConfigFileName), data);
+            ReadAppConfig(Path.Combine(CreatioSiteLayout.GetWebAppPath(sitePath), CreatioSiteLayout.FrameworkConfigFileName), data);
         }
         return data;
     }
@@ -28,13 +28,13 @@ public class WebConfigEditor : IWebConfigEditor
     {
         if (data.IsNetCore)
         {
-            WriteCoreConfig(Path.Combine(sitePath, "Terrasoft.WebHost.dll.config"), data);
-            WriteCoreRootConfig(Path.Combine(sitePath, "Web.config"), data);
+            WriteCoreConfig(Path.Combine(sitePath, CreatioSiteLayout.CoreConfigFileName), data);
+            WriteCoreRootConfig(Path.Combine(sitePath, CreatioSiteLayout.FrameworkConfigFileName), data);
         }
         else
         {
-            WriteRootConfig(Path.Combine(sitePath, "Web.config"), data);
-            WriteAppConfig(Path.Combine(sitePath, "Terrasoft.WebApp", "Web.config"), data);
+            WriteRootConfig(Path.Combine(sitePath, CreatioSiteLayout.FrameworkConfigFileName), data);
+            WriteAppConfig(Path.Combine(CreatioSiteLayout.GetWebAppPath(sitePath), CreatioSiteLayout.FrameworkConfigFileName), data);
         }
     }
 
@@ -88,6 +88,12 @@ public class WebConfigEditor : IWebConfigEditor
         doc.Save(filePath);
     }
 
+    public string? GetRedisSectionFileName(string sitePath)
+    {
+        var filePath = ResolveAppSettingsPath(sitePath);
+        return filePath is null ? null : Path.GetFileName(filePath);
+    }
+
     public IReadOnlyList<KeyValuePair<string, string>>? ReadRedisSection(string sitePath)
     {
         var filePath = ResolveAppSettingsPath(sitePath);
@@ -137,16 +143,7 @@ public class WebConfigEditor : IWebConfigEditor
         => doc.SelectSingleNode("/configuration/terrasoft/redis") ?? doc.SelectSingleNode("//redis");
 
     private static string? ResolveAppSettingsPath(string sitePath)
-    {
-        var corePath = Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
-        if (File.Exists(corePath))
-        {
-            return corePath;
-        }
-
-        var rootPath = Path.Combine(sitePath, "Web.config");
-        return File.Exists(rootPath) ? rootPath : null;
-    }
+        => CreatioSiteLayout.FindExistingRootConfigPath(sitePath);
 
     private static void ReadRootConfig(string filePath, WebConfigData data)
     {

@@ -471,6 +471,8 @@ public class ConnectionStringsEditorTests
 <connectionStrings>
   <add name=""db"" connectionString="""" />
 </connectionStrings>");
+        Directory.CreateDirectory(Path.Combine(site, "Terrasoft.WebApp", "bin"));
+        File.WriteAllText(Path.Combine(site, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll"), "");
         File.WriteAllText(Path.Combine(site, "Web.config"), @"<?xml version=""1.0""?>
 <configuration>
   <terrasoft>

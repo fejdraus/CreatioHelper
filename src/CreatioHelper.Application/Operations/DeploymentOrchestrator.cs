@@ -425,9 +425,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             ui.OnStopButtonEnabledChanged(false);
             if (!quartzIsActiveOriginal)
             {
-                string config = Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"))
-                    ? Path.Combine(sitePath, "Web.config")
-                    : Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+                string config = CreatioSiteLayout.GetRootConfigPath(sitePath);
                 _workspacePreparer.UpdateOutConfig(config, quartzIsActiveOriginal);
             }
         }

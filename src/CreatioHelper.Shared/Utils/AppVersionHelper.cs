@@ -32,22 +32,8 @@ public static class AppVersionHelper
 
     private static string? GetTerrasoftDllPath(string sitePath)
     {
-        string directPath = Path.Combine(sitePath, "Terrasoft.Common.dll");
-        if (File.Exists(directPath))
-        {
-            return directPath;
-        }
-
-        if (OperatingSystem.IsWindows())
-        {
-            string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
-            if (File.Exists(nestedPath))
-            {
-                return nestedPath;
-            }
-        }
-
-        return null;
+        var dllPath = CreatioSiteLayout.GetApplicationDllPath(sitePath);
+        return File.Exists(dllPath) ? dllPath : null;
     }
 
 }

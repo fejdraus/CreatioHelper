@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Xml;
 using CreatioHelper.Application.Interfaces;
@@ -702,15 +702,11 @@ public class WorkspacePreparer : IWorkspacePreparer
 
     private static string Quote(string path) => $"\"{path}\"";
     
-    private string GetWebAppPath(string sitePath) => IsDotNetFramework(sitePath)
-        ? Path.Combine(sitePath, "Terrasoft.WebApp")
-        : SafePath(sitePath);
+    private string GetWebAppPath(string sitePath) => CreatioSiteLayout.GetWebAppPath(sitePath);
 
-    private string GetConfigurationPath(string sitePath) => Path.Combine(GetWebAppPath(sitePath), "Terrasoft.Configuration");
+    private string GetConfigurationPath(string sitePath) => CreatioSiteLayout.GetConfigurationPath(sitePath);
 
-    private bool IsDotNetFramework(string sitePath) =>
-        !File.Exists(Path.Combine(sitePath, "Terrasoft.WebHost.dll.config")) &&
-        Directory.Exists(Path.Combine(sitePath, "Terrasoft.WebApp"));
+    private bool IsDotNetFramework(string sitePath) => CreatioSiteLayout.IsDotNetFramework(sitePath);
 
     string SafePath(string path) => path.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 

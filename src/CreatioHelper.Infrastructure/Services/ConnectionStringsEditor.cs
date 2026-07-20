@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +6,7 @@ using System.Text;
 using System.Xml;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services;
 
@@ -273,12 +274,8 @@ public class ConnectionStringsEditor : IConnectionStringsEditor
 
     private static string DetectDbTypeFromSiteConfig(string sitePath)
     {
-        var configPath = Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
-        if (!File.Exists(configPath))
-        {
-            configPath = Path.Combine(sitePath, "Web.config");
-        }
-        if (!File.Exists(configPath))
+        var configPath = CreatioSiteLayout.FindExistingRootConfigPath(sitePath);
+        if (configPath is null)
         {
             return "";
         }
