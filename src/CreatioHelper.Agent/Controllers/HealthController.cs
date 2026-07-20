@@ -1,4 +1,4 @@
-using CreatioHelper.Infrastructure.Services.Performance;
+﻿using CreatioHelper.Infrastructure.Services.Performance;
 using Microsoft.AspNetCore.Authorization;
 
 namespace CreatioHelper.Agent.Controllers;
@@ -21,10 +21,8 @@ public class HealthController : ControllerBase
         _logger = logger;
     }
 
-    /// <summary>
-    /// Get overall system health status
-    /// </summary>
-    [HttpGet]
+        [HttpGet]
+    [AllowAnonymous]
     public async Task<ActionResult<object>> GetHealth()
     {
         try
@@ -35,25 +33,21 @@ public class HealthController : ControllerBase
             var response = new
             {
                 Status = result.IsHealthy ? "Healthy" : "Unhealthy",
-                result.Message,
                 Duration = $"{result.Duration.TotalMilliseconds:F1}ms",
-                Timestamp = DateTime.UtcNow,
-                result.Data
+                Timestamp = DateTime.UtcNow
             };
-
             if (result.IsHealthy)
             {
                 return Ok(response);
             }
             else
             {
-                return StatusCode(503, response); // Service Unavailable
+                return StatusCode(503, response);
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Health check failed with exception");
-            
             return StatusCode(500, new
             {
                 Status = "Error",
@@ -62,21 +56,15 @@ public class HealthController : ControllerBase
             });
         }
     }
-
-    /// <summary>
-    /// Get detailed information about all components
-    /// </summary>
-    [HttpGet("detailed")]
+        [HttpGet("detailed")]
     [Authorize]
     public async Task<ActionResult<object>> GetDetailedHealth()
     {
         try
         {
             var allResults = await _healthCheckService.CheckAllAsync();
-            
             var healthyCount = allResults.Count(r => r.Value.IsHealthy);
             var unhealthyCount = allResults.Count - healthyCount;
-            
             var response = new
             {
                 OverallStatus = unhealthyCount == 0 ? "Healthy" : "Degraded",
@@ -94,13 +82,12 @@ public class HealthController : ControllerBase
                         kvp.Value.Data
                     })
             };
-
             return Ok(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Detailed health check failed");
-            
+
             return StatusCode(500, new
             {
                 Status = "Error",
@@ -109,18 +96,13 @@ public class HealthController : ControllerBase
             });
         }
     }
-
-    /// <summary>
-    /// Check the health of a specific component
-    /// </summary>
-    [HttpGet("component/{componentName}")]
+        [HttpGet("component/{componentName}")]
     [Authorize]
     public async Task<ActionResult<object>> GetComponentHealth(string componentName)
     {
         try
         {
             var result = await _healthCheckService.CheckAsync(componentName);
-            
             var response = new
             {
                 Component = componentName,
@@ -130,13 +112,11 @@ public class HealthController : ControllerBase
                 Timestamp = DateTime.UtcNow,
                 result.Data
             };
-
             return Ok(response);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Component health check failed for {ComponentName}", componentName);
-            
             return StatusCode(500, new
             {
                 Component = componentName,
@@ -146,11 +126,8 @@ public class HealthController : ControllerBase
             });
         }
     }
-
-    /// <summary>
-    /// Simple availability check for monitoring
-    /// </summary>
-    [HttpGet("ping")]
+        [HttpGet("ping")]
+    [AllowAnonymous]
     public ActionResult<object> Ping()
     {
         return Ok(new

@@ -1,4 +1,4 @@
-using CreatioHelper.Agent.Services;
+﻿using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Domain.Entities;
@@ -10,15 +10,13 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
 using Serilog;
+using Microsoft.AspNetCore.Authorization;
 
-// Keep ready worker threads so latency-sensitive requests are not delayed by slow
-// thread-pool injection while background folder scanning is running.
 ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
 ThreadPool.SetMinThreads(Math.Max(Environment.ProcessorCount * 2, 16), minCompletionPortThreads);
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Serilog (Console and File sinks are configured in appsettings.json)
 builder.Host.UseSerilog((context, configuration) =>
 {
     configuration
@@ -46,7 +44,7 @@ builder.Services.AddSwaggerGen(c =>
         Description = @"CreatioHelper Agent monitoring and management API
 
 **How to authenticate:**
-1. Use POST /api/auth/token with username=admin, password=admin123
+1. Use POST /api/auth/token with the credentials configured in Authentication:Users
 2. Copy the returned token
 3. Click 'Authorize' button below and enter: Bearer {your-token}
 4. Now you can call protected endpoints"
@@ -66,19 +64,15 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddHealthChecks();
 
-// Configuration binding
 builder.Services.Configure<AuthenticationSettings>(builder.Configuration.GetSection("Authentication"));
 builder.Services.Configure<SwaggerAuthSettings>(builder.Configuration.GetSection("SwaggerAuth"));
 
-// JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>() ?? new JwtSettings();
 
-// Validate JWT Secret is configured
 if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length < 32)
 {
     if (builder.Environment.IsDevelopment())
     {
-        // Generate random secret for development - prevents accidental production exposure
         var randomBytes = new byte[32];
         RandomNumberGenerator.Fill(randomBytes);
         jwtSettings.Secret = Convert.ToBase64String(randomBytes);
@@ -92,12 +86,10 @@ if (string.IsNullOrWhiteSpace(jwtSettings.Secret) || jwtSettings.Secret.Length <
     }
 }
 
-// Set defaults if not configured
 jwtSettings.Issuer ??= "CreatioHelper.Agent";
 jwtSettings.Audience ??= "CreatioHelper.Client";
 if (jwtSettings.ExpirationHours <= 0) jwtSettings.ExpirationHours = 24;
 
-// Register resolved JwtSettings so AuthController gets the same secret (including generated dev secret)
 builder.Services.Configure<JwtSettings>(opts =>
 {
     opts.Secret = jwtSettings.Secret;
@@ -119,8 +111,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidAudience = jwtSettings.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings.Secret))
         };
-        
-        // For SignalR
+
         options.Events = new JwtBearerEvents
         {
             OnMessageReceived = context =>
@@ -137,24 +128,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    options.FallbackPolicy = new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build();
+});
 
-// Rate limiting for login endpoint
 builder.Services.AddSingleton<CreatioHelper.Agent.Services.LoginRateLimiter>();
 
-// User store for account management
 builder.Services.AddSingleton<CreatioHelper.Agent.Services.IUserStore, CreatioHelper.Agent.Services.JsonFileUserStore>();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 
-// Register performance services
 if (!string.IsNullOrEmpty(appInsightsConnectionString))
 {
     builder.Services.AddScoped<ApplicationInsightsMetricsService>();
 }
 
-// Register additional support services
 builder.Services.AddScoped<EnhancedLoggingService>();
 builder.Services.AddScoped<AlertingService>();
 builder.Services.AddScoped<DiagnosticsService>();
@@ -168,7 +160,6 @@ builder.Services.AddCors(options =>
 
         if (allowedOrigins?.Length > 0)
         {
-            // Use configured origins in production
             policy.WithOrigins(allowedOrigins)
                 .AllowAnyMethod()
                 .AllowAnyHeader()
@@ -176,14 +167,12 @@ builder.Services.AddCors(options =>
         }
         else if (builder.Environment.IsDevelopment())
         {
-            // Allow any origin only in development (without credentials for security)
             policy.SetIsOriginAllowed(_ => true)
                 .AllowAnyMethod()
                 .AllowAnyHeader();
         }
         else
         {
-            // Default: localhost only in production if no origins configured
             policy.WithOrigins("http://localhost", "https://localhost")
                 .AllowAnyMethod()
                 .AllowAnyHeader()
@@ -197,10 +186,8 @@ builder.Services.AddPlatformServices();
 builder.Services.AddPerformanceServices();
 builder.Services.AddSyncthingAutoStop(builder.Configuration);
 
-// Add heartbeat service
 builder.Services.AddHostedService<HeartbeatService>();
 
-// Add sync services with configuration from config.xml
 SyncConfiguration? syncConfig = null;
 try
 {
@@ -228,10 +215,8 @@ builder.Services.AddSyncServices(syncConfig);
 
 var app = builder.Build();
 
-// Force-resolve ClusterKeyAutoAcceptHandler so it subscribes to DeviceDiscovered events
 app.Services.GetService<CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterKeyAutoAcceptHandler>();
 
-// Graceful shutdown configuration
 var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 applicationLifetime.ApplicationStopping.Register(() =>
 {
@@ -250,17 +235,15 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-// Security Headers middleware
 app.Use(async (context, next) =>
 {
-    
+
     context.Response.Headers["X-Content-Type-Options"] = "nosniff";
     context.Response.Headers["X-Frame-Options"] = "DENY";
     context.Response.Headers["X-XSS-Protection"] = "1; mode=block";
     context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
     context.Response.Headers["Permissions-Policy"] = "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()";
 
-    // Add HSTS header for HTTPS requests (1 year)
     if (context.Request.IsHttps)
     {
         context.Response.Headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains";
@@ -269,13 +252,8 @@ app.Use(async (context, next) =>
     await next();
 });
 
-// Expose health checks endpoint
-app.MapHealthChecks("/health");
+app.MapHealthChecks("/health").AllowAnonymous();
 
-// Blazor WebAssembly hosting.
-// The boot manifest and the fingerprinted framework assets must never be served from the
-// browser cache: after the agent is updated a stale manifest points at old fingerprints,
-// which fails with 404 + SRI integrity errors until the cache is cleared manually.
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
@@ -303,7 +281,6 @@ app.MapControllers();
 app.MapHub<CreatioHelper.Agent.Hubs.MonitoringHub>("/monitoringHub");
 app.MapHub<SyncHub>("/syncHub");
 
-// Prometheus metrics endpoint (requires authentication)
 app.MapGet("/metrics", async (IMetricsService metricsService) =>
 {
     var metrics = await metricsService.GetMetricsAsync();
@@ -311,10 +288,8 @@ app.MapGet("/metrics", async (IMetricsService metricsService) =>
     return Results.Text(prometheusFormat, "text/plain");
 }).RequireAuthorization();
 
-// SPA fallback for Blazor WebAssembly
-app.MapFallbackToFile("index.html");
+app.MapFallbackToFile("index.html").AllowAnonymous();
 
-// SignalR test page - only enabled in development
 if (app.Environment.IsDevelopment())
 {
     app.MapGet("/test-signalr", () => Results.Content("""
@@ -367,7 +342,6 @@ finally
     Log.CloseAndFlush();
 }
 
-// Helper function to convert metrics to Prometheus format
 string ConvertToPrometheusFormat(Dictionary<string, object> metrics)
 {
     var lines = new List<string>();

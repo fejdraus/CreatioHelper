@@ -1,4 +1,5 @@
-using System.Text.Json;
+﻿using System.Text.Json;
+using System.Text.Json.Nodes;
 using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Agent.Models;
 using Microsoft.Extensions.Options;
@@ -35,7 +36,6 @@ public class JsonFileUserStore : IUserStore
         Directory.CreateDirectory(configDir);
         _filePath = Path.Combine(configDir, "users.json");
 
-        // Run migration synchronously during construction to ensure store is ready
         MigrateIfNeededAsync().GetAwaiter().GetResult();
     }
 
@@ -57,7 +57,6 @@ public class JsonFileUserStore : IUserStore
         var user = await GetUserAsync(username);
         if (user == null) return false;
 
-        // Auto-rehash: if stored hash is plaintext (not bcrypt), upgrade it
         if (!user.PasswordHash.StartsWith("$2"))
         {
             if (user.PasswordHash == password)
@@ -153,7 +152,6 @@ public class JsonFileUserStore : IUserStore
 
             if (user == null) return false;
 
-            // Prevent deleting the last admin
             if (string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase))
             {
                 var adminCount = users.Count(u =>
@@ -208,7 +206,6 @@ public class JsonFileUserStore : IUserStore
         {
             if (File.Exists(_filePath))
             {
-                // Check for plaintext passwords that need rehashing
                 var users = await LoadUsersInternalAsync();
                 var needsSave = false;
 
@@ -229,7 +226,6 @@ public class JsonFileUserStore : IUserStore
                 return;
             }
 
-            // Migrate from appsettings
             var users2 = new List<StoredUser>();
 
             if (_authSettings.Users.Count > 0)
@@ -248,21 +244,21 @@ public class JsonFileUserStore : IUserStore
                 }
             }
 
-            // Ensure at least one admin exists
-            if (!users2.Any(u => string.Equals(u.Role, "admin", StringComparison.OrdinalIgnoreCase)))
+            if (users2.Count == 0)
             {
-                _logger.LogWarning("No admin users found. Creating default admin user (admin/admin123). Change this password immediately!");
-                users2.Add(new StoredUser
-                {
-                    Username = "admin",
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("admin123", BcryptWorkFactor),
-                    Role = "admin",
-                    CreatedAt = DateTime.UtcNow
-                });
+                _logger.LogWarning(
+                    "No administrator account is configured, so every sign-in will be rejected. " +
+                    "Add a user to the \"Authentication:Users\" section with the plain password in the " +
+                    "\"Password\" field and restart the agent: the password is hashed on startup and " +
+                    "removed from the configuration file. Alternatively, create {FilePath} manually.",
+                    _filePath);
+                return;
             }
 
             await SaveUsersInternalAsync(users2);
             _logger.LogInformation("Created users.json with {Count} users", users2.Count);
+
+            ClearMigratedPasswordsFromConfigFiles();
         }
         finally
         {
@@ -270,6 +266,62 @@ public class JsonFileUserStore : IUserStore
         }
     }
 
+        private void ClearMigratedPasswordsFromConfigFiles()
+    {
+        var environmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")
+            ?? Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
+        var candidates = new List<string> { "appsettings.json" };
+        if (!string.IsNullOrWhiteSpace(environmentName))
+        {
+            candidates.Add($"appsettings.{environmentName}.json");
+        }
+        var cleared = false;
+        foreach (var fileName in candidates)
+        {
+            var path = Path.Combine(AppContext.BaseDirectory, fileName);
+            if (TryClearPasswordsInFile(path))
+            {
+                cleared = true;
+                _logger.LogInformation("Removed migrated plain passwords from {File}", path);
+            }
+        }
+        if (!cleared)
+        {
+            _logger.LogWarning(
+                "Migrated credentials were not found in any configuration file. If they came from " +
+                "environment variables or user secrets, remove them there manually - they are now " +
+                "stored hashed in {FilePath}.", _filePath);
+        }
+    }
+    private bool TryClearPasswordsInFile(string path)
+    {
+        try
+        {
+            if (!File.Exists(path))
+            {
+                return false;
+            }
+            var root = JsonNode.Parse(File.ReadAllText(path)) as JsonObject;
+            if (root?["Authentication"] is not JsonObject auth || auth["Users"] is not JsonArray users)
+            {
+                return false;
+            }
+            var hadPasswords = users.OfType<JsonObject>()
+                .Any(user => !string.IsNullOrEmpty(user["Password"]?.GetValue<string>()));
+            if (!hadPasswords)
+            {
+                return false;
+            }
+            auth["Users"] = new JsonArray();
+            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to remove migrated passwords from {File}", path);
+            return false;
+        }
+    }
     private async Task<List<StoredUser>> LoadUsersAsync()
     {
         await _lock.WaitAsync();
@@ -282,26 +334,17 @@ public class JsonFileUserStore : IUserStore
             _lock.Release();
         }
     }
-
-    /// <summary>
-    /// Load users without acquiring the lock. Caller must hold _lock.
-    /// </summary>
-    private async Task<List<StoredUser>> LoadUsersInternalAsync()
+        private async Task<List<StoredUser>> LoadUsersInternalAsync()
     {
         if (_cache != null) return _cache;
-
         if (!File.Exists(_filePath))
             return _cache = new List<StoredUser>();
-
         var json = await File.ReadAllTextAsync(_filePath);
         _cache = JsonSerializer.Deserialize<List<StoredUser>>(json, JsonOptions) ?? new List<StoredUser>();
         return _cache;
     }
 
-    /// <summary>
-    /// Save users atomically (temp + rename). Caller must hold _lock.
-    /// </summary>
-    private async Task SaveUsersInternalAsync(List<StoredUser> users)
+        private async Task SaveUsersInternalAsync(List<StoredUser> users)
     {
         var tempPath = _filePath + ".tmp";
         var json = JsonSerializer.Serialize(users, JsonOptions);

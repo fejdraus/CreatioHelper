@@ -199,7 +199,6 @@ public class UserManagementTests : IDisposable
         var result = await _userStore.ValidatePasswordAsync("admin", "newadminpass");
         Assert.True(result);
 
-        // Old password should not work
         var oldResult = await _userStore.ValidatePasswordAsync("admin", "admin123");
         Assert.False(oldResult);
     }
@@ -218,13 +217,11 @@ public class UserManagementTests : IDisposable
     [Fact]
     public async Task AutoRehash_ConvertsPlaintextOnValidation()
     {
-        // Create a fresh store with no existing users.json, forcing migration
         var tempDir2 = Path.Combine(Path.GetTempPath(), $"usermgmt_rehash_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir2);
 
         try
         {
-            // Write a users.json with plaintext password
             var usersJson = """
             [
                 {
@@ -247,15 +244,12 @@ public class UserManagementTests : IDisposable
             var logger = new Mock<ILogger<JsonFileUserStore>>();
             var authSettings = Options.Create(new AuthenticationSettings());
 
-            // Constructor triggers migration which rehashes plaintext
             var store = new JsonFileUserStore(logger.Object, authSettings, config);
 
-            // After migration, the hash should be bcrypt
             var user = await store.GetUserAsync("test");
             Assert.NotNull(user);
             Assert.StartsWith("$2", user!.PasswordHash);
 
-            // Password should still validate
             var valid = await store.ValidatePasswordAsync("test", "plaintext123");
             Assert.True(valid);
         }
@@ -267,40 +261,93 @@ public class UserManagementTests : IDisposable
 
     #endregion
 
-    #region Default Admin Creation
+    #region Bootstrap Without Configured Credentials
 
     [Fact]
-    public async Task DefaultAdmin_CreatedWhenNoUsers()
+    public async Task NoAccountIsCreated_WhenNoCredentialsAreConfigured()
     {
         var tempDir3 = Path.Combine(Path.GetTempPath(), $"usermgmt_default_{Guid.NewGuid():N}");
         Directory.CreateDirectory(tempDir3);
 
         try
         {
-            var config = new ConfigurationBuilder()
-                .AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["UserStore:Path"] = tempDir3
-                })
-                .Build();
+            var store = CreateStore(tempDir3, new AuthenticationSettings { Users = new() });
 
-            var logger = new Mock<ILogger<JsonFileUserStore>>();
-            var authSettings = Options.Create(new AuthenticationSettings { Users = new() });
-
-            var store = new JsonFileUserStore(logger.Object, authSettings, config);
-
-            var users = await store.GetAllUsersAsync();
-            Assert.Single(users);
-            Assert.Equal("admin", users[0].Username);
-            Assert.Equal("admin", users[0].Role);
-
-            var valid = await store.ValidatePasswordAsync("admin", "admin123");
-            Assert.True(valid);
+            Assert.Empty(await store.GetAllUsersAsync());
+            Assert.False(await store.ValidatePasswordAsync("admin", "admin123"));
+            Assert.False(await store.ValidatePasswordAsync("admin", ""));
         }
         finally
         {
             try { Directory.Delete(tempDir3, true); } catch { }
         }
+    }
+
+    [Fact]
+    public async Task UsersFileIsNotCreated_SoTheMigrationRunsAgainAfterConfiguring()
+    {
+        var tempDir3 = Path.Combine(Path.GetTempPath(), $"usermgmt_retry_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir3);
+
+        try
+        {
+            CreateStore(tempDir3, new AuthenticationSettings { Users = new() });
+            Assert.False(File.Exists(Path.Combine(tempDir3, "users.json")));
+
+            var configured = CreateStore(tempDir3, new AuthenticationSettings
+            {
+                Users = [new UserCredentials { Username = "admin", Password = "s3cret", Role = "admin" }]
+            });
+
+            var users = await configured.GetAllUsersAsync();
+            Assert.Single(users);
+            Assert.Equal("admin", users[0].Username);
+            Assert.True(await configured.ValidatePasswordAsync("admin", "s3cret"));
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir3, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ConfiguredPasswordIsStoredHashed_NeverInPlainText()
+    {
+        var tempDir3 = Path.Combine(Path.GetTempPath(), $"usermgmt_hash_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir3);
+
+        try
+        {
+            var store = CreateStore(tempDir3, new AuthenticationSettings
+            {
+                Users = [new UserCredentials { Username = "admin", Password = "s3cret", Role = "admin" }]
+            });
+
+            var users = await store.GetAllUsersAsync();
+            Assert.StartsWith("$2", users[0].PasswordHash);
+
+            var onDisk = await File.ReadAllTextAsync(Path.Combine(tempDir3, "users.json"));
+            Assert.DoesNotContain("s3cret", onDisk);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir3, true); } catch { }
+        }
+    }
+
+    private static JsonFileUserStore CreateStore(string userStorePath, AuthenticationSettings settings)
+    {
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["UserStore:Path"] = userStorePath
+            })
+            .Build();
+
+        return new JsonFileUserStore(
+            new Mock<ILogger<JsonFileUserStore>>().Object,
+            Options.Create(settings),
+            config);
     }
 
     #endregion
