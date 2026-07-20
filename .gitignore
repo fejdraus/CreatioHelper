@@ -46,3 +46,9 @@ cert.pem
 .security-key
 logs/security/
 /publish
+
+# Graphify output
+graphify-out/
+
+# Agent runtime data
+website-registry.json

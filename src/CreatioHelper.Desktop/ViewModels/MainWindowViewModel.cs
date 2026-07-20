@@ -98,7 +98,7 @@ public partial class MainWindowViewModel : ObservableObject
         _connStringsEditor = connStringsEditor;
         ToolsVm = new ToolsViewModel(webConfigEditor, GetResolvedSitePath);
         ScriptsVm = new ScriptsViewModel(_output, windowsFeatures, moduleCleanup, svnCleanup, GetResolvedSitePath);
-        ConnStrVm = new ConnectionStringsViewModel(connStringsEditor, GetResolvedSitePath, GetResolvedSiteVersion);
+        ConnStrVm = new ConnectionStringsViewModel(connStringsEditor, webConfigEditor, GetResolvedSitePath, GetResolvedSiteVersion);
         ConnStrVm.ConfigSaved += (_, _) => RefreshDataStores();
         _metricsService = metricsService;
         _mediator = mediator;

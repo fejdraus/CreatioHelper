@@ -38,6 +38,116 @@ public class WebConfigEditor : IWebConfigEditor
         }
     }
 
+    private const string RetryRedisOperationKey = "Feature-UseRetryRedisOperation";
+
+    public bool? ReadRetryRedisOperation(string sitePath)
+    {
+        var filePath = ResolveAppSettingsPath(sitePath);
+        if (filePath is null)
+        {
+            return null;
+        }
+
+        var doc = new XmlDocument();
+        doc.Load(filePath);
+        var node = doc.SelectSingleNode($"/configuration/appSettings/add[@key='{RetryRedisOperationKey}']");
+        var value = node?.Attributes?.GetNamedItem("value")?.InnerText;
+        return bool.TryParse(value, out var enabled) ? enabled : null;
+    }
+
+    public void WriteRetryRedisOperation(string sitePath, bool enabled)
+    {
+        var filePath = ResolveAppSettingsPath(sitePath);
+        if (filePath is null)
+        {
+            return;
+        }
+
+        var doc = new XmlDocument();
+        doc.Load(filePath);
+
+        var appSettings = doc.SelectSingleNode("/configuration/appSettings");
+        if (appSettings is null)
+        {
+            var configuration = doc.SelectSingleNode("/configuration");
+            if (configuration is null)
+            {
+                return;
+            }
+            appSettings = configuration.AppendChild(doc.CreateElement("appSettings"))!;
+        }
+
+        if (appSettings.SelectSingleNode($"add[@key='{RetryRedisOperationKey}']") is not XmlElement node)
+        {
+            node = doc.CreateElement("add");
+            node.SetAttribute("key", RetryRedisOperationKey);
+            appSettings.AppendChild(node);
+        }
+
+        node.SetAttribute("value", enabled ? "true" : "false");
+        doc.Save(filePath);
+    }
+
+    public IReadOnlyList<KeyValuePair<string, string>>? ReadRedisSection(string sitePath)
+    {
+        var filePath = ResolveAppSettingsPath(sitePath);
+        if (filePath is null)
+        {
+            return null;
+        }
+
+        var doc = new XmlDocument();
+        doc.Load(filePath);
+        if (FindRedisSection(doc) is not XmlElement redis)
+        {
+            return null;
+        }
+
+        var result = new List<KeyValuePair<string, string>>();
+        foreach (XmlAttribute attribute in redis.Attributes)
+        {
+            result.Add(new KeyValuePair<string, string>(attribute.Name, attribute.Value));
+        }
+        return result;
+    }
+
+    public void WriteRedisSection(string sitePath, IReadOnlyList<KeyValuePair<string, string>> attributes)
+    {
+        var filePath = ResolveAppSettingsPath(sitePath);
+        if (filePath is null)
+        {
+            return;
+        }
+
+        var doc = new XmlDocument();
+        doc.Load(filePath);
+        if (FindRedisSection(doc) is not XmlElement redis)
+        {
+            return;
+        }
+
+        foreach (var attribute in attributes)
+        {
+            redis.SetAttribute(attribute.Key, attribute.Value);
+        }
+        doc.Save(filePath);
+    }
+
+    private static XmlNode? FindRedisSection(XmlDocument doc)
+        => doc.SelectSingleNode("/configuration/terrasoft/redis") ?? doc.SelectSingleNode("//redis");
+
+    private static string? ResolveAppSettingsPath(string sitePath)
+    {
+        var corePath = Path.Combine(sitePath, "Terrasoft.WebHost.dll.config");
+        if (File.Exists(corePath))
+        {
+            return corePath;
+        }
+
+        var rootPath = Path.Combine(sitePath, "Web.config");
+        return File.Exists(rootPath) ? rootPath : null;
+    }
+
     private static void ReadRootConfig(string filePath, WebConfigData data)
     {
         var doc = new XmlDocument();

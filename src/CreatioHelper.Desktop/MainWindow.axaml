@@ -555,7 +555,7 @@
                                       ToolTip.Tip="Cluster requires Creatio 7.18.0 or later"/>
                         </Grid>
 
-                        <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding HasRedis}">
+                        <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto,Auto,Auto,Auto" IsVisible="{Binding HasRedis}">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Host:" VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RedisHost}" Height="32" Margin="0,0,8,8" Watermark="hostname or IP"/>
                             <TextBlock Grid.Row="0" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,8"/>
@@ -569,7 +569,40 @@
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Other parameters:" VerticalAlignment="Center" Margin="0,0,12,0"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding RedisExtraParams}" Height="32"
                                      Watermark="maxReadPoolSize=10; maxWritePoolSize=500"/>
+
+                            <CheckBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
+                                      IsChecked="{Binding UseRetryRedisOperation}"
+                                      Content="Retry failed Redis operations (Feature-UseRetryRedisOperation)"
+                                      ToolTip.Tip="Writes Feature-UseRetryRedisOperation to Web.config / Terrasoft.WebHost.dll.config. Always enabled in Cluster mode."/>
                         </Grid>
+
+                        <StackPanel IsVisible="{Binding HasRedisSection}" Margin="0,16,0,0">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="redis section (Web.config / Terrasoft.WebHost.dll.config)"
+                                           FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                <Button Grid.Column="1" Content="Apply recommended"
+                                        Command="{Binding ApplyRecommendedRedisSettingsCommand}"
+                                        ToolTip.Tip="Set the values recommended by Creatio documentation for Redis Cluster."/>
+                            </Grid>
+
+                            <Border IsVisible="{Binding ShowClientsManagerWarning}"
+                                    Background="#40FFA000" CornerRadius="4" Padding="8" Margin="0,8,0,0">
+                                <TextBlock TextWrapping="Wrap"
+                                           Text="Cluster mode requires clientsManager to be the StackExchange adapter. The current value will not work with a Redis Cluster."/>
+                            </Border>
+
+                            <ItemsControl ItemsSource="{Binding RedisSectionAttributes}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="220,*" Margin="0,0,0,6">
+                                            <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                                            <TextBox Grid.Column="1" Text="{Binding Value}" Height="32"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
 
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" IsVisible="{Binding HasRedisSentinel}">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Sentinel hosts:" VerticalAlignment="Center" Margin="0,0,12,8"/>

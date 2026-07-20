@@ -17,6 +17,12 @@ public partial class RedisClusterNodeViewModel : ObservableObject
     [ObservableProperty] private int? _port = 6379;
 }
 
+public partial class RedisSectionAttributeViewModel : ObservableObject
+{
+    public string Name { get; init; } = "";
+    [ObservableProperty] private string _value = "";
+}
+
 public partial class ConnectionStringsViewModel : ObservableObject
 {
     public const string RedisModeSingleNode = "Single node";
@@ -26,7 +32,30 @@ public partial class ConnectionStringsViewModel : ObservableObject
     private static readonly Version SentinelRetiredVersion = new(7, 18, 3);
     private static readonly Version ClusterMinVersion = new(7, 18, 0);
 
+    public const string StackExchangeClientsManager =
+        "Terrasoft.Redis.StackExchangeAdapters.RedisClientsManagerAdapter, Terrasoft.Redis.StackExchangeAdapters";
+
+    private static readonly (string Name, string Value)[] RecommendedRedisSettings =
+    {
+        ("enablePerformanceMonitor", "false"),
+        ("executionTimeLoggingThresholdSec", "5"),
+        ("featureUseCustomRedisTimeouts", "false"),
+        ("clientRetryTimeoutMs", "4000"),
+        ("clientReceiveTimeoutMs", "3000"),
+        ("clientSendTimeoutMs", "3000"),
+        ("clientConnectTimeoutMs", "5000"),
+        ("clientSyncTimeoutMs", "5000"),
+        ("clientAsyncTimeoutMs", "5000"),
+        ("deactivatedClientsExpirySec", "0"),
+        ("operationRetryIntervalMs", "5000"),
+        ("operationRetryCount", "25"),
+        ("clientsManager", StackExchangeClientsManager),
+        ("abortOnConnectFail", "false"),
+        ("timeToCheckConfigurationSeconds", "60"),
+    };
+
     private readonly IConnectionStringsEditor _editor;
+    private readonly IWebConfigEditor _webConfigEditor;
     private readonly Func<string?> _sitePathProvider;
     private readonly Func<Version?> _siteVersionProvider;
     private ConnectionStringsData? _loadedData;
@@ -38,7 +67,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
         nameof(DbServer), nameof(DbPort), nameof(DbCatalog), nameof(DbUserId), nameof(DbPassword), nameof(DbExtraParams),
         nameof(RedisHost), nameof(RedisPort), nameof(RedisDb), nameof(RedisPassword), nameof(RedisClusterHosts), nameof(RedisExtraParams),
         nameof(SentinelHosts), nameof(SentinelMasterName), nameof(SentinelScanForOther), nameof(SentinelDb), nameof(SentinelExtraParams),
-        nameof(SelectedRedisMode),
+        nameof(SelectedRedisMode), nameof(UseRetryRedisOperation),
         nameof(MqUser), nameof(MqPassword), nameof(MqHost), nameof(MqPort), nameof(MqVirtualHost),
         nameof(ElasticUser), nameof(ElasticPassword),
         nameof(InfluxUrl), nameof(InfluxUser), nameof(InfluxPassword), nameof(InfluxBatchIntervalMs),
@@ -58,6 +87,10 @@ public partial class ConnectionStringsViewModel : ObservableObject
     [ObservableProperty] private string _selectedRedisMode = RedisModeSingleNode;
 
     public ObservableCollection<RedisClusterNodeViewModel> ClusterNodes { get; } = new();
+    public ObservableCollection<RedisSectionAttributeViewModel> RedisSectionAttributes { get; } = new();
+
+    [ObservableProperty] private bool _hasRedisSection;
+    [ObservableProperty] private bool _showClientsManagerWarning;
     [ObservableProperty] private bool _hasMq;
     [ObservableProperty] private bool _hasElastic;
     [ObservableProperty] private bool _hasInflux;
@@ -78,6 +111,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
     [ObservableProperty] private string _redisPassword = "";
     [ObservableProperty] private string _redisClusterHosts = "";
     [ObservableProperty] private string _redisExtraParams = "";
+    [ObservableProperty] private bool _useRetryRedisOperation;
 
     [ObservableProperty] private string _sentinelHosts = "";
     [ObservableProperty] private string _sentinelMasterName = "";
@@ -113,9 +147,10 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
     public event EventHandler? ConfigSaved;
 
-    public ConnectionStringsViewModel(IConnectionStringsEditor editor, Func<string?> sitePathProvider, Func<Version?> siteVersionProvider)
+    public ConnectionStringsViewModel(IConnectionStringsEditor editor, IWebConfigEditor webConfigEditor, Func<string?> sitePathProvider, Func<Version?> siteVersionProvider)
     {
         _editor = editor;
+        _webConfigEditor = webConfigEditor;
         _sitePathProvider = sitePathProvider;
         _siteVersionProvider = siteVersionProvider;
     }
@@ -136,6 +171,8 @@ public partial class ConnectionStringsViewModel : ObservableObject
             _loadedData = _editor.Read(sitePath);
             _lastSitePath = sitePath;
             PopulateFromData(_loadedData);
+            UseRetryRedisOperation = _webConfigEditor.ReadRetryRedisOperation(sitePath) ?? false;
+            PopulateRedisSection(sitePath);
             IsConfigLoaded = true;
         }
         catch
@@ -237,6 +274,78 @@ public partial class ConnectionStringsViewModel : ObservableObject
         SourceControlAuthPath = data.SourceControlAuthPath;
     }
 
+    private void PopulateRedisSection(string sitePath)
+    {
+        foreach (var attribute in RedisSectionAttributes)
+        {
+            attribute.PropertyChanged -= OnRedisSectionAttributeChanged;
+        }
+        RedisSectionAttributes.Clear();
+
+        var attributes = _webConfigEditor.ReadRedisSection(sitePath);
+        HasRedisSection = attributes is { Count: > 0 };
+        if (attributes is null)
+        {
+            UpdateClientsManagerWarning();
+            return;
+        }
+
+        foreach (var attribute in attributes)
+        {
+            var item = new RedisSectionAttributeViewModel { Name = attribute.Key, Value = attribute.Value };
+            item.PropertyChanged += OnRedisSectionAttributeChanged;
+            RedisSectionAttributes.Add(item);
+        }
+        UpdateClientsManagerWarning();
+    }
+
+    private void OnRedisSectionAttributeChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        UpdateClientsManagerWarning();
+        if (!_isPopulating)
+        {
+            SaveConfig();
+        }
+    }
+
+    private void UpdateClientsManagerWarning()
+    {
+        var clientsManager = RedisSectionAttributes
+            .FirstOrDefault(a => string.Equals(a.Name, "clientsManager", StringComparison.OrdinalIgnoreCase))?.Value ?? "";
+        ShowClientsManagerWarning = SelectedRedisMode == RedisModeCluster
+            && !clientsManager.Contains("StackExchangeAdapters", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [RelayCommand]
+    private void ApplyRecommendedRedisSettings()
+    {
+        if (!HasRedisSection)
+        {
+            return;
+        }
+
+        _isPopulating = true;
+        foreach (var (name, value) in RecommendedRedisSettings)
+        {
+            var existing = RedisSectionAttributes
+                .FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (existing is not null)
+            {
+                existing.Value = value;
+            }
+            else
+            {
+                var item = new RedisSectionAttributeViewModel { Name = name, Value = value };
+                item.PropertyChanged += OnRedisSectionAttributeChanged;
+                RedisSectionAttributes.Add(item);
+            }
+        }
+        _isPopulating = false;
+
+        UpdateClientsManagerWarning();
+        SaveConfig();
+    }
+
     partial void OnSelectedRedisModeChanged(string value) => UpdateRedisSectionVisibility();
 
     private void UpdateRedisSectionVisibility()
@@ -244,6 +353,16 @@ public partial class ConnectionStringsViewModel : ObservableObject
         HasRedis = HasRedisEntry && SelectedRedisMode == RedisModeSingleNode;
         HasRedisCluster = HasRedisEntry && SelectedRedisMode == RedisModeCluster;
         HasRedisSentinel = HasRedisEntry && SelectedRedisMode == RedisModeSentinel;
+
+        if (SelectedRedisMode == RedisModeCluster && !UseRetryRedisOperation)
+        {
+            var populating = _isPopulating;
+            _isPopulating = true;
+            UseRetryRedisOperation = true;
+            _isPopulating = populating;
+        }
+
+        UpdateClientsManagerWarning();
     }
 
     public static List<RedisClusterNodeViewModel> ParseClusterNodes(string hosts)
@@ -319,6 +438,15 @@ public partial class ConnectionStringsViewModel : ObservableObject
         {
             BuildData(_loadedData!);
             _editor.Write(_lastSitePath, _loadedData!);
+            _webConfigEditor.WriteRetryRedisOperation(
+                _lastSitePath,
+                SelectedRedisMode == RedisModeCluster || UseRetryRedisOperation);
+            if (HasRedisSection)
+            {
+                _webConfigEditor.WriteRedisSection(
+                    _lastSitePath,
+                    RedisSectionAttributes.Select(a => new KeyValuePair<string, string>(a.Name, a.Value)).ToList());
+            }
             if (DbExtraParams != _loadedData!.DbExtraParams)
             {
                 _isPopulating = true;
