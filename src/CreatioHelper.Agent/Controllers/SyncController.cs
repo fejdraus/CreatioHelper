@@ -401,7 +401,13 @@ public class SyncController : ControllerBase
     {
         try
         {
-            await _syncEngine.ScanFolderAsync(folderId, deep);
+            var folder = await _syncEngine.GetFolderAsync(folderId);
+            if (folder == null)
+            {
+                return NotFound();
+            }
+
+            _syncEngine.QueueScan(folderId, deep);
             return Ok();
         }
         catch (ArgumentException)

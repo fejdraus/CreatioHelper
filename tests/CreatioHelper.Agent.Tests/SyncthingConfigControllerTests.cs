@@ -1,5 +1,7 @@
 using CreatioHelper.Agent.Controllers;
+using CreatioHelper.Agent.Services;
 using CreatioHelper.Application.DTOs;
+using Microsoft.AspNetCore.Hosting;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
@@ -33,11 +35,19 @@ public class SyncthingConfigControllerTests
         _syncEngineMock.Setup(s => s.GetConfigurationAsync())
             .ReturnsAsync(new SyncConfiguration { DeviceId = "TEST-DEVICE-ID", DeviceName = "test" });
 
+        var envMock = new Mock<IWebHostEnvironment>();
+        envMock.Setup(e => e.ContentRootPath).Returns(Path.GetTempPath());
+        var webSiteRegistry = new WebSiteRegistryService(
+            new Mock<ILogger<WebSiteRegistryService>>().Object,
+            new WebServerAccessStatus(),
+            envMock.Object);
+
         _controller = new SyncthingConfigController(
             _syncEngineMock.Object,
             _loggerMock.Object,
             _configuration,
-            _configXmlServiceMock.Object);
+            _configXmlServiceMock.Object,
+            webSiteRegistry);
     }
 
     #region LDAP Tests

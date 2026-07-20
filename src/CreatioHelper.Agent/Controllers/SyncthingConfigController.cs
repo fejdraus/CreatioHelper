@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Services;
 using CreatioHelper.Application.DTOs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
@@ -21,6 +22,7 @@ public class SyncthingConfigController : ControllerBase
     private readonly ILogger<SyncthingConfigController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IConfigXmlService _configXmlService;
+    private readonly WebSiteRegistryService _webSiteRegistry;
 
     // Store default ignore lines in memory (in production, this would be persisted)
     private static string[] _defaultIgnoreLines = Array.Empty<string>();
@@ -29,12 +31,14 @@ public class SyncthingConfigController : ControllerBase
         ISyncEngine syncEngine,
         ILogger<SyncthingConfigController> logger,
         IConfiguration configuration,
-        IConfigXmlService configXmlService)
+        IConfigXmlService configXmlService,
+        WebSiteRegistryService webSiteRegistry)
     {
         _syncEngine = syncEngine;
         _logger = logger;
         _configuration = configuration;
         _configXmlService = configXmlService;
+        _webSiteRegistry = webSiteRegistry;
     }
 
     /// <summary>
@@ -282,6 +286,8 @@ public class SyncthingConfigController : ControllerBase
 
             // Save configuration to config.xml for persistence
             await SaveConfigurationToXmlAsync();
+
+            await _webSiteRegistry.RemoveFolderFromAllSitesAsync(id);
 
             _logger.LogInformation("Folder {FolderId} deleted via API", id);
             return Ok(new { message = $"Folder {id} removed successfully" });

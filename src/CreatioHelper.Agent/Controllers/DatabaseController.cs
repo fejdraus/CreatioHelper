@@ -325,9 +325,9 @@ public class DatabaseController : ControllerBase
 
             _logger.LogInformation("Scanning folder {Folder} with sub {Sub}", folder, sub);
             
-            // Trigger folder scan
-            await _syncEngine.ScanFolderAsync(folder, !string.IsNullOrEmpty(sub));
-            
+            // Queue folder scan (bounded scheduler runs it off the request pipeline)
+            _syncEngine.QueueScan(folder, !string.IsNullOrEmpty(sub));
+
             return Ok(new { message = "scan initiated" });
         }
         catch (Exception ex)

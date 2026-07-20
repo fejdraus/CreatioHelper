@@ -269,14 +269,11 @@ public class SyncthingFolderControllerTests
         var folder = CreateTestFolder("test-folder", "/path");
         _syncEngineMock.Setup(s => s.GetFolderAsync("test-folder"))
             .ReturnsAsync(folder);
-        _syncEngineMock.Setup(s => s.ScanFolderAsync("test-folder", true))
-            .Returns(Task.CompletedTask);
-
         var result = await _controller.ScanFolder("test-folder");
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.NotNull(ok.Value);
-        _syncEngineMock.Verify(s => s.ScanFolderAsync("test-folder", true), Times.Once);
+        _syncEngineMock.Verify(s => s.QueueScan("test-folder", true), Times.Once);
     }
 
     #endregion

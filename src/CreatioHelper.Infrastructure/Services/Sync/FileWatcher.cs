@@ -367,7 +367,8 @@ public class FileWatcher : IDisposable
 
     private async Task<string> CalculateFileHashAsync(string filePath)
     {
-        using var stream = File.OpenRead(filePath);
+        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan);
         using var sha256 = SHA256.Create();
         var hash = await sha256.ComputeHashAsync(stream);
         return Convert.ToHexString(hash).ToLower();
@@ -385,7 +386,8 @@ public class FileWatcher : IDisposable
             _logger.LogDebug("Creating blocks for {FilePath} ({FileSize} bytes) with block size {BlockSize}", 
                 filePath, fileSize, AdaptiveBlockSizer.FormatBlockSize(blockSize));
 
-            using var stream = File.OpenRead(filePath);
+            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                bufferSize: 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan);
             var buffer = new byte[blockSize];
             long offset = 0;
 

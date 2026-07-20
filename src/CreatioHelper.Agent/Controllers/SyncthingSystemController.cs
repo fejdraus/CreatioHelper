@@ -1301,7 +1301,7 @@ public class SyncthingSystemController : ControllerBase
                 if (folderInfo == null)
                     return NotFound(new { error = $"Folder {folder} not found" });
 
-                await _syncEngine.ScanFolderAsync(folder, deep: true);
+                _syncEngine.QueueScan(folder, deep: true);
             }
             else
             {
@@ -1310,7 +1310,7 @@ public class SyncthingSystemController : ControllerBase
                 var folders = await _syncEngine.GetFoldersAsync();
                 foreach (var f in folders)
                 {
-                    await _syncEngine.ScanFolderAsync(f.Id, deep: true);
+                    _syncEngine.QueueScan(f.Id, deep: true);
                 }
             }
 

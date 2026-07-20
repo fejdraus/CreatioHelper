@@ -303,9 +303,8 @@ public class SyncthingFolderController : ControllerBase
 
             _logger.LogInformation("Triggering scan for folder {Folder}, sub={Sub}, next={Next}", folder, sub, next);
 
-            // Trigger the scan - 'next' parameter is for delayed scan (in seconds), but we execute immediately
-            // 'sub' parameter would limit scan to a subdirectory (not fully implemented)
-            await _syncEngine.ScanFolderAsync(folder, deep: true);
+            // Queue the scan (bounded scheduler runs it off the request pipeline)
+            _syncEngine.QueueScan(folder, deep: true);
 
             return Ok(new
             {

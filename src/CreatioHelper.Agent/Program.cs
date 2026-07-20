@@ -11,6 +11,11 @@ using System.Security.Cryptography;
 using System.Text;
 using Serilog;
 
+// Keep ready worker threads so latency-sensitive requests are not delayed by slow
+// thread-pool injection while background folder scanning is running.
+ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
+ThreadPool.SetMinThreads(Math.Max(Environment.ProcessorCount * 2, 16), minCompletionPortThreads);
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Serilog (Console and File sinks are configured in appsettings.json)
@@ -267,7 +272,25 @@ app.Use(async (context, next) =>
 // Expose health checks endpoint
 app.MapHealthChecks("/health");
 
-// Blazor WebAssembly hosting
+// Blazor WebAssembly hosting.
+// The boot manifest and the fingerprinted framework assets must never be served from the
+// browser cache: after the agent is updated a stale manifest points at old fingerprints,
+// which fails with 404 + SRI integrity errors until the cache is cleared manually.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path;
+    var isBlazorAsset = path.StartsWithSegments("/_framework")
+                        || (path.Value?.EndsWith("blazor.boot.json", StringComparison.OrdinalIgnoreCase) ?? false);
+    if (isBlazorAsset)
+    {
+        context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+        context.Response.Headers.Pragma = "no-cache";
+        context.Response.Headers.Expires = "0";
+    }
+
+    await next();
+});
+
 app.UseBlazorFrameworkFiles();
 app.UseStaticFiles();
 

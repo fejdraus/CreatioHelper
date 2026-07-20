@@ -320,7 +320,12 @@ public static class SyncServiceExtensions
                 provider.GetRequiredService<SyncthingGlobalDiscovery>(),
                 provider.GetService<ICombinedNatService>(),
                 certificate,
-                provider.GetService<ScanningNs.IScanProgressService>()));
+                provider.GetService<ScanningNs.IScanProgressService>(),
+                scanQueue: provider.GetRequiredService<FolderScanQueue>()));
+
+        // Bounded folder scan scheduler (keeps scanning off the request pipeline, capped concurrency)
+        services.AddSingleton<FolderScanQueue>();
+        services.AddHostedService<FolderScanBackgroundService>();
 
         // Configuration XML Service (Syncthing-compatible config.xml)
         services.AddSingleton<IConfigXmlService>(provider =>

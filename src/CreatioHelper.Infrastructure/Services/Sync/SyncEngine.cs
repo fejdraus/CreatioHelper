@@ -42,6 +42,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly SyncFolderHandlerFactory _syncFolderHandlerFactory;
     private readonly IScanProgressService? _scanProgressService;
     private readonly IVersionerFactory? _versionerFactory;
+    private readonly FolderScanQueue? _scanQueue;
     private readonly ConcurrentDictionary<string, IVersioner> _folderVersioners = new();
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
@@ -95,9 +96,11 @@ public class SyncEngine : ISyncEngine, IDisposable
         ICombinedNatService? natService = null,
         X509Certificate2? clientCertificate = null,
         IScanProgressService? scanProgressService = null,
-        IVersionerFactory? versionerFactory = null)
+        IVersionerFactory? versionerFactory = null,
+        FolderScanQueue? scanQueue = null)
     {
         _logger = logger;
+        _scanQueue = scanQueue;
         _protocol = protocol;
         _discovery = discovery;
         _globalDiscovery = globalDiscovery;
@@ -380,12 +383,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         // Start watching the folder
         _fileWatcher.WatchFolder(folder);
 
-        // Perform initial scan
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(2000); // Allow folder watcher to initialize
-            await ScanFolderAsync(folderId, deep: true);
-        });
+        // Queue the initial scan (bounded scheduler enforces concurrency)
+        TriggerScan(folderId, deep: true);
 
         _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path}", folderId, label, path);
 
@@ -483,12 +482,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             _fileWatcher.WatchFolder(folder);
 
-            // Perform initial scan
-            _ = Task.Run(async () =>
-            {
-                await Task.Delay(2000);
-                await ScanFolderAsync(config.Id, deep: true);
-            });
+            // Queue the initial scan (bounded scheduler enforces concurrency)
+            TriggerScan(config.Id, deep: true);
         }
 
         _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path} with full configuration", config.Id, config.Label, config.Path);
@@ -698,8 +693,8 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         _logger.LogInformation("Resumed folder {FolderId}", folderId);
 
-        // Trigger a scan
-        await ScanFolderAsync(folderId);
+        // Queue a scan (bounded scheduler enforces concurrency)
+        TriggerScan(folderId, deep: false);
     }
 
     public async Task PauseDeviceAsync(string deviceId)
@@ -728,6 +723,20 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         // Try to reconnect (resolve "dynamic" addresses first like Syncthing)
         await ConnectToDeviceAsync(device, _cancellationTokenSource.Token);
+    }
+
+    public void QueueScan(string folderId, bool deep = false) => TriggerScan(folderId, deep);
+
+    private void TriggerScan(string folderId, bool deep)
+    {
+        if (_scanQueue != null)
+        {
+            _scanQueue.Enqueue(folderId, deep);
+        }
+        else
+        {
+            _ = Task.Run(() => ScanFolderAsync(folderId, deep));
+        }
     }
 
     public async Task ScanFolderAsync(string folderId, bool deep = false)
@@ -1854,11 +1863,11 @@ public class SyncEngine : ISyncEngine, IDisposable
                 e.ChangeType.ToString());
         });
 
-        // Trigger a partial scan for this folder
+        // Trigger a partial scan for this folder (debounced, then queued on the bounded scheduler)
         _ = Task.Run(async () =>
         {
             await Task.Delay(1000); // Debounce multiple rapid changes
-            await ScanFolderAsync(e.FolderId);
+            TriggerScan(e.FolderId, deep: false);
         });
     }
 
@@ -2188,22 +2197,11 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogInformation("Loaded {FolderCount} folders from config.xml", folders.Count);
 
             // Trigger initial scan for all non-paused folders (background task)
-            _ = Task.Run(async () =>
+            foreach (var folder in folders.Where(f => !f.Paused))
             {
-                await Task.Delay(2000); // Allow services to initialize
-                foreach (var folder in folders.Where(f => !f.Paused))
-                {
-                    try
-                    {
-                        _logger.LogInformation("Starting initial scan for folder {FolderId}", folder.Id);
-                        await ScanFolderAsync(folder.Id, deep: true);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error during initial scan of folder {FolderId}", folder.Id);
-                    }
-                }
-            });
+                _logger.LogInformation("Queuing initial scan for folder {FolderId}", folder.Id);
+                TriggerScan(folder.Id, deep: true);
+            }
         }
         catch (Exception ex)
         {
@@ -2321,12 +2319,8 @@ public class SyncEngine : ISyncEngine, IDisposable
                     {
                         _fileWatcher.WatchFolder(newFolder);
 
-                        // Perform initial scan
-                        _ = Task.Run(async () =>
-                        {
-                            await Task.Delay(2000, cancellationToken);
-                            await ScanFolderAsync(xmlFolder.Id, deep: true);
-                        }, cancellationToken);
+                        // Queue the initial scan (bounded scheduler enforces concurrency)
+                        TriggerScan(xmlFolder.Id, deep: true);
                     }
 
                     _logger.LogInformation("Added folder {FolderId} ({Label}) at {Path}",

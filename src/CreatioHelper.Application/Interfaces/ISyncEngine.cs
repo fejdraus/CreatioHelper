@@ -32,6 +32,8 @@ public interface ISyncEngine
     Task PauseDeviceAsync(string deviceId);
     Task ResumeDeviceAsync(string deviceId);
     Task ScanFolderAsync(string folderId, bool deep = false);
+
+    void QueueScan(string folderId, bool deep = false);
     Task<SyncStatus> GetSyncStatusAsync(string folderId);
     Task<List<SyncDevice>> GetDevicesAsync();
     Task<List<SyncFolder>> GetFoldersAsync();
