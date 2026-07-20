@@ -576,14 +576,19 @@
                                       ToolTip.Tip="Writes Feature-UseRetryRedisOperation to Web.config / Terrasoft.WebHost.dll.config. Always enabled in Cluster mode."/>
                         </Grid>
 
-                        <StackPanel IsVisible="{Binding HasRedisSection}" Margin="0,16,0,0">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="redis section (Web.config / Terrasoft.WebHost.dll.config)"
-                                           FontWeight="SemiBold" VerticalAlignment="Center"/>
-                                <Button Grid.Column="1" Content="Apply recommended"
-                                        Command="{Binding ApplyRecommendedRedisSettingsCommand}"
-                                        ToolTip.Tip="Set the values recommended by Creatio documentation for Redis Cluster."/>
-                            </Grid>
+                        <Expander IsVisible="{Binding HasRedisSection}" IsExpanded="False"
+                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                  Margin="0,16,0,0"
+                                  ToolTip.Tip="Stored in the redis section of Web.config / Terrasoft.WebHost.dll.config.">
+                            <Expander.Header>
+                                <TextBlock Text="Advanced Redis settings" FontWeight="SemiBold"/>
+                            </Expander.Header>
+
+                            <StackPanel>
+                            <Button Content="Apply cluster defaults" HorizontalAlignment="Right"
+                                    IsVisible="{Binding ShowRedisRecommendations}"
+                                    Command="{Binding ApplyRecommendedRedisSettingsCommand}"
+                                    ToolTip.Tip="Set the values recommended by Creatio documentation for Redis Cluster."/>
 
                             <Border IsVisible="{Binding ShowClientsManagerWarning}"
                                     Background="#40FFA000" CornerRadius="4" Padding="8" Margin="0,8,0,0">
@@ -594,15 +599,29 @@
                             <ItemsControl ItemsSource="{Binding RedisSectionAttributes}" Margin="0,8,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid ColumnDefinitions="220,*" Margin="0,0,0,6">
-                                            <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
-                                            <TextBox Grid.Column="1" Text="{Binding Value}" Height="32"/>
+                                        <Grid ColumnDefinitions="260,*" Margin="0,0,0,10">
+                                            <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding Name}" FontSize="10" Opacity="0.5"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                            </StackPanel>
+
+                                            <StackPanel Grid.Column="1">
+                                                <CheckBox IsChecked="{Binding BoolValue}" IsVisible="{Binding IsBoolean}"
+                                                          Content="Enabled" MinHeight="32"/>
+                                                <TextBox Text="{Binding Value}" IsVisible="{Binding IsText}" Height="32"/>
+
+                                                <TextBlock Text="{Binding Description}" IsVisible="{Binding HasDescription}"
+                                                           FontSize="11" Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                                <TextBlock Text="{Binding RecommendedHint}" IsVisible="{Binding ShowRecommendation}"
+                                                           FontSize="11" Foreground="#FFA000" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                                            </StackPanel>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
-                        </StackPanel>
+                            </StackPanel>
+                        </Expander>
 
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" IsVisible="{Binding HasRedisSentinel}">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Sentinel hosts:" VerticalAlignment="Center" Margin="0,0,12,8"/>

@@ -20,7 +20,49 @@ public partial class RedisClusterNodeViewModel : ObservableObject
 public partial class RedisSectionAttributeViewModel : ObservableObject
 {
     public string Name { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public string Description { get; init; } = "";
+    public string RecommendedValue { get; init; } = "";
+    public bool IsBoolean { get; init; }
+
+    public bool IsText => !IsBoolean;
+    public bool HasDescription => Description.Length > 0;
+
     [ObservableProperty] private string _value = "";
+
+    public bool BoolValue
+    {
+        get => bool.TryParse(Value, out var parsed) && parsed;
+        set => Value = value ? "true" : "false";
+    }
+
+    public bool DiffersFromRecommended => RecommendedValue.Length > 0
+        && !string.Equals(Value.Trim(), RecommendedValue, StringComparison.OrdinalIgnoreCase);
+
+    public bool ShowRecommendation => ShowRecommendations && DiffersFromRecommended;
+
+    public string RecommendedHint => $"Recommended for a cluster: {RecommendedValue}";
+
+    private bool _showRecommendations;
+
+    public bool ShowRecommendations
+    {
+        get => _showRecommendations;
+        set
+        {
+            if (SetProperty(ref _showRecommendations, value))
+            {
+                OnPropertyChanged(nameof(ShowRecommendation));
+            }
+        }
+    }
+
+    partial void OnValueChanged(string value)
+    {
+        OnPropertyChanged(nameof(BoolValue));
+        OnPropertyChanged(nameof(DiffersFromRecommended));
+        OnPropertyChanged(nameof(ShowRecommendation));
+    }
 }
 
 public partial class ConnectionStringsViewModel : ObservableObject
@@ -35,23 +77,45 @@ public partial class ConnectionStringsViewModel : ObservableObject
     public const string StackExchangeClientsManager =
         "Terrasoft.Redis.StackExchangeAdapters.RedisClientsManagerAdapter, Terrasoft.Redis.StackExchangeAdapters";
 
-    private static readonly (string Name, string Value)[] RecommendedRedisSettings =
+    private sealed record RedisSettingInfo(string DisplayName, string Description, string Recommended, bool IsBoolean);
+
+    private static readonly HashSet<string> HiddenRedisSettings = new(StringComparer.OrdinalIgnoreCase)
     {
-        ("enablePerformanceMonitor", "false"),
-        ("executionTimeLoggingThresholdSec", "5"),
-        ("featureUseCustomRedisTimeouts", "false"),
-        ("clientRetryTimeoutMs", "4000"),
-        ("clientReceiveTimeoutMs", "3000"),
-        ("clientSendTimeoutMs", "3000"),
-        ("clientConnectTimeoutMs", "5000"),
-        ("clientSyncTimeoutMs", "5000"),
-        ("clientAsyncTimeoutMs", "5000"),
-        ("deactivatedClientsExpirySec", "0"),
-        ("operationRetryIntervalMs", "5000"),
-        ("operationRetryCount", "25"),
-        ("clientsManager", StackExchangeClientsManager),
-        ("abortOnConnectFail", "false"),
-        ("timeToCheckConfigurationSeconds", "60"),
+        "connectionStringName",
+    };
+
+    private static readonly Dictionary<string, RedisSettingInfo> RedisSettingCatalog = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["enablePerformanceMonitor"] = new("Performance monitor",
+            "Measures execution time of Redis operations. Affects performance, so enable it only while troubleshooting.", "false", true),
+        ["executionTimeLoggingThresholdSec"] = new("Slow operation threshold, sec",
+            "Operations that take longer than this are written to the log.", "5", false),
+        ["featureUseCustomRedisTimeouts"] = new("Use custom timeouts",
+            "Applies the timeout values below instead of the platform defaults.", "false", true),
+        ["clientRetryTimeoutMs"] = new("Client retry timeout, ms",
+            "How long a single client keeps retrying before it is considered failed.", "4000", false),
+        ["clientReceiveTimeoutMs"] = new("Receive timeout, ms",
+            "Time allowed to receive a response from Redis.", "3000", false),
+        ["clientSendTimeoutMs"] = new("Send timeout, ms",
+            "Time allowed to send a request to Redis.", "3000", false),
+        ["clientConnectTimeoutMs"] = new("Connect timeout, ms",
+            "Time allowed to establish a connection to a Redis node.", "5000", false),
+        ["clientSyncTimeoutMs"] = new("Sync operation timeout, ms",
+            "Time allowed for a synchronous Redis operation.", "5000", false),
+        ["clientAsyncTimeoutMs"] = new("Async operation timeout, ms",
+            "Time allowed for an asynchronous Redis operation.", "5000", false),
+        ["deactivatedClientsExpirySec"] = new("Deactivated client lifetime, sec",
+            "How long deactivated clients are kept. 0 keeps them until the application restarts.", "0", false),
+        ["operationRetryIntervalMs"] = new("Retry interval, ms",
+            "Pause between attempts to repeat a failed operation.", "5000", false),
+        ["operationRetryCount"] = new("Retry count",
+            "How many times a failed operation is repeated with a new client.", "25", false),
+        ["clientsManager"] = new("Clients manager",
+            "Adapter that manages Redis connections. A cluster works only with the StackExchange adapter.", StackExchangeClientsManager, false),
+        ["abortOnConnectFail"] = new("Abort on connect failure",
+            "When disabled, the client keeps reconnecting instead of failing permanently after the first unsuccessful connection.", "false", true),
+        ["timeToCheckConfigurationSeconds"] = new("Configuration check interval, sec",
+            "How often the cluster configuration is re-read to pick up topology changes.", "60", false),
     };
 
     private readonly IConnectionStringsEditor _editor;
@@ -91,6 +155,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
     [ObservableProperty] private bool _hasRedisSection;
     [ObservableProperty] private bool _showClientsManagerWarning;
+    [ObservableProperty] private bool _showRedisRecommendations;
     [ObservableProperty] private bool _hasMq;
     [ObservableProperty] private bool _hasElastic;
     [ObservableProperty] private bool _hasInflux;
@@ -292,11 +357,29 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
         foreach (var attribute in attributes)
         {
-            var item = new RedisSectionAttributeViewModel { Name = attribute.Key, Value = attribute.Value };
-            item.PropertyChanged += OnRedisSectionAttributeChanged;
-            RedisSectionAttributes.Add(item);
+            if (HiddenRedisSettings.Contains(attribute.Key))
+            {
+                continue;
+            }
+            RedisSectionAttributes.Add(CreateRedisAttribute(attribute.Key, attribute.Value));
         }
         UpdateClientsManagerWarning();
+    }
+
+    private RedisSectionAttributeViewModel CreateRedisAttribute(string name, string value)
+    {
+        RedisSettingCatalog.TryGetValue(name, out var info);
+        var item = new RedisSectionAttributeViewModel
+        {
+            Name = name,
+            DisplayName = info?.DisplayName ?? name,
+            Description = info?.Description ?? "",
+            RecommendedValue = info?.Recommended ?? "",
+            IsBoolean = info?.IsBoolean ?? false,
+            Value = value,
+        };
+        item.PropertyChanged += OnRedisSectionAttributeChanged;
+        return item;
     }
 
     private void OnRedisSectionAttributeChanged(object? sender, PropertyChangedEventArgs e)
@@ -310,10 +393,17 @@ public partial class ConnectionStringsViewModel : ObservableObject
 
     private void UpdateClientsManagerWarning()
     {
+        var isCluster = SelectedRedisMode == RedisModeCluster;
         var clientsManager = RedisSectionAttributes
             .FirstOrDefault(a => string.Equals(a.Name, "clientsManager", StringComparison.OrdinalIgnoreCase))?.Value ?? "";
-        ShowClientsManagerWarning = SelectedRedisMode == RedisModeCluster
+        ShowClientsManagerWarning = isCluster
             && !clientsManager.Contains("StackExchangeAdapters", StringComparison.OrdinalIgnoreCase);
+
+        ShowRedisRecommendations = isCluster;
+        foreach (var attribute in RedisSectionAttributes)
+        {
+            attribute.ShowRecommendations = isCluster;
+        }
     }
 
     [RelayCommand]
@@ -325,19 +415,22 @@ public partial class ConnectionStringsViewModel : ObservableObject
         }
 
         _isPopulating = true;
-        foreach (var (name, value) in RecommendedRedisSettings)
+        foreach (var (name, info) in RedisSettingCatalog)
         {
+            if (info.Recommended.Length == 0)
+            {
+                continue;
+            }
+
             var existing = RedisSectionAttributes
                 .FirstOrDefault(a => string.Equals(a.Name, name, StringComparison.OrdinalIgnoreCase));
             if (existing is not null)
             {
-                existing.Value = value;
+                existing.Value = info.Recommended;
             }
             else
             {
-                var item = new RedisSectionAttributeViewModel { Name = name, Value = value };
-                item.PropertyChanged += OnRedisSectionAttributeChanged;
-                RedisSectionAttributes.Add(item);
+                RedisSectionAttributes.Add(CreateRedisAttribute(name, info.Recommended));
             }
         }
         _isPopulating = false;
