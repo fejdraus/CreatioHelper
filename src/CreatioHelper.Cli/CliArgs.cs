@@ -36,22 +36,20 @@ public class CliArgs
             string a = args[i];
             if (a.StartsWith("--"))
             {
-                string key = a.Substring(2);
-                if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                string token = a.Substring(2);
+                int eq = token.IndexOf('=');
+                if (eq >= 0)
                 {
-                    var value = args[i + 1];
-                    result.Options[key] = value;
-                    if (!result.MultiOptions.TryGetValue(key, out var list))
-                    {
-                        list = new List<string>();
-                        result.MultiOptions[key] = list;
-                    }
-                    list.Add(value);
+                    result.AddOption(token.Substring(0, eq), token.Substring(eq + 1));
+                }
+                else if (i + 1 < args.Length && !args[i + 1].StartsWith("--"))
+                {
+                    result.AddOption(token, args[i + 1]);
                     i++;
                 }
                 else
                 {
-                    result.Flags.Add(key);
+                    result.Flags.Add(token);
                 }
             }
             else
@@ -61,5 +59,16 @@ public class CliArgs
         }
 
         return result;
+    }
+
+    private void AddOption(string key, string value)
+    {
+        Options[key] = value;
+        if (!MultiOptions.TryGetValue(key, out var list))
+        {
+            list = new List<string>();
+            MultiOptions[key] = list;
+        }
+        list.Add(value);
     }
 }
