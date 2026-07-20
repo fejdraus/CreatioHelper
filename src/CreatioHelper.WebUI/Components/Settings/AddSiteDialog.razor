@@ -46,7 +46,7 @@
                           Required="true"
                           RequiredError="@L["WebServer_HostNameRequired"]"
                           ReadOnly="@(_type == "IIS")"
-                          HelperText="@(_type == "IIS" ? L["WebServer_IisSiteNameHint"] : null)"
+                          HelperText="@(_type == "IIS" ? L["WebServer_IisSiteNameHint"].Value : null)"
                           Immediate="true" />
 
             @if (_type == "IIS")
