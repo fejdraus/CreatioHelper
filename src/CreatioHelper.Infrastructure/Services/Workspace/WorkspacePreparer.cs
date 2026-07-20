@@ -90,7 +90,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         {
             await ExecuteModifiedBatchIfNeededAsync(sitePath, "PrepareWorkspaceConsole.x64.bat", Path.Combine("Bin", "Roslyn", "VBCSCompiler.exe"), cancellationToken).ConfigureAwait(false);
         }
-        
+
         return (true, quartzIsActiveOriginal);
     }
 
@@ -169,7 +169,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         var fileDesignModeEnabled = xmlDoc.SelectSingleNode("/configuration/terrasoft/fileDesignMode") is XmlElement fileDesignModeNode
             ? fileDesignModeNode.GetAttribute("enabled")
             : null;
-        
+
         var quartzIsActive = xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode
             ? quartzNode.GetAttribute("isActive")
             : null;
@@ -202,7 +202,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         xmlDoc.Save(configPath);
         _output.WriteLine("Updated WorkspaceConsole configuration file.");
     }
-    
+
     public void UpdateOutConfig(string configPath, bool quartzIsActive)
     {
         if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
@@ -336,7 +336,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         var arguments = $"-operation=\"InstallFromRepository\" -workspaceName=\"Default\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -sourcePath=\"{SafePath(packagesPath)}\" -destinationPath=\"{SafePath(tempPackagesPath)}\" -skipConstraints=\"false\" -skipValidateActions=\"true\" -regenerateSchemaSources=\"true\" -updateDBStructure=\"true\" -updateSystemDBStructure=\"true\" -installPackageSqlScript=\"true\" -installPackageData=\"true\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -logPath=\"{SafePath(logPath)}\" -configurationPath=\"{SafePath(configPath)}\" -autoExit=\"true\"";
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
-    
+
     public int RegenerateSchemaSources(string sitePath)
     {
         if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
@@ -682,8 +682,6 @@ public class WorkspacePreparer : IWorkspacePreparer
         {
             if (isUnc)
             {
-                // pushd maps the UNC path to a temporary drive letter so that
-                // Windows zone restrictions don't block native DLL loading (e.g. SharpSvn.dll)
                 var dir  = Path.GetDirectoryName(exePath)!;
                 var name = Path.GetFileName(exePath);
                 return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && \"{name}\" {arguments}", _output, null);
@@ -701,7 +699,7 @@ public class WorkspacePreparer : IWorkspacePreparer
     }
 
     private static string Quote(string path) => $"\"{path}\"";
-    
+
     private string GetWebAppPath(string sitePath) => CreatioSiteLayout.GetWebAppPath(sitePath);
 
     private string GetConfigurationPath(string sitePath) => CreatioSiteLayout.GetConfigurationPath(sitePath);

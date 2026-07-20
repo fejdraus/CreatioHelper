@@ -87,7 +87,7 @@ namespace CreatioHelper.Infrastructure.Services
             {
                 var command = GetServiceStatusCommand(serviceName);
                 var result = await ExecuteCommandWithOutputAsync(command).ConfigureAwait(false);
-                
+
                 if (OperatingSystem.IsWindows())
                 {
                     return result?.Trim();
@@ -102,7 +102,7 @@ namespace CreatioHelper.Infrastructure.Services
                         return "failed";
                     return "unknown";
                 }
-                
+
                 return result?.Trim() ?? "Error";
             }
             catch (Exception ex)
@@ -122,7 +122,7 @@ namespace CreatioHelper.Infrastructure.Services
             {
                 return $"systemctl start {serviceName}";
             }
-            
+
             throw new PlatformNotSupportedException("Service management is not supported on this platform.");
         }
 
@@ -136,7 +136,7 @@ namespace CreatioHelper.Infrastructure.Services
             {
                 return $"systemctl stop {serviceName}";
             }
-            
+
             throw new PlatformNotSupportedException("Service management is not supported on this platform.");
         }
 
@@ -150,14 +150,14 @@ namespace CreatioHelper.Infrastructure.Services
             {
                 return $"systemctl status {serviceName}";
             }
-            
+
             throw new PlatformNotSupportedException("Service management is not supported on this platform.");
         }
 
         private bool IsServiceRunning(string? state)
         {
             if (string.IsNullOrWhiteSpace(state)) return false;
-            
+
             return state.Equals("Running", StringComparison.OrdinalIgnoreCase) ||
                    state.Equals("active", StringComparison.OrdinalIgnoreCase);
         }
@@ -165,7 +165,7 @@ namespace CreatioHelper.Infrastructure.Services
         private bool IsServiceStopped(string? state)
         {
             if (string.IsNullOrWhiteSpace(state)) return false;
-            
+
             return state.Equals("Stopped", StringComparison.OrdinalIgnoreCase) ||
                    state.Equals("inactive", StringComparison.OrdinalIgnoreCase);
         }
@@ -209,7 +209,6 @@ namespace CreatioHelper.Infrastructure.Services
 
                 if (result.HasError)
                 {
-                    // Don't log error for status check - service might not exist
                     return null;
                 }
 
@@ -248,19 +247,19 @@ namespace CreatioHelper.Infrastructure.Services
                     CreateNoWindow = true
                 };
             }
-            
+
             throw new PlatformNotSupportedException("Service management is not supported on this platform.");
         }
 
         private async Task<bool> WaitForServiceStateAsync(string serviceName, bool waitForRunning)
         {
             var attempts = 0;
-            const int maxAttempts = 12; // 60 seconds max wait time
+            const int maxAttempts = 12;
 
             while (attempts < maxAttempts)
             {
                 var currentState = await GetServiceStateAsync(serviceName).ConfigureAwait(false);
-                
+
                 bool stateMatches = waitForRunning ? IsServiceRunning(currentState) : IsServiceStopped(currentState);
                 if (stateMatches)
                 {

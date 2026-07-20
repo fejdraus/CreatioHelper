@@ -183,7 +183,6 @@ public class WebConfigEditor : IWebConfigEditor
                 if (provider.Attributes?.GetNamedItem("name")?.InnerText != "Ldap")
                     continue;
 
-                // Structure: provider → <parameters> (or similar group) → <add name="..." value="..."/>
                 foreach (XmlNode paramGroup in provider)
                 {
                     foreach (XmlNode node in paramGroup)
@@ -235,7 +234,6 @@ public class WebConfigEditor : IWebConfigEditor
         {
             if (int.TryParse(wsService.Attributes.GetNamedItem("portForClientConnection")?.InnerText, out var port))
                 data.PortForClientConnection = port;
-            // HTTPS is truly on only when all three configSource paths contain \https\ AND encrypted=true
             if (bool.TryParse(wsService.Attributes.GetNamedItem("encrypted")?.InnerText, out var enc))
                 data.HttpsEncrypted = enc
                     && data.BehaviorsConfigSource.Contains("\\https\\")
@@ -284,7 +282,6 @@ public class WebConfigEditor : IWebConfigEditor
                 if (provName != "Ldap" && provName != "SSPLdapProvider")
                     continue;
 
-                // Structure: provider → <parameters> group → <add name="..." value="..."/>
                 foreach (XmlNode paramGroup in provider)
                 {
                     foreach (XmlNode node in paramGroup)

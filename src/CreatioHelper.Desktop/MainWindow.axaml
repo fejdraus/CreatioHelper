@@ -83,8 +83,7 @@
                     </StackPanel>
                 </StackPanel>
             </Grid>
-            
-            <!-- Row 1: Folder Mode -->
+
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
@@ -98,7 +97,6 @@
                          Watermark="Enter service name for Linux/Windows service management" />
             </StackPanel>
 
-            <!-- Row 2: IIS Mode -->
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site IIS:" />
                 <ComboBox x:Name="IisSitesComboBox"
@@ -119,7 +117,6 @@
                 </ComboBox>
             </StackPanel>
 
-            <!-- Row 3: Packages Path with Prevalidate checkbox -->
             <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="Packages Path:" VerticalAlignment="Center"/>
@@ -145,7 +142,6 @@
                 </Grid>
             </StackPanel>
 
-            <!-- Row 4: Delete packages before / after -->
             <Grid Grid.Row="4" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <Grid.IsVisible>
                     <MultiBinding Converter="{StaticResource DeleteAppVersionToVisibilityConverter}" TargetNullValue="False">
@@ -171,7 +167,6 @@
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
-            <!-- Row 5: Start/Stop buttons, Load License, and server sync -->
             <Grid Grid.Row="5" ColumnDefinitions="Auto,Auto,*,Auto,Auto,Auto" Margin="0,5,0,5">
                 <SplitButton x:Name="StartButton"
                              Grid.Column="0"
@@ -190,7 +185,6 @@
                     </SplitButton.Flyout>
                 </SplitButton>
 
-                <!-- Stop and kill WSC button (visible unless Restart IIS replaces it) -->
                 <Button x:Name="StopButtonAndKillWorkspaceConsole"
                         Grid.Column="1"
                         Content="Stop and kill WSC"
@@ -201,7 +195,6 @@
                         Height="32"
                         Margin="10,0,0,0" />
 
-                <!-- Restart IIS pool + site button (visible when idle and IIS site is available) -->
                 <Button x:Name="RestartLocalIisButton"
                         Grid.Column="1"
                         Content="Restart IIS"
@@ -212,9 +205,7 @@
                         Margin="10,0,0,0"
                         ToolTip.Tip="Restart local IIS application pool and website for the selected site."/>
 
-                <!-- Empty spacer (Grid.Column="2") for alignment -->
 
-                <!-- Save License Request button (Grid.Column="3") -->
                 <Button x:Name="SaveLicenseRequestButton"
                         Grid.Column="3"
                         Content="Save Lic Request"
@@ -225,7 +216,6 @@
                         Margin="0,0,10,0"
                         ToolTip.Tip="Generate license request file (.tlr)"/>
 
-                <!-- Load License button (Grid.Column="4") -->
                 <Button x:Name="LoadLicenseButton"
                         Grid.Column="4"
                         Content="Load License"
@@ -236,7 +226,6 @@
                         Margin="0,0,10,0"
                         ToolTip.Tip="Load license response file (.tls)"/>
 
-                <!-- ServerPanel button (Grid.Column="5") -->
                 <Button x:Name="ServerPanelButton"
                         Grid.Column="5"
                         Content="{Binding ServerPanelButtonText}"
@@ -248,7 +237,6 @@
                         HorizontalAlignment="Right" />
             </Grid>
 
-            <!-- Row 6: log toolbar — Clear/checkboxes left, optional update banner middle, Settings right -->
             <Grid Grid.Row="6" Margin="0,0,0,5" ColumnDefinitions="Auto,*,Auto">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
                     <Button Content="Clear"
@@ -317,7 +305,6 @@
                         HorizontalContentAlignment="Center"/>
             </Grid>
 
-            <!-- Row 7: Log list box (star "*" stretches to fill remaining space) -->
             <Border Grid.Row="7" BorderBrush="#D4D4D4" BorderThickness="1" CornerRadius="5" Padding="5">
                 <avalonEdit:TextEditor
                     x:Name="LogTextEditor"
@@ -331,7 +318,6 @@
                     VerticalScrollBarVisibility="Auto"/>
             </Border>
 
-            <!-- Row 8: footer -->
             <Grid Grid.Row="8" ColumnDefinitions="*,Auto" Margin="0,3,0,0">
                 <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center"
                             IsVisible="{Binding IsLocalStatusVisible}">
@@ -429,22 +415,18 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="16,12" Spacing="0" DataContext="{Binding ToolsVm}">
 
-                        <!-- Form grid -->
                         <Grid ColumnDefinitions="200,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
-                            <!-- Server path -->
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Domain server (IP/name):"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding ServerPath}"
                                      Margin="0,0,0,8" Height="32"/>
 
-                            <!-- Distinguished Name -->
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Distinguished Name:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding DistinguishedName}"
                                      Margin="0,0,0,8" Height="32"/>
 
-                            <!-- Auth providers -->
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Auth providers:"
                                        VerticalAlignment="Top" Margin="0,4,12,8"/>
                             <StackPanel Grid.Row="2" Grid.Column="1" Margin="0,0,0,8" Spacing="4">
@@ -456,25 +438,21 @@
                                 <CheckBox Content="SSPSsoAuthProvider"   IsChecked="{Binding SspSsoAuthProvider}"/>
                             </StackPanel>
 
-                            <!-- DB schema -->
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="DB schema name:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="3" Grid.Column="1" Text="{Binding CurrentSchemaName}"
                                      Margin="0,0,0,8" Height="32"/>
 
-                            <!-- LDAP pass-through -->
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="LDAP pass-through auth:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <CheckBox Grid.Row="4" Grid.Column="1" IsChecked="{Binding UsePathThroughAuthentication}"
                                       Margin="0,0,0,8"/>
 
-                            <!-- File design mode -->
                             <TextBlock Grid.Row="5" Grid.Column="0" Text="File system dev mode:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <CheckBox Grid.Row="5" Grid.Column="1" IsChecked="{Binding FileDesignMode}"
                                       Margin="0,0,0,8"/>
 
-                            <!-- HTTPS (not applicable for .NET Core) -->
                             <TextBlock Grid.Row="6" Grid.Column="0" Text="Enable HTTPS:"
                                        IsVisible="{Binding !IsNetCore}"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
@@ -489,7 +467,6 @@
                                                ToolTip.Tip="HTTPS port"/>
                             </StackPanel>
 
-                            <!-- Proxy -->
                             <TextBlock Grid.Row="7" Grid.Column="0" Text="Enable proxy:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <StackPanel Grid.Row="7" Grid.Column="1" Orientation="Horizontal" Spacing="10"
@@ -501,7 +478,6 @@
                                          IsVisible="{Binding EnableProxy}"/>
                             </StackPanel>
 
-                            <!-- Quartz -->
                             <TextBlock Grid.Row="8" Grid.Column="0" Text="Quartz schedulers:"
                                        VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <CheckBox Grid.Row="8" Grid.Column="1" IsChecked="{Binding QuartzEnabled}"
@@ -515,7 +491,6 @@
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="16,12" Spacing="12" DataContext="{Binding ConnStrVm}">
 
-                        <!-- Database -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasDb}">
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <TextBlock Text="Database" FontWeight="SemiBold" FontSize="13"/>
@@ -545,7 +520,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- Redis -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasRedisEntry}">
                         <TextBlock Text="Redis" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,200">
@@ -682,7 +656,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- Message Broker -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasMq}">
                         <TextBlock Text="Message Broker (RabbitMQ / AMQP)" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto,Auto,Auto">
@@ -703,7 +676,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- Elasticsearch -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasElastic}">
                         <TextBlock Text="Elasticsearch" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto">
@@ -716,7 +688,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- InfluxDB -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasInflux}">
                         <TextBlock Text="InfluxDB (Metrics)" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto">
@@ -736,7 +707,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- S3 / Object Storage -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasS3}">
                         <TextBlock Text="S3 / Object Storage (MinIO)" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
@@ -759,7 +729,6 @@
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
                         </StackPanel>
 
-                        <!-- Paths -->
                         <StackPanel Spacing="12" IsVisible="{Binding HasPaths}">
                         <TextBlock Text="Paths" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto">
@@ -823,7 +792,6 @@
             </TabItem>
         </TabControl>
 
-        <!-- Right panel: server list (static) -->
         <Border Grid.Column="1"
                 Width="350"
                 Background="{DynamicResource ThemeBackgroundBrush}"
@@ -832,13 +800,12 @@
                 Padding="10"
                 IsVisible="{Binding IsServerPanelVisible}">
             <Grid x:Name="ServerPanelStack" RowDefinitions="Auto,*">
-                <!-- Top section: Add button, header, etc. -->
                 <StackPanel Grid.Row="0" Spacing="10" IsEnabled="{Binding AreControlsEnabled}">
                     <Button x:Name="AddServerButton"
                             Content="Add"
                             HorizontalAlignment="Stretch"
                             HorizontalContentAlignment="Center"
-                            Click="AddServer_Click" 
+                            Click="AddServer_Click"
                             Height="32"
                             IsEnabled="{Binding IsServerControlsEnabled}"/>
                     <Button Content="Refresh All Status"
@@ -848,7 +815,6 @@
                             Height="32"
                             IsVisible="{Binding IsWindows}" />
 
-                    <!-- Syncthing buttons: Settings and Web UI -->
                     <Grid ColumnDefinitions="*,Auto" >
                         <Button Grid.Column="0"
                                 Content="{Binding SyncModeButtonText}"
@@ -866,7 +832,6 @@
                                 IsEnabled="{Binding HasSyncthingApiUrl}" />
                     </Grid>
 
-                    <!-- Syncthing Bulk Operations: Start/Stop All -->
                     <Grid ColumnDefinitions="*,*"
                           IsVisible="{Binding CanUseSyncthingBulkOperations}">
                         <Button Grid.Column="0"
@@ -887,7 +852,6 @@
                                 ToolTip.Tip="Pause synchronization for all configured Syncthing folders" />
                     </Grid>
 
-                    <!-- IIS Bulk Operations: Start/Stop All Sites and Pools -->
                     <Grid ColumnDefinitions="*,*"
                           IsVisible="{Binding CanUseIisBulkOperations}">
                         <Button Grid.Column="0"
@@ -913,7 +877,6 @@
                                Margin="0,0,0,5"/>
                 </StackPanel>
 
-                <!-- Bottom section: scrollable server list -->
                 <ScrollViewer Grid.Row="1"
                               VerticalScrollBarVisibility="Auto"
                               HorizontalScrollBarVisibility="Disabled">
@@ -936,12 +899,12 @@
                                                 IsEnabled="{Binding !IsStatusLoading}"
                                                 ToolTip.Tip="Refresh Status" />
                                     </StackPanel>
-                                    
+
                                     <TextBlock FontSize="11" Foreground="Gray" TextTrimming="CharacterEllipsis" MaxWidth="310">
                                         <Run Text="Network path: " />
                                         <Run Text="{Binding NetworkPath}" />
                                     </TextBlock>
-                                    
+
                                     <StackPanel Orientation="Horizontal" MaxWidth="310">
                                         <TextBlock Text="Pool name: " FontSize="11" Width="60" Foreground="Gray" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding PoolName}"
@@ -957,28 +920,26 @@
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    
+
                                     <StackPanel Orientation="Horizontal" MaxWidth="310">
                                         <TextBlock Text="Site name: " FontSize="11" Width="60" Foreground="Gray" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SiteName}" 
-                                                   FontSize="11" 
-                                                   Foreground="Gray" 
-                                                   TextTrimming="CharacterEllipsis" 
+                                        <TextBlock Text="{Binding SiteName}"
+                                                   FontSize="11"
+                                                   Foreground="Gray"
+                                                   TextTrimming="CharacterEllipsis"
                                                    MaxWidth="196"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Text=" [" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding SiteStatus}" 
-                                                   FontSize="11" 
-                                                   Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}" 
+                                        <TextBlock Text="{Binding SiteStatus}"
+                                                   FontSize="11"
+                                                   Foreground="{Binding SiteStatus, Converter={x:Static converters:StatusToColorConverter.Instance}}"
                                                    VerticalAlignment="Center"/>
                                         <TextBlock Text="]" FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
                                     </StackPanel>
-                                    
-                                    <!-- Syncthing Status Section with Enhanced Details -->
+
                                     <StackPanel MaxWidth="310"
                                                 IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).UseSyncthingForSync}"
                                                 Spacing="3">
-                                        <!-- Status Line -->
                                         <StackPanel Orientation="Horizontal">
                                             <TextBlock Text="Syncthing: " FontSize="11" Foreground="Gray" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding SyncthingStatus}"
@@ -988,7 +949,6 @@
                                                        VerticalAlignment="Center"/>
                                         </StackPanel>
 
-                                        <!-- Progress Bar (visible only when syncing) -->
                                         <ProgressBar Value="{Binding SyncthingCompletionPercent}"
                                                      Maximum="100"
                                                      Height="4"
@@ -996,13 +956,11 @@
                                                      Foreground="#4A90E2"
                                                      Background="#E0E0E0"/>
 
-                                        <!-- Remaining Data Info (visible when syncing) -->
                                         <TextBlock Text="{Binding SyncthingRemainingFormatted}"
                                                    FontSize="10"
                                                    Foreground="Gray"
                                                    IsVisible="{Binding IsSyncthingSyncing}"/>
 
-                                        <!-- Last Synced File (visible when has value) -->
                                         <StackPanel Orientation="Horizontal"
                                                     IsVisible="{Binding SyncthingLastSyncedFile, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
                                             <TextBlock Text="Last: " FontSize="10" Foreground="Gray"/>
@@ -1014,7 +972,6 @@
                                         </StackPanel>
                                     </StackPanel>
 
-                                    <!-- Buttons to control pool and site -->
                                     <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,5,0,0">
                                         <Button Content="Start Pool" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartPoolCommand, FallbackValue={x:Null}}"
@@ -1027,7 +984,7 @@
                                                 IsEnabled="{Binding !IsStatusLoading}"
                                                 Width="70"/>
                                     </StackPanel>
-                                    
+
                                     <StackPanel Orientation="Horizontal" Spacing="5" Margin="0,2,0,0">
                                         <Button Content="Start Site" FontSize="12" Padding="5,2"
                                                 Command="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).StartSiteCommand, FallbackValue={x:Null}}"
