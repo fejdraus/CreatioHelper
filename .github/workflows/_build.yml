@@ -3,6 +3,10 @@ name: _build (reusable)
 on:
   workflow_call:
     inputs:
+      component:
+        description: 'Component to build and release: desktop, cli or agent'
+        required: true
+        type: string
       version:
         description: 'Exact version to publish (e.g. 1.0.1 or 1.0.1-beta.42)'
         required: true
@@ -12,7 +16,7 @@ on:
         required: true
         type: string
       tag_name:
-        description: 'Tag to create on the released commit (e.g. v1.0.1)'
+        description: 'Tag to create on the released commit (e.g. desktop-v1.0.1)'
         required: true
         type: string
       is_prerelease:
@@ -47,18 +51,46 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
+      - name: Resolve component
+        id: comp
+        shell: bash
         run: |
-          dotnet restore src/CreatioHelper.Desktop/CreatioHelper.csproj --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
-          dotnet restore src/CreatioHelper.Cli/CreatioHelper.Cli.csproj --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
+          case '${{ inputs.component }}' in
+            desktop)
+              project='src/CreatioHelper.Desktop/CreatioHelper.csproj'
+              archive='CreatioHelper-Desktop'
+              single_file='true'
+              ;;
+            cli)
+              project='src/CreatioHelper.Cli/CreatioHelper.Cli.csproj'
+              archive='creatio-helper-cli'
+              single_file='true'
+              ;;
+            agent)
+              project='src/CreatioHelper.Agent/CreatioHelper.Agent.csproj'
+              archive='CreatioHelper-Agent'
+              single_file='false'
+              ;;
+            *)
+              echo "::error::Unknown component '${{ inputs.component }}' (expected desktop, cli or agent)"
+              exit 1
+              ;;
+          esac
+          echo "project=$project" >> "$GITHUB_OUTPUT"
+          echo "archive=$archive-${{ matrix.rid }}-${{ inputs.version }}" >> "$GITHUB_OUTPUT"
+          echo "single_file=$single_file" >> "$GITHUB_OUTPUT"
+          echo "Building $project as $archive (single file: $single_file)"
 
-      - name: Publish (Desktop)
+      - name: Restore
+        run: dotnet restore ${{ steps.comp.outputs.project }} --runtime ${{ matrix.rid }} -p:PublishReadyToRun=true
+
+      - name: Publish
         shell: bash
         run: |
           full_version='${{ inputs.version }}'
           version_prefix=$(echo "$full_version" | cut -d- -f1)
           version_suffix=$(echo "$full_version" | cut -s -d- -f2-)
-          dotnet publish src/CreatioHelper.Desktop/CreatioHelper.csproj \
+          dotnet publish ${{ steps.comp.outputs.project }} \
             --configuration Release \
             --runtime ${{ matrix.rid }} \
             --self-contained true \
@@ -71,38 +103,10 @@ jobs:
             -p:AssemblyVersion="$version_prefix" \
             -p:FileVersion="$version_prefix" \
             -p:IncludeSourceRevisionInInformationalVersion=false \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:IncludeAllContentForSelfExtract=true \
-            -p:EnableCompressionInSingleFile=true \
-            -p:PublishReadyToRun=true \
-            -p:DebugType=None \
-            -p:DebugSymbols=false \
-            -p:CopyDebugSymbolFilesFromPackages=false
-
-      - name: Publish (CLI)
-        shell: bash
-        run: |
-          full_version='${{ inputs.version }}'
-          version_prefix=$(echo "$full_version" | cut -d- -f1)
-          version_suffix=$(echo "$full_version" | cut -s -d- -f2-)
-          dotnet publish src/CreatioHelper.Cli/CreatioHelper.Cli.csproj \
-            --configuration Release \
-            --runtime ${{ matrix.rid }} \
-            --self-contained true \
-            --no-restore \
-            --output publish-cli \
-            -p:Version="$full_version" \
-            -p:VersionPrefix="$version_prefix" \
-            -p:VersionSuffix="$version_suffix" \
-            -p:InformationalVersion="$full_version" \
-            -p:AssemblyVersion="$version_prefix" \
-            -p:FileVersion="$version_prefix" \
-            -p:IncludeSourceRevisionInInformationalVersion=false \
-            -p:PublishSingleFile=true \
-            -p:IncludeNativeLibrariesForSelfExtract=true \
-            -p:IncludeAllContentForSelfExtract=true \
-            -p:EnableCompressionInSingleFile=true \
+            -p:PublishSingleFile=${{ steps.comp.outputs.single_file }} \
+            -p:IncludeNativeLibrariesForSelfExtract=${{ steps.comp.outputs.single_file }} \
+            -p:IncludeAllContentForSelfExtract=${{ steps.comp.outputs.single_file }} \
+            -p:EnableCompressionInSingleFile=${{ steps.comp.outputs.single_file }} \
             -p:PublishReadyToRun=true \
             -p:DebugType=None \
             -p:DebugSymbols=false \
@@ -110,49 +114,25 @@ jobs:
 
       - name: Strip residual PDB files
         shell: bash
-        run: |
-          find publish -name '*.pdb' -delete
-          find publish-cli -name '*.pdb' -delete
+        run: find publish -name '*.pdb' -delete
 
-      - name: Archive Desktop (Windows)
+      - name: Archive (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: |
-          Compress-Archive -Path publish/* -DestinationPath "CreatioHelper-Desktop-${{ matrix.rid }}-${{ inputs.version }}.zip"
+        run: Compress-Archive -Path publish/* -DestinationPath "${{ steps.comp.outputs.archive }}.zip"
 
-      - name: Archive Desktop (Linux)
+      - name: Archive (Linux)
         if: runner.os == 'Linux'
         shell: bash
         run: |
           cd publish
-          zip -r "../CreatioHelper-Desktop-${{ matrix.rid }}-${{ inputs.version }}.zip" .
+          zip -r "../${{ steps.comp.outputs.archive }}.zip" .
 
-      - name: Archive CLI (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Compress-Archive -Path publish-cli/* -DestinationPath "creatio-helper-cli-${{ matrix.rid }}-${{ inputs.version }}.zip"
-
-      - name: Archive CLI (Linux)
-        if: runner.os == 'Linux'
-        shell: bash
-        run: |
-          cd publish-cli
-          zip -r "../creatio-helper-cli-${{ matrix.rid }}-${{ inputs.version }}.zip" .
-
-      - name: Upload Desktop artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CreatioHelper-Desktop-${{ matrix.rid }}-${{ inputs.version }}
-          path: CreatioHelper-Desktop-${{ matrix.rid }}-${{ inputs.version }}.zip
-          if-no-files-found: error
-          retention-days: 1
-
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: creatio-helper-cli-${{ matrix.rid }}-${{ inputs.version }}
-          path: creatio-helper-cli-${{ matrix.rid }}-${{ inputs.version }}.zip
+          name: ${{ steps.comp.outputs.archive }}
+          path: ${{ steps.comp.outputs.archive }}.zip
           if-no-files-found: error
           retention-days: 1
 

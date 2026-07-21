@@ -8,6 +8,12 @@ on:
         required: true
         type: string
         default: 'feature/user-management-and-cluster-key'
+      component:
+        description: 'Component to build a beta for'
+        required: true
+        type: choice
+        options: [desktop, cli, agent]
+        default: desktop
 
 permissions:
   contents: write
@@ -33,7 +39,12 @@ jobs:
         id: read
         shell: bash
         run: |
-          ver=$(dotnet msbuild src/CreatioHelper.Desktop/CreatioHelper.csproj -getProperty:Version -nologo | tr -d '[:space:]')
+          case '${{ inputs.component }}' in
+            desktop) proj='src/CreatioHelper.Desktop/CreatioHelper.csproj' ;;
+            cli)     proj='src/CreatioHelper.Cli/CreatioHelper.Cli.csproj' ;;
+            agent)   proj='src/CreatioHelper.Agent/CreatioHelper.Agent.csproj' ;;
+          esac
+          ver=$(dotnet msbuild "$proj" -getProperty:Version -nologo | tr -d '[:space:]')
           if [[ -z "$ver" ]]; then
             echo "::error::Could not read <Version> from csproj"
             exit 1
@@ -58,8 +69,9 @@ jobs:
     needs: prepare
     uses: ./.github/workflows/_build.yml
     with:
+      component: ${{ inputs.component }}
       version: ${{ needs.prepare.outputs.beta_version }}
       ref: ${{ inputs.branch }}
-      tag_name: desktop-v${{ needs.prepare.outputs.beta_version }}
+      tag_name: ${{ inputs.component }}-v${{ needs.prepare.outputs.beta_version }}
       is_prerelease: true
       make_latest: false
