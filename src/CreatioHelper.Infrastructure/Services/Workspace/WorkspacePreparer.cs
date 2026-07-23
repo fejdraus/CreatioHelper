@@ -419,17 +419,7 @@ public class WorkspacePreparer : IWorkspacePreparer
 
     public int Compile(string sitePath)
     {
-        int code;
-        if (SupportsBuildRebuildOperations(sitePath))
-        {
-            code = RunWorkspaceBuildOperation(sitePath, "Build", "Starting Compile: server assembly (changed schemas)...");
-        }
-        else
-        {
-            _output.WriteLine($"Creatio version is below {Constants.MinimumVersionForBuildRebuild}; using RegenerateSchemaSources instead of Build.");
-            code = RegenerateSchemaSources(sitePath);
-        }
-
+        int code = RegenerateSchemaSources(sitePath);
         if (code != 0)
         {
             return code;
@@ -445,62 +435,12 @@ public class WorkspacePreparer : IWorkspacePreparer
             return code;
         }
 
-        if (SupportsBuildRebuildOperations(sitePath))
-        {
-            code = RunWorkspaceBuildOperation(sitePath, "Rebuild", "Starting Compile all: server assembly (all schemas)...");
-        }
-        else
-        {
-            _output.WriteLine($"Creatio version is below {Constants.MinimumVersionForBuildRebuild}; using RebuildWorkspace instead of Rebuild.");
-            code = RebuildWorkspace(sitePath);
-        }
-
+        code = RebuildWorkspace(sitePath);
         if (code != 0)
         {
             return code;
         }
         return BuildConfiguration(sitePath, force: true);
-    }
-
-    private bool SupportsBuildRebuildOperations(string sitePath)
-    {
-        var version = CreatioSiteLayout.GetSiteVersion(sitePath);
-        if (version == null)
-        {
-            _output.WriteLine("Unable to determine Creatio version; falling back to RegenerateSchemaSources.");
-            return false;
-        }
-
-        return version >= Constants.MinimumVersionForBuildRebuild;
-    }
-
-    private int RunWorkspaceBuildOperation(string sitePath, string operation, string startMessage)
-    {
-        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
-
-        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
-
-        if (!File.Exists(consoleExePath))
-        {
-            _output.WriteLine($"Executable not found: {consoleExePath}");
-            return 0;
-        }
-
-        string? consoleDir = Path.GetDirectoryName(consoleExePath);
-        if (consoleDir == null)
-        {
-            return 0;
-        }
-
-        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
-        string logPath = Path.Combine(appDirectory, "WSCLog");
-        _output.WriteLine($"Path to log file: {logPath}");
-        string webAppPath = GetWebAppPath(sitePath);
-        string configPath = GetConfigurationPath(sitePath);
-        string arguments = $"-operation=\"{operation}\" -workspaceName=\"Default\" -webApplicationPath=\"{SafePath(sitePath)}\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
-        _output.WriteLine(startMessage);
-        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
     public int DeletePackages(string sitePath, string packageList)
