@@ -9,6 +9,10 @@ public interface IWorkspacePreparer
     int RegenerateSchemaSources(string sitePath);
     int RebuildWorkspace(string sitePath);
     int BuildConfiguration(string sitePath, bool force = true);
+
+    int Compile(string sitePath);
+
+    int CompileAll(string sitePath);
     int DeletePackages(string sitePath, string packageList);
     int LoadLicResponse(string sitePath, string licFilePath);
     int BackupConfiguration(string sitePath, string backupPath);
