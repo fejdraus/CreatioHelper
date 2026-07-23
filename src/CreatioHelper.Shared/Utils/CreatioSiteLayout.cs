@@ -34,6 +34,24 @@ public static class CreatioSiteLayout
         : sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     public static string GetConfigurationPath(string sitePath) =>
         Path.Combine(GetWebAppPath(sitePath), "Terrasoft.Configuration");
+    public static string GetConfigurationBackupPath(string sitePath) =>
+        Path.Combine(GetWebAppPath(sitePath), "conf", "backup");
+    public static Version? GetSiteVersion(string sitePath)
+    {
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            return null;
+        }
+
+        var dllPath = GetApplicationDllPath(sitePath);
+        if (!File.Exists(dllPath))
+        {
+            return null;
+        }
+
+        var raw = System.Diagnostics.FileVersionInfo.GetVersionInfo(dllPath).FileVersion;
+        return Version.TryParse(raw, out var version) ? version : null;
+    }
         public static string? FindExistingRootConfigPath(string sitePath)
     {
         var configPath = GetRootConfigPath(sitePath);

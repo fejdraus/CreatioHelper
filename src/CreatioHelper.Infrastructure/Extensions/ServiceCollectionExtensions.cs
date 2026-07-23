@@ -47,6 +47,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IFileCopyHelper, SftpFileCopyHelper>();
         services.AddSingleton<IRedisManagerFactory, RedisManagerFactory>();
         services.AddTransient<IWorkspacePreparer, WorkspacePreparer>();
+        services.AddTransient<IConfigurationBackupService, ConfigurationBackupService>();
         services.AddTransient<ICustomDescriptorUpdater, CustomDescriptorUpdater>();
         services.AddTransient<IPackageFlagsResetter, PackageFlagsResetter>();
         services.AddTransient<IModuleCleanupService, ModuleCleanupService>();
