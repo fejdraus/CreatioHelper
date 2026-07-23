@@ -180,7 +180,7 @@
                         <MenuFlyout Placement="Bottom">
                             <MenuItem Header="Start (Compile All)"
                                       Command="{Binding StartFullCommand}"
-                                      ToolTip.Tip="Full rebuild: RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True"/>
+                                      ToolTip.Tip="Full rebuild: RegenerateSchemaSources + Rebuild + BuildConfiguration -force=True"/>
                         </MenuFlyout>
                     </SplitButton.Flyout>
                 </SplitButton>
@@ -204,6 +204,17 @@
                         Height="32"
                         Margin="10,0,0,0"
                         ToolTip.Tip="Restart local IIS application pool and website for the selected site."/>
+
+                <Button x:Name="RestoreConfigurationButton"
+                        Grid.Column="2"
+                        Content="Restore"
+                        Command="{Binding RestoreConfigurationCommand}"
+                        IsEnabled="{Binding AreControlsEnabled}"
+                        HorizontalAlignment="Left"
+                        Width="140"
+                        Height="32"
+                        Margin="10,0,0,0"
+                        ToolTip.Tip="Roll back to the state before the last package installation, using the backup Creatio writes automatically."/>
 
 
                 <Button x:Name="SaveLicenseRequestButton"

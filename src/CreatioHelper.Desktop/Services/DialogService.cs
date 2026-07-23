@@ -14,6 +14,18 @@ public class DialogService : IDialogService
         _storageProvider = storageProvider;
     }
 
+    public async Task<bool> ConfirmAsync(string title, string message)
+    {
+        var box = MsBox.Avalonia.MessageBoxManager.GetMessageBoxStandard(
+            title,
+            message,
+            MsBox.Avalonia.Enums.ButtonEnum.YesNo,
+            MsBox.Avalonia.Enums.Icon.Warning);
+
+        var result = await box.ShowAsync();
+        return result == MsBox.Avalonia.Enums.ButtonResult.Yes;
+    }
+
     public async Task<string?> OpenFolderPickerAsync(string title)
     {
         var folders = await _storageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions

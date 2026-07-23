@@ -67,6 +67,7 @@ internal static class CliEntryPoint
                 "redis-clear" => await RunRedisClearAsync(provider, settings, cli, output, cts.Token),
                 "iis" => await RunIisAsync(provider, settings, cli, output, cts.Token),
                 "lic" => await RunLicAsync(provider, settings, cli, output, cts.Token),
+                "restore" => await RunRestoreAsync(provider, settings, cli, output, cts.Token),
                 _ => await RunDeployAsync(provider, settings, cli, output, cts.Token)
             };
         }
@@ -290,6 +291,88 @@ internal static class CliEntryPoint
             int code = preparer.SaveLicenseRequest(site.Path, destination, customerId, fileName);
             return code == 0 ? 0 : 1;
         }
+    }
+
+    private static async Task<int> RunRestoreAsync(IServiceProvider provider, AppSettings settings, CliArgs cli, IOutputWriter output, CancellationToken ct)
+    {
+        ApplyOverrides(settings, cli);
+
+        var site = ResolveSiteContext(settings, output);
+        if (site == null || string.IsNullOrWhiteSpace(site.Path))
+        {
+            return 2;
+        }
+
+        var backupService = provider.GetRequiredService<IConfigurationBackupService>();
+        var backup = backupService.Read(site.Path);
+
+        output.WriteLine($"Backup directory: {backup.Path}");
+        if (!backup.Exists)
+        {
+            output.WriteLine("[ERROR] Backup directory not found.");
+            return 1;
+        }
+
+        output.WriteLine($"Created on: {backup.CreatedOn:yyyy-MM-dd HH:mm:ss}");
+        output.WriteLine($"Packages to roll back ({backup.ChangedPackages.Count}):");
+        foreach (var package in backup.ChangedPackages)
+        {
+            output.WriteLine($"  {package.Name} ({package.SizeBytes / 1024} KB)");
+        }
+
+        output.WriteLine($"Packages to remove ({backup.PackagesToRemove.Count}):");
+        foreach (var entry in backup.PackagesToRemove)
+        {
+            output.WriteLine($"  {entry.Name}");
+        }
+
+        if (cli.HasFlag("list"))
+        {
+            return 0;
+        }
+
+        if (backup.IsEmpty)
+        {
+            output.WriteLine("[ERROR] Backup contains nothing to restore.");
+            return 1;
+        }
+
+        if (!backupService.IsRestoreSupported(site.Path))
+        {
+            output.WriteLine($"[ERROR] Restore requires Creatio {Constants.MinimumVersionForRestoreConfiguration} or later.");
+            return 1;
+        }
+
+        if (!cli.HasFlag("yes"))
+        {
+            output.WriteLine("[ERROR] Restore overwrites current packages and cannot be undone. Re-run with --yes to confirm.");
+            return 2;
+        }
+
+        bool effectiveIisMode = settings.IsIisMode || !string.IsNullOrWhiteSpace(site.Name);
+        var orchestrator = provider.GetRequiredService<IDeploymentOrchestrator>();
+        var options = new RestoreConfigurationOptions
+        {
+            SitePath = site.Path,
+            IsIisMode = effectiveIisMode,
+            IisSiteName = site.Name,
+            IisPoolName = site.PoolName,
+            IisPoolOnly = site.IsVirtualApp,
+            ServiceName = settings.ServiceName,
+            InstallPackageData = !cli.HasFlag("no-package-data"),
+            IgnoreSqlScriptBackwardCompatibilityCheck = cli.HasFlag("ignore-sql-compatibility"),
+            Compile = ParseCompileMode(cli.Get("compile")),
+            Servers = settings.ServerList.ToArray(),
+            HasRemoteServers = settings.IsServerPanelVisible && settings.ServerList.Count > 0,
+            SkipRedisClear = cli.HasFlag("no-redis-clear")
+        };
+
+        var result = await orchestrator.RestoreConfigurationAsync(options, NullDeploymentUiCallbacks.Instance, ct).ConfigureAwait(false);
+        if (result.Cancelled)
+        {
+            return 130;
+        }
+        return result.Success ? 0 : 1;
     }
 
     private static void ApplyOverrides(AppSettings s, CliArgs cli)
@@ -534,6 +617,8 @@ internal static class CliEntryPoint
         Console.WriteLine("  creatio-helper-cli iis start|stop|restart [options]     Manage IIS pools/sites");
         Console.WriteLine("  creatio-helper-cli lic load [options]                   Load license response file into Creatio");
         Console.WriteLine("  creatio-helper-cli lic request [options]                Save license request file from Creatio");
+        Console.WriteLine("  creatio-helper-cli restore --list [options]             Show what the last package installation backed up");
+        Console.WriteLine("  creatio-helper-cli restore --yes [options]              Roll back to the state before the last package installation");
         Console.WriteLine();
         Console.WriteLine("Options:");
         Console.WriteLine("  --settings <path>            Load AppSettings from JSON (same format as Desktop settings.json)");
@@ -557,6 +642,12 @@ internal static class CliEntryPoint
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");
         Console.WriteLine("  --quick-install              Skip compilation after package install (faster, like clio)");
         Console.WriteLine("  --no-color                   Disable ANSI colors");
+        Console.WriteLine();
+        Console.WriteLine("restore options:");
+        Console.WriteLine("  --list                       Only show the backup contents, restore nothing");
+        Console.WriteLine("  --yes                        Confirm the restore (required; the operation cannot be undone)");
+        Console.WriteLine("  --no-package-data            Do not reinstall package data");
+        Console.WriteLine("  --ignore-sql-compatibility   Skip the SQL script backward compatibility check");
         Console.WriteLine("  --quiet                      Only print [ERROR] lines");
         Console.WriteLine();
         Console.WriteLine("lic load options:");

@@ -7,4 +7,5 @@ public interface IDialogService
     Task<string?> OpenFolderPickerAsync(string title);
     Task<string?> OpenFilePickerAsync(string title, string[]? filters = null);
     Task<string?> SaveFilePickerAsync(string title, string? defaultFileName = null, string[]? filters = null);
+    Task<bool> ConfirmAsync(string title, string message);
 }

@@ -78,6 +78,29 @@ public partial class OperationsService : ObservableObject, IOperationsService
         await _orchestrator.RunAsync(options, callbacks, token).ConfigureAwait(false);
     }
 
+    public async Task RestoreConfiguration(MainWindowViewModel viewModel)
+    {
+        _cancellationTokenSource = new CancellationTokenSource();
+        var token = _cancellationTokenSource.Token;
+
+        var options = new RestoreConfigurationOptions
+        {
+            SitePath = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Path : viewModel.SitePath,
+            IsIisMode = viewModel.IsIisMode,
+            IisSiteName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.Name : null,
+            IisPoolName = viewModel.IsIisMode ? viewModel.SelectedIisSite?.PoolName : null,
+            IisPoolOnly = viewModel.IsIisMode && (viewModel.SelectedIisSite?.IsVirtualApp ?? false),
+            ServiceName = viewModel.ServiceName,
+            Compile = CompileMode.Incremental,
+            Servers = viewModel.ServerList.ToArray(),
+            HasRemoteServers = viewModel.IsServerPanelVisible,
+            SkipRedisClear = viewModel.SkipRedisClear
+        };
+
+        var callbacks = new DesktopUiCallbacks(this, viewModel);
+        await _orchestrator.RestoreConfigurationAsync(options, callbacks, token).ConfigureAwait(false);
+    }
+
     public async Task ExecuteWscOperationAsync(string sitePath, string operationName, Func<int> action, Func<bool>? preAction = null)
     {
         if (IsBusy)

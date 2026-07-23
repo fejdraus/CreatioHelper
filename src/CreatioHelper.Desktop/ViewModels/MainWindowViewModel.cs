@@ -1,9 +1,10 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -17,6 +18,7 @@ using CreatioHelper.Application.Mediator;
 using CreatioHelper.Application.Settings;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
+using CreatioHelper.Shared.Utils;
 using LiveChartsCore;
 using LiveChartsCore.Defaults;
 using LiveChartsCore.SkiaSharpView;
@@ -39,6 +41,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IMediator _mediator;
     private readonly IOperationsService _operationsService;
     private readonly IDialogService _dialogService;
+    private readonly IConfigurationBackupService _configurationBackupService;
     private readonly ISystemServiceManager _systemServiceManager;
     private readonly IRedisManagerFactory _redisManagerFactory;
     private readonly IWorkspacePreparer _workspacePreparer;
@@ -78,6 +81,7 @@ public partial class MainWindowViewModel : ObservableObject
         IMediator mediator,
         IOperationsService operationsService,
         IDialogService dialogService,
+        IConfigurationBackupService configurationBackupService,
         IServerStatusService statusService,
         IIisManager iisManager,
         IisService iisService,
@@ -122,6 +126,7 @@ public partial class MainWindowViewModel : ObservableObject
                 OnPropertyChanged(nameof(IsStopButtonEnabled));
         };
         _dialogService = dialogService;
+        _configurationBackupService = configurationBackupService;
         _statusService = statusService;
         _isInitializing = true;
         _iisManager = iisManager;
@@ -669,6 +674,65 @@ public partial class MainWindowViewModel : ObservableObject
     private void Stop()
     {
         _operationsService.StopOperation();
+    }
+
+    [RelayCommand]
+    private async Task RestoreConfiguration()
+    {
+        string? sitePath = IsIisMode ? SelectedIisSite?.Path : SitePath;
+        if (string.IsNullOrWhiteSpace(sitePath))
+        {
+            await _dialogService.ConfirmAsync("Restore configuration", "Select a site first.");
+            return;
+        }
+
+        var backup = _configurationBackupService.Read(sitePath);
+        if (!backup.Exists || backup.IsEmpty)
+        {
+            await _dialogService.ConfirmAsync("Restore configuration",
+                $"Nothing to restore.\n\nNo backup was found in:\n{backup.Path}\n\nA backup is created automatically by every package installation.");
+            return;
+        }
+
+        if (!_configurationBackupService.IsRestoreSupported(sitePath))
+        {
+            await _dialogService.ConfirmAsync("Restore configuration",
+                $"Restore requires Creatio {Constants.MinimumVersionForRestoreConfiguration} or later.");
+            return;
+        }
+
+        var message = new StringBuilder();
+        message.AppendLine($"Roll back to the state before the last package installation of {backup.CreatedOn:yyyy-MM-dd HH:mm}?");
+        message.AppendLine();
+        message.AppendLine($"Packages to roll back ({backup.ChangedPackages.Count}):");
+        foreach (var package in backup.ChangedPackages.Take(10))
+        {
+            message.AppendLine($"  • {package.Name}");
+        }
+        if (backup.ChangedPackages.Count > 10)
+        {
+            message.AppendLine($"  … and {backup.ChangedPackages.Count - 10} more");
+        }
+
+        if (backup.PackagesToRemove.Count > 0)
+        {
+            message.AppendLine();
+            message.AppendLine($"Packages to remove ({backup.PackagesToRemove.Count}):");
+            foreach (var entry in backup.PackagesToRemove.Take(10))
+            {
+                message.AppendLine($"  • {entry.Name}");
+            }
+        }
+
+        message.AppendLine();
+        message.AppendLine("This cannot be undone. Database structure changes are not reverted, and any manual edits made after the installation will be lost.");
+
+        if (!await _dialogService.ConfirmAsync("Restore configuration", message.ToString()))
+        {
+            return;
+        }
+
+        await _operationsService.RestoreConfiguration(this);
     }
 
     [RelayCommand]
