@@ -18,6 +18,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
     private readonly IMetricsService _metricsService;
     private readonly IServerStatusService _statusService;
     private readonly IPackageFlagsResetter _packageFlagsResetter;
+    private readonly IConfigurationBackupService _configurationBackupService;
 
     public DeploymentOrchestrator(
         IOutputWriter output,
@@ -28,8 +29,10 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         IRedisManagerFactory redisManagerFactory,
         IMetricsService metricsService,
         IServerStatusService statusService,
-        IPackageFlagsResetter packageFlagsResetter)
+        IPackageFlagsResetter packageFlagsResetter,
+        IConfigurationBackupService configurationBackupService)
     {
+        _configurationBackupService = configurationBackupService;
         _output = output;
         _iisManager = iisManager;
         _siteSynchronizer = siteSynchronizer;
@@ -407,6 +410,161 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         {
             _output.WriteLine($"[ERROR] {ex.Message}");
             _metricsService.IncrementCounter("failed_deployments_count", new() { ["error_type"] = ex.GetType().Name });
+            ui.OnStopButtonEnabledChanged(false);
+            return DeploymentResult.Fail(ex.Message);
+        }
+        finally
+        {
+            ui.OnBusyChanged(false);
+            ui.OnStartButtonText("Start");
+            ui.OnServerControlsEnabledChanged(true);
+            ui.OnStopButtonEnabledChanged(false);
+            if (!quartzIsActiveOriginal)
+            {
+                string config = CreatioSiteLayout.GetRootConfigPath(sitePath);
+                _workspacePreparer.UpdateOutConfig(config, quartzIsActiveOriginal);
+            }
+        }
+
+        return hadError ? DeploymentResult.Fail() : DeploymentResult.Ok();
+    }
+
+    public async Task<DeploymentResult> RestoreConfigurationAsync(
+        RestoreConfigurationOptions options,
+        IDeploymentUiCallbacks? ui = null,
+        CancellationToken cancellationToken = default)
+    {
+        ui ??= NullDeploymentUiCallbacks.Instance;
+        ui.OnStopButtonEnabledChanged(false);
+        _output.Clear();
+
+        if (string.IsNullOrWhiteSpace(options.SitePath))
+        {
+            _output.WriteLine("The path to the site is not indicated.");
+            return DeploymentResult.Fail("Site path is not specified.");
+        }
+
+        string sitePath = options.SitePath;
+        var backup = _configurationBackupService.Read(sitePath);
+
+        if (!backup.Exists)
+        {
+            _output.WriteLine($"[ERROR] Backup directory not found: {backup.Path}");
+            return DeploymentResult.Fail("Backup directory not found.");
+        }
+
+        if (backup.IsEmpty)
+        {
+            _output.WriteLine($"[ERROR] Backup directory contains nothing to restore: {backup.Path}");
+            return DeploymentResult.Fail("Backup is empty.");
+        }
+
+        if (!_configurationBackupService.IsRestoreSupported(sitePath))
+        {
+            _output.WriteLine($"[ERROR] Restore requires Creatio {Constants.MinimumVersionForRestoreConfiguration} or later.");
+            return DeploymentResult.Fail("Creatio version does not support restore.");
+        }
+
+        bool quartzIsActiveOriginal = true;
+        bool hadError = false;
+
+        ui.OnBusyChanged(true);
+        ui.OnStartButtonText("In process...");
+        ui.OnServerControlsEnabledChanged(false);
+
+        try
+        {
+            await Task.Run(async () =>
+            {
+                var serverList = options.Servers.ToArray();
+                var preparer = _workspacePreparer;
+
+                _output.WriteLine($"Restoring configuration from {backup.Path}");
+                _output.WriteLine($"Packages to roll back: {backup.ChangedPackages.Count}, packages to remove: {backup.PackagesToRemove.Count}");
+                _output.WriteLine("[WARNING] Database structure changes are not reverted, and manual edits made after the installation will be lost.");
+
+                _output.WriteLine("Prepare WorkspaceConsole ...");
+                preparer.Prepare(sitePath, out quartzIsActiveOriginal);
+
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    return;
+                }
+
+                string nestedPath = Path.Combine(sitePath, "Terrasoft.WebApp", "bin", "Terrasoft.Common.dll");
+                var poolName = options.IsIisMode ? options.IisPoolName : null;
+                var siteName = options.IsIisMode && !options.IisPoolOnly ? options.IisSiteName : null;
+
+                var localServerInfo = new ServerInfo
+                {
+                    Name = new ServerName(Environment.MachineName),
+                    PoolName = poolName ?? string.Empty,
+                    SiteName = siteName ?? string.Empty,
+                    ServiceName = options.ServiceName ?? string.Empty
+                };
+
+                _output.WriteLine("Stopping local server before restore...");
+                await PerformIisOperationsAsync(_iisManager, localServerInfo, nestedPath, options.IsIisMode, options.ServiceName, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+
+                ui.OnStopButtonEnabledChanged(true);
+
+                bool success = false;
+                _metricsService.Measure("configuration_restore", () =>
+                {
+                    success = ExecutePreparerAction(
+                        () => preparer.RestoreConfiguration(sitePath, backup.Path, options.InstallPackageData, options.IgnoreSqlScriptBackwardCompatibilityCheck),
+                        "[ERROR] Restore configuration failed.",
+                        cancellationToken);
+                });
+
+                if (!success)
+                {
+                    _metricsService.IncrementCounter("failed_restores_count");
+                    hadError = true;
+                    return;
+                }
+
+                _output.WriteLine("[OK] Configuration restored.");
+
+                if (options.Compile != CompileMode.None)
+                {
+                    _metricsService.Measure("restore_compile", () =>
+                    {
+                        success = options.Compile == CompileMode.Full
+                            ? ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken)
+                            : ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                    });
+
+                    if (!success)
+                    {
+                        hadError = true;
+                        return;
+                    }
+                }
+
+                if (!options.SkipRedisClear)
+                {
+                    var redisManager = _redisManagerFactory.Create(sitePath);
+                    if (redisManager.CheckStatus())
+                    {
+                        redisManager.Clear();
+                    }
+                }
+
+                await StartAllIisAsync(serverList.Length > 0 ? serverList : new[] { localServerInfo }, cancellationToken).ConfigureAwait(false);
+                _metricsService.IncrementCounter("successful_restores_count");
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            _output.WriteLine("[INFO] Operation was cancelled.");
+            ui.OnStopButtonEnabledChanged(false);
+            return DeploymentResult.CancelledResult();
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] {ex.Message}");
+            _metricsService.IncrementCounter("failed_restores_count", new() { ["error_type"] = ex.GetType().Name });
             ui.OnStopButtonEnabledChanged(false);
             return DeploymentResult.Fail(ex.Message);
         }

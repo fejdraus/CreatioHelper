@@ -15,8 +15,7 @@ public interface IWorkspacePreparer
     int CompileAll(string sitePath);
     int DeletePackages(string sitePath, string packageList);
     int LoadLicResponse(string sitePath, string licFilePath);
-    int BackupConfiguration(string sitePath, string backupPath);
-    int RestoreConfiguration(string sitePath, string backupPath);
+    int RestoreConfiguration(string sitePath, string backupPath, bool installPackageData = true, bool ignoreSqlScriptBackwardCompatibilityCheck = false);
     int PrevalidateInstallFromRepository(string sitePath, string packagesPath);
     bool IsFileDesignModeEnabled(string sitePath);
     string GetPkgPath(string sitePath);

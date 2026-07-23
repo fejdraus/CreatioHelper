@@ -464,15 +464,10 @@ public class WorkspacePreparer : IWorkspacePreparer
 
     private bool SupportsBuildRebuildOperations(string sitePath)
     {
-        bool isFramework = IsDotNetFramework(sitePath);
-        string appDllPath = isFramework
-            ? Path.Combine(sitePath, "bin", "Terrasoft.Common.dll")
-            : Path.Combine(sitePath, "Terrasoft.Common.dll");
-
-        string? rawVersion = GetDllVersion(appDllPath);
-        if (rawVersion == null || !Version.TryParse(rawVersion, out var version))
+        var version = CreatioSiteLayout.GetSiteVersion(sitePath);
+        if (version == null)
         {
-            _output.WriteLine("Unable to determine Creatio version; falling back to RebuildWorkspace.");
+            _output.WriteLine("Unable to determine Creatio version; falling back to RegenerateSchemaSources.");
             return false;
         }
 
@@ -566,12 +561,20 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
-    public int BackupConfiguration(string sitePath, string backupPath)
+    public int RestoreConfiguration(string sitePath, string backupPath, bool installPackageData = true, bool ignoreSqlScriptBackwardCompatibilityCheck = false)
     {
         if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
         if (string.IsNullOrEmpty(backupPath)) throw new ArgumentNullException(nameof(backupPath));
 
         sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+        var version = CreatioSiteLayout.GetSiteVersion(sitePath);
+        if (version == null || version < Constants.MinimumVersionForRestoreConfiguration)
+        {
+            _output.WriteLine($"[ERROR] Restore requires Creatio {Constants.MinimumVersionForRestoreConfiguration} or later.");
+            return -1;
+        }
+
         string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
 
         if (!File.Exists(consoleExePath))
@@ -588,34 +591,9 @@ public class WorkspacePreparer : IWorkspacePreparer
         _output.WriteLine($"Path to log file: {logPath}");
         string webAppPath = GetWebAppPath(sitePath);
         string configPath = GetConfigurationPath(sitePath);
-        string arguments = $"-operation=\"BackupConfiguration\" -workspaceName=\"Default\" -destinationPath=\"{SafePath(backupPath)}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -force=\"True\" -autoExit=\"true\"";
-        _output.WriteLine("Starting Backup Configuration...");
-        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
-    }
-
-    public int RestoreConfiguration(string sitePath, string backupPath)
-    {
-        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
-        if (string.IsNullOrEmpty(backupPath)) throw new ArgumentNullException(nameof(backupPath));
-
-        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
-
-        if (!File.Exists(consoleExePath))
-        {
-            _output.WriteLine($"Executable not found: {consoleExePath}");
-            return 0;
-        }
-
-        string? consoleDir = Path.GetDirectoryName(consoleExePath);
-        if (consoleDir == null) return 0;
-
-        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
-        string logPath = Path.Combine(appDirectory, "WSCLog");
-        _output.WriteLine($"Path to log file: {logPath}");
-        string webAppPath = GetWebAppPath(sitePath);
-        string configPath = GetConfigurationPath(sitePath);
-        string arguments = $"-operation=\"RestoreConfiguration\" -workspaceName=\"Default\" -backupPath=\"{SafePath(backupPath)}\" -installPackageData=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        string installData = installPackageData ? "true" : "false";
+        string ignoreSqlCheck = ignoreSqlScriptBackwardCompatibilityCheck ? "true" : "false";
+        string arguments = $"-operation=\"RestoreConfiguration\" -workspaceName=\"Default\" -backupPath=\"{SafePath(backupPath)}\" -installPackageData=\"{installData}\" -ignoreSqlScriptBackwardCompatibilityCheck=\"{ignoreSqlCheck}\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
         _output.WriteLine("Starting Restore Configuration...");
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
