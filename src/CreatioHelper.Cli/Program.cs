@@ -555,7 +555,7 @@ internal static class CliEntryPoint
         Console.WriteLine("                               owner=user:group  chown after sudo mv (default: root:root)");
         Console.WriteLine("  --no-redis-clear             Skip Redis cache clear (useful when attaching IDE to Creatio)");
         Console.WriteLine("  --no-iis-restart             Skip IIS stop/start during compile (keeps process alive for IDE attach)");
-        Console.WriteLine("  --quick-install              Skip RebuildWorkspace and BuildConfiguration after package install (faster, like clio)");
+        Console.WriteLine("  --quick-install              Skip compilation after package install (faster, like clio)");
         Console.WriteLine("  --no-color                   Disable ANSI colors");
         Console.WriteLine("  --quiet                      Only print [ERROR] lines");
         Console.WriteLine();

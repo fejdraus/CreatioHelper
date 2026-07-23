@@ -121,10 +121,29 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 bool schemaRebuildPerformed = false;
                 bool serversAlreadyStopped = false;
 
-                if (!string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages)
+                bool willDeletePackagesBefore = !string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages;
+                bool willInstallPackages = !string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath);
+                bool willDeletePackagesAfter = !string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages;
+
+                bool CompilePackageStage(bool isLastStage)
                 {
-                    bool willStopLaterForPackages = !string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath);
-                    if (!willStopLaterForPackages)
+                    if (!isLastStage)
+                    {
+                        _output.WriteLine("Compiling to verify configuration integrity before the next stage...");
+                        return ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                    }
+
+                    if (!fullRebuild)
+                    {
+                        return ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                    }
+
+                    return ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken);
+                }
+
+                if (willDeletePackagesBefore)
+                {
+                    if (!willInstallPackages)
                     {
                         _output.WriteLine("Stopping local server before deleting packages...");
                         await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, options.IsIisMode, options.ServiceName, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
@@ -140,10 +159,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                         _customDescriptorUpdater.RemoveDependencies(sitePath, packagesBefore);
 
-                        success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                        if (!success) return;
-
-                        success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        success = CompilePackageStage(!willInstallPackages && !willDeletePackagesAfter);
                     });
 
                     if (!success)
@@ -157,7 +173,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     _metricsService.IncrementCounter("packages_deleted_before");
                 }
 
-                if (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath))
+                if (willInstallPackages)
                 {
                     if (options.PrevalidateBeforeInstall)
                     {
@@ -193,7 +209,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     _output.WriteLine("Start installation packages...");
                     if (options.QuickInstall)
                     {
-                        _output.WriteLine("[INFO] Quick install mode: RebuildWorkspace and BuildConfiguration will be skipped.");
+                        _output.WriteLine("[INFO] Quick install mode: compilation after install will be skipped.");
                     }
                     bool success = false;
                     _metricsService.Measure("package_install", () =>
@@ -201,10 +217,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                         success = ExecutePreparerAction(() => preparer.InstallFromRepository(sitePath, packagesPath), "[ERROR] Failed to install packages.", cancellationToken);
                         if (!success || options.QuickInstall) return;
 
-                        success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                        if (!success) return;
-
-                        success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        success = CompilePackageStage(!willDeletePackagesAfter);
                     });
 
                     if (!success)
@@ -218,10 +231,9 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     _metricsService.IncrementCounter("packages_installed_count");
                 }
 
-                if (!string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages)
+                if (willDeletePackagesAfter)
                 {
-                    bool wasStoppedEarlier = !string.IsNullOrWhiteSpace(packagesBefore) ||
-                                            (!string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath));
+                    bool wasStoppedEarlier = willDeletePackagesBefore || willInstallPackages;
                     if (!wasStoppedEarlier)
                     {
                         _output.WriteLine("Stopping local server before deleting packages...");
@@ -238,10 +250,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                         _customDescriptorUpdater.RemoveDependencies(sitePath, packagesAfter);
 
-                        success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                        if (!success) return;
-
-                        success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath), "[ERROR] Building configuration failed.", cancellationToken);
+                        success = CompilePackageStage(isLastStage: true);
                     });
 
                     if (!success)
@@ -285,32 +294,16 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     bool success = false;
                     if (fullRebuild)
                     {
-                        _metricsService.Measure("schema_regeneration", () =>
+                        _metricsService.Measure("schema_compile_all", () =>
                         {
-                            success = ExecutePreparerAction(() => preparer.RegenerateSchemaSources(sitePath), "[ERROR] Failed to regenerate schema sources.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken);
                         });
-
-                        if (success)
-                        {
-                            _metricsService.Measure("schema_rebuild_workspace", () =>
-                            {
-                                success = ExecutePreparerAction(() => preparer.RebuildWorkspace(sitePath), "[ERROR] Rebuilding workspace failed.", cancellationToken);
-                            });
-                        }
-
-                        if (success)
-                        {
-                            _metricsService.Measure("schema_compile_all", () =>
-                            {
-                                success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: true), "[ERROR] Building configuration failed.", cancellationToken);
-                            });
-                        }
                     }
                     else
                     {
                         _metricsService.Measure("schema_compile", () =>
                         {
-                            success = ExecutePreparerAction(() => preparer.BuildConfiguration(sitePath, force: false), "[ERROR] Building configuration failed.", cancellationToken);
+                            success = ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
                         });
                     }
 
