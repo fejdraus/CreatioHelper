@@ -10,6 +10,15 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://github.com/fejdraus/CreatioHelper/releases/latest"><img src="https://img.shields.io/github/v/release/fejdraus/CreatioHelper?label=release&color=blue" alt="Latest release"/></a>
+  <a href="https://github.com/fejdraus/CreatioHelper/releases"><img src="https://img.shields.io/github/downloads/fejdraus/CreatioHelper/total?color=blue" alt="Downloads"/></a>
+  <a href="https://github.com/fejdraus/CreatioHelper/actions/workflows/release.yml"><img src="https://img.shields.io/github/actions/workflow/status/fejdraus/CreatioHelper/release.yml?label=build" alt="Build status"/></a>
+  <a href="./LICENSE"><img src="https://img.shields.io/github/license/fejdraus/CreatioHelper?color=blue" alt="License"/></a>
+  <img src="https://img.shields.io/badge/.NET-10.0-512BD4" alt=".NET 10"/>
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey" alt="Supported platforms"/>
+</p>
+
 **CreatioHelper** is a comprehensive cross-platform tool for managing Terrasoft Creatio installations. It streamlines development workflows through automation of routine operations and provides both GUI and API interfaces.
 
 ## Key Features
