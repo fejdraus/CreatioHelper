@@ -265,7 +265,18 @@ dotnet run --project src/CreatioHelper.Agent
 ## Documentation
 
 - **[User Guide](./USER_GUIDE.md)** - Complete guide for using CreatioHelper Desktop application
+- **[Changelog](./CHANGELOG.md)** - What changed in each release
 - **[Built-in Sync Documentation](./SYNC_README.md)** - Planned native Syncthing-inspired synchronization for Agent (in development)
+
+## Contributing
+
+Bug reports, feature requests and pull requests are welcome — see **[CONTRIBUTING.md](./CONTRIBUTING.md)** for how to build the project and what the conventions are.
+
+Questions and usage discussions belong in **[Discussions](https://github.com/fejdraus/CreatioHelper/discussions)**. Security issues should be reported privately — see **[SECURITY.md](./SECURITY.md)**.
+
+## License
+
+Licensed under the [GNU General Public License v3.0](./LICENSE).
 
 ## Acknowledgements
 

@@ -1,0 +1,39 @@
+name: Feature request
+description: Suggest a capability or an improvement
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve
+      description: Describe the workflow you want automated or the manual step you keep repeating.
+      placeholder: After every package install I manually clear a second Redis instance that is not in the site config.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What should the tool do?
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Desktop
+        - CLI
+        - Agent
+        - Any
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you considered
+    validations:
+      required: false

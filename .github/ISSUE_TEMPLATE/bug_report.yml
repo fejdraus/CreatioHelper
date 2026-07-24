@@ -1,0 +1,88 @@
+name: Bug report
+description: Something does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. The version fields below matter a lot — most deployment problems depend on the Creatio version and the environment.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: Describe the problem and what you expected instead.
+      placeholder: Compile All finishes without errors, but conf/bin is not updated.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Select the site in IIS mode
+        2. Click Start (Compile All)
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Desktop
+        - CLI
+        - Agent
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: helper-version
+    attributes:
+      label: CreatioHelper version
+      placeholder: 1.0.32
+    validations:
+      required: true
+
+  - type: input
+    id: creatio-version
+    attributes:
+      label: Creatio version
+      description: Shown in the status bar of the Desktop application.
+      placeholder: 8.1.5.2177
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - Linux
+        - macOS
+    validations:
+      required: true
+
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Site mode
+      options:
+        - IIS
+        - Folder
+        - Not applicable
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Log output
+      description: Relevant output from the application log or the WorkspaceConsole log (`WSCLog`). Please remove passwords and connection strings.
+      render: text
+    validations:
+      required: false

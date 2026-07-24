@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Question or usage help
+    url: https://github.com/fejdraus/CreatioHelper/discussions
+    about: Ask how to use CreatioHelper, or share how you use it.
+  - name: Security vulnerability
+    url: https://github.com/fejdraus/CreatioHelper/security/advisories
+    about: Please report security issues privately, not as a public issue.
