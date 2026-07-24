@@ -427,6 +427,57 @@ public class WorkspacePreparer : IWorkspacePreparer
         return BuildConfiguration(sitePath, force: false);
     }
 
+    public bool SupportsFastCompile(string sitePath)
+    {
+        var version = CreatioSiteLayout.GetSiteVersion(sitePath);
+        return version != null && version >= Constants.MinimumVersionForFastCompile;
+    }
+
+    public int CompileFast(string sitePath)
+    {
+        if (!SupportsFastCompile(sitePath))
+        {
+            _output.WriteLine($"[WARN] Fast compile requires Creatio {Constants.MinimumVersionForFastCompile} or later; falling back to Compile.");
+            return Compile(sitePath);
+        }
+
+        int code = RunBuildOperation(sitePath);
+        if (code != 0)
+        {
+            return code;
+        }
+        return BuildConfiguration(sitePath, force: false);
+    }
+
+    private int RunBuildOperation(string sitePath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null)
+        {
+            return 0;
+        }
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"Build\" -workspaceName=\"Default\" -webApplicationPath=\"{SafePath(sitePath)}\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Fast compile: server assembly (changed schemas)...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
     public int CompileAll(string sitePath)
     {
         int code = RegenerateSchemaSources(sitePath);

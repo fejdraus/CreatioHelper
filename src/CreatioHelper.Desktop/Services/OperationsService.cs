@@ -44,7 +44,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
         _syncthingMonitor = syncthingMonitor;
     }
 
-    public async Task StartOperation(MainWindowViewModel viewModel, bool fullRebuild = true)
+    public async Task StartOperation(MainWindowViewModel viewModel, CompileMode compileMode = CompileMode.Full)
     {
         _cancellationTokenSource = new CancellationTokenSource();
         var token = _cancellationTokenSource.Token;
@@ -63,7 +63,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             PackagesToDeleteAfter = viewModel.PackagesToDeleteAfter,
             PrevalidateBeforeInstall = viewModel.PrevalidateBeforeInstall,
             ResetUnlockedPackageFlags = viewModel.ResetUnlockedPackageFlags,
-            Compile = fullRebuild ? CompileMode.Full : CompileMode.Incremental,
+            Compile = compileMode,
             Sync = viewModel.UseSyncthingForSync
                 ? SyncMode.Syncthing
                 : (viewModel.EnableFileCopySynchronization ? SyncMode.FileCopy : SyncMode.None),

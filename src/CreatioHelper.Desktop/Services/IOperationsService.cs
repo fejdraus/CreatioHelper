@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading.Tasks;
+using CreatioHelper.Application.Operations;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.ViewModels;
 using CreatioHelper.Shared.Interfaces;
@@ -10,7 +11,7 @@ namespace CreatioHelper.Services;
 
 public interface IOperationsService : INotifyPropertyChanged
 {
-    Task StartOperation(MainWindowViewModel viewModel, bool fullRebuild = true);
+    Task StartOperation(MainWindowViewModel viewModel, CompileMode compileMode = CompileMode.Full);
     Task RestoreConfiguration(MainWindowViewModel viewModel);
     void StopOperation();
     bool IsBusy { get; }

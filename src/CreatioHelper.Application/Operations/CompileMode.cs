@@ -4,6 +4,7 @@ public enum CompileMode
 {
     Default,
     Incremental,
+    Fast,
     Full,
     None
 }

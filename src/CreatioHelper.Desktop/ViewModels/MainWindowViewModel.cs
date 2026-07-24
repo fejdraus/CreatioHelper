@@ -15,6 +15,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Infrastructure.Services;
 using CreatioHelper.Application.Mediator;
+using CreatioHelper.Application.Operations;
 using CreatioHelper.Application.Settings;
 using System.Threading;
 using CreatioHelper.Domain.ValueObjects;
@@ -284,7 +285,13 @@ public partial class MainWindowViewModel : ObservableObject
     public Version SitePathWithVersion
     {
         get => _sitePathWithVersion;
-        set => SetProperty(ref _sitePathWithVersion, value);
+        set
+        {
+            if (SetProperty(ref _sitePathWithVersion, value))
+            {
+                OnPropertyChanged(nameof(SupportsFastCompile));
+            }
+        }
     }
 
     public bool IsWindows => OperatingSystem.IsWindows();
@@ -661,13 +668,28 @@ public partial class MainWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task Start()
     {
-        await _operationsService.StartOperation(this, fullRebuild: false);
+        await _operationsService.StartOperation(this, CompileMode.Incremental);
     }
 
     [RelayCommand]
     private async Task StartFull()
     {
-        await _operationsService.StartOperation(this, fullRebuild: true);
+        await _operationsService.StartOperation(this, CompileMode.Full);
+    }
+
+    [RelayCommand]
+    private async Task StartFast()
+    {
+        await _operationsService.StartOperation(this, CompileMode.Fast);
+    }
+
+    public bool SupportsFastCompile
+    {
+        get
+        {
+            var version = GetResolvedSiteVersion();
+            return version != null && version >= Constants.MinimumVersionForFastCompile;
+        }
     }
 
     [RelayCommand]
@@ -927,6 +949,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnIsFolderModeChanged(bool value)
     {
         OnPropertyChanged(nameof(IsIisMode));
+        OnPropertyChanged(nameof(SupportsFastCompile));
         OnPropertyChanged(nameof(CanUseIisBulkOperations));
         OnPropertyChanged(nameof(CanRestartLocalIis));
         OnPropertyChanged(nameof(SkipServerRestartText));
@@ -964,6 +987,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnSelectedIisSiteChanged(IisSiteInfo? value)
     {
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
+        OnPropertyChanged(nameof(SupportsFastCompile));
         OnPropertyChanged(nameof(CanRestartLocalIis));
         SaveServerSettings();
         RefreshFileDesignMode();
@@ -2486,6 +2510,7 @@ public partial class MainWindowViewModel : ObservableObject
         ["schema_regeneration"]      = "Regeneration",
         ["schema_rebuild_workspace"] = "Rebuild Workspace",
         ["schema_compile_all"]       = "Compile All",
+        ["schema_compile_fast"]      = "Fast Compile",
         ["schema_compile"]           = "Compile",
         ["creatio_to_fs"]            = "Creatio to FS",
         ["fs_to_creatio"]            = "FS to Creatio",

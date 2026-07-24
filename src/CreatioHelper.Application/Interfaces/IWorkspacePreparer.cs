@@ -12,6 +12,10 @@ public interface IWorkspacePreparer
 
     int Compile(string sitePath);
 
+    int CompileFast(string sitePath);
+
+    bool SupportsFastCompile(string sitePath);
+
     int CompileAll(string sitePath);
     int DeletePackages(string sitePath, string packageList);
     int LoadLicResponse(string sitePath, string licFilePath);

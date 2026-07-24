@@ -82,6 +82,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                                      !string.IsNullOrWhiteSpace(packagesAfter);
 
                 bool fullRebuild = options.Compile == CompileMode.Full;
+                bool fastCompile = options.Compile == CompileMode.Fast;
 
                 _output.WriteLine("Prepare WorkspaceConsole ...");
                 preparer.Prepare(sitePath, out quartzIsActiveOriginal);
@@ -128,17 +129,26 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 bool willInstallPackages = !string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath);
                 bool willDeletePackagesAfter = !string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages;
 
+                bool RunLightCompile()
+                {
+                    if (fastCompile)
+                    {
+                        return ExecutePreparerAction(() => preparer.CompileFast(sitePath), "[ERROR] Fast compile failed.", cancellationToken);
+                    }
+                    return ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                }
+
                 bool CompilePackageStage(bool isLastStage)
                 {
                     if (!isLastStage)
                     {
                         _output.WriteLine("Compiling to verify configuration integrity before the next stage...");
-                        return ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                        return RunLightCompile();
                     }
 
                     if (!fullRebuild)
                     {
-                        return ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                        return RunLightCompile();
                     }
 
                     return ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken);
@@ -291,15 +301,32 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                     ui.OnStopButtonEnabledChanged(true);
 
-                    _output.WriteLine(fullRebuild
-                        ? "Performing schema regeneration and full compilation (Compile All)..."
-                        : "Performing incremental compilation (Compile)...");
+                    if (fullRebuild)
+                    {
+                        _output.WriteLine("Performing schema regeneration and full compilation (Compile All)...");
+                    }
+                    else if (fastCompile)
+                    {
+                        _output.WriteLine("Performing fast compilation of changed schemas (Fast Compile)...");
+                    }
+                    else
+                    {
+                        _output.WriteLine("Performing incremental compilation (Compile)...");
+                    }
+
                     bool success = false;
                     if (fullRebuild)
                     {
                         _metricsService.Measure("schema_compile_all", () =>
                         {
                             success = ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken);
+                        });
+                    }
+                    else if (fastCompile)
+                    {
+                        _metricsService.Measure("schema_compile_fast", () =>
+                        {
+                            success = ExecutePreparerAction(() => preparer.CompileFast(sitePath), "[ERROR] Fast compile failed.", cancellationToken);
                         });
                     }
                     else
@@ -319,7 +346,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     }
 
                     _output.WriteLine(fullRebuild
-                        ? "[OK] Schema regeneration and compilation completed successfully."
+                        ? "[OK] Schema regeneration and full compilation completed successfully."
                         : "[OK] Incremental compilation completed successfully.");
                 }
 
@@ -530,9 +557,12 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 {
                     _metricsService.Measure("restore_compile", () =>
                     {
-                        success = options.Compile == CompileMode.Full
-                            ? ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken)
-                            : ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken);
+                        success = options.Compile switch
+                        {
+                            CompileMode.Full => ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken),
+                            CompileMode.Fast => ExecutePreparerAction(() => preparer.CompileFast(sitePath), "[ERROR] Fast compile failed.", cancellationToken),
+                            _ => ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken)
+                        };
                     });
 
                     if (!success)

@@ -1,5 +1,18 @@
 # Changelog
 
+## v1.0.32
+
+### Common (Desktop + CLI)
+
+**Fast Compile**
+
+- New compile mode that matches what the Creatio web *Compile* button does: it compiles only the changed schemas instead of regenerating every schema source.
+  - **Fast Compile** = `Build` + `BuildConfiguration -force=False`
+- Measured on a large configuration: **11 min** versus **30 min** for *Compile* and **40 min** for *Compile All*.
+- Requires **Creatio 8.0.10 or later** (the `Build` operation does not exist in earlier versions). On older versions the option is disabled in Desktop, and any other entry point falls back to the regular *Compile* with a warning.
+- Desktop: new **Start (Fast Compile)** item in the Start dropdown.
+- CLI: new `--compile fast` value.
+
 ## v1.0.31 — changes since v1.0.24
 
 ### Common (Desktop + CLI)
