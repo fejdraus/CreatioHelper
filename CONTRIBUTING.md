@@ -68,6 +68,14 @@ refactor(core): resolve the Creatio site layout in one place
 
 Common types: `feat`, `fix`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`.
 
+## Contributor License Agreement
+
+Before your first pull request can be merged you need to agree to the [Contributor License Agreement](./CLA.md). It is a one-time step that covers all of your future contributions.
+
+You keep the copyright to your work. The agreement grants the project the right to use and relicense your contribution, which is what allows the project to change its own licensing terms later without having to track down every past contributor.
+
+The agreement is requested automatically on your first pull request — you do not need to do anything in advance.
+
 ## Pull requests
 
 1. Fork the repository and create a branch from `main`.
@@ -75,6 +83,7 @@ Common types: `feat`, `fix`, `docs`, `refactor`, `perf`, `build`, `ci`, `chore`.
 3. Make sure `dotnet build` produces no errors or warnings and `dotnet test` passes.
 4. Add or update tests when you change behaviour.
 5. Open the pull request and describe what changes and why.
+6. Agree to the [CLA](./CLA.md) when prompted on the pull request.
 
 Changes that touch deployment behaviour (compilation chains, package installation, IIS handling) should ideally be verified against a real Creatio instance, since a green build does not prove correct behaviour there. Mention in the pull request what you tested and how.
 
