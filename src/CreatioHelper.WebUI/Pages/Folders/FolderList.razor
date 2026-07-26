@@ -25,6 +25,10 @@
 {
     <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
 }
+
+@if (_isLoading && State.Folders.Length == 0)
+{
+}
 else if (State.Folders.Length == 0)
 {
     <MudPaper Elevation="2" Class="pa-8 text-center">
@@ -275,14 +279,19 @@ else
 
         try
         {
-            var statuses = await Task.WhenAll(State.Folders.Select(f => ApiClient.GetFolderStatusAsync(f.Id, _pageCts.Token)));
-            foreach (var status in statuses)
-            {
-                if (status != null)
+            var pending = State.Folders
+                .Select(async f =>
                 {
-                    State.UpdateFolderStatus(status);
-                }
-            }
+                    var status = await ApiClient.GetFolderStatusAsync(f.Id, _pageCts.Token);
+                    if (status != null)
+                    {
+                        State.UpdateFolderStatus(status);
+                        await InvokeAsync(StateHasChanged);
+                    }
+                })
+                .ToArray();
+
+            await Task.WhenAll(pending);
         }
         catch (OperationCanceledException)
         {

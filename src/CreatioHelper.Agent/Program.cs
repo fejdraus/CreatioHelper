@@ -29,7 +29,8 @@ builder.Host.UseSerilog((context, configuration) =>
 {
     configuration
         .ReadFrom.Configuration(context.Configuration)
-        .Enrich.FromLogContext();
+        .Enrich.FromLogContext()
+        .Enrich.With(new CreatioHelper.Agent.Logging.SensitiveQueryStringEnricher());
 });
 
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]
@@ -274,6 +275,34 @@ app.MapHealthChecks("/health").AllowAnonymous();
 app.Use(async (context, next) =>
 {
     var path = context.Request.Path;
+
+    // The document names the fingerprinted files the app then loads. Letting a
+    // browser reuse a cached copy pins it to assembly hashes the server may no
+    // longer have, which surfaces as a 404 on a .wasm and a dead app after an
+    // upgrade. Static file middleware sets no Cache-Control here, so without
+    // this the browser falls back to heuristic caching.
+    // Every client-side route (/folders, /monitoring/connections) is served the
+    // same document by the SPA fallback, so matching only "/" would leave a
+    // deep-linked reload caching it. Anything without a file extension is a
+    // navigation, not an asset.
+    var isDocument = !path.HasValue
+                     || path.Value.Length == 0
+                     || path.Value == "/"
+                     || path.Value.EndsWith(".html", StringComparison.OrdinalIgnoreCase)
+                     || !Path.HasExtension(path.Value);
+    if (isDocument)
+    {
+        context.Response.OnStarting(() =>
+        {
+            if (string.IsNullOrEmpty(context.Response.Headers.CacheControl))
+            {
+                context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            }
+
+            return Task.CompletedTask;
+        });
+    }
+
     var isBlazorAsset = path.StartsWithSegments("/_framework")
                         || (path.Value?.EndsWith("blazor.boot.json", StringComparison.OrdinalIgnoreCase) ?? false);
     if (isBlazorAsset)
