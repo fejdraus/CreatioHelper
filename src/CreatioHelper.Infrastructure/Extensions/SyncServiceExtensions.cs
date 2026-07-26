@@ -250,7 +250,17 @@ public static class SyncServiceExtensions
         services.AddSingleton<BandwidthAwareBepConnectionFactory>();
 
         // Event and Statistics Services (ФАЗА 13)
-        services.AddSingleton<IEventLogger, EventLogger>();
+        services.AddSingleton<ISyncEventStore>(provider =>
+        {
+            var storeLogger = provider.GetRequiredService<ILogger<SqliteSyncEventStore>>();
+            var eventDatabasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "CreatioHelper", "Sync", $"sync_{syncConfig.DeviceId}.db");
+            return new SqliteSyncEventStore(storeLogger, $"Data Source={eventDatabasePath};Cache=Shared;");
+        });
+
+        services.AddSingleton<IEventLogger>(provider => new EventLogger(
+            provider.GetRequiredService<ILogger<EventLogger>>(),
+            provider.GetRequiredService<ISyncEventStore>()));
         services.AddSingleton<IStatisticsCollector, StatisticsCollector>();
         services.AddHostedService<EventLogger>(provider => (EventLogger)provider.GetRequiredService<IEventLogger>());
         services.AddHostedService<StatisticsCollector>(provider => (StatisticsCollector)provider.GetRequiredService<IStatisticsCollector>());

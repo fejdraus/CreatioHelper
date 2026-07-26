@@ -33,10 +33,16 @@ public class EventLogger : BackgroundService, IEventLogger
     private readonly List<SyncEvent> _globalEventBuffer = new();
     private readonly object _bufferLock = new();
 
-    public EventLogger(ILogger<EventLogger> logger)
+    private const int PersistBatchSize = 64;
+    private static readonly TimeSpan PersistFlushInterval = TimeSpan.FromSeconds(5);
+    private readonly ISyncEventStore? _eventStore;
+    private readonly List<SyncEvent> _pendingPersist = new();
+
+    public EventLogger(ILogger<EventLogger> logger, ISyncEventStore? eventStore = null)
     {
         _logger = logger;
-        
+        _eventStore = eventStore;
+
         // Создаем канал для событий с буферизацией (аналог events channel в Syncthing)
         var options = new BoundedChannelOptions(DefaultChannelCapacity)
         {
@@ -60,7 +66,11 @@ public class EventLogger : BackgroundService, IEventLogger
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("EventLogger started, processing events...");
-        
+
+        await RestoreHistoryAsync(stoppingToken);
+
+        var lastFlush = DateTime.UtcNow;
+
         try
         {
             await foreach (var syncEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
@@ -73,6 +83,22 @@ public class EventLogger : BackgroundService, IEventLogger
                 {
                     _logger.LogError(ex, "Error processing event {Type}: {Message}", syncEvent.Type, ex.Message);
                 }
+
+                if (_eventStore == null)
+                {
+                    continue;
+                }
+
+                _pendingPersist.Add(syncEvent);
+
+                // Writing every event separately would put a SQLite transaction on
+                // the sync hot path, so events are batched by count and by age.
+                if (_pendingPersist.Count >= PersistBatchSize
+                    || DateTime.UtcNow - lastFlush >= PersistFlushInterval)
+                {
+                    await FlushPendingAsync(stoppingToken);
+                    lastFlush = DateTime.UtcNow;
+                }
             }
         }
         catch (OperationCanceledException)
@@ -80,8 +106,75 @@ public class EventLogger : BackgroundService, IEventLogger
             // Shutdown requested while waiting for the next event
         }
 
+        await FlushPendingAsync(CancellationToken.None);
 
         _logger.LogInformation("EventLogger stopped");
+    }
+
+    private async Task RestoreHistoryAsync(CancellationToken cancellationToken)
+    {
+        if (_eventStore == null)
+        {
+            return;
+        }
+
+        try
+        {
+            var restored = await _eventStore.LoadRecentAsync(GlobalEventBufferSize, cancellationToken);
+            if (restored.Count == 0)
+            {
+                return;
+            }
+
+            lock (_statsLock)
+            {
+                foreach (var syncEvent in restored)
+                {
+                    syncEvent.GlobalId = _nextGlobalId++;
+                }
+            }
+
+            lock (_bufferLock)
+            {
+                _globalEventBuffer.InsertRange(0, restored);
+                while (_globalEventBuffer.Count > GlobalEventBufferSize)
+                {
+                    _globalEventBuffer.RemoveAt(0);
+                }
+            }
+
+            _logger.LogInformation("Restored {Count} events from the previous session", restored.Count);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not restore the event history");
+        }
+    }
+
+    private async Task FlushPendingAsync(CancellationToken cancellationToken)
+    {
+        if (_eventStore == null || _pendingPersist.Count == 0)
+        {
+            return;
+        }
+
+        var batch = _pendingPersist.ToArray();
+        _pendingPersist.Clear();
+
+        try
+        {
+            await _eventStore.AppendAsync(batch, cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not persist {Count} events", batch.Length);
+        }
     }
 
     /// <summary>

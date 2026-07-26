@@ -36,12 +36,6 @@ public class DatabaseMaintenanceOrphanCleanupTests : IDisposable
                 modified_time TEXT NOT NULL,
                 is_deleted BOOLEAN NOT NULL DEFAULT 0
             );
-            CREATE TABLE folder_config (
-                folder_id TEXT PRIMARY KEY,
-                type TEXT,
-                paused BOOLEAN NOT NULL DEFAULT 0,
-                updated_at TEXT
-            );
             CREATE TABLE sync_events (
                 timestamp TEXT NOT NULL
             );";
@@ -75,7 +69,7 @@ public class DatabaseMaintenanceOrphanCleanupTests : IDisposable
     }
 
     [Fact]
-    public async Task Maintenance_KeepsFilesOfConfiguredFolders_WhenFolderConfigTableIsEmpty()
+    public async Task Maintenance_KeepsFilesOfConfiguredFolders()
     {
         SeedFiles("folder-a", "folder-b");
 

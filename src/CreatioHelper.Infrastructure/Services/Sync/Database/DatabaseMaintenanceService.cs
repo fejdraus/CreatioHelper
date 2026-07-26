@@ -199,14 +199,12 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
 
     /// <summary>
     /// Deletes metadata belonging to folders that are no longer configured.
-    /// The folder_config table is never populated - folders live in config.xml - so
-    /// scoping the delete to that table wiped the entire index on every run. The set
-    /// of known folder ids comes from the configuration, and an empty set aborts the
-    /// cleanup rather than deleting everything.
+    /// config.xml is the source of truth for folders, so the set of known ids comes
+    /// from there. An empty set aborts the cleanup rather than deleting everything.
     /// </summary>
     private async Task<int> CleanupOrphanedRecordsAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
-        var knownFolderIds = await GetKnownFolderIdsAsync(connection, cancellationToken);
+        var knownFolderIds = await GetKnownFolderIdsAsync(cancellationToken);
 
         if (knownFolderIds.Count == 0)
         {
@@ -232,37 +230,26 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
-    private async Task<IReadOnlyCollection<string>> GetKnownFolderIdsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    private async Task<IReadOnlyCollection<string>> GetKnownFolderIdsAsync(CancellationToken cancellationToken)
     {
-        if (_activeFolderIdsProvider != null)
+        if (_activeFolderIdsProvider == null)
         {
-            try
-            {
-                return await _activeFolderIdsProvider(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Could not determine the configured folders; skipping orphaned record cleanup");
-                return Array.Empty<string>();
-            }
+            return Array.Empty<string>();
         }
 
-        var ids = new List<string>();
-
-        using var command = connection.CreateCommand();
-        command.CommandText = "SELECT folder_id FROM folder_config";
-
-        using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken))
+        try
         {
-            ids.Add(reader.GetString(0));
+            return await _activeFolderIdsProvider(cancellationToken);
         }
-
-        return ids;
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not determine the configured folders; skipping orphaned record cleanup");
+            return Array.Empty<string>();
+        }
     }
 
     private async Task<int> CleanupOldEventsAsync(SqliteConnection connection, CancellationToken cancellationToken)
