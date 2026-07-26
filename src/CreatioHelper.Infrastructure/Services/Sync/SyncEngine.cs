@@ -51,6 +51,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly SyncStatistics _statistics = new();
     private readonly SyncConfiguration _configuration;
     private bool _isStarted = false;
+    public event EventHandler<FolderStateChangedEventArgs>? FolderStateChanged;
     public event EventHandler<FolderSyncedEventArgs>? FolderSynced;
     public event EventHandler<ConflictDetectedEventArgs>? ConflictDetected;
     public event EventHandler<SyncErrorEventArgs>? SyncError;
@@ -558,7 +559,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         using var scanTimer = FolderMetrics.StartScan(folderId);
         if (_folderStatuses.TryGetValue(folderId, out var status))
         {
-            status.State = SyncState.Scanning;
+            SetFolderState(folderId, status, SyncState.Scanning);
         }
         ScanProgressTracker? progressTracker = null;
         try
@@ -620,7 +621,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             }
             if (status != null)
             {
-                status.State = SyncState.Idle;
+                SetFolderState(folderId, status, SyncState.Idle);
                 status.LastScan = DateTime.UtcNow;
                 var fileCount = files.Count(f => !f.IsDirectory);
                 var dirCount = files.Count(f => f.IsDirectory);
@@ -639,7 +640,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             progressTracker?.Cancel();
             if (status != null)
             {
-                status.State = SyncState.Idle;
+                SetFolderState(folderId, status, SyncState.Idle);
             }
         }
         catch (Exception ex)
@@ -648,13 +649,29 @@ public class SyncEngine : ISyncEngine, IDisposable
             progressTracker?.Fail(ex.Message);
             if (status != null)
             {
-                status.State = SyncState.Error;
+                SetFolderState(folderId, status, SyncState.Error);
                 status.Errors.Add($"Scan error: {ex.Message}");
             }
 
             SyncError?.Invoke(this, new SyncErrorEventArgs(folderId, $"Scan error: {ex.Message}", exception: ex));
         }
     }
+    private void SetFolderState(string folderId, SyncStatus status, SyncState newState)
+    {
+        var previous = status.State;
+        status.State = newState;
+
+        if (previous == newState)
+        {
+            return;
+        }
+
+        FolderStateChanged?.Invoke(this, new FolderStateChangedEventArgs(
+            folderId,
+            newState.ToString().ToLowerInvariant(),
+            previous.ToString().ToLowerInvariant()));
+    }
+
     public Task<SyncStatus> GetSyncStatusAsync(string folderId)
     {
         return Task.FromResult(_folderStatuses.TryGetValue(folderId, out var status)

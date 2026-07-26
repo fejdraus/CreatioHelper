@@ -549,6 +549,11 @@ public class SyncEngineHostedService : BackgroundService
         try
         {
             // Subscribe to sync events for broadcasting
+            _syncEngine.FolderStateChanged += async (sender, e) =>
+            {
+                await _eventBroadcaster.BroadcastFolderStateChangedAsync(e.FolderId, e.State, e.PreviousState);
+            };
+
             _syncEngine.FolderSynced += async (sender, e) =>
             {
                 await _eventBroadcaster.BroadcastFolderSyncedAsync(

@@ -77,6 +77,7 @@ public interface ISyncEngine
     /// </summary>
     Task<FolderNeedList> GetNeedListAsync(string folderId, int page = 1, int perPage = 100, CancellationToken cancellationToken = default);
 
+    event EventHandler<FolderStateChangedEventArgs> FolderStateChanged;
     event EventHandler<FolderSyncedEventArgs> FolderSynced;
     event EventHandler<ConflictDetectedEventArgs> ConflictDetected;
     event EventHandler<SyncErrorEventArgs> SyncError;
@@ -125,6 +126,25 @@ public class SyncStatistics
     public long TotalBytesDeduped { get; set; }
     public int TotalBlocksDeduped { get; set; }
     public double DeduplicationRatio => TotalBytesIn > 0 ? (double)TotalBytesDeduped / TotalBytesIn : 0.0;
+}
+
+/// <summary>
+/// Raised whenever a folder moves between states. Without it the web interface
+/// keeps showing whatever state it read when the page loaded - a folder that was
+/// scanning at that moment stays "scanning" until the page is reloaded by hand.
+/// </summary>
+public class FolderStateChangedEventArgs : EventArgs
+{
+    public string FolderId { get; }
+    public string State { get; }
+    public string? PreviousState { get; }
+
+    public FolderStateChangedEventArgs(string folderId, string state, string? previousState)
+    {
+        FolderId = folderId;
+        State = state;
+        PreviousState = previousState;
+    }
 }
 
 public class FolderSyncedEventArgs : EventArgs
