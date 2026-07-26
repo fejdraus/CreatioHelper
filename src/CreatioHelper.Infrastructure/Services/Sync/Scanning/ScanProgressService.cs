@@ -141,6 +141,7 @@ public class ScanProgressTracker : IDisposable
     {
         _progress.FilesTotal = totalFiles;
         _progress.BytesTotal = totalBytes;
+        _service.ReportEstimates(_progress.FolderId, totalFiles, totalBytes);
         _service.NotifyProgress(_progress);
     }
 
@@ -246,9 +247,18 @@ public class ScanProgressService : IScanProgressService
         var tracker = new ScanProgressTracker(this, folderId, estimatedFiles, estimatedBytes);
         _activeScans[folderId] = tracker;
 
-        _logger.LogInformation(
-            "Started scan for folder {FolderId}. Estimated: {Files} files, {Bytes} bytes",
-            folderId, estimatedFiles, estimatedBytes);
+        if (estimatedFiles > 0 || estimatedBytes > 0)
+        {
+            _logger.LogInformation(
+                "Started scan for folder {FolderId}. Estimated: {Files} files, {Bytes} bytes",
+                folderId, estimatedFiles, estimatedBytes);
+        }
+        else
+        {
+            // Estimates arrive from the enumeration pass via SetEstimates, so at this
+            // point there is nothing to report but zeroes.
+            _logger.LogInformation("Started scan for folder {FolderId}", folderId);
+        }
 
         NotifyProgress(tracker.Progress);
         return tracker;
@@ -291,6 +301,13 @@ public class ScanProgressService : IScanProgressService
     public bool IsScanInProgress(string folderId)
     {
         return _activeScans.ContainsKey(folderId);
+    }
+
+    internal void ReportEstimates(string folderId, long totalFiles, long totalBytes)
+    {
+        _logger.LogInformation(
+            "Scan of folder {FolderId} estimated at {Files} files, {Bytes} bytes",
+            folderId, totalFiles, totalBytes);
     }
 
     internal void NotifyProgress(ScanProgress progress)

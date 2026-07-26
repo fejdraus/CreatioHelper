@@ -583,7 +583,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             Action<string, long>? onFileScanned = progressTracker != null
                 ? (filePath, fileSize) => progressTracker.ReportFile(filePath, fileSize)
                 : null;
-            var files = await _fileWatcher.ScanFolderAsync(folder, onFileScanned, onEstimatesReady);
+            var files = await _fileWatcher.ScanFolderAsync(folder, onFileScanned, onEstimatesReady, _cancellationTokenSource.Token);
             folder.UpdateLastScan();
 
             progressTracker?.SetPhase(ScanPhase.Updating);
@@ -632,6 +632,15 @@ public class SyncEngine : ISyncEngine, IDisposable
                 status.TotalBytes = status.LocalBytes;
             }
             progressTracker?.Complete();
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Scan of folder {FolderId} cancelled during shutdown", folderId);
+            progressTracker?.Cancel();
+            if (status != null)
+            {
+                status.State = SyncState.Idle;
+            }
         }
         catch (Exception ex)
         {
