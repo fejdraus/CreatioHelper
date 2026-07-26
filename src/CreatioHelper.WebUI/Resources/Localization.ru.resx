@@ -566,6 +566,9 @@
   <data name="Events_Title" xml:space="preserve">
     <value>События</value>
   </data>
+  <data name="Events_AllLoaded" xml:space="preserve">
+    <value>Все события загружены</value>
+  </data>
   <data name="Events_NoEvents" xml:space="preserve">
     <value>Нет событий</value>
   </data>

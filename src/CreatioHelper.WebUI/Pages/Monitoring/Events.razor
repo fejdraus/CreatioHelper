@@ -5,6 +5,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
+@inject IJSRuntime JS
 @implements IDisposable
 
 <PageTitle>@L["Events_Title"] - CreatioHelper Agent</PageTitle>
@@ -87,6 +88,7 @@ else if (_filteredEvents.Count == 0)
 }
 else
 {
+    <div @ref="_tableWrapper">
     <MudPaper Elevation="2">
         <MudTable Items="@_filteredEvents"
                   Dense="true"
@@ -126,17 +128,18 @@ else
             </RowTemplate>
         </MudTable>
     </MudPaper>
+    </div>
 
-    <div class="d-flex justify-center mt-4">
-        <MudButton Variant="Variant.Text"
-                   OnClick="LoadMoreEvents"
-                   Disabled="@(!_hasMore || _isLoadingMore)">
-            @if (_isLoadingMore)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @L["Common_LoadMore"]
-        </MudButton>
+    <div class="d-flex justify-center align-center mt-4" style="min-height: 36px;">
+        @if (_isLoadingMore)
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_Loading"]</MudText>
+        }
+        else if (!_hasMore)
+        {
+            <MudText Typo="Typo.body2" Color="Color.Default">@L["Events_AllLoaded"]</MudText>
+        }
     </div>
 }
 
@@ -383,10 +386,54 @@ else
         }
     }
 
+    private ElementReference _tableWrapper;
+    private DotNetObjectReference<Events>? _selfRef;
+    private int _scrollHandle;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollHandle != 0 || string.IsNullOrEmpty(_tableWrapper.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            _scrollHandle = await JS.InvokeAsync<int>(
+                "creatioInfiniteScroll.attach",
+                _tableWrapper,
+                _selfRef,
+                nameof(OnScrolledNearBottom),
+                240);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnScrolledNearBottom()
+    {
+        if (!_hasMore || _isLoadingMore)
+        {
+            return;
+        }
+
+        await LoadMoreEvents();
+    }
+
     public void Dispose()
     {
         _pageCts.Cancel();
         _pageCts.Dispose();
         SignalR.OnSyncEvent -= OnSyncEvent;
+
+        if (_scrollHandle != 0)
+        {
+            _ = JS.InvokeVoidAsync("creatioInfiniteScroll.detach", _scrollHandle);
+        }
+
+        _selfRef?.Dispose();
     }
 }
