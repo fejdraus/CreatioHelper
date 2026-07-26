@@ -247,6 +247,7 @@ else
 @code {
     // Cancelled in Dispose so navigating away drops the requests this page started
     private readonly CancellationTokenSource _pageCts = new();
+    private readonly HashSet<string> _requestedStatuses = new();
 
     private bool _isLoading;
     private HashSet<string> _expandedFolders = new();
@@ -260,7 +261,55 @@ else
 
     private void OnStateChanged()
     {
-        InvokeAsync(StateHasChanged);
+        InvokeAsync(async () =>
+        {
+            // The folder list is fetched by the layout, so on a cold page load it
+            // arrives after this component has initialised. Loading statuses only
+            // once, at initialisation, therefore iterated an empty list and asked
+            // the agent for nothing - the page then showed whatever SignalR
+            // happened to push, and a missed update left a finished scan on screen
+            // for good.
+            await LoadMissingFolderStatusesAsync();
+            StateHasChanged();
+        });
+    }
+
+    private async Task LoadMissingFolderStatusesAsync()
+    {
+        var missing = State.Folders
+            .Select(f => f.Id)
+            .Where(id => !_requestedStatuses.Contains(id))
+            .ToArray();
+
+        if (missing.Length == 0)
+        {
+            return;
+        }
+
+        foreach (var id in missing)
+        {
+            _requestedStatuses.Add(id);
+        }
+
+        try
+        {
+            await Task.WhenAll(missing.Select(async id =>
+            {
+                var status = await ApiClient.GetFolderStatusAsync(id, _pageCts.Token);
+                if (status != null)
+                {
+                    State.UpdateFolderStatus(status);
+                }
+            }));
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the requests were in flight
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(L["Msg_FailedToLoadData", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
+        }
     }
 
     private void OnFolderStatusChanged(FolderStatus status)
@@ -279,6 +328,11 @@ else
 
         try
         {
+            foreach (var folder in State.Folders)
+            {
+                _requestedStatuses.Add(folder.Id);
+            }
+
             var pending = State.Folders
                 .Select(async f =>
                 {
