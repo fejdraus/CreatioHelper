@@ -25,10 +25,21 @@ public static class ResilientFileStream
         {
             return new FileStream(path, mode, access, share, bufferSize, options);
         }
-        catch (IOException ex)
+        catch (IOException ex) when (!IsMissing(ex))
         {
             onFallback?.Invoke(ex);
             return new FileStream(path, mode, access, share, bufferSize, options & ~FileOptions.Asynchronous);
         }
+    }
+
+    /// <summary>
+    /// FileNotFoundException and DirectoryNotFoundException both derive from
+    /// IOException, so catching IOException alone made every file that vanished
+    /// between enumeration and open cost two throws and a stack trace instead of
+    /// one. A synchronous handle cannot conjure a file that is not there.
+    /// </summary>
+    private static bool IsMissing(IOException exception)
+    {
+        return exception is FileNotFoundException or DirectoryNotFoundException;
     }
 }

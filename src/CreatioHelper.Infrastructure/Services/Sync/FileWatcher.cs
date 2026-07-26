@@ -359,6 +359,14 @@ public class FileWatcher : IDisposable
 
             return syncFileInfo;
         }
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException)
+        {
+            // Files disappear between enumeration and read all the time - build
+            // output, temporary files. Reporting each one as an error costs a
+            // stack trace per file and buries the failures that matter.
+            _logger.LogTrace("{FilePath} disappeared during the scan, skipping", filePath);
+            return null;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error creating file info for {FilePath}", filePath);
