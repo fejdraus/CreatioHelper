@@ -13,36 +13,51 @@ window.creatioInfiniteScroll = (function () {
     }
 
     return {
-        attach: function (root, dotNetRef, methodName, thresholdPx) {
+        attach: function (root, dotNetRef, methodName, screensAhead) {
             const container = findScrollContainer(root);
             if (!container) {
                 return 0;
             }
 
-            const threshold = thresholdPx > 0 ? thresholdPx : 200;
+            const screens = screensAhead > 0 ? screensAhead : 1.5;
             let pending = false;
 
-            const onScroll = function () {
+            const request = function () {
                 if (pending) {
-                    return;
-                }
-
-                const distanceToBottom =
-                    container.scrollHeight - container.scrollTop - container.clientHeight;
-
-                if (distanceToBottom > threshold) {
                     return;
                 }
 
                 pending = true;
                 dotNetRef.invokeMethodAsync(methodName)
-                    .finally(function () { pending = false; });
+                    .then(function (moreMayRemain) {
+                        pending = false;
+                        // A page that did not fill the runway leaves the reader one
+                        // scroll away from the end again, so keep going - but only
+                        // while the component says there is more to fetch, otherwise
+                        // this would spin on an exhausted list.
+                        if (moreMayRemain) {
+                            setTimeout(check, 0);
+                        }
+                    })
+                    .catch(function () { pending = false; });
             };
 
-            container.addEventListener('scroll', onScroll, { passive: true });
+            const check = function () {
+                const distanceToBottom =
+                    container.scrollHeight - container.scrollTop - container.clientHeight;
+
+                // Start fetching while the reader still has this much left to
+                // scroll, so the next page is already in place on arrival.
+                if (distanceToBottom <= container.clientHeight * screens) {
+                    request();
+                }
+            };
+
+            container.addEventListener('scroll', check, { passive: true });
+            setTimeout(check, 0);
 
             const id = nextId++;
-            handles.set(id, { container: container, onScroll: onScroll });
+            handles.set(id, { container: container, onScroll: check });
             return id;
         },
 

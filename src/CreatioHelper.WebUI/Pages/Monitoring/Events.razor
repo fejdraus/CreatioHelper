@@ -405,7 +405,7 @@ else
                 _tableWrapper,
                 _selfRef,
                 nameof(OnScrolledNearBottom),
-                240);
+                1.5);
         }
         catch (JSException)
         {
@@ -413,14 +413,15 @@ else
     }
 
     [JSInvokable]
-    public async Task OnScrolledNearBottom()
+    public async Task<bool> OnScrolledNearBottom()
     {
         if (!_hasMore || _isLoadingMore)
         {
-            return;
+            return false;
         }
 
         await LoadMoreEvents();
+        return _hasMore;
     }
 
     public void Dispose()
