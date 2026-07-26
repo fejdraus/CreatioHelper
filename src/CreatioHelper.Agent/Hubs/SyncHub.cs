@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Contracts.Responses;
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Mapping;
 using CreatioHelper.Infrastructure.Services.Sync;
 
 namespace CreatioHelper.Agent.Hubs;
@@ -137,22 +138,7 @@ public class SyncHub : Hub
 
             var status = await _syncEngine.GetSyncStatusAsync(folderId);
 
-            return new SyncFolderDto
-            {
-                FolderId = folder.Id,
-                Label = folder.Label,
-                Path = folder.Path,
-                Type = folder.Type,
-                IsPaused = folder.Paused,
-                State = status.State.ToString(),
-                GlobalBytes = status.GlobalBytes,
-                LocalBytes = status.LocalBytes,
-                GlobalFiles = status.GlobalFiles,
-                LocalFiles = status.LocalFiles,
-                LastScan = status.LastScan,
-                LastSync = status.LastSync,
-                DeviceIds = folder.Devices.ToList()
-            };
+            return folder.ToDto(status);
         }
         catch (Exception ex)
         {
@@ -177,16 +163,7 @@ public class SyncHub : Hub
                 return null;
             }
 
-            return new SyncDeviceDto
-            {
-                DeviceId = device.DeviceId,
-                Name = device.DeviceName,
-                IsConnected = device.IsConnected,
-                LastSeen = device.LastSeen ?? DateTime.MinValue,
-                Status = device.IsConnected ? "Connected" : "Disconnected",
-                IsPaused = device.Paused,
-                Addresses = device.Addresses
-            };
+            return device.ToDto();
         }
         catch (Exception ex)
         {
@@ -205,17 +182,7 @@ public class SyncHub : Hub
             var statistics = await _syncEngine.GetStatisticsAsync();
             var devices = await _syncEngine.GetDevicesAsync();
 
-            return new SyncSystemStatus
-            {
-                Uptime = statistics.Uptime,
-                ConnectedDevices = statistics.ConnectedDevices,
-                TotalDevices = statistics.TotalDevices,
-                SyncedFolders = statistics.SyncedFolders,
-                TotalFolders = statistics.TotalFolders,
-                TotalBytesIn = statistics.TotalBytesIn,
-                TotalBytesOut = statistics.TotalBytesOut,
-                IsOnline = devices.Any(d => d.IsConnected)
-            };
+            return statistics.ToSystemStatus(devices);
         }
         catch (Exception ex)
         {

@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
+using CreatioHelper.Domain.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Security;
@@ -423,7 +424,7 @@ public class AuditLogService : IAuditLogService, IDisposable
             if (entries.Count > 0)
             {
                 var filePath = GetCurrentLogFilePath();
-                var json = JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(entries, JsonDefaults.Indented);
 
                 // Append to file (create if not exists)
                 await File.AppendAllTextAsync(filePath, json + Environment.NewLine, cancellationToken);
@@ -526,7 +527,7 @@ public class AuditLogService : IAuditLogService, IDisposable
 
     private async Task ExportJsonAsync(List<AuditLogEntry> entries, string path, bool includeSensitive, CancellationToken ct)
     {
-        var options = new JsonSerializerOptions { WriteIndented = true };
+        var options = JsonDefaults.Indented;
         var json = JsonSerializer.Serialize(entries, options);
         await File.WriteAllTextAsync(path, json, ct);
     }

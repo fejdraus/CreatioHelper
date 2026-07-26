@@ -14,7 +14,8 @@ public static class PluralHelper
     {
         var n = Math.Abs(count);
 
-        if (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "ru")
+        // East Slavic languages share the one/few/many rule
+        if (CultureInfo.CurrentUICulture.TwoLetterISOLanguageName is "ru" or "uk" or "be")
         {
             var mod10 = n % 10;
             var mod100 = n % 100;

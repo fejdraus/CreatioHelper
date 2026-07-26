@@ -30,30 +30,22 @@ public class SyncthingClusterController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public ActionResult<object> GetPendingDevices()
     {
-        try
+        var pendingDevices = _pendingService.GetPendingDevices();
+
+        // Build Syncthing-compatible response: Dictionary<deviceId, PendingDeviceInfo>
+        var result = new Dictionary<string, object>();
+
+        foreach (var device in pendingDevices)
         {
-            var pendingDevices = _pendingService.GetPendingDevices();
-
-            // Build Syncthing-compatible response: Dictionary<deviceId, PendingDeviceInfo>
-            var result = new Dictionary<string, object>();
-
-            foreach (var device in pendingDevices)
+            result[device.DeviceId] = new
             {
-                result[device.DeviceId] = new
-                {
-                    time = device.DiscoveredAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    name = device.Name,
-                    address = device.Address ?? string.Empty
-                };
-            }
+                time = device.DiscoveredAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                name = device.Name,
+                address = device.Address ?? string.Empty
+            };
+        }
 
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting pending devices");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(result);
     }
 
     /// <summary>
@@ -64,27 +56,19 @@ public class SyncthingClusterController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult DeletePendingDevice([FromQuery] string device)
     {
-        try
+        if (string.IsNullOrEmpty(device))
+            return BadRequest(new { error = "device parameter required" });
+
+        var rejected = _pendingService.RejectPendingDevice(device);
+
+        if (rejected)
         {
-            if (string.IsNullOrEmpty(device))
-                return BadRequest(new { error = "device parameter required" });
-
-            var rejected = _pendingService.RejectPendingDevice(device);
-
-            if (rejected)
-            {
-                _logger.LogInformation("Rejected pending device {DeviceId}", device);
-                return Ok(new { ok = "pending device removed" });
-            }
-            else
-            {
-                return NotFound(new { error = "pending device not found" });
-            }
+            _logger.LogInformation("Rejected pending device {DeviceId}", device);
+            return Ok(new { ok = "pending device removed" });
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error deleting pending device {Device}", device);
-            return StatusCode(500, new { error = "Internal server error" });
+            return NotFound(new { error = "pending device not found" });
         }
     }
 
@@ -96,36 +80,28 @@ public class SyncthingClusterController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public ActionResult<object> GetPendingFolders()
     {
-        try
+        var pendingFolders = _pendingService.GetPendingFolders();
+
+        // Build Syncthing-compatible response: Dictionary<deviceId, Dictionary<folderId, PendingFolderInfo>>
+        var result = new Dictionary<string, Dictionary<string, object>>();
+
+        foreach (var folder in pendingFolders)
         {
-            var pendingFolders = _pendingService.GetPendingFolders();
-
-            // Build Syncthing-compatible response: Dictionary<deviceId, Dictionary<folderId, PendingFolderInfo>>
-            var result = new Dictionary<string, Dictionary<string, object>>();
-
-            foreach (var folder in pendingFolders)
+            if (!result.ContainsKey(folder.OfferedByDeviceId))
             {
-                if (!result.ContainsKey(folder.OfferedByDeviceId))
-                {
-                    result[folder.OfferedByDeviceId] = new Dictionary<string, object>();
-                }
-
-                result[folder.OfferedByDeviceId][folder.FolderId] = new
-                {
-                    time = folder.OfferedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    label = folder.Label,
-                    receiveEncrypted = folder.ReceiveEncrypted,
-                    remoteEncrypted = folder.IsEncrypted
-                };
+                result[folder.OfferedByDeviceId] = new Dictionary<string, object>();
             }
 
-            return Ok(result);
+            result[folder.OfferedByDeviceId][folder.FolderId] = new
+            {
+                time = folder.OfferedAt.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                label = folder.Label,
+                receiveEncrypted = folder.ReceiveEncrypted,
+                remoteEncrypted = folder.IsEncrypted
+            };
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting pending folders");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+
+        return Ok(result);
     }
 
     /// <summary>
@@ -136,27 +112,19 @@ public class SyncthingClusterController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult DeletePendingFolder([FromQuery] string device, [FromQuery] string folder)
     {
-        try
+        if (string.IsNullOrEmpty(device) || string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "device and folder parameters required" });
+
+        var rejected = _pendingService.RejectPendingFolder(folder, device);
+
+        if (rejected)
         {
-            if (string.IsNullOrEmpty(device) || string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "device and folder parameters required" });
-
-            var rejected = _pendingService.RejectPendingFolder(folder, device);
-
-            if (rejected)
-            {
-                _logger.LogInformation("Rejected pending folder {FolderId} from device {DeviceId}", folder, device);
-                return Ok(new { ok = "pending folder removed" });
-            }
-            else
-            {
-                return NotFound(new { error = "pending folder not found" });
-            }
+            _logger.LogInformation("Rejected pending folder {FolderId} from device {DeviceId}", folder, device);
+            return Ok(new { ok = "pending folder removed" });
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error deleting pending folder {Folder} from device {Device}", folder, device);
-            return StatusCode(500, new { error = "Internal server error" });
+            return NotFound(new { error = "pending folder not found" });
         }
     }
 }

@@ -6,7 +6,7 @@
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
 
-<PageTitle>@L["SupportBundle_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["SupportBundle_Title"] - CreatioHelper Agent</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["SupportBundle_Title"]</MudText>
 
@@ -39,11 +39,12 @@
                         @L["SupportBundle_LogsDesc", _logDays]
                     </MudText>
                 </div>
-                <MudSpacer />
                 <MudNumericField @bind-Value="_logDays"
+                                 Label="@L["SupportBundle_LogDays"]"
                                  Min="1"
                                  Max="30"
-                                 Style="width: 80px;"
+                                 Class="ml-6"
+                                 Style="width: 110px;"
                                  Variant="Variant.Filled"
                                  Margin="Margin.Dense"
                                  Disabled="@(!_includeLogs)" />

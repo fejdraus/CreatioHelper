@@ -1,7 +1,4 @@
 using CreatioHelper.Domain.Entities;
-using OldDeviceStatistics = CreatioHelper.Domain.Entities.DeviceStatistics;
-using OldFolderStatistics = CreatioHelper.Domain.Entities.FolderStatistics;
-using OldLastFileInfo = CreatioHelper.Domain.Entities.LastFileInfo;
 using CreatioHelper.Domain.Entities.Statistics;
 
 namespace CreatioHelper.Application.Interfaces;

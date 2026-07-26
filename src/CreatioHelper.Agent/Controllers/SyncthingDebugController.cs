@@ -32,94 +32,86 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("cpuprof")]
     public async Task<ActionResult> GetCpuProfile([FromQuery] int duration = 30)
     {
-        try
+        duration = Math.Clamp(duration, 1, 60);
+
+        _logger.LogInformation("CPU profiling requested for {Duration} seconds", duration);
+
+        var currentProcess = Process.GetCurrentProcess();
+
+        // Snapshot 1: capture per-thread CPU times
+        var snapshot1 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
+        foreach (ProcessThread thread in currentProcess.Threads)
         {
-            duration = Math.Clamp(duration, 1, 60);
-
-            _logger.LogInformation("CPU profiling requested for {Duration} seconds", duration);
-
-            var currentProcess = Process.GetCurrentProcess();
-
-            // Snapshot 1: capture per-thread CPU times
-            var snapshot1 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
-            foreach (ProcessThread thread in currentProcess.Threads)
+            try
             {
-                try
-                {
-                    snapshot1[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
-                }
-                catch
-                {
-                    // Some threads may exit between enumeration and access
-                }
+                snapshot1[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
             }
-
-            await Task.Delay(duration * 1000);
-
-            // Refresh process info
-            currentProcess.Refresh();
-
-            // Snapshot 2
-            var snapshot2 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
-            foreach (ProcessThread thread in currentProcess.Threads)
+            catch
             {
-                try
-                {
-                    snapshot2[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
-                }
-                catch
-                {
-                }
+                // Some threads may exit between enumeration and access
             }
-
-            // Compute deltas for threads present in both snapshots
-            var deltas = new List<(int Id, double CpuMs, System.Diagnostics.ThreadState State)>();
-            double totalCpuMs = 0;
-
-            foreach (var (id, s2) in snapshot2)
-            {
-                if (snapshot1.TryGetValue(id, out var s1))
-                {
-                    var deltaMs = (s2.TotalTime - s1.TotalTime).TotalMilliseconds;
-                    if (deltaMs < 0) deltaMs = 0;
-                    deltas.Add((id, deltaMs, s2.State));
-                    totalCpuMs += deltaMs;
-                }
-                else
-                {
-                    // New thread — use its full CPU time as delta
-                    deltas.Add((id, s2.TotalTime.TotalMilliseconds, s2.State));
-                    totalCpuMs += s2.TotalTime.TotalMilliseconds;
-                }
-            }
-
-            deltas.Sort((a, b) => b.CpuMs.CompareTo(a.CpuMs));
-
-            // Build text report
-            var sb = new StringBuilder();
-            sb.AppendLine($"--- CPU Profile ---");
-            sb.AppendLine($"Timestamp : {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
-            sb.AppendLine($"Duration  : {duration}s");
-            sb.AppendLine($"Total CPU : {totalCpuMs:F1}ms across {deltas.Count} threads");
-            sb.AppendLine($"Processors: {Environment.ProcessorCount}");
-            sb.AppendLine();
-            sb.AppendLine($"{"Thread",-10} {"State",-15} {"CPU (ms)",10} {"% Total",10}");
-            sb.AppendLine(new string('-', 47));
-
-            foreach (var (id, cpuMs, state) in deltas)
-            {
-                var pct = totalCpuMs > 0 ? cpuMs / totalCpuMs * 100 : 0;
-                sb.AppendLine($"{id,-10} {state,-15} {cpuMs,10:F1} {pct,9:F1}%");
-            }
-
-            var bytes = Encoding.UTF8.GetBytes(sb.ToString());
-            return File(bytes, "application/octet-stream", "cpuprofile.txt");
         }
-        catch (Exception ex)
+
+        await Task.Delay(duration * 1000);
+
+        // Refresh process info
+        currentProcess.Refresh();
+
+        // Snapshot 2
+        var snapshot2 = new Dictionary<int, (TimeSpan TotalTime, System.Diagnostics.ThreadState State)>();
+        foreach (ProcessThread thread in currentProcess.Threads)
         {
-            _logger.LogError(ex, "Error getting CPU profile");
-            return StatusCode(500, new { error = "Internal server error" });
+            try
+            {
+                snapshot2[thread.Id] = (thread.TotalProcessorTime, thread.ThreadState);
+            }
+            catch
+            {
+            }
         }
+
+        // Compute deltas for threads present in both snapshots
+        var deltas = new List<(int Id, double CpuMs, System.Diagnostics.ThreadState State)>();
+        double totalCpuMs = 0;
+
+        foreach (var (id, s2) in snapshot2)
+        {
+            if (snapshot1.TryGetValue(id, out var s1))
+            {
+                var deltaMs = (s2.TotalTime - s1.TotalTime).TotalMilliseconds;
+                if (deltaMs < 0) deltaMs = 0;
+                deltas.Add((id, deltaMs, s2.State));
+                totalCpuMs += deltaMs;
+            }
+            else
+            {
+                // New thread — use its full CPU time as delta
+                deltas.Add((id, s2.TotalTime.TotalMilliseconds, s2.State));
+                totalCpuMs += s2.TotalTime.TotalMilliseconds;
+            }
+        }
+
+        deltas.Sort((a, b) => b.CpuMs.CompareTo(a.CpuMs));
+
+        // Build text report
+        var sb = new StringBuilder();
+        sb.AppendLine($"--- CPU Profile ---");
+        sb.AppendLine($"Timestamp : {DateTime.UtcNow:yyyy-MM-dd HH:mm:ss} UTC");
+        sb.AppendLine($"Duration  : {duration}s");
+        sb.AppendLine($"Total CPU : {totalCpuMs:F1}ms across {deltas.Count} threads");
+        sb.AppendLine($"Processors: {Environment.ProcessorCount}");
+        sb.AppendLine();
+        sb.AppendLine($"{"Thread",-10} {"State",-15} {"CPU (ms)",10} {"% Total",10}");
+        sb.AppendLine(new string('-', 47));
+
+        foreach (var (id, cpuMs, state) in deltas)
+        {
+            var pct = totalCpuMs > 0 ? cpuMs / totalCpuMs * 100 : 0;
+            sb.AppendLine($"{id,-10} {state,-15} {cpuMs,10:F1} {pct,9:F1}%");
+        }
+
+        var bytes = Encoding.UTF8.GetBytes(sb.ToString());
+        return File(bytes, "application/octet-stream", "cpuprofile.txt");
     }
 
     /// <summary>
@@ -129,31 +121,23 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("heapprof")]
     public ActionResult GetHeapProfile()
     {
-        try
-        {
-            _logger.LogInformation("Heap profiling requested");
+        _logger.LogInformation("Heap profiling requested");
 
-            // Get basic memory information
-            var currentProcess = Process.GetCurrentProcess();
-            var memoryInfo = new
-            {
-                totalMemory = GC.GetTotalMemory(false),
-                workingSet = currentProcess.WorkingSet64,
-                privateMemory = currentProcess.PrivateMemorySize64,
-                virtualMemory = currentProcess.VirtualMemorySize64,
-                peakWorkingSet = currentProcess.PeakWorkingSet64,
-                gcGen0 = GC.CollectionCount(0),
-                gcGen1 = GC.CollectionCount(1),
-                gcGen2 = GC.CollectionCount(2)
-            };
-
-            return Ok(memoryInfo);
-        }
-        catch (Exception ex)
+        // Get basic memory information
+        var currentProcess = Process.GetCurrentProcess();
+        var memoryInfo = new
         {
-            _logger.LogError(ex, "Error getting heap profile");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            totalMemory = GC.GetTotalMemory(false),
+            workingSet = currentProcess.WorkingSet64,
+            privateMemory = currentProcess.PrivateMemorySize64,
+            virtualMemory = currentProcess.VirtualMemorySize64,
+            peakWorkingSet = currentProcess.PeakWorkingSet64,
+            gcGen0 = GC.CollectionCount(0),
+            gcGen1 = GC.CollectionCount(1),
+            gcGen2 = GC.CollectionCount(2)
+        };
+
+        return Ok(memoryInfo);
     }
 
     /// <summary>
@@ -163,30 +147,22 @@ public class SyncthingDebugController : ControllerBase
     [HttpPost("gc")]
     public ActionResult TriggerGarbageCollection()
     {
-        try
-        {
-            _logger.LogInformation("Garbage collection triggered via API");
+        _logger.LogInformation("Garbage collection triggered via API");
 
-            var beforeMemory = GC.GetTotalMemory(false);
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-            var afterMemory = GC.GetTotalMemory(true);
+        var beforeMemory = GC.GetTotalMemory(false);
+        GC.Collect();
+        GC.WaitForPendingFinalizers();
+        GC.Collect();
+        var afterMemory = GC.GetTotalMemory(true);
 
-            return Ok(new
-            {
-                success = true,
-                beforeBytes = beforeMemory,
-                afterBytes = afterMemory,
-                freedBytes = beforeMemory - afterMemory,
-                timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Error triggering garbage collection");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            success = true,
+            beforeBytes = beforeMemory,
+            afterBytes = afterMemory,
+            freedBytes = beforeMemory - afterMemory,
+            timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+        });
     }
 
     /// <summary>
@@ -196,47 +172,39 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("heapdump")]
     public ActionResult GetHeapDump()
     {
-        try
+        _logger.LogInformation("Heap dump requested");
+
+        var currentProcess = Process.GetCurrentProcess();
+        var memoryInfo = GC.GetGCMemoryInfo();
+
+        var heapDump = new
         {
-            _logger.LogInformation("Heap dump requested");
-
-            var currentProcess = Process.GetCurrentProcess();
-            var memoryInfo = GC.GetGCMemoryInfo();
-
-            var heapDump = new
+            timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            totalMemory = GC.GetTotalMemory(false),
+            heapSize = memoryInfo.HeapSizeBytes,
+            fragmentedBytes = memoryInfo.FragmentedBytes,
+            memoryLoad = memoryInfo.MemoryLoadBytes,
+            totalCommittedBytes = memoryInfo.TotalCommittedBytes,
+            totalAvailableMemory = memoryInfo.TotalAvailableMemoryBytes,
+            highMemoryLoadThreshold = memoryInfo.HighMemoryLoadThresholdBytes,
+            gcGeneration = new
             {
-                timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                totalMemory = GC.GetTotalMemory(false),
-                heapSize = memoryInfo.HeapSizeBytes,
-                fragmentedBytes = memoryInfo.FragmentedBytes,
-                memoryLoad = memoryInfo.MemoryLoadBytes,
-                totalCommittedBytes = memoryInfo.TotalCommittedBytes,
-                totalAvailableMemory = memoryInfo.TotalAvailableMemoryBytes,
-                highMemoryLoadThreshold = memoryInfo.HighMemoryLoadThresholdBytes,
-                gcGeneration = new
-                {
-                    gen0Collections = GC.CollectionCount(0),
-                    gen1Collections = GC.CollectionCount(1),
-                    gen2Collections = GC.CollectionCount(2)
-                },
-                process = new
-                {
-                    workingSet = currentProcess.WorkingSet64,
-                    privateMemory = currentProcess.PrivateMemorySize64,
-                    virtualMemory = currentProcess.VirtualMemorySize64,
-                    peakWorkingSet = currentProcess.PeakWorkingSet64,
-                    pagedMemory = currentProcess.PagedMemorySize64,
-                    peakPagedMemory = currentProcess.PeakPagedMemorySize64
-                }
-            };
+                gen0Collections = GC.CollectionCount(0),
+                gen1Collections = GC.CollectionCount(1),
+                gen2Collections = GC.CollectionCount(2)
+            },
+            process = new
+            {
+                workingSet = currentProcess.WorkingSet64,
+                privateMemory = currentProcess.PrivateMemorySize64,
+                virtualMemory = currentProcess.VirtualMemorySize64,
+                peakWorkingSet = currentProcess.PeakWorkingSet64,
+                pagedMemory = currentProcess.PagedMemorySize64,
+                peakPagedMemory = currentProcess.PeakPagedMemorySize64
+            }
+        };
 
-            return Ok(heapDump);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting heap dump");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(heapDump);
     }
 
     /// <summary>
@@ -246,53 +214,45 @@ public class SyncthingDebugController : ControllerBase
     [HttpPost("support/preview")]
     public async Task<ActionResult<object>> PreviewSupportBundle([FromBody] SupportBundleOptions? options)
     {
-        try
+        var items = new List<object>();
+
+        // System info
+        items.Add(new { type = "system", name = "system-info.json", size = 1024 });
+        items.Add(new { type = "config", name = "config.json", size = 2048 });
+
+        // Logs (if requested)
+        if (options?.IncludeLogs != false)
         {
-            var items = new List<object>();
-
-            // System info
-            items.Add(new { type = "system", name = "system-info.json", size = 1024 });
-            items.Add(new { type = "config", name = "config.json", size = 2048 });
-
-            // Logs (if requested)
-            if (options?.IncludeLogs != false)
-            {
-                items.Add(new { type = "log", name = "syncthing.log", size = options?.LogLines * 100 ?? 10000 });
-            }
-
-            // Database (if requested)
-            if (options?.IncludeDatabase == true)
-            {
-                items.Add(new { type = "database", name = "index-v0.14.0.db", size = 1048576 });
-            }
-
-            // Statistics
-            items.Add(new { type = "stats", name = "statistics.json", size = 512 });
-
-            // Connections
-            items.Add(new { type = "connections", name = "connections.json", size = 256 });
-
-            var totalSize = items.Sum(i => (long)((dynamic)i).size);
-
-            return Ok(new
-            {
-                estimatedSize = totalSize,
-                files = items,
-                options = new
-                {
-                    includeLogs = options?.IncludeLogs ?? true,
-                    logLines = options?.LogLines ?? 100,
-                    includeDatabase = options?.IncludeDatabase ?? false,
-                    includeConfig = options?.IncludeConfig ?? true,
-                    redactSecrets = options?.RedactSecrets ?? true
-                }
-            });
+            items.Add(new { type = "log", name = "syncthing.log", size = options?.LogLines * 100 ?? 10000 });
         }
-        catch (Exception ex)
+
+        // Database (if requested)
+        if (options?.IncludeDatabase == true)
         {
-            _logger.LogError(ex, "Error previewing support bundle");
-            return StatusCode(500, new { error = "Internal server error" });
+            items.Add(new { type = "database", name = "index-v0.14.0.db", size = 1048576 });
         }
+
+        // Statistics
+        items.Add(new { type = "stats", name = "statistics.json", size = 512 });
+
+        // Connections
+        items.Add(new { type = "connections", name = "connections.json", size = 256 });
+
+        var totalSize = items.Sum(i => (long)((dynamic)i).size);
+
+        return Ok(new
+        {
+            estimatedSize = totalSize,
+            files = items,
+            options = new
+            {
+                includeLogs = options?.IncludeLogs ?? true,
+                logLines = options?.LogLines ?? 100,
+                includeDatabase = options?.IncludeDatabase ?? false,
+                includeConfig = options?.IncludeConfig ?? true,
+                redactSecrets = options?.RedactSecrets ?? true
+            }
+        });
     }
 
     /// <summary>
@@ -302,76 +262,68 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("support")]
     public async Task<ActionResult<object>> GetSupportBundle()
     {
-        try
+        var statistics = await _syncEngine.GetStatisticsAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
+        var config = await _syncEngine.GetConfigurationAsync();
+
+        var currentProcess = Process.GetCurrentProcess();
+
+        var bundle = new
         {
-            var statistics = await _syncEngine.GetStatisticsAsync();
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
-            var config = await _syncEngine.GetConfigurationAsync();
-
-            var currentProcess = Process.GetCurrentProcess();
-
-            var bundle = new
+            timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            version = new
             {
-                timestamp = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                version = new
+                arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString(),
+                os = Environment.OSVersion.ToString(),
+                runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
+                version = "v1.27.0"
+            },
+            system = new
+            {
+                numCPU = Environment.ProcessorCount,
+                goOS = Environment.OSVersion.Platform.ToString(),
+                goArch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString(),
+                memTotal = GC.GetTotalMemory(false),
+                memUsed = currentProcess.WorkingSet64
+            },
+            config = new
+            {
+                numDevices = devices.Count,
+                numFolders = folders.Count,
+                options = new
                 {
-                    arch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString(),
-                    os = Environment.OSVersion.ToString(),
-                    runtime = System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription,
-                    version = "v1.27.0"
-                },
-                system = new
-                {
-                    numCPU = Environment.ProcessorCount,
-                    goOS = Environment.OSVersion.Platform.ToString(),
-                    goArch = System.Runtime.InteropServices.RuntimeInformation.OSArchitecture.ToString(),
-                    memTotal = GC.GetTotalMemory(false),
-                    memUsed = currentProcess.WorkingSet64
-                },
-                config = new
-                {
-                    numDevices = devices.Count,
-                    numFolders = folders.Count,
-                    options = new
-                    {
-                        globalAnnounceEnabled = config.GlobalAnnounceEnabled,
-                        localAnnounceEnabled = config.LocalAnnounceEnabled,
-                        relaysEnabled = config.RelaysEnabled,
-                        natEnabled = config.NatEnabled
-                    }
-                },
-                connections = devices.Select(d => new
-                {
-                    deviceId = d.DeviceId.Substring(0, 7) + "...", // Redacted
-                    connected = d.IsConnected,
-                    paused = d.IsPaused
-                }).ToArray(),
-                folders = folders.Select(f => new
-                {
-                    id = f.Id,
-                    type = f.SyncType.ToString(),
-                    state = "idle",
-                    files = f.FileCount,
-                    size = f.TotalSize
-                }).ToArray(),
-                statistics = new
-                {
-                    uptime = (int)statistics.Uptime.TotalSeconds,
-                    totalBytesIn = statistics.TotalBytesIn,
-                    totalBytesOut = statistics.TotalBytesOut,
-                    connectedDevices = statistics.ConnectedDevices,
-                    totalDevices = statistics.TotalDevices
+                    globalAnnounceEnabled = config.GlobalAnnounceEnabled,
+                    localAnnounceEnabled = config.LocalAnnounceEnabled,
+                    relaysEnabled = config.RelaysEnabled,
+                    natEnabled = config.NatEnabled
                 }
-            };
+            },
+            connections = devices.Select(d => new
+            {
+                deviceId = d.DeviceId.Substring(0, 7) + "...", // Redacted
+                connected = d.IsConnected,
+                paused = d.IsPaused
+            }).ToArray(),
+            folders = folders.Select(f => new
+            {
+                id = f.Id,
+                type = f.SyncType.ToString(),
+                state = "idle",
+                files = f.FileCount,
+                size = f.TotalSize
+            }).ToArray(),
+            statistics = new
+            {
+                uptime = (int)statistics.Uptime.TotalSeconds,
+                totalBytesIn = statistics.TotalBytesIn,
+                totalBytesOut = statistics.TotalBytesOut,
+                connectedDevices = statistics.ConnectedDevices,
+                totalDevices = statistics.TotalDevices
+            }
+        };
 
-            return Ok(bundle);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error generating support bundle");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(bundle);
     }
 
     /// <summary>
@@ -381,49 +333,41 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("file")]
     public async Task<ActionResult<object>> GetDebugFile([FromQuery] string file, [FromQuery] string folder)
     {
-        try
+        if (string.IsNullOrEmpty(file) || string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "file and folder parameters required" });
+
+        // Validate path to prevent traversal
+        if (file.Contains("..") || Path.IsPathRooted(file))
+            return BadRequest(new { error = "Invalid file path" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        var filePath = Path.Combine(folderInfo.Path, file);
+        var fullPath = Path.GetFullPath(filePath);
+        var folderFullPath = Path.GetFullPath(folderInfo.Path);
+
+        // Ensure path is within folder
+        if (!fullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
+            return BadRequest(new { error = "Invalid file path" });
+
+        if (!System.IO.File.Exists(fullPath))
+            return NotFound(new { error = "file not found" });
+
+        var fileInfo = new FileInfo(fullPath);
+
+        // Return debug information about the file
+        return Ok(new
         {
-            if (string.IsNullOrEmpty(file) || string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "file and folder parameters required" });
-
-            // Validate path to prevent traversal
-            if (file.Contains("..") || Path.IsPathRooted(file))
-                return BadRequest(new { error = "Invalid file path" });
-
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
-
-            var filePath = Path.Combine(folderInfo.Path, file);
-            var fullPath = Path.GetFullPath(filePath);
-            var folderFullPath = Path.GetFullPath(folderInfo.Path);
-
-            // Ensure path is within folder
-            if (!fullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
-                return BadRequest(new { error = "Invalid file path" });
-
-            if (!System.IO.File.Exists(fullPath))
-                return NotFound(new { error = "file not found" });
-
-            var fileInfo = new FileInfo(fullPath);
-
-            // Return debug information about the file
-            return Ok(new
-            {
-                name = file,
-                fullPath = fullPath,
-                size = fileInfo.Length,
-                modified = fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                created = fileInfo.CreationTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                attributes = fileInfo.Attributes.ToString(),
-                readOnly = fileInfo.IsReadOnly
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting debug file info for {File} in {Folder}", file, folder);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            name = file,
+            fullPath = fullPath,
+            size = fileInfo.Length,
+            modified = fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            created = fileInfo.CreationTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            attributes = fileInfo.Attributes.ToString(),
+            readOnly = fileInfo.IsReadOnly
+        });
     }
 
     /// <summary>
@@ -433,25 +377,17 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("pprof")]
     public ActionResult GetPprofIndex()
     {
-        try
+        return Ok(new
         {
-            return Ok(new
+            profiles = new[]
             {
-                profiles = new[]
-                {
-                    new { name = "heap", description = "Heap memory allocations" },
-                    new { name = "goroutine", description = "Active goroutines/threads" },
-                    new { name = "allocs", description = "All past memory allocations" },
-                    new { name = "block", description = "Blocking synchronization" },
-                    new { name = "mutex", description = "Mutex contention" }
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting pprof index");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+                new { name = "heap", description = "Heap memory allocations" },
+                new { name = "goroutine", description = "Active goroutines/threads" },
+                new { name = "allocs", description = "All past memory allocations" },
+                new { name = "block", description = "Blocking synchronization" },
+                new { name = "mutex", description = "Mutex contention" }
+            }
+        });
     }
 
     /// <summary>
@@ -461,55 +397,47 @@ public class SyncthingDebugController : ControllerBase
     [HttpGet("goroutines")]
     public ActionResult GetGoroutines()
     {
-        try
+        var currentProcess = Process.GetCurrentProcess();
+        var threads = currentProcess.Threads;
+
+        var threadInfo = new List<object>();
+        foreach (ProcessThread thread in threads)
         {
-            var currentProcess = Process.GetCurrentProcess();
-            var threads = currentProcess.Threads;
-
-            var threadInfo = new List<object>();
-            foreach (ProcessThread thread in threads)
+            try
             {
-                try
+                var threadData = new Dictionary<string, object>
                 {
-                    var threadData = new Dictionary<string, object>
-                    {
-                        ["id"] = thread.Id,
-                        ["state"] = thread.ThreadState.ToString()
-                    };
+                    ["id"] = thread.Id,
+                    ["state"] = thread.ThreadState.ToString()
+                };
 
-                    // StartTime is only available on Windows and Linux
-                    if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+                // StartTime is only available on Windows and Linux
+                if (OperatingSystem.IsWindows() || OperatingSystem.IsLinux())
+                {
+                    try
                     {
-                        try
-                        {
-                            threadData["startTime"] = thread.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
-                            threadData["totalProcessorTime"] = thread.TotalProcessorTime.TotalMilliseconds;
-                        }
-                        catch
-                        {
-                            // Some thread properties might throw even on supported platforms
-                        }
+                        threadData["startTime"] = thread.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ");
+                        threadData["totalProcessorTime"] = thread.TotalProcessorTime.TotalMilliseconds;
                     }
+                    catch
+                    {
+                        // Some thread properties might throw even on supported platforms
+                    }
+                }
 
-                    threadInfo.Add(threadData);
-                }
-                catch
-                {
-                    // Some thread properties might throw
-                }
+                threadInfo.Add(threadData);
             }
-
-            return Ok(new
+            catch
             {
-                count = threads.Count,
-                threads = threadInfo
-            });
+                // Some thread properties might throw
+            }
         }
-        catch (Exception ex)
+
+        return Ok(new
         {
-            _logger.LogError(ex, "Error getting goroutines/threads");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            count = threads.Count,
+            threads = threadInfo
+        });
     }
 }
 

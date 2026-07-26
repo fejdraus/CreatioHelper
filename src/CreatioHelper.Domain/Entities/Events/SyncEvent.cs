@@ -1,4 +1,5 @@
 using System.Text.Json;
+using CreatioHelper.Domain.Serialization;
 
 namespace CreatioHelper.Domain.Entities.Events;
 
@@ -172,11 +173,7 @@ public class SyncEvent
     /// </summary>
     public string ToJson()
     {
-        return JsonSerializer.Serialize(this, new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            WriteIndented = false
-        });
+        return JsonSerializer.Serialize(this, JsonDefaults.CamelCase);
     }
 
     /// <summary>
@@ -186,10 +183,7 @@ public class SyncEvent
     {
         try
         {
-            return JsonSerializer.Deserialize<SyncEvent>(json, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            return JsonSerializer.Deserialize<SyncEvent>(json, JsonDefaults.CamelCase);
         }
         catch
         {

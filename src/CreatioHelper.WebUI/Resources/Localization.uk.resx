@@ -1,0 +1,4421 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+
+    <data name="Nav_Dashboard" xml:space="preserve">
+    <value>Панель керування</value>
+  </data>
+  <data name="Nav_Sync" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="Nav_Folders" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Nav_Devices" xml:space="preserve">
+    <value>Пристрої</value>
+  </data>
+  <data name="Nav_Pending" xml:space="preserve">
+    <value>В очікуванні</value>
+  </data>
+  <data name="Nav_Monitor" xml:space="preserve">
+    <value>Моніторинг</value>
+  </data>
+  <data name="Nav_Events" xml:space="preserve">
+    <value>Події</value>
+  </data>
+  <data name="Nav_Connections" xml:space="preserve">
+    <value>З'єднання</value>
+  </data>
+  <data name="Nav_Statistics" xml:space="preserve">
+    <value>Статистика</value>
+  </data>
+  <data name="Nav_Settings" xml:space="preserve">
+    <value>Налаштування</value>
+  </data>
+  <data name="Nav_Diagnostics" xml:space="preserve">
+    <value>Діагностика</value>
+  </data>
+  <data name="Nav_About" xml:space="preserve">
+    <value>Про застосунок</value>
+  </data>
+  <data name="Dashboard_Title" xml:space="preserve">
+    <value>Панель керування</value>
+  </data>
+  <data name="Dashboard_SystemStatus" xml:space="preserve">
+    <value>Стан системи</value>
+  </data>
+  <data name="Dashboard_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="Dashboard_Uptime" xml:space="preserve">
+    <value>Час роботи</value>
+  </data>
+  <data name="Dashboard_Version" xml:space="preserve">
+    <value>Версія</value>
+  </data>
+  <data name="Dashboard_Memory" xml:space="preserve">
+    <value>Пам'ять</value>
+  </data>
+  <data name="Dashboard_CPU" xml:space="preserve">
+    <value>ЦП</value>
+  </data>
+  <data name="Dashboard_Goroutines" xml:space="preserve">
+    <value>Горутини</value>
+  </data>
+  <data name="Dashboard_ConnectedDevices" xml:space="preserve">
+    <value>Підключені пристрої</value>
+  </data>
+  <data name="Dashboard_TotalFolders" xml:space="preserve">
+    <value>Усього папок</value>
+  </data>
+  <data name="Dashboard_SyncingFolders" xml:space="preserve">
+    <value>Папки, що синхронізуються</value>
+  </data>
+  <data name="Folders_Title" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Folders_AddFolder" xml:space="preserve">
+    <value>Додати папку</value>
+  </data>
+  <data name="Folders_NoFolders" xml:space="preserve">
+    <value>Папки не налаштовано</value>
+  </data>
+  <data name="Folders_Path" xml:space="preserve">
+    <value>Шлях</value>
+  </data>
+  <data name="Folders_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="Folders_Status" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="Folders_Progress" xml:space="preserve">
+    <value>Поступ</value>
+  </data>
+  <data name="Folders_SharedWith" xml:space="preserve">
+    <value>Спільний доступ із</value>
+  </data>
+  <data name="Folders_GlobalFiles" xml:space="preserve">
+    <value>Глобальні файли</value>
+  </data>
+  <data name="Folders_LocalFiles" xml:space="preserve">
+    <value>Локальні файли</value>
+  </data>
+  <data name="Folders_GlobalSize" xml:space="preserve">
+    <value>Глобальний розмір</value>
+  </data>
+  <data name="Folders_LocalSize" xml:space="preserve">
+    <value>Локальний розмір</value>
+  </data>
+  <data name="Folders_OutOfSync" xml:space="preserve">
+    <value>Не синхронізовано</value>
+  </data>
+  <data name="Folders_NeedSyncing" xml:space="preserve">
+    <value>Потребують синхронізації: {0} файлів ({1})</value>
+  </data>
+  <data name="Folders_RescanInterval" xml:space="preserve">
+    <value>Інтервал сканування</value>
+  </data>
+  <data name="Folders_FileWatcher" xml:space="preserve">
+    <value>Спостерігач файлів</value>
+  </data>
+  <data name="Folders_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="Folders_Errors" xml:space="preserve">
+    <value>Помилки</value>
+  </data>
+  <data name="Folders_Id" xml:space="preserve">
+    <value>Ідентифікатор папки</value>
+  </data>
+  <data name="Folders_GlobalState" xml:space="preserve">
+    <value>Глобальний стан</value>
+  </data>
+  <data name="Folders_LocalState" xml:space="preserve">
+    <value>Локальний стан</value>
+  </data>
+  <data name="Folders_Files" xml:space="preserve">
+    <value>Файли</value>
+  </data>
+  <data name="Folders_WatchEnabled" xml:space="preserve">
+    <value>Спостереження увімкнено</value>
+  </data>
+  <data name="Folders_WatchDisabled" xml:space="preserve">
+    <value>Спостереження вимкнено</value>
+  </data>
+  <data name="Folders_PullOrder" xml:space="preserve">
+    <value>Порядок завантаження</value>
+  </data>
+  <data name="Folders_NotShared" xml:space="preserve">
+    <value>Не надано в спільний доступ жодному пристрою</value>
+  </data>
+  <data name="Folders_LastStateChange" xml:space="preserve">
+    <value>Остання зміна стану</value>
+  </data>
+  <data name="Folders_UpToDate" xml:space="preserve">
+    <value>Актуально</value>
+  </data>
+  <data name="Folders_Preparing" xml:space="preserve">
+    <value>Підготовка</value>
+  </data>
+  <data name="Folders_Waiting" xml:space="preserve">
+    <value>Очікування</value>
+  </data>
+  <data name="Folders_EditFolder" xml:space="preserve">
+    <value>Редагувати папку</value>
+  </data>
+  <data name="Folders_RemoveFolder" xml:space="preserve">
+    <value>Видалити папку</value>
+  </data>
+  <data name="Folders_Ignores" xml:space="preserve">
+    <value>Ігнорування</value>
+  </data>
+  <data name="Folders_AddFolderHint" xml:space="preserve">
+    <value>Натисніть «Додати папку», щоб налаштувати першу папку</value>
+  </data>
+  <data name="FolderType_SendReceive" xml:space="preserve">
+    <value>Надсилання та отримання</value>
+  </data>
+  <data name="FolderType_SendOnly" xml:space="preserve">
+    <value>Лише надсилання</value>
+  </data>
+  <data name="FolderType_ReceiveOnly" xml:space="preserve">
+    <value>Лише отримання</value>
+  </data>
+  <data name="FolderType_ReceiveEncrypted" xml:space="preserve">
+    <value>Отримання зашифрованого</value>
+  </data>
+  <data name="PullOrder_Random" xml:space="preserve">
+    <value>Випадковий</value>
+  </data>
+  <data name="PullOrder_Alphabetic" xml:space="preserve">
+    <value>За алфавітом</value>
+  </data>
+  <data name="PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Спочатку найменші</value>
+  </data>
+  <data name="PullOrder_LargestFirst" xml:space="preserve">
+    <value>Спочатку найбільші</value>
+  </data>
+  <data name="PullOrder_OldestFirst" xml:space="preserve">
+    <value>Спочатку найстаріші</value>
+  </data>
+  <data name="PullOrder_NewestFirst" xml:space="preserve">
+    <value>Спочатку найновіші</value>
+  </data>
+  <data name="ScanPhase_Enumerating" xml:space="preserve">
+    <value>Перелічення</value>
+  </data>
+  <data name="ScanPhase_Scanning" xml:space="preserve">
+    <value>Сканування</value>
+  </data>
+  <data name="ScanPhase_Updating" xml:space="preserve">
+    <value>Оновлення</value>
+  </data>
+  <data name="ScanPhase_Completed" xml:space="preserve">
+    <value>Завершено</value>
+  </data>
+  <data name="ScanPhase_Cancelled" xml:space="preserve">
+    <value>Скасовано</value>
+  </data>
+  <data name="ScanPhase_Failed" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="FolderState_Idle" xml:space="preserve">
+    <value>Очікування</value>
+  </data>
+  <data name="FolderState_Scanning" xml:space="preserve">
+    <value>Сканування</value>
+  </data>
+  <data name="FolderState_Syncing" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="FolderState_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="FolderState_Unknown" xml:space="preserve">
+    <value>Невідомо</value>
+  </data>
+  <data name="Devices_Title" xml:space="preserve">
+    <value>Пристрої</value>
+  </data>
+  <data name="Devices_AddDevice" xml:space="preserve">
+    <value>Додати пристрій</value>
+  </data>
+  <data name="Devices_NoDevices" xml:space="preserve">
+    <value>Пристрої не налаштовано</value>
+  </data>
+  <data name="Devices_ThisDevice" xml:space="preserve">
+    <value>Цей пристрій</value>
+  </data>
+  <data name="Devices_Connected" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="Devices_Disconnected" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="Devices_LastSeen" xml:space="preserve">
+    <value>Востаннє в мережі</value>
+  </data>
+  <data name="Devices_Address" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="Devices_Compression" xml:space="preserve">
+    <value>Стиснення</value>
+  </data>
+  <data name="Devices_Introducer" xml:space="preserve">
+    <value>Представник</value>
+  </data>
+  <data name="Devices_SharedFolders" xml:space="preserve">
+    <value>Спільні папки</value>
+  </data>
+  <data name="Devices_InSync" xml:space="preserve">
+    <value>Синхронізовано</value>
+  </data>
+  <data name="Devices_Syncing" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="Devices_Download" xml:space="preserve">
+    <value>Завантаження</value>
+  </data>
+  <data name="Devices_Upload" xml:space="preserve">
+    <value>Відвантаження</value>
+  </data>
+  <data name="Devices_Paused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="Devices_Running" xml:space="preserve">
+    <value>Працює</value>
+  </data>
+  <data name="Devices_RemoteDevices" xml:space="preserve">
+    <value>Віддалені пристрої</value>
+  </data>
+  <data name="Devices_NoRemoteDevices" xml:space="preserve">
+    <value>Немає віддалених пристроїв</value>
+  </data>
+  <data name="Devices_AddDeviceHint" xml:space="preserve">
+    <value>Додайте пристрій, щоб почати синхронізацію файлів.</value>
+  </data>
+  <data name="Devices_PendingDevices" xml:space="preserve">
+    <value>Пристрої в очікуванні</value>
+  </data>
+  <data name="Devices_MemoryUsage" xml:space="preserve">
+    <value>Використання пам'яті</value>
+  </data>
+  <data name="Devices_CpuUsage" xml:space="preserve">
+    <value>Використання ЦП</value>
+  </data>
+  <data name="Devices_Listeners" xml:space="preserve">
+    <value>Слухачі</value>
+  </data>
+  <data name="Devices_Discovery" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="Devices_DownloadRate" xml:space="preserve">
+    <value>Швидкість завантаження</value>
+  </data>
+  <data name="Devices_UploadRate" xml:space="preserve">
+    <value>Швидкість відвантаження</value>
+  </data>
+  <data name="Devices_ConnectedSince" xml:space="preserve">
+    <value>Підключено з</value>
+  </data>
+  <data name="Devices_Addresses" xml:space="preserve">
+    <value>Адреси</value>
+  </data>
+  <data name="Devices_SyncStatus" xml:space="preserve">
+    <value>Стан синхронізації</value>
+  </data>
+  <data name="Devices_AutoAccept" xml:space="preserve">
+    <value>Автоприйняття</value>
+  </data>
+  <data name="Devices_RemoveDevice" xml:space="preserve">
+    <value>Видалити пристрій</value>
+  </data>
+  <data name="Devices_EditDevice" xml:space="preserve">
+    <value>Редагувати пристрій</value>
+  </data>
+  <data name="Devices_NoSharedFolders" xml:space="preserve">
+    <value>Немає спільних папок</value>
+  </data>
+  <data name="Devices_NeverConnected" xml:space="preserve">
+    <value>Ніколи не підключався</value>
+  </data>
+  <data name="Devices_ConnectedRelay" xml:space="preserve">
+    <value>Підключено (ретранслятор)</value>
+  </data>
+  <data name="Devices_QrCodeTitle" xml:space="preserve">
+    <value>QR-код ідентифікатора пристрою</value>
+  </data>
+  <data name="Msg_DevicePaused" xml:space="preserve">
+    <value>Пристрій призупинено</value>
+  </data>
+  <data name="Msg_DeviceResumed" xml:space="preserve">
+    <value>Пристрій відновлено</value>
+  </data>
+  <data name="Msg_DeviceRemoved" xml:space="preserve">
+    <value>Пристрій видалено</value>
+  </data>
+  <data name="Msg_DeviceAccepted" xml:space="preserve">
+    <value>Пристрій прийнято</value>
+  </data>
+  <data name="Msg_DeviceRejected" xml:space="preserve">
+    <value>Пристрій відхилено</value>
+  </data>
+  <data name="Msg_DeleteDeviceConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете видалити "{0}"?</value>
+  </data>
+  <data name="Msg_TogglePauseFailed" xml:space="preserve">
+    <value>Не вдалося змінити стан паузи: {0}</value>
+  </data>
+  <data name="Compression_Metadata" xml:space="preserve">
+    <value>Лише метадані</value>
+  </data>
+  <data name="Compression_Always" xml:space="preserve">
+    <value>Завжди</value>
+  </data>
+  <data name="Compression_Never" xml:space="preserve">
+    <value>Ніколи</value>
+  </data>
+  <data name="ConnectionType_TcpClient" xml:space="preserve">
+    <value>Клієнт TCP</value>
+  </data>
+  <data name="ConnectionType_TcpServer" xml:space="preserve">
+    <value>Сервер TCP</value>
+  </data>
+  <data name="ConnectionType_QuicClient" xml:space="preserve">
+    <value>Клієнт QUIC</value>
+  </data>
+  <data name="ConnectionType_QuicServer" xml:space="preserve">
+    <value>Сервер QUIC</value>
+  </data>
+  <data name="ConnectionType_RelayClient" xml:space="preserve">
+    <value>Клієнт ретранслятора</value>
+  </data>
+  <data name="ConnectionType_RelayServer" xml:space="preserve">
+    <value>Сервер ретранслятора</value>
+  </data>
+  <data name="Settings_Title" xml:space="preserve">
+    <value>Налаштування</value>
+  </data>
+  <data name="Settings_General" xml:space="preserve">
+    <value>Загальні</value>
+  </data>
+  <data name="Settings_Network" xml:space="preserve">
+    <value>Мережа</value>
+  </data>
+  <data name="Settings_GUI" xml:space="preserve">
+    <value>Налаштування інтерфейсу</value>
+  </data>
+  <data name="Settings_Advanced" xml:space="preserve">
+    <value>Додатково</value>
+  </data>
+  <data name="Settings_DeviceName" xml:space="preserve">
+    <value>Назва пристрою</value>
+  </data>
+  <data name="Settings_ListenAddresses" xml:space="preserve">
+    <value>Адреси прослуховування</value>
+  </data>
+  <data name="Settings_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальне виявлення</value>
+  </data>
+  <data name="Settings_LocalDiscovery" xml:space="preserve">
+    <value>Локальне виявлення</value>
+  </data>
+  <data name="Settings_NATTraversal" xml:space="preserve">
+    <value>Обхід NAT</value>
+  </data>
+  <data name="Settings_Relaying" xml:space="preserve">
+    <value>Ретрансляція</value>
+  </data>
+  <data name="Settings_Theme" xml:space="preserve">
+    <value>Тема</value>
+  </data>
+  <data name="Settings_ThemeLight" xml:space="preserve">
+    <value>Світла</value>
+  </data>
+  <data name="Settings_ThemeDark" xml:space="preserve">
+    <value>Темна</value>
+  </data>
+  <data name="Settings_ThemeSystem" xml:space="preserve">
+    <value>Системна</value>
+  </data>
+  <data name="Settings_Language" xml:space="preserve">
+    <value>Мова</value>
+  </data>
+  <data name="Settings_Save" xml:space="preserve">
+    <value>Зберегти</value>
+  </data>
+  <data name="Settings_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="Settings_Appearance" xml:space="preserve">
+    <value>Зовнішній вигляд</value>
+  </data>
+  <data name="Settings_ShowTransferChart" xml:space="preserve">
+    <value>Показувати графік швидкості передавання</value>
+  </data>
+  <data name="Settings_ShowTransferChartHint" xml:space="preserve">
+    <value>Відображати графік мережевої пропускної здатності на панелі керування</value>
+  </data>
+  <data name="Settings_ShowRecentEvents" xml:space="preserve">
+    <value>Показувати останні події</value>
+  </data>
+  <data name="Settings_ShowRecentEventsHint" xml:space="preserve">
+    <value>Відображати останні події синхронізації на панелі керування</value>
+  </data>
+  <data name="Settings_MaxRecentEvents" xml:space="preserve">
+    <value>Максимум останніх подій</value>
+  </data>
+  <data name="Settings_Notifications" xml:space="preserve">
+    <value>Сповіщення</value>
+  </data>
+  <data name="Settings_NotifySyncComplete" xml:space="preserve">
+    <value>Завершення синхронізації</value>
+  </data>
+  <data name="Settings_NotifySyncCompleteHint" xml:space="preserve">
+    <value>Сповіщати про завершення синхронізації папки</value>
+  </data>
+  <data name="Settings_NotifyDeviceConnect" xml:space="preserve">
+    <value>Підключення пристрою</value>
+  </data>
+  <data name="Settings_NotifyDeviceConnectHint" xml:space="preserve">
+    <value>Сповіщати про підключення або відключення пристрою</value>
+  </data>
+  <data name="Settings_NotifyError" xml:space="preserve">
+    <value>Помилки синхронізації</value>
+  </data>
+  <data name="Settings_NotifyErrorHint" xml:space="preserve">
+    <value>Сповіщати про помилки синхронізації</value>
+  </data>
+  <data name="Settings_NotifyPendingDevice" xml:space="preserve">
+    <value>Запити на підключення пристроїв</value>
+  </data>
+  <data name="Settings_NotifyPendingDeviceHint" xml:space="preserve">
+    <value>Сповіщати, коли новий пристрій хоче підключитися</value>
+  </data>
+  <data name="Settings_DisplayOptions" xml:space="preserve">
+    <value>Параметри відображення</value>
+  </data>
+  <data name="Settings_DateFormat" xml:space="preserve">
+    <value>Формат дати</value>
+  </data>
+  <data name="Settings_DateShort" xml:space="preserve">
+    <value>Короткий</value>
+  </data>
+  <data name="Settings_DateMedium" xml:space="preserve">
+    <value>Середній</value>
+  </data>
+  <data name="Settings_DateLong" xml:space="preserve">
+    <value>Повний</value>
+  </data>
+  <data name="Settings_SizeFormat" xml:space="preserve">
+    <value>Формат розміру</value>
+  </data>
+  <data name="Settings_SizeBinary" xml:space="preserve">
+    <value>Двійковий</value>
+  </data>
+  <data name="Settings_SizeDecimal" xml:space="preserve">
+    <value>Десятковий</value>
+  </data>
+  <data name="Settings_ResetDefaults" xml:space="preserve">
+    <value>Скинути до типових</value>
+  </data>
+  <data name="Settings_ResetToDefaultsHint" xml:space="preserve">
+    <value>Налаштування скинуто до типових. Не забудьте зберегти зміни.</value>
+  </data>
+  <data name="Settings_ApplyingLanguage" xml:space="preserve">
+    <value>Застосування зміни мови...</value>
+  </data>
+  <data name="Events_Title" xml:space="preserve">
+    <value>Події</value>
+  </data>
+  <data name="Events_NoEvents" xml:space="preserve">
+    <value>Немає подій</value>
+  </data>
+  <data name="Events_Clear" xml:space="preserve">
+    <value>Очистити</value>
+  </data>
+  <data name="Events_Pause" xml:space="preserve">
+    <value>Призупинити</value>
+  </data>
+  <data name="Events_Resume" xml:space="preserve">
+    <value>Відновити</value>
+  </data>
+  <data name="Diagnostics_Title" xml:space="preserve">
+    <value>Діагностика</value>
+  </data>
+  <data name="Diagnostics_SystemLog" xml:space="preserve">
+    <value>Системний журнал</value>
+  </data>
+  <data name="Diagnostics_Profiling" xml:space="preserve">
+    <value>Профілювання</value>
+  </data>
+  <data name="Diagnostics_SupportBundle" xml:space="preserve">
+    <value>Пакет діагностики</value>
+  </data>
+  <data name="Diagnostics_CreateBundle" xml:space="preserve">
+    <value>Створити пакет діагностики</value>
+  </data>
+  <data name="Action_Restart" xml:space="preserve">
+    <value>Перезапустити</value>
+  </data>
+  <data name="Action_Shutdown" xml:space="preserve">
+    <value>Завершити роботу</value>
+  </data>
+  <data name="Action_Rescan" xml:space="preserve">
+    <value>Сканувати повторно</value>
+  </data>
+  <data name="Action_Edit" xml:space="preserve">
+    <value>Редагувати</value>
+  </data>
+  <data name="Action_Delete" xml:space="preserve">
+    <value>Видалити</value>
+  </data>
+  <data name="Action_Pause" xml:space="preserve">
+    <value>Призупинити</value>
+  </data>
+  <data name="Action_Resume" xml:space="preserve">
+    <value>Відновити</value>
+  </data>
+  <data name="Action_Copy" xml:space="preserve">
+    <value>Копіювати</value>
+  </data>
+  <data name="Action_ShowQR" xml:space="preserve">
+    <value>Показати QR-код</value>
+  </data>
+  <data name="Action_Logout" xml:space="preserve">
+    <value>Вийти</value>
+  </data>
+  <data name="Common_Yes" xml:space="preserve">
+    <value>Так</value>
+  </data>
+  <data name="Common_No" xml:space="preserve">
+    <value>Ні</value>
+  </data>
+  <data name="Common_Or" xml:space="preserve">
+    <value>або</value>
+  </data>
+  <data name="Common_Enabled" xml:space="preserve">
+    <value>Увімкнено</value>
+  </data>
+  <data name="Common_Disabled" xml:space="preserve">
+    <value>Вимкнено</value>
+  </data>
+  <data name="Common_Loading" xml:space="preserve">
+    <value>Завантаження...</value>
+  </data>
+  <data name="Common_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="Common_Success" xml:space="preserve">
+    <value>Успішно</value>
+  </data>
+  <data name="Common_Warning" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
+  <data name="Common_Info" xml:space="preserve">
+    <value>Інформація</value>
+  </data>
+  <data name="Common_Unknown" xml:space="preserve">
+    <value>Невідомо</value>
+  </data>
+  <data name="Common_None" xml:space="preserve">
+    <value>Немає</value>
+  </data>
+  <data name="Common_All" xml:space="preserve">
+    <value>Усі</value>
+  </data>
+  <data name="Common_Search" xml:space="preserve">
+    <value>Пошук</value>
+  </data>
+  <data name="Common_Filter" xml:space="preserve">
+    <value>Фільтр</value>
+  </data>
+  <data name="Common_Refresh" xml:space="preserve">
+    <value>Оновити</value>
+  </data>
+  <data name="Common_Close" xml:space="preserve">
+    <value>Закрити</value>
+  </data>
+  <data name="Common_Confirm" xml:space="preserve">
+    <value>Підтвердити</value>
+  </data>
+  <data name="Common_Folder" xml:space="preserve">
+    <value>Папка</value>
+  </data>
+  <data name="Common_Device" xml:space="preserve">
+    <value>Пристрій</value>
+  </data>
+  <data name="Common_LoadMore" xml:space="preserve">
+    <value>Завантажити ще</value>
+  </data>
+  <data name="Common_ViewAll" xml:space="preserve">
+    <value>Переглянути все</value>
+  </data>
+  <data name="Common_Never" xml:space="preserve">
+    <value>Ніколи</value>
+  </data>
+  <data name="Common_Details" xml:space="preserve">
+    <value>Подробиці</value>
+  </data>
+  <data name="Common_Actions" xml:space="preserve">
+    <value>Дії</value>
+  </data>
+  <data name="Common_Save" xml:space="preserve">
+    <value>Зберегти</value>
+  </data>
+  <data name="Common_SaveChanges" xml:space="preserve">
+    <value>Зберегти зміни</value>
+  </data>
+  <data name="Common_ResetDefaults" xml:space="preserve">
+    <value>Скинути до типових</value>
+  </data>
+  <data name="Common_ResetToDefaults" xml:space="preserve">
+    <value>Скинути до типових</value>
+  </data>
+  <data name="Common_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="Status_UpToDate" xml:space="preserve">
+    <value>Актуально</value>
+  </data>
+  <data name="Status_Syncing" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="Status_Scanning" xml:space="preserve">
+    <value>Сканування</value>
+  </data>
+  <data name="Status_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="Status_Paused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="Status_Unknown" xml:space="preserve">
+    <value>Невідомо</value>
+  </data>
+  <data name="Status_AllFoldersSynced" xml:space="preserve">
+    <value>Усі папки синхронізовано</value>
+  </data>
+  <data name="Status_SyncingFiles" xml:space="preserve">
+    <value>Синхронізація файлів із віддаленими пристроями</value>
+  </data>
+  <data name="Status_ScanningFolders" xml:space="preserve">
+    <value>Сканування локальних папок на зміни</value>
+  </data>
+  <data name="Status_FoldersHaveErrors" xml:space="preserve">
+    <value>В одній або кількох папках є помилки</value>
+  </data>
+  <data name="Status_SyncPaused" xml:space="preserve">
+    <value>Синхронізацію призупинено</value>
+  </data>
+  <data name="Status_StatusUnknown" xml:space="preserve">
+    <value>Стан невідомий</value>
+  </data>
+  <data name="Time_Days" xml:space="preserve">
+    <value>д</value>
+  </data>
+  <data name="Time_Hours" xml:space="preserve">
+    <value>год</value>
+  </data>
+  <data name="Time_Minutes" xml:space="preserve">
+    <value>хв</value>
+  </data>
+  <data name="Time_Seconds" xml:space="preserve">
+    <value>с</value>
+  </data>
+  <data name="Login_Title" xml:space="preserve">
+    <value>Вхід</value>
+  </data>
+  <data name="Login_SignIn" xml:space="preserve">
+    <value>Увійти</value>
+  </data>
+  <data name="Login_SigningIn" xml:space="preserve">
+    <value>Вхід...</value>
+  </data>
+  <data name="Login_SignInToContinue" xml:space="preserve">
+    <value>Увійдіть, щоб продовжити</value>
+  </data>
+  <data name="Login_Username" xml:space="preserve">
+    <value>Ім'я користувача</value>
+  </data>
+  <data name="Login_Password" xml:space="preserve">
+    <value>Пароль</value>
+  </data>
+  <data name="Login_UsernameRequired" xml:space="preserve">
+    <value>Ім'я користувача обов'язкове</value>
+  </data>
+  <data name="Login_PasswordRequired" xml:space="preserve">
+    <value>Пароль обов'язковий</value>
+  </data>
+  <data name="Login_ApiKey" xml:space="preserve">
+    <value>Ключ API</value>
+  </data>
+  <data name="Login_LoginWithApiKey" xml:space="preserve">
+    <value>Увійти за ключем API</value>
+  </data>
+  <data name="Login_Welcome" xml:space="preserve">
+    <value>Вітаємо, {0}!</value>
+  </data>
+  <data name="Login_AuthenticatedWithApiKey" xml:space="preserve">
+    <value>Автентифіковано за ключем API</value>
+  </data>
+  <data name="Login_Failed" xml:space="preserve">
+    <value>Не вдалося увійти</value>
+  </data>
+  <data name="Login_ApiKeyFailed" xml:space="preserve">
+    <value>Не вдалася автентифікація за ключем API</value>
+  </data>
+  <data name="Status_Online" xml:space="preserve">
+    <value>У мережі</value>
+  </data>
+  <data name="Status_Offline" xml:space="preserve">
+    <value>Не в мережі</value>
+  </data>
+  <data name="Status_Synced" xml:space="preserve">
+    <value>синхронізовано</value>
+  </data>
+  <data name="Status_ConnectedFor" xml:space="preserve">
+    <value>Підключено {0}</value>
+  </data>
+  <data name="Status_ConnectedPaused" xml:space="preserve">
+    <value>Підключено (призупинено)</value>
+  </data>
+  <data name="Msg_Connected" xml:space="preserve">
+    <value>Підключено до агента</value>
+  </data>
+  <data name="Msg_Disconnected" xml:space="preserve">
+    <value>Відключено від агента</value>
+  </data>
+  <data name="Msg_DeviceIdCopied" xml:space="preserve">
+    <value>Ідентифікатор пристрою скопійовано до буфера обміну</value>
+  </data>
+  <data name="Msg_CopyFailed" xml:space="preserve">
+    <value>Не вдалося скопіювати до буфера обміну</value>
+  </data>
+  <data name="Msg_ScanStarted" xml:space="preserve">
+    <value>Сканування розпочато</value>
+  </data>
+  <data name="Msg_ScanFailed" xml:space="preserve">
+    <value>Не вдалося розпочати сканування: {0}</value>
+  </data>
+  <data name="Msg_LoadFailed" xml:space="preserve">
+    <value>Не вдалося завантажити дані: {0}</value>
+  </data>
+  <data name="Msg_SaveSuccess" xml:space="preserve">
+    <value>Налаштування успішно збережено</value>
+  </data>
+  <data name="Msg_SaveFailed" xml:space="preserve">
+    <value>Не вдалося зберегти налаштування: {0}</value>
+  </data>
+  <data name="Msg_RestartConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете перезапустити?</value>
+  </data>
+  <data name="Msg_ShutdownConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете завершити роботу?</value>
+  </data>
+  <data name="Msg_DeleteConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете видалити цей елемент?</value>
+  </data>
+  <data name="Msg_UnableRetrieveStatus" xml:space="preserve">
+    <value>Не вдалося отримати стан системи</value>
+  </data>
+  <data name="Msg_FolderNotFound" xml:space="preserve">
+    <value>Папку не знайдено</value>
+  </data>
+  <data name="Msg_DeviceNotFound" xml:space="preserve">
+    <value>Пристрій не знайдено</value>
+  </data>
+  <data name="Msg_FolderPaused" xml:space="preserve">
+    <value>Папку призупинено</value>
+  </data>
+  <data name="Msg_FolderResumed" xml:space="preserve">
+    <value>Папку відновлено</value>
+  </data>
+  <data name="Msg_FolderRemoved" xml:space="preserve">
+    <value>Папку видалено</value>
+  </data>
+  <data name="Msg_DeleteFolderConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете видалити папку "{0}"?</value>
+  </data>
+  <data name="Msg_DeleteFolderUsedInSite" xml:space="preserve">
+    <value>Папку "{0}" пов'язано із сайтом(ами): {1}. Зв'язок буде розірвано. Видалити папку?</value>
+  </data>
+  <data name="Msg_DeleteFolderSiteEmpty" xml:space="preserve">
+    <value>Папка "{0}" — остання, пов'язана із сайтом(ами): {1}. У цих сайтів не залишиться папок. Видалити також ці сайти?</value>
+  </data>
+  <data name="Msg_DeleteFolderAndSite" xml:space="preserve">
+    <value>Видалити папку та сайт(и)</value>
+  </data>
+  <data name="Msg_DeleteFolderOnly" xml:space="preserve">
+    <value>Лише папку</value>
+  </data>
+  <data name="Time_JustNow" xml:space="preserve">
+    <value>Щойно</value>
+  </data>
+  <data name="Time_MinutesAgo" xml:space="preserve">
+    <value>{0} хв тому</value>
+  </data>
+  <data name="Time_HoursAgo" xml:space="preserve">
+    <value>{0} год тому</value>
+  </data>
+  <data name="Time_DaysAgo" xml:space="preserve">
+    <value>{0} дн тому</value>
+  </data>
+  <data name="Settings_DeviceInformation" xml:space="preserve">
+    <value>Відомості про пристрій</value>
+  </data>
+  <data name="Settings_DeviceNameHint" xml:space="preserve">
+    <value>Зрозуміла назва для цього пристрою</value>
+  </data>
+  <data name="Settings_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="Settings_SyncDefaults" xml:space="preserve">
+    <value>Типові параметри синхронізації</value>
+  </data>
+  <data name="Settings_DefaultFolderPath" xml:space="preserve">
+    <value>Типовий шлях до папки</value>
+  </data>
+  <data name="Settings_DefaultFolderPathHint" xml:space="preserve">
+    <value>Типовий шлях для нових папок</value>
+  </data>
+  <data name="Settings_DefaultFolderType" xml:space="preserve">
+    <value>Типовий тип папки</value>
+  </data>
+  <data name="Settings_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="Settings_IgnorePermissionsHint" xml:space="preserve">
+    <value>Зміни прав доступу до файлів не синхронізуватимуться</value>
+  </data>
+  <data name="Settings_AutoNormalizeUnicode" xml:space="preserve">
+    <value>Автоматична нормалізація Unicode</value>
+  </data>
+  <data name="Settings_AutoNormalizeUnicodeHint" xml:space="preserve">
+    <value>Автоматично нормалізувати назви файлів у Unicode (рекомендовано)</value>
+  </data>
+  <data name="Settings_API" xml:space="preserve">
+    <value>API</value>
+  </data>
+  <data name="Settings_ApiKey" xml:space="preserve">
+    <value>Ключ API</value>
+  </data>
+  <data name="Settings_GenerateNewApiKey" xml:space="preserve">
+    <value>Створити новий ключ API</value>
+  </data>
+  <data name="Settings_Startup" xml:space="preserve">
+    <value>Запуск</value>
+  </data>
+  <data name="Settings_StartMinimized" xml:space="preserve">
+    <value>Запускати згорнутим</value>
+  </data>
+  <data name="Settings_StartMinimizedHint" xml:space="preserve">
+    <value>Запускати в системному лотку</value>
+  </data>
+  <data name="Settings_StartAtLogin" xml:space="preserve">
+    <value>Запускати під час входу</value>
+  </data>
+  <data name="Settings_StartAtLoginHint" xml:space="preserve">
+    <value>Автоматично запускати після входу в систему</value>
+  </data>
+  <data name="Settings_SaveChanges" xml:space="preserve">
+    <value>Зберегти зміни</value>
+  </data>
+  <data name="Msg_ApiKeyGenerated" xml:space="preserve">
+    <value>Створено новий ключ API. Не забудьте зберегти зміни.</value>
+  </data>
+  <data name="Network_Title" xml:space="preserve">
+    <value>Налаштування мережі</value>
+  </data>
+  <data name="Network_ListeningAddresses" xml:space="preserve">
+    <value>Адреси прослуховування</value>
+  </data>
+  <data name="Network_SyncProtocolListen" xml:space="preserve">
+    <value>Адреса прослуховування протоколу синхронізації</value>
+  </data>
+  <data name="Network_SyncProtocolListenHint" xml:space="preserve">
+    <value>Формат: tcp://0.0.0.0:22000 або dynamic</value>
+  </data>
+  <data name="Network_GUIListenAddress" xml:space="preserve">
+    <value>Адреса прослуховування інтерфейсу</value>
+  </data>
+  <data name="Network_GUIListenAddressHint" xml:space="preserve">
+    <value>Формат: 127.0.0.1:8384</value>
+  </data>
+  <data name="Network_NATTraversal" xml:space="preserve">
+    <value>Обхід NAT</value>
+  </data>
+  <data name="Network_EnableNATTraversal" xml:space="preserve">
+    <value>Увімкнути обхід NAT</value>
+  </data>
+  <data name="Network_NATTraversalHint" xml:space="preserve">
+    <value>Автоматично налаштовувати перенаправлення портів для кращого зв'язку</value>
+  </data>
+  <data name="Network_NATMethods" xml:space="preserve">
+    <value>Методи NAT</value>
+  </data>
+  <data name="Network_EnableUPnP" xml:space="preserve">
+    <value>Увімкнути UPnP</value>
+  </data>
+  <data name="Network_UPnPHint" xml:space="preserve">
+    <value>Перенаправлення портів через Universal Plug and Play</value>
+  </data>
+  <data name="Network_EnableNATPMP" xml:space="preserve">
+    <value>Увімкнути NAT-PMP</value>
+  </data>
+  <data name="Network_NATPMPHint" xml:space="preserve">
+    <value>Протокол NAT Port Mapping (маршрутизатори Apple)</value>
+  </data>
+  <data name="Network_NATLeaseSettings" xml:space="preserve">
+    <value>Параметри оренди NAT</value>
+  </data>
+  <data name="Network_LeaseDuration" xml:space="preserve">
+    <value>Тривалість оренди (хвилини)</value>
+  </data>
+  <data name="Network_LeaseDurationHint" xml:space="preserve">
+    <value>Час оренди зіставлення портів</value>
+  </data>
+  <data name="Network_RenewalInterval" xml:space="preserve">
+    <value>Інтервал поновлення (хвилини)</value>
+  </data>
+  <data name="Network_RenewalIntervalHint" xml:space="preserve">
+    <value>За скільки часу до завершення оренди поновлювати її</value>
+  </data>
+  <data name="Network_Timeout" xml:space="preserve">
+    <value>Час очікування (секунди)</value>
+  </data>
+  <data name="Network_TimeoutHint" xml:space="preserve">
+    <value>Час очікування виявлення</value>
+  </data>
+  <data name="Network_STUNConfiguration" xml:space="preserve">
+    <value>Конфігурація STUN</value>
+  </data>
+  <data name="Network_STUNServers" xml:space="preserve">
+    <value>Сервери STUN</value>
+  </data>
+  <data name="Network_STUNServersHint" xml:space="preserve">
+    <value>По одному серверу в рядку (наприклад, stun.example.com:3478)</value>
+  </data>
+  <data name="Network_STUNKeepalive" xml:space="preserve">
+    <value>Інтервал підтримки STUN (секунди)</value>
+  </data>
+  <data name="Network_STUNKeepaliveHint" xml:space="preserve">
+    <value>Інтервал між запитами підтримки з'єднання STUN</value>
+  </data>
+  <data name="Network_DeviceDiscovery" xml:space="preserve">
+    <value>Виявлення пристроїв</value>
+  </data>
+  <data name="Network_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальне виявлення</value>
+  </data>
+  <data name="Network_GlobalDiscoveryHint" xml:space="preserve">
+    <value>Оголошувати себе на серверах глобального виявлення для пошуку пристроїв через інтернет</value>
+  </data>
+  <data name="Network_LocalDiscovery" xml:space="preserve">
+    <value>Локальне виявлення</value>
+  </data>
+  <data name="Network_LocalDiscoveryHint" xml:space="preserve">
+    <value>Виявляти пристрої в локальній мережі через широкомовлення або багатоадресну розсилку</value>
+  </data>
+  <data name="Network_GlobalDiscoveryServers" xml:space="preserve">
+    <value>Сервери глобального виявлення</value>
+  </data>
+  <data name="Network_GlobalDiscoveryServersHint" xml:space="preserve">
+    <value>По одній URL-адресі сервера в рядку (типово = сервери Syncthing)</value>
+  </data>
+  <data name="Network_LocalDiscoverySettings" xml:space="preserve">
+    <value>Параметри локального виявлення</value>
+  </data>
+  <data name="Network_LocalAnnouncePort" xml:space="preserve">
+    <value>Порт локальних оголошень</value>
+  </data>
+  <data name="Network_LocalAnnouncePortHint" xml:space="preserve">
+    <value>UDP-порт для локальних оголошень</value>
+  </data>
+  <data name="Network_MulticastAddress" xml:space="preserve">
+    <value>Багатоадресна адреса</value>
+  </data>
+  <data name="Network_MulticastAddressHint" xml:space="preserve">
+    <value>Багатоадресна IPv6-адреса для виявлення</value>
+  </data>
+  <data name="Network_AnnounceInterval" xml:space="preserve">
+    <value>Інтервал оголошень (с)</value>
+  </data>
+  <data name="Network_AnnounceIntervalHint" xml:space="preserve">
+    <value>Секунд між оголошеннями</value>
+  </data>
+  <data name="Network_RelayConfiguration" xml:space="preserve">
+    <value>Конфігурація ретрансляції</value>
+  </data>
+  <data name="Network_EnableRelaying" xml:space="preserve">
+    <value>Увімкнути ретрансляцію</value>
+  </data>
+  <data name="Network_RelayingHint" xml:space="preserve">
+    <value>Використовувати сервери ретрансляції, коли пряме з'єднання неможливе</value>
+  </data>
+  <data name="Network_RelayOnlyMode" xml:space="preserve">
+    <value>Лише через ретранслятор</value>
+  </data>
+  <data name="Network_RelayOnlyModeHint" xml:space="preserve">
+    <value>Підключатися лише через сервери ретрансляції (без прямих з'єднань)</value>
+  </data>
+  <data name="Network_RelayWithoutGlobalAnnounce" xml:space="preserve">
+    <value>Ретрансляція без глобального оголошення</value>
+  </data>
+  <data name="Network_RelayWithoutGlobalAnnounceHint" xml:space="preserve">
+    <value>Використовувати ретранслятори навіть при вимкненому глобальному виявленні</value>
+  </data>
+  <data name="Network_RelayServers" xml:space="preserve">
+    <value>Сервери ретрансляції</value>
+  </data>
+  <data name="Network_RelayServersHint" xml:space="preserve">
+    <value>По одній URL-адресі сервера в рядку (типово = стандартний пул ретрансляторів)</value>
+  </data>
+  <data name="Network_RelayReconnectInterval" xml:space="preserve">
+    <value>Інтервал перепідключення до ретранслятора (хвилини)</value>
+  </data>
+  <data name="Network_RelayReconnectIntervalHint" xml:space="preserve">
+    <value>Хвилин між спробами перепідключення до ретранслятора</value>
+  </data>
+  <data name="Network_BandwidthLimits" xml:space="preserve">
+    <value>Обмеження швидкості</value>
+  </data>
+  <data name="Network_UploadLimit" xml:space="preserve">
+    <value>Обмеження відвантаження (КБ/с)</value>
+  </data>
+  <data name="Network_DownloadLimit" xml:space="preserve">
+    <value>Обмеження завантаження (КБ/с)</value>
+  </data>
+  <data name="Network_UnlimitedHint" xml:space="preserve">
+    <value>0 = без обмежень</value>
+  </data>
+  <data name="Network_ApplyLimitsToLAN" xml:space="preserve">
+    <value>Застосовувати обмеження до локальної мережі</value>
+  </data>
+  <data name="Network_ApplyLimitsToLANHint" xml:space="preserve">
+    <value>Застосовувати обмеження швидкості також до з'єднань у локальній мережі</value>
+  </data>
+  <data name="Network_ConnectionLimits" xml:space="preserve">
+    <value>Обмеження з'єднань</value>
+  </data>
+  <data name="Network_MaxIncomingRequests" xml:space="preserve">
+    <value>Максимум вхідних запитів</value>
+  </data>
+  <data name="Network_MaxOutgoingRequests" xml:space="preserve">
+    <value>Максимум вихідних запитів</value>
+  </data>
+  <data name="Network_ReconnectInterval" xml:space="preserve">
+    <value>Інтервал перепідключення (с)</value>
+  </data>
+  <data name="Network_ReconnectIntervalHint" xml:space="preserve">
+    <value>Секунд між спробами перепідключення</value>
+  </data>
+  <data name="Msg_NetworkSettingsSaved" xml:space="preserve">
+    <value>Налаштування мережі збережено. Деякі зміни можуть потребувати перезапуску.</value>
+  </data>
+  <data name="Advanced_Title" xml:space="preserve">
+    <value>Додаткові налаштування</value>
+  </data>
+  <data name="Advanced_Warning" xml:space="preserve">
+    <value>Ці налаштування призначені для досвідчених користувачів. Неправильна конфігурація може вплинути на продуктивність або спричинити проблеми синхронізації.</value>
+  </data>
+  <data name="Advanced_SyncDefaults" xml:space="preserve">
+    <value>Типові параметри синхронізації</value>
+  </data>
+  <data name="Advanced_DefaultFolderPathHint" xml:space="preserve">
+    <value>Типовий шлях для нових синхронізованих папок</value>
+  </data>
+  <data name="Advanced_IgnorePermissionsHint" xml:space="preserve">
+    <value>Не синхронізувати права доступу до файлів (корисно для міжплатформної синхронізації)</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автоматична нормалізація назв файлів</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenamesHint" xml:space="preserve">
+    <value>Автоматично перетворювати назви файлів до нормалізації Unicode NFC</value>
+  </data>
+  <data name="Advanced_FileHandling" xml:space="preserve">
+    <value>Обробка файлів</value>
+  </data>
+  <data name="Advanced_ConcurrentHashers" xml:space="preserve">
+    <value>Паралельних обчислювачів хешів</value>
+  </data>
+  <data name="Advanced_ConcurrentHashersHint" xml:space="preserve">
+    <value>Кількість паралельних потоків хешування</value>
+  </data>
+  <data name="Advanced_MaxFolderConcurrency" xml:space="preserve">
+    <value>Максимум одночасних папок</value>
+  </data>
+  <data name="Advanced_MaxFolderConcurrencyHint" xml:space="preserve">
+    <value>Максимум папок, що синхронізуються одночасно</value>
+  </data>
+  <data name="Advanced_LowPriorityProcess" xml:space="preserve">
+    <value>Процес із низьким пріоритетом</value>
+  </data>
+  <data name="Advanced_LowPriorityProcessHint" xml:space="preserve">
+    <value>Виконувати з нижчим пріоритетом ЦП (зменшує вплив на систему)</value>
+  </data>
+  <data name="Advanced_ReduceProgressUpdates" xml:space="preserve">
+    <value>Зменшити частоту оновлень поступу</value>
+  </data>
+  <data name="Advanced_ReduceProgressUpdatesHint" xml:space="preserve">
+    <value>Рідші оновлення інтерфейсу (заощаджує трафік на повільних з'єднаннях)</value>
+  </data>
+  <data name="Advanced_Database" xml:space="preserve">
+    <value>База даних</value>
+  </data>
+  <data name="Advanced_DatabaseBlockSize" xml:space="preserve">
+    <value>Розмір блока бази даних (байтів)</value>
+  </data>
+  <data name="Advanced_CompressionLevel" xml:space="preserve">
+    <value>Рівень стиснення</value>
+  </data>
+  <data name="Advanced_CompressionNone" xml:space="preserve">
+    <value>Немає (найшвидше)</value>
+  </data>
+  <data name="Advanced_CompressionLZ4" xml:space="preserve">
+    <value>LZ4 (швидко)</value>
+  </data>
+  <data name="Advanced_CompressionZstd" xml:space="preserve">
+    <value>Zstandard (збалансовано)</value>
+  </data>
+  <data name="Advanced_ProtocolOptions" xml:space="preserve">
+    <value>Параметри протоколу</value>
+  </data>
+  <data name="Advanced_PingTimeout" xml:space="preserve">
+    <value>Час очікування ping (секунди)</value>
+  </data>
+  <data name="Advanced_PingTimeoutHint" xml:space="preserve">
+    <value>Час очікування ping для підтримки з'єднання</value>
+  </data>
+  <data name="Advanced_ReconnectionInterval" xml:space="preserve">
+    <value>Інтервал перепідключення (секунди)</value>
+  </data>
+  <data name="Advanced_ReconnectionIntervalHint" xml:space="preserve">
+    <value>Час між спробами перепідключення</value>
+  </data>
+  <data name="Advanced_MaxPendingData" xml:space="preserve">
+    <value>Максимум даних у черзі (КіБ)</value>
+  </data>
+  <data name="Advanced_MaxPendingDataHint" xml:space="preserve">
+    <value>Максимум даних, що очікують на відповідь</value>
+  </data>
+  <data name="Advanced_KeepTemporaryFiles" xml:space="preserve">
+    <value>Зберігати тимчасові файли</value>
+  </data>
+  <data name="Advanced_KeepTemporaryFilesHint" xml:space="preserve">
+    <value>Не видаляти тимчасові файли при помилці (для налагодження)</value>
+  </data>
+  <data name="Advanced_CopyOwnershipFromParent" xml:space="preserve">
+    <value>Успадковувати власника від батьківської папки</value>
+  </data>
+  <data name="Advanced_CopyOwnershipFromParentHint" xml:space="preserve">
+    <value>Нові файли успадковують власника від батьківського каталогу</value>
+  </data>
+  <data name="Advanced_StartupBehavior" xml:space="preserve">
+    <value>Запуск і поведінка</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStart" xml:space="preserve">
+    <value>Відкривати браузер після запуску</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStartHint" xml:space="preserve">
+    <value>Автоматично відкривати вебінтерфейс під час запуску застосунку</value>
+  </data>
+  <data name="Advanced_Debugging" xml:space="preserve">
+    <value>Налагодження</value>
+  </data>
+  <data name="Advanced_EnableCrashReporting" xml:space="preserve">
+    <value>Увімкнути звіти про збої</value>
+  </data>
+  <data name="Advanced_EnableCrashReportingHint" xml:space="preserve">
+    <value>Надсилати анонімні звіти про збої, щоб допомогти покращити застосунок</value>
+  </data>
+  <data name="Advanced_LogLevel" xml:space="preserve">
+    <value>Рівень журналювання</value>
+  </data>
+  <data name="Advanced_DangerZone" xml:space="preserve">
+    <value>Небезпечна зона</value>
+  </data>
+  <data name="Advanced_DangerZoneWarning" xml:space="preserve">
+    <value>Ці дії не можна скасувати.</value>
+  </data>
+  <data name="Advanced_ResetDatabase" xml:space="preserve">
+    <value>Скинути базу даних</value>
+  </data>
+  <data name="Advanced_FactoryReset" xml:space="preserve">
+    <value>Скинути до заводських налаштувань</value>
+  </data>
+  <data name="Msg_ResetDatabaseConfirm" xml:space="preserve">
+    <value>Це скине базу даних синхронізації. Усі папки потребуватимуть повторного сканування. Продовжити?</value>
+  </data>
+  <data name="Msg_DatabaseResetInitiated" xml:space="preserve">
+    <value>Скидання бази даних розпочато. Папки буде проскановано повторно.</value>
+  </data>
+  <data name="Msg_FactoryResetConfirm" xml:space="preserve">
+    <value>Це видалить УСІ налаштування та дані. Цю дію не можна скасувати. Ви абсолютно впевнені?</value>
+  </data>
+  <data name="Msg_FactoryResetTypeConfirm" xml:space="preserve">
+    <value>Введіть «RESET», щоб підтвердити видалення всіх даних.</value>
+  </data>
+  <data name="Msg_FactoryResetComplete" xml:space="preserve">
+    <value>Скидання до заводських налаштувань завершено. Програму буде перезапущено.</value>
+  </data>
+  <data name="Msg_AdvancedSettingsSaved" xml:space="preserve">
+    <value>Додаткові налаштування збережено. Деякі зміни потребують перезапуску.</value>
+  </data>
+  <data name="About_Title" xml:space="preserve">
+    <value>Про застосунок</value>
+  </data>
+  <data name="About_Description" xml:space="preserve">
+    <value>Синхронізація файлів, сумісна із Syncthing, із керуванням Creatio</value>
+  </data>
+  <data name="About_Version" xml:space="preserve">
+    <value>Версія</value>
+  </data>
+  <data name="About_Uptime" xml:space="preserve">
+    <value>Час роботи</value>
+  </data>
+  <data name="About_Platform" xml:space="preserve">
+    <value>Платформа</value>
+  </data>
+  <data name="About_Architecture" xml:space="preserve">
+    <value>Архітектура</value>
+  </data>
+  <data name="About_MemoryUsage" xml:space="preserve">
+    <value>Використання пам'яті</value>
+  </data>
+  <data name="About_Features" xml:space="preserve">
+    <value>Можливості</value>
+  </data>
+  <data name="About_Feature_Sync" xml:space="preserve">
+    <value>Синхронізація файлів, сумісна із Syncthing</value>
+  </data>
+  <data name="About_Feature_Encryption" xml:space="preserve">
+    <value>Наскрізне шифрування</value>
+  </data>
+  <data name="About_Feature_NAT" xml:space="preserve">
+    <value>Обхід NAT (UPnP, NAT-PMP, STUN)</value>
+  </data>
+  <data name="About_Feature_Creatio" xml:space="preserve">
+    <value>Інтеграція з Creatio CRM</value>
+  </data>
+  <data name="About_Feature_WebUI" xml:space="preserve">
+    <value>Вебінтерфейс керування</value>
+  </data>
+  <data name="About_Links" xml:space="preserve">
+    <value>Посилання</value>
+  </data>
+  <data name="About_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="About_SyncthingDocs" xml:space="preserve">
+    <value>Документація Syncthing</value>
+  </data>
+  <data name="About_Documentation" xml:space="preserve">
+    <value>Документація</value>
+  </data>
+  <data name="About_ReportIssue" xml:space="preserve">
+    <value>Повідомити про проблему</value>
+  </data>
+  <data name="About_License" xml:space="preserve">
+    <value>Ліцензія</value>
+  </data>
+  <data name="About_LicenseText" xml:space="preserve">
+    <value>Ліцензовано за GPL-3.0. Файли протоколу походять із Syncthing (MPL-2.0).</value>
+  </data>
+  <data name="About_Os" xml:space="preserve">
+    <value>Операційна система</value>
+  </data>
+  <data name="About_FeaturesList" xml:space="preserve">
+    <value>Синхронізація файлів, сумісна із Syncthing|Наскрізне шифрування|Обхід NAT і підтримка ретрансляції|Інтеграція з платформою Creatio|Сучасний вебінтерфейс</value>
+  </data>
+  <data name="Connections_Title" xml:space="preserve">
+    <value>З'єднання</value>
+  </data>
+  <data name="Connections_Summary" xml:space="preserve">
+    <value>Зведення</value>
+  </data>
+  <data name="Connections_TotalDevices" xml:space="preserve">
+    <value>Усього пристроїв</value>
+  </data>
+  <data name="Connections_Connected" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="Connections_Disconnected" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="Connections_DirectConnections" xml:space="preserve">
+    <value>Прямі з'єднання</value>
+  </data>
+  <data name="Connections_RelayConnections" xml:space="preserve">
+    <value>З'єднання через ретранслятор</value>
+  </data>
+  <data name="Connections_Bandwidth" xml:space="preserve">
+    <value>Пропускна здатність</value>
+  </data>
+  <data name="Connections_DownloadRate" xml:space="preserve">
+    <value>Швидкість завантаження</value>
+  </data>
+  <data name="Connections_UploadRate" xml:space="preserve">
+    <value>Швидкість відвантаження</value>
+  </data>
+  <data name="Connections_TotalDownloaded" xml:space="preserve">
+    <value>Усього завантажено</value>
+  </data>
+  <data name="Connections_TotalUploaded" xml:space="preserve">
+    <value>Усього відвантажено</value>
+  </data>
+  <data name="Connections_Device" xml:space="preserve">
+    <value>Пристрій</value>
+  </data>
+  <data name="Connections_Status" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="Connections_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="Connections_Address" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="Connections_Download" xml:space="preserve">
+    <value>Завантаження</value>
+  </data>
+  <data name="Connections_Upload" xml:space="preserve">
+    <value>Відвантаження</value>
+  </data>
+  <data name="Connections_ConnectedTime" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="Connections_Direct" xml:space="preserve">
+    <value>Пряме</value>
+  </data>
+  <data name="Connections_Relay" xml:space="preserve">
+    <value>Ретранслятор</value>
+  </data>
+  <data name="Connections_DiscoveryStatus" xml:space="preserve">
+    <value>Стан виявлення</value>
+  </data>
+  <data name="Connections_LocalDiscovery" xml:space="preserve">
+    <value>Локальне виявлення</value>
+  </data>
+  <data name="Connections_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальне виявлення</value>
+  </data>
+  <data name="Connections_ExternalAddresses" xml:space="preserve">
+    <value>Зовнішні адреси</value>
+  </data>
+  <data name="Connections_Servers" xml:space="preserve">
+    <value>серверів</value>
+  </data>
+  <data name="Events_LiveUpdates" xml:space="preserve">
+    <value>Оновлення в реальному часі</value>
+  </data>
+  <data name="Events_EventType" xml:space="preserve">
+    <value>Тип події</value>
+  </data>
+  <data name="Events_AllEvents" xml:space="preserve">
+    <value>Усі події</value>
+  </data>
+  <data name="Events_StateChanged" xml:space="preserve">
+    <value>Стан змінено</value>
+  </data>
+  <data name="Events_ItemStarted" xml:space="preserve">
+    <value>Елемент розпочато</value>
+  </data>
+  <data name="Events_ItemFinished" xml:space="preserve">
+    <value>Елемент завершено</value>
+  </data>
+  <data name="Events_FolderCompletion" xml:space="preserve">
+    <value>Завершення папки</value>
+  </data>
+  <data name="Events_DeviceConnected" xml:space="preserve">
+    <value>Пристрій підключено</value>
+  </data>
+  <data name="Events_DeviceDisconnected" xml:space="preserve">
+    <value>Пристрій відключено</value>
+  </data>
+  <data name="Events_FolderErrors" xml:space="preserve">
+    <value>Помилки папки</value>
+  </data>
+  <data name="Events_Folder" xml:space="preserve">
+    <value>Папка</value>
+  </data>
+  <data name="Events_AllFolders" xml:space="preserve">
+    <value>Усі папки</value>
+  </data>
+  <data name="Events_Device" xml:space="preserve">
+    <value>Пристрій</value>
+  </data>
+  <data name="Events_AllDevices" xml:space="preserve">
+    <value>Усі пристрої</value>
+  </data>
+  <data name="Events_NoEventsMatch" xml:space="preserve">
+    <value>Немає подій, що відповідають поточним фільтрам</value>
+  </data>
+  <data name="Events_Time" xml:space="preserve">
+    <value>Час</value>
+  </data>
+  <data name="Events_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="Events_Details" xml:space="preserve">
+    <value>Подробиці</value>
+  </data>
+  <data name="Events_LoadMore" xml:space="preserve">
+    <value>Завантажити ще</value>
+  </data>
+  <data name="Statistics_Title" xml:space="preserve">
+    <value>Статистика</value>
+  </data>
+  <data name="Statistics_TotalFolders" xml:space="preserve">
+    <value>Усього папок</value>
+  </data>
+  <data name="Statistics_TotalFiles" xml:space="preserve">
+    <value>Усього файлів</value>
+  </data>
+  <data name="Statistics_TotalSize" xml:space="preserve">
+    <value>Загальний розмір</value>
+  </data>
+  <data name="Statistics_ConnectedDevices" xml:space="preserve">
+    <value>Підключені пристрої</value>
+  </data>
+  <data name="Statistics_TransferStatistics" xml:space="preserve">
+    <value>Статистика передавання</value>
+  </data>
+  <data name="Statistics_TotalDownloaded" xml:space="preserve">
+    <value>Усього завантажено</value>
+  </data>
+  <data name="Statistics_TotalUploaded" xml:space="preserve">
+    <value>Усього відвантажено</value>
+  </data>
+  <data name="Statistics_CurrentDownloadRate" xml:space="preserve">
+    <value>Поточна швидкість завантаження</value>
+  </data>
+  <data name="Statistics_CurrentUploadRate" xml:space="preserve">
+    <value>Поточна швидкість відвантаження</value>
+  </data>
+  <data name="Statistics_FilesSynced" xml:space="preserve">
+    <value>Синхронізовано файлів</value>
+  </data>
+  <data name="Statistics_BytesSynced" xml:space="preserve">
+    <value>Синхронізовано байтів</value>
+  </data>
+  <data name="Statistics_FilesSyncedSession" xml:space="preserve">
+    <value>Синхронізовано файлів (сеанс)</value>
+  </data>
+  <data name="Statistics_BytesSyncedSession" xml:space="preserve">
+    <value>Синхронізовано байтів (сеанс)</value>
+  </data>
+  <data name="Statistics_SystemStatistics" xml:space="preserve">
+    <value>Статистика системи</value>
+  </data>
+  <data name="Statistics_Uptime" xml:space="preserve">
+    <value>Час роботи</value>
+  </data>
+  <data name="Statistics_MemoryUsage" xml:space="preserve">
+    <value>Використання пам'яті</value>
+  </data>
+  <data name="Statistics_DatabaseSize" xml:space="preserve">
+    <value>Розмір бази даних</value>
+  </data>
+  <data name="Statistics_ActiveGoroutines" xml:space="preserve">
+    <value>Активні горутини</value>
+  </data>
+  <data name="Statistics_Version" xml:space="preserve">
+    <value>Версія</value>
+  </data>
+  <data name="Statistics_Started" xml:space="preserve">
+    <value>Запущено</value>
+  </data>
+  <data name="Statistics_FolderStatistics" xml:space="preserve">
+    <value>Статистика папок</value>
+  </data>
+  <data name="Statistics_Folder" xml:space="preserve">
+    <value>Папка</value>
+  </data>
+  <data name="Statistics_Files" xml:space="preserve">
+    <value>Файли</value>
+  </data>
+  <data name="Statistics_Directories" xml:space="preserve">
+    <value>Каталоги</value>
+  </data>
+  <data name="Statistics_Size" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="Statistics_SyncPercent" xml:space="preserve">
+    <value>Синхр. %</value>
+  </data>
+  <data name="Statistics_Status" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="Statistics_DeviceStatistics" xml:space="preserve">
+    <value>Статистика пристроїв</value>
+  </data>
+  <data name="Statistics_Device" xml:space="preserve">
+    <value>Пристрій</value>
+  </data>
+  <data name="Statistics_Downloaded" xml:space="preserve">
+    <value>Завантажено</value>
+  </data>
+  <data name="Statistics_Uploaded" xml:space="preserve">
+    <value>Відвантажено</value>
+  </data>
+  <data name="Statistics_LastSeen" xml:space="preserve">
+    <value>Востаннє в мережі</value>
+  </data>
+  <data name="Statistics_LocalFiles" xml:space="preserve">
+    <value>Локальні файли</value>
+  </data>
+  <data name="Statistics_TotalDirs" xml:space="preserve">
+    <value>Усього каталогів</value>
+  </data>
+  <data name="Statistics_BytesRecv" xml:space="preserve">
+    <value>Отримано байтів</value>
+  </data>
+  <data name="Statistics_BytesSent" xml:space="preserve">
+    <value>Надіслано байтів</value>
+  </data>
+  <data name="Statistics_Never" xml:space="preserve">
+    <value>Ніколи</value>
+  </data>
+  <data name="Statistics_Connected" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="Statistics_Disconnected" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="Statistics_GoroutineCount" xml:space="preserve">
+    <value>Активні завдання</value>
+  </data>
+  <data name="Statistics_FolderStats" xml:space="preserve">
+    <value>Статистика папок</value>
+  </data>
+  <data name="Statistics_DeviceStats" xml:space="preserve">
+    <value>Статистика пристроїв</value>
+  </data>
+  <data name="Profiling_Title" xml:space="preserve">
+    <value>Профілювання продуктивності</value>
+  </data>
+  <data name="Profiling_AppMemory" xml:space="preserve">
+    <value>Пам'ять застосунку</value>
+  </data>
+  <data name="Profiling_OSMemory" xml:space="preserve">
+    <value>ОС</value>
+  </data>
+  <data name="Profiling_Goroutines" xml:space="preserve">
+    <value>Горутини</value>
+  </data>
+  <data name="Profiling_Uptime" xml:space="preserve">
+    <value>Час роботи</value>
+  </data>
+  <data name="Profiling_ResourceHistory" xml:space="preserve">
+    <value>Історія ресурсів</value>
+  </data>
+  <data name="Profiling_CollectingData" xml:space="preserve">
+    <value>Збирання даних...</value>
+  </data>
+  <data name="Profiling_CPU" xml:space="preserve">
+    <value>ЦП</value>
+  </data>
+  <data name="Profiling_Memory" xml:space="preserve">
+    <value>Пам'ять</value>
+  </data>
+  <data name="Profiling_HeapStatistics" xml:space="preserve">
+    <value>Статистика купи</value>
+  </data>
+  <data name="Profiling_HeapAllocated" xml:space="preserve">
+    <value>Виділено в купі</value>
+  </data>
+  <data name="Profiling_HeapInUse" xml:space="preserve">
+    <value>Використовується в купі</value>
+  </data>
+  <data name="Profiling_HeapObjects" xml:space="preserve">
+    <value>Об'єктів у купі</value>
+  </data>
+  <data name="Profiling_StackInUse" xml:space="preserve">
+    <value>Використовується в стеку</value>
+  </data>
+  <data name="Profiling_IOStatistics" xml:space="preserve">
+    <value>Статистика вводу-виводу</value>
+  </data>
+  <data name="Profiling_FilesOpen" xml:space="preserve">
+    <value>Відкритих файлів</value>
+  </data>
+  <data name="Profiling_NetworkConnections" xml:space="preserve">
+    <value>Мережеві з'єднання</value>
+  </data>
+  <data name="Profiling_TotalRead" xml:space="preserve">
+    <value>Усього прочитано</value>
+  </data>
+  <data name="Profiling_TotalWritten" xml:space="preserve">
+    <value>Усього записано</value>
+  </data>
+  <data name="Profiling_ReadRate" xml:space="preserve">
+    <value>Швидкість читання</value>
+  </data>
+  <data name="Profiling_WriteRate" xml:space="preserve">
+    <value>Швидкість запису</value>
+  </data>
+  <data name="Profiling_DebugActions" xml:space="preserve">
+    <value>Дії налагодження</value>
+  </data>
+  <data name="Profiling_DownloadHeapDump" xml:space="preserve">
+    <value>Завантажити дамп купи</value>
+  </data>
+  <data name="Profiling_DownloadGoroutineDump" xml:space="preserve">
+    <value>Завантажити дамп горутин</value>
+  </data>
+  <data name="Msg_GCTriggered" xml:space="preserve">
+    <value>Збирання сміття запущено</value>
+  </data>
+  <data name="Msg_HeapDumpDownloading" xml:space="preserve">
+    <value>Завантаження дампу купи...</value>
+  </data>
+  <data name="Msg_GoroutineDumpDownloading" xml:space="preserve">
+    <value>Завантаження дампу горутин...</value>
+  </data>
+  <data name="Support_Title" xml:space="preserve">
+    <value>Пакет діагностики</value>
+  </data>
+  <data name="Support_Description" xml:space="preserve">
+    <value>Пакет діагностики містить відомості, які допомагають усувати несправності. До нього входять конфігурація, журнали та системна інформація, але не входять конфіденційні дані, як-от ключі API та паролі.</value>
+  </data>
+  <data name="Support_BundleContents" xml:space="preserve">
+    <value>Вміст пакета</value>
+  </data>
+  <data name="Support_Configuration" xml:space="preserve">
+    <value>Конфігурація</value>
+  </data>
+  <data name="Support_ConfigurationHint" xml:space="preserve">
+    <value>Очищена конфігурація без конфіденційних даних</value>
+  </data>
+  <data name="Support_SystemLogs" xml:space="preserve">
+    <value>Системні журнали</value>
+  </data>
+  <data name="Support_SystemLogsHint" xml:space="preserve">
+    <value>Останні записи журналу (за останні {0} днів)</value>
+  </data>
+  <data name="Support_SystemInformation" xml:space="preserve">
+    <value>Системна інформація</value>
+  </data>
+  <data name="Support_SystemInformationHint" xml:space="preserve">
+    <value>Версія ОС, архітектура, середовище</value>
+  </data>
+  <data name="Support_PerformanceMetrics" xml:space="preserve">
+    <value>Метрики продуктивності</value>
+  </data>
+  <data name="Support_PerformanceMetricsHint" xml:space="preserve">
+    <value>Статистика ЦП, пам'яті та вводу-виводу</value>
+  </data>
+  <data name="Support_FolderStatus" xml:space="preserve">
+    <value>Стан папок</value>
+  </data>
+  <data name="Support_FolderStatusHint" xml:space="preserve">
+    <value>Стан синхронізації всіх папок (шляхи приховано)</value>
+  </data>
+  <data name="Support_DeviceStatus" xml:space="preserve">
+    <value>Стан пристроїв</value>
+  </data>
+  <data name="Support_DeviceStatusHint" xml:space="preserve">
+    <value>Стан підключення всіх пристроїв</value>
+  </data>
+  <data name="Support_NetworkDiagnostics" xml:space="preserve">
+    <value>Мережева діагностика</value>
+  </data>
+  <data name="Support_NetworkDiagnosticsHint" xml:space="preserve">
+    <value>Тип NAT, стан виявлення, з'єднання</value>
+  </data>
+  <data name="Support_PrivacyOptions" xml:space="preserve">
+    <value>Параметри конфіденційності</value>
+  </data>
+  <data name="Support_RedactPaths" xml:space="preserve">
+    <value>Приховати шляхи до файлів</value>
+  </data>
+  <data name="Support_RedactPathsHint" xml:space="preserve">
+    <value>Замінити повні шляхи заповнювачами (наприклад, /home/user/Sync -&gt; [SYNC_FOLDER])</value>
+  </data>
+  <data name="Support_RedactDeviceIds" xml:space="preserve">
+    <value>Приховати ідентифікатори пристроїв</value>
+  </data>
+  <data name="Support_RedactDeviceIdsHint" xml:space="preserve">
+    <value>Замінити ідентифікатори пристроїв анонімними</value>
+  </data>
+  <data name="Support_RedactIPs" xml:space="preserve">
+    <value>Приховати IP-адреси</value>
+  </data>
+  <data name="Support_RedactIPsHint" xml:space="preserve">
+    <value>Замінити IP-адреси заповнювачами</value>
+  </data>
+  <data name="Support_Generating" xml:space="preserve">
+    <value>Створення пакета діагностики...</value>
+  </data>
+  <data name="Support_Preview" xml:space="preserve">
+    <value>Попередній перегляд</value>
+  </data>
+  <data name="Support_GenerateAndDownload" xml:space="preserve">
+    <value>Створити та завантажити</value>
+  </data>
+  <data name="Msg_SupportBundleDownloaded" xml:space="preserve">
+    <value>Пакет діагностики успішно завантажено</value>
+  </data>
+  <data name="Log_Title" xml:space="preserve">
+    <value>Системні журнали</value>
+  </data>
+  <data name="Log_AutoScroll" xml:space="preserve">
+    <value>Автопрокручування</value>
+  </data>
+  <data name="Log_LiveTail" xml:space="preserve">
+    <value>Стеження в реальному часі</value>
+  </data>
+  <data name="Log_Level" xml:space="preserve">
+    <value>Рівень журналювання</value>
+  </data>
+  <data name="Log_AllLevels" xml:space="preserve">
+    <value>Усі рівні</value>
+  </data>
+  <data name="Log_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="Log_Warning" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
+  <data name="Log_Info" xml:space="preserve">
+    <value>Інформація</value>
+  </data>
+  <data name="Log_Debug" xml:space="preserve">
+    <value>Налагодження</value>
+  </data>
+  <data name="Log_Verbose" xml:space="preserve">
+    <value>Докладно</value>
+  </data>
+  <data name="Log_Facility" xml:space="preserve">
+    <value>Підсистема</value>
+  </data>
+  <data name="Log_AllFacilities" xml:space="preserve">
+    <value>Усі підсистеми</value>
+  </data>
+  <data name="Log_Sync" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="Log_Model" xml:space="preserve">
+    <value>Модель</value>
+  </data>
+  <data name="Log_Scanner" xml:space="preserve">
+    <value>Сканер</value>
+  </data>
+  <data name="Log_Connections" xml:space="preserve">
+    <value>З'єднання</value>
+  </data>
+  <data name="Log_Discovery" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="Log_UPnPNAT" xml:space="preserve">
+    <value>UPnP/NAT</value>
+  </data>
+  <data name="Log_Entries" xml:space="preserve">
+    <value>{0} з {1} записів</value>
+  </data>
+  <data name="Log_NoEntriesMatch" xml:space="preserve">
+    <value>Немає записів журналу, що відповідають фільтру</value>
+  </data>
+  <data name="Msg_LogsDownloaded" xml:space="preserve">
+    <value>Журнали завантажено</value>
+  </data>
+  <data name="DeviceDetails_Connection" xml:space="preserve">
+    <value>З'єднання</value>
+  </data>
+  <data name="DeviceDetails_Address" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="DeviceDetails_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="DeviceDetails_Encryption" xml:space="preserve">
+    <value>Шифрування</value>
+  </data>
+  <data name="DeviceDetails_ClientVersion" xml:space="preserve">
+    <value>Версія клієнта</value>
+  </data>
+  <data name="DeviceDetails_ConnectedSince" xml:space="preserve">
+    <value>Підключено з</value>
+  </data>
+  <data name="DeviceDetails_Duration" xml:space="preserve">
+    <value>Тривалість</value>
+  </data>
+  <data name="DeviceDetails_Transfer" xml:space="preserve">
+    <value>Передавання</value>
+  </data>
+  <data name="DeviceDetails_DownloadRate" xml:space="preserve">
+    <value>Швидкість завантаження</value>
+  </data>
+  <data name="DeviceDetails_UploadRate" xml:space="preserve">
+    <value>Швидкість відвантаження</value>
+  </data>
+  <data name="DeviceDetails_TotalDownloaded" xml:space="preserve">
+    <value>Усього завантажено</value>
+  </data>
+  <data name="DeviceDetails_TotalUploaded" xml:space="preserve">
+    <value>Усього відвантажено</value>
+  </data>
+  <data name="DeviceDetails_Configuration" xml:space="preserve">
+    <value>Конфігурація</value>
+  </data>
+  <data name="DeviceDetails_Compression" xml:space="preserve">
+    <value>Стиснення</value>
+  </data>
+  <data name="DeviceDetails_Introducer" xml:space="preserve">
+    <value>Представник</value>
+  </data>
+  <data name="DeviceDetails_AutoAcceptFolders" xml:space="preserve">
+    <value>Автоприйняття папок</value>
+  </data>
+  <data name="DeviceDetails_Untrusted" xml:space="preserve">
+    <value>Ненадійний</value>
+  </data>
+  <data name="DeviceDetails_MaxSendRate" xml:space="preserve">
+    <value>Максимальна швидкість надсилання</value>
+  </data>
+  <data name="DeviceDetails_MaxRecvRate" xml:space="preserve">
+    <value>Максимальна швидкість отримання</value>
+  </data>
+  <data name="DeviceDetails_ConfiguredAddresses" xml:space="preserve">
+    <value>Налаштовані адреси</value>
+  </data>
+  <data name="DeviceDetails_NoAddresses" xml:space="preserve">
+    <value>Адреси не налаштовано (лише динамічні)</value>
+  </data>
+  <data name="DeviceDetails_Statistics" xml:space="preserve">
+    <value>Статистика</value>
+  </data>
+  <data name="DeviceDetails_LastSeen" xml:space="preserve">
+    <value>Востаннє в мережі</value>
+  </data>
+  <data name="DeviceDetails_LastConnectionDuration" xml:space="preserve">
+    <value>Тривалість останнього з'єднання</value>
+  </data>
+  <data name="DeviceDetails_Status_Connected" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="DeviceDetails_Status_Disconnected" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="DeviceDetails_Status_Paused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="DeviceDetails_Relay" xml:space="preserve">
+    <value>Ретранслятор</value>
+  </data>
+  <data name="DeviceDetails_Resume" xml:space="preserve">
+    <value>Відновити</value>
+  </data>
+  <data name="DeviceDetails_Pause" xml:space="preserve">
+    <value>Призупинити</value>
+  </data>
+  <data name="DeviceDetails_Remove" xml:space="preserve">
+    <value>Видалити пристрій</value>
+  </data>
+  <data name="DeviceDetails_Title" xml:space="preserve">
+    <value>Відомості про пристрій</value>
+  </data>
+  <data name="DeviceDetails_ConnectionInfo" xml:space="preserve">
+    <value>Відомості про з'єднання</value>
+  </data>
+  <data name="DeviceDetails_ConnectionType" xml:space="preserve">
+    <value>Тип з'єднання</value>
+  </data>
+  <data name="DeviceDetails_Crypto" xml:space="preserve">
+    <value>Шифрування</value>
+  </data>
+  <data name="DeviceDetails_TransferInfo" xml:space="preserve">
+    <value>Відомості про передавання</value>
+  </data>
+  <data name="DeviceDetails_InRate" xml:space="preserve">
+    <value>Швидкість завантаження</value>
+  </data>
+  <data name="DeviceDetails_OutRate" xml:space="preserve">
+    <value>Швидкість відвантаження</value>
+  </data>
+  <data name="DeviceDetails_TotalIn" xml:space="preserve">
+    <value>Усього завантажено</value>
+  </data>
+  <data name="DeviceDetails_TotalOut" xml:space="preserve">
+    <value>Усього відвантажено</value>
+  </data>
+  <data name="Pending_Title" xml:space="preserve">
+    <value>Пристрої в очікуванні</value>
+  </data>
+  <data name="Pending_AutoAcceptConfiguration" xml:space="preserve">
+    <value>Налаштування автоприйняття</value>
+  </data>
+  <data name="Pending_DevicesWithAutoAccept" xml:space="preserve">
+    <value>Пристроїв з увімкненим автоприйняттям: {0}</value>
+  </data>
+  <data name="Pending_NoDevicesAutoAccept" xml:space="preserve">
+    <value>Жоден пристрій не має увімкненого автоприйняття</value>
+  </data>
+  <data name="Pending_AutoAcceptDescription" xml:space="preserve">
+    <value>Автоприйняття дозволяє пристроям автоматично приймати запити на спільний доступ до папок. Увімкніть його для окремих пристроїв у налаштуваннях пристрою або під час прийняття пристрою нижче.</value>
+  </data>
+  <data name="Pending_DefaultFolderPath" xml:space="preserve">
+    <value>Типовий шлях до папки</value>
+  </data>
+  <data name="Pending_DefaultFolderPathPlaceholder" xml:space="preserve">
+    <value>Залиште порожнім для типового розташування</value>
+  </data>
+  <data name="Pending_DefaultFolderPathHint" xml:space="preserve">
+    <value>Базовий шлях для автоматично прийнятих папок</value>
+  </data>
+  <data name="Pending_DevicesWithAutoAcceptLabel" xml:space="preserve">
+    <value>Пристрої з автоприйняттям</value>
+  </data>
+  <data name="Pending_More" xml:space="preserve">
+    <value>+ще {0}</value>
+  </data>
+  <data name="Pending_SaveSettings" xml:space="preserve">
+    <value>Зберегти налаштування</value>
+  </data>
+  <data name="Pending_NoPendingDevices" xml:space="preserve">
+    <value>Немає пристроїв в очікуванні</value>
+  </data>
+  <data name="Pending_AllRequestsProcessed" xml:space="preserve">
+    <value>Усі запити на підключення пристроїв оброблено.</value>
+  </data>
+  <data name="Pending_ViewAllDevices" xml:space="preserve">
+    <value>Переглянути всі пристрої</value>
+  </data>
+  <data name="Pending_PendingRequests" xml:space="preserve">
+    <value>{0} запит в очікуванні</value>
+  </data>
+  <data name="Pending_PendingRequestsPlural" xml:space="preserve">
+    <value>Запитів в очікуванні: {0}</value>
+  </data>
+  <data name="Pending_Accept" xml:space="preserve">
+    <value>Прийняти</value>
+  </data>
+  <data name="Pending_AcceptWithAutoAccept" xml:space="preserve">
+    <value>Прийняти з автоприйняттям</value>
+  </data>
+  <data name="Pending_AcceptAndShareFolders" xml:space="preserve">
+    <value>Прийняти та надати папки...</value>
+  </data>
+  <data name="Pending_Reject" xml:space="preserve">
+    <value>Відхилити</value>
+  </data>
+  <data name="Pending_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="Pending_AnnouncedName" xml:space="preserve">
+    <value>Оголошена назва</value>
+  </data>
+  <data name="Pending_Address" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="Pending_Discovered" xml:space="preserve">
+    <value>Виявлено</value>
+  </data>
+  <data name="Pending_AcceptOptions" xml:space="preserve">
+    <value>Параметри прийняття</value>
+  </data>
+  <data name="Pending_SimpleAccept" xml:space="preserve">
+    <value>Просте прийняття</value>
+  </data>
+  <data name="Pending_SimpleAcceptHint" xml:space="preserve">
+    <value>Прийняти пристрій із типовими налаштуваннями</value>
+  </data>
+  <data name="Pending_AcceptAutoAccept" xml:space="preserve">
+    <value>Прийняти + автоприйняття</value>
+  </data>
+  <data name="Pending_AcceptAutoAcceptHint" xml:space="preserve">
+    <value>Автоматично приймати папки від цього пристрою</value>
+  </data>
+  <data name="Pending_AcceptShareFolders" xml:space="preserve">
+    <value>Прийняти + надати папки</value>
+  </data>
+  <data name="Pending_AcceptShareFoldersHint" xml:space="preserve">
+    <value>Виберіть папки для негайного надання</value>
+  </data>
+  <data name="Msg_AutoAcceptSettingsSaved" xml:space="preserve">
+    <value>Налаштування автоприйняття збережено</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithAutoAccept" xml:space="preserve">
+    <value>Пристрій «{0}» прийнято з увімкненим автоприйняттям</value>
+  </data>
+  <data name="Msg_DeviceAcceptedAutoAcceptFailed" xml:space="preserve">
+    <value>Пристрій «{0}» прийнято (не вдалося увімкнути автоприйняття)</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithFolders" xml:space="preserve">
+    <value>Пристрій «{0}» прийнято, спільних папок: {1}</value>
+  </data>
+  <data name="Msg_RejectDeviceConfirm" xml:space="preserve">
+    <value>Ви впевнені, що хочете відхилити «{0}»? Цьому пристрою доведеться повторно надіслати запит на підключення.</value>
+  </data>
+  <data name="Msg_NoFoldersAvailable" xml:space="preserve">
+    <value>Немає доступних папок</value>
+  </data>
+  <data name="Msg_NoFoldersConfigured" xml:space="preserve">
+    <value>Папки не налаштовано. Спочатку прийміть пристрій, а папки додайте пізніше.</value>
+  </data>
+  <data name="Pending_AcceptAnyway" xml:space="preserve">
+    <value>Усе одно прийняти</value>
+  </data>
+  <data name="Pending_SelectFoldersToShare" xml:space="preserve">
+    <value>Виберіть папки для спільного доступу</value>
+  </data>
+  <data name="FolderDetails_SyncProgress" xml:space="preserve">
+    <value>Поступ синхронізації</value>
+  </data>
+  <data name="FolderDetails_Synced" xml:space="preserve">
+    <value>синхронізовано</value>
+  </data>
+  <data name="FolderDetails_GlobalFiles" xml:space="preserve">
+    <value>Глобальні файли</value>
+  </data>
+  <data name="FolderDetails_LocalFiles" xml:space="preserve">
+    <value>Локальні файли</value>
+  </data>
+  <data name="FolderDetails_GlobalSize" xml:space="preserve">
+    <value>Глобальний розмір</value>
+  </data>
+  <data name="FolderDetails_LocalSize" xml:space="preserve">
+    <value>Локальний розмір</value>
+  </data>
+  <data name="FolderDetails_OutOfSync" xml:space="preserve">
+    <value>Не синхронізовано</value>
+  </data>
+  <data name="FolderDetails_NeedSyncing" xml:space="preserve">
+    <value>Потребують синхронізації: {0} файлів ({1})</value>
+  </data>
+  <data name="FolderDetails_Configuration" xml:space="preserve">
+    <value>Конфігурація</value>
+  </data>
+  <data name="FolderDetails_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="FolderDetails_FolderId" xml:space="preserve">
+    <value>Ідентифікатор папки</value>
+  </data>
+  <data name="FolderDetails_RescanInterval" xml:space="preserve">
+    <value>Інтервал сканування</value>
+  </data>
+  <data name="FolderDetails_FileWatcher" xml:space="preserve">
+    <value>Спостерігач файлів</value>
+  </data>
+  <data name="FolderDetails_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="FolderDetails_SharedWith" xml:space="preserve">
+    <value>Спільний доступ із</value>
+  </data>
+  <data name="FolderDetails_Devices" xml:space="preserve">
+    <value>пристроїв</value>
+  </data>
+  <data name="FolderDetails_Errors" xml:space="preserve">
+    <value>Помилки</value>
+  </data>
+  <data name="FolderDetails_NotShared" xml:space="preserve">
+    <value>Не надано в спільний доступ жодному пристрою</value>
+  </data>
+  <data name="FolderErrors_Title" xml:space="preserve">
+    <value>Помилки папки</value>
+  </data>
+  <data name="FolderErrors_NoErrors" xml:space="preserve">
+    <value>Для цієї папки помилок не знайдено.</value>
+  </data>
+  <data name="FolderErrors_ErrorsFound" xml:space="preserve">
+    <value>Знайдено помилок: {0}. Ці файли не вдалося синхронізувати.</value>
+  </data>
+  <data name="FolderErrors_FilePath" xml:space="preserve">
+    <value>Шлях до файлу</value>
+  </data>
+  <data name="FolderErrors_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="FolderErrors_Time" xml:space="preserve">
+    <value>Час</value>
+  </data>
+  <data name="FolderErrors_HelpText" xml:space="preserve">
+    <value>Помилки зазвичай зникають автоматично після усунення першопричини (наприклад, прав доступу до файлів чи браку місця на диску). Можна також повторно просканувати папку, щоб очистити усунені помилки.</value>
+  </data>
+  <data name="FolderErrors_RescanFolder" xml:space="preserve">
+    <value>Сканувати папку повторно</value>
+  </data>
+  <data name="Msg_RescanStarted" xml:space="preserve">
+    <value>Повторне сканування розпочато</value>
+  </data>
+  <data name="FolderEdit_Title" xml:space="preserve">
+    <value>Редагувати папку</value>
+  </data>
+  <data name="FolderEdit_General" xml:space="preserve">
+    <value>Загальні</value>
+  </data>
+  <data name="FolderEdit_FolderLabel" xml:space="preserve">
+    <value>Мітка папки</value>
+  </data>
+  <data name="FolderEdit_FolderPath" xml:space="preserve">
+    <value>Шлях до папки</value>
+  </data>
+  <data name="FolderEdit_PathRequired" xml:space="preserve">
+    <value>Шлях обов'язковий</value>
+  </data>
+  <data name="FolderEdit_FolderType" xml:space="preserve">
+    <value>Тип папки</value>
+  </data>
+  <data name="FolderEdit_FileWatching" xml:space="preserve">
+    <value>Спостереження за файлами</value>
+  </data>
+  <data name="FolderEdit_WatchForChanges" xml:space="preserve">
+    <value>Стежити за змінами</value>
+  </data>
+  <data name="FolderEdit_WatchDelay" xml:space="preserve">
+    <value>Затримка спостереження (секунди)</value>
+  </data>
+  <data name="FolderEdit_FullRescanInterval" xml:space="preserve">
+    <value>Інтервал повного сканування (секунди)</value>
+  </data>
+  <data name="FolderEdit_FullRescanIntervalHint" xml:space="preserve">
+    <value>0 — вимкнути періодичне сканування</value>
+  </data>
+  <data name="FolderEdit_Advanced" xml:space="preserve">
+    <value>Додатково</value>
+  </data>
+  <data name="FolderEdit_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="FolderEdit_IgnoreDelete" xml:space="preserve">
+    <value>Ігнорувати видалення</value>
+  </data>
+  <data name="FolderEdit_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автоматична нормалізація назв файлів</value>
+  </data>
+  <data name="FolderEdit_FilePullOrder" xml:space="preserve">
+    <value>Порядок завантаження файлів</value>
+  </data>
+  <data name="FolderEdit_MaxConflicts" xml:space="preserve">
+    <value>Максимум конфліктів</value>
+  </data>
+  <data name="FolderEdit_MaxConflictsHint" xml:space="preserve">
+    <value>-1 — без обмежень, 0 — вимкнути</value>
+  </data>
+  <data name="FolderEdit_FileVersioning" xml:space="preserve">
+    <value>Версії файлів</value>
+  </data>
+  <data name="FolderEdit_FileVersioningDescription" xml:space="preserve">
+    <value>Керування версіями зберігає старі копії файлів, коли їх замінюють або видаляють інші пристрої.</value>
+  </data>
+  <data name="FolderEdit_VersioningType" xml:space="preserve">
+    <value>Тип керування версіями</value>
+  </data>
+  <data name="FolderEdit_VersioningTypeHint" xml:space="preserve">
+    <value>Виберіть, як зберігати старі версії файлів</value>
+  </data>
+  <data name="FolderEdit_NoVersioning" xml:space="preserve">
+    <value>Без керування версіями</value>
+  </data>
+  <data name="FolderEdit_TrashCan" xml:space="preserve">
+    <value>Кошик</value>
+  </data>
+  <data name="FolderEdit_Simple" xml:space="preserve">
+    <value>Просте</value>
+  </data>
+  <data name="FolderEdit_Staggered" xml:space="preserve">
+    <value>Ступінчасте</value>
+  </data>
+  <data name="FolderEdit_External" xml:space="preserve">
+    <value>Зовнішнє</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPath" xml:space="preserve">
+    <value>Власний шлях до версій</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPathHint" xml:space="preserve">
+    <value>Залиште порожнім, щоб використовувати типовий (папка .stversions)</value>
+  </data>
+  <data name="FolderEdit_TrashCanDescription" xml:space="preserve">
+    <value>Кошик: переміщує файли до папки кошика під час заміни або видалення. Файли зберігаються до очищення.</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfter" xml:space="preserve">
+    <value>Очищати через (днів)</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfterHint" xml:space="preserve">
+    <value>0 — зберігати версії назавжди</value>
+  </data>
+  <data name="FolderEdit_SimpleDescription" xml:space="preserve">
+    <value>Просте: зберігає задану кількість старих версій кожного файлу.</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeep" xml:space="preserve">
+    <value>Скільки версій зберігати</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeepHint" xml:space="preserve">
+    <value>Кількість старих версій, які зберігати</value>
+  </data>
+  <data name="FolderEdit_StaggeredDescription" xml:space="preserve">
+    <value>Ступінчасте: зберігає версії зі зменшенням частоти з часом. Для нещодавніх змін версій більше, для давніших — менше.</value>
+  </data>
+  <data name="FolderEdit_MaximumAge" xml:space="preserve">
+    <value>Максимальний вік (днів)</value>
+  </data>
+  <data name="FolderEdit_MaximumAgeHint" xml:space="preserve">
+    <value>Максимальний вік версій, які зберігати (типово: 365 днів)</value>
+  </data>
+  <data name="FolderEdit_ExternalDescription" xml:space="preserve">
+    <value>Зовнішнє: запускає зовнішню команду перед заміною файлу. Команда отримує шлях до файлу як аргумент.</value>
+  </data>
+  <data name="FolderEdit_Command" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderEdit_CommandRequired" xml:space="preserve">
+    <value>Для зовнішнього керування версіями потрібна команда</value>
+  </data>
+  <data name="FolderEdit_CommandHint" xml:space="preserve">
+    <value>Команда для виконання (наприклад, /path/to/script.sh)</value>
+  </data>
+  <data name="Msg_FolderSaved" xml:space="preserve">
+    <value>Папку успішно збережено</value>
+  </data>
+  <data name="Msg_ExternalVersioningCommandRequired" xml:space="preserve">
+    <value>Зовнішнє керування версіями потребує команди</value>
+  </data>
+  <data name="Msg_ResetToDefaults" xml:space="preserve">
+    <value>Налаштування скинуто до типових. Не забудьте зберегти зміни.</value>
+  </data>
+  <data name="Msg_LoggedOut" xml:space="preserve">
+    <value>Ви вийшли із системи</value>
+  </data>
+  <data name="Msg_FailedToConnectAgent" xml:space="preserve">
+    <value>Не вдалося підключитися до агента: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadData" xml:space="preserve">
+    <value>Не вдалося завантажити дані: {0}</value>
+  </data>
+  <data name="Msg_LostConnectionToAgent" xml:space="preserve">
+    <value>Втрачено з'єднання з агентом</value>
+  </data>
+  <data name="Msg_ReconnectedToAgent" xml:space="preserve">
+    <value>З'єднання з агентом відновлено</value>
+  </data>
+  <data name="Msg_FailedToLoadIgnores" xml:space="preserve">
+    <value>Не вдалося завантажити правила ігнорування: {0}</value>
+  </data>
+  <data name="Msg_PatternAdded" xml:space="preserve">
+    <value>Додано шаблон: {0}</value>
+  </data>
+  <data name="Msg_PatternExists" xml:space="preserve">
+    <value>Шаблон уже існує: {0}</value>
+  </data>
+  <data name="Msg_PatternRemoved" xml:space="preserve">
+    <value>Видалено шаблон: {0}</value>
+  </data>
+  <data name="Msg_IgnoresSaved" xml:space="preserve">
+    <value>Шаблони ігнорування збережено</value>
+  </data>
+  <data name="Msg_FailedToSaveIgnores" xml:space="preserve">
+    <value>Не вдалося зберегти правила ігнорування: {0}</value>
+  </data>
+  <data name="Msg_FailedToRefreshConnections" xml:space="preserve">
+    <value>Не вдалося оновити з'єднання: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadEvents" xml:space="preserve">
+    <value>Не вдалося завантажити події: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadMoreEvents" xml:space="preserve">
+    <value>Не вдалося завантажити більше подій: {0}</value>
+  </data>
+  <data name="Msg_FailedToRefreshStatistics" xml:space="preserve">
+    <value>Не вдалося оновити статистику: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadLogs" xml:space="preserve">
+    <value>Не вдалося завантажити журнали: {0}</value>
+  </data>
+  <data name="Msg_FailedToDownloadLogs" xml:space="preserve">
+    <value>Не вдалося завантажити журнали: {0}</value>
+  </data>
+  <data name="Msg_FailedToGeneratePreview" xml:space="preserve">
+    <value>Не вдалося створити попередній перегляд: {0}</value>
+  </data>
+  <data name="Msg_FailedToGenerateBundle" xml:space="preserve">
+    <value>Не вдалося створити пакет діагностики: {0}</value>
+  </data>
+  <data name="Folders_AutoNormalize" xml:space="preserve">
+    <value>Автоматична нормалізація Unicode</value>
+  </data>
+  <data name="Folders_AutoNormalizeDesc" xml:space="preserve">
+    <value>Автоматично нормалізувати назви файлів у Unicode (рекомендовано)</value>
+  </data>
+  <data name="Settings_Network_NatMethods" xml:space="preserve">
+    <value>Методи NAT</value>
+  </data>
+  <data name="Settings_Network_UpnpEnabled" xml:space="preserve">
+    <value>Увімкнути UPnP</value>
+  </data>
+  <data name="Settings_Network_UpnpEnabledDesc" xml:space="preserve">
+    <value>Перенаправлення портів через Universal Plug and Play</value>
+  </data>
+  <data name="Settings_Network_NatPmpEnabled" xml:space="preserve">
+    <value>Увімкнути NAT-PMP</value>
+  </data>
+  <data name="Settings_Network_NatPmpEnabledDesc" xml:space="preserve">
+    <value>Протокол NAT Port Mapping (маршрутизатори Apple)</value>
+  </data>
+  <data name="Settings_Advanced_Warning" xml:space="preserve">
+    <value>Ці налаштування призначені для досвідчених користувачів. Неправильна конфігурація може вплинути на продуктивність або спричинити проблеми синхронізації.</value>
+  </data>
+  <data name="Settings_Advanced_SyncDefaults" xml:space="preserve">
+    <value>Типові параметри синхронізації</value>
+  </data>
+  <data name="DeviceDialog_EditDevice" xml:space="preserve">
+    <value>Редагувати пристрій</value>
+  </data>
+  <data name="DeviceDialog_AddDevice" xml:space="preserve">
+    <value>Додати пристрій</value>
+  </data>
+  <data name="DeviceDialog_TabGeneral" xml:space="preserve">
+    <value>Загальні</value>
+  </data>
+  <data name="DeviceDialog_TabSharing" xml:space="preserve">
+    <value>Спільний доступ</value>
+  </data>
+  <data name="DeviceDialog_TabAdvanced" xml:space="preserve">
+    <value>Додатково</value>
+  </data>
+  <data name="DeviceDialog_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdHelper" xml:space="preserve">
+    <value>Ідентифікатор віддаленого пристрою (наприклад, XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX-XXXXXXX)</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdCannotChange" xml:space="preserve">
+    <value>Ідентифікатор пристрою змінити не можна</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdRequired" xml:space="preserve">
+    <value>Ідентифікатор пристрою обов'язковий</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdTooShort" xml:space="preserve">
+    <value>Ідентифікатор пристрою закороткий</value>
+  </data>
+  <data name="DeviceDialog_DeviceIdInvalidChars" xml:space="preserve">
+    <value>Ідентифікатор пристрою містить неприпустимі символи</value>
+  </data>
+  <data name="DeviceDialog_DeviceName" xml:space="preserve">
+    <value>Назва пристрою</value>
+  </data>
+  <data name="DeviceDialog_DeviceNameHelper" xml:space="preserve">
+    <value>Зрозуміла назва для цього пристрою</value>
+  </data>
+  <data name="DeviceDialog_Addresses" xml:space="preserve">
+    <value>Адреси</value>
+  </data>
+  <data name="DeviceDialog_AddressesHelper" xml:space="preserve">
+    <value>Адреси через кому (наприклад, tcp://192.168.1.100:22000, dynamic)</value>
+  </data>
+  <data name="DeviceDialog_SelectFolders" xml:space="preserve">
+    <value>Виберіть папки для спільного доступу з цим пристроєм:</value>
+  </data>
+  <data name="DeviceDialog_NoFoldersConfigured" xml:space="preserve">
+    <value>Папки не налаштовано. Спочатку додайте папки, щоб надавати до них доступ пристроям.</value>
+  </data>
+  <data name="DeviceDialog_Compression" xml:space="preserve">
+    <value>Стиснення</value>
+  </data>
+  <data name="DeviceDialog_CompressionHelper" xml:space="preserve">
+    <value>Стиснення даних під час передавання</value>
+  </data>
+  <data name="DeviceDialog_CompressionMetadata" xml:space="preserve">
+    <value>Лише метадані (рекомендовано)</value>
+  </data>
+  <data name="DeviceDialog_CompressionAlways" xml:space="preserve">
+    <value>Завжди</value>
+  </data>
+  <data name="DeviceDialog_CompressionNever" xml:space="preserve">
+    <value>Ніколи</value>
+  </data>
+  <data name="DeviceDialog_Introducer" xml:space="preserve">
+    <value>Представник</value>
+  </data>
+  <data name="DeviceDialog_IntroducerDesc" xml:space="preserve">
+    <value>Цей пристрій представлятиме нам інші пристрої</value>
+  </data>
+  <data name="DeviceDialog_SkipIntroductionRemovals" xml:space="preserve">
+    <value>Не видаляти представлені пристрої</value>
+  </data>
+  <data name="DeviceDialog_SkipIntroductionRemovalsDesc" xml:space="preserve">
+    <value>Не видаляти пристрої, представлені цим пристроєм</value>
+  </data>
+  <data name="DeviceDialog_AutoAcceptFolders" xml:space="preserve">
+    <value>Автоприйняття папок</value>
+  </data>
+  <data name="DeviceDialog_AutoAcceptFoldersDesc" xml:space="preserve">
+    <value>Автоматично приймати запити на спільний доступ до папок від цього пристрою</value>
+  </data>
+  <data name="DeviceDialog_AllowedNetworks" xml:space="preserve">
+    <value>Дозволені мережі</value>
+  </data>
+  <data name="DeviceDialog_AllowedNetworksHelper" xml:space="preserve">
+    <value>Мережі через кому (порожньо = дозволено всі мережі)</value>
+  </data>
+  <data name="DeviceDialog_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="DeviceDialog_Save" xml:space="preserve">
+    <value>Зберегти</value>
+  </data>
+  <data name="DeviceDialog_DeviceSaved" xml:space="preserve">
+    <value>Пристрій «{0}» збережено</value>
+  </data>
+  <data name="DeviceDialog_DeviceAdded" xml:space="preserve">
+    <value>Пристрій «{0}» додано</value>
+  </data>
+  <data name="DeviceDialog_FailedToSave" xml:space="preserve">
+    <value>Не вдалося зберегти пристрій: {0}</value>
+  </data>
+  <data name="DeviceDialog_FailedToAdd" xml:space="preserve">
+    <value>Не вдалося додати пристрій: {0}</value>
+  </data>
+  <data name="DeviceDialog_FailedToUpdateFolder" xml:space="preserve">
+    <value>Не вдалося оновити папку «{0}»: {1}</value>
+  </data>
+  <data name="FolderDialog_EditFolder" xml:space="preserve">
+    <value>Редагувати папку</value>
+  </data>
+  <data name="FolderDialog_AddFolder" xml:space="preserve">
+    <value>Додати папку</value>
+  </data>
+  <data name="FolderDialog_TabGeneral" xml:space="preserve">
+    <value>Загальні</value>
+  </data>
+  <data name="FolderDialog_TabSharing" xml:space="preserve">
+    <value>Спільний доступ</value>
+  </data>
+  <data name="FolderDialog_TabVersioning" xml:space="preserve">
+    <value>Версії файлів</value>
+  </data>
+  <data name="FolderDialog_TabAdvanced" xml:space="preserve">
+    <value>Додатково</value>
+  </data>
+  <data name="FolderDialog_FolderId" xml:space="preserve">
+    <value>Ідентифікатор папки</value>
+  </data>
+  <data name="FolderDialog_FolderIdHint" xml:space="preserve">
+    <value>Автоматично створений унікальний ідентифікатор. Має точно збігатися на всіх пристроях.</value>
+  </data>
+  <data name="FolderDialog_FolderIdHintEdit" xml:space="preserve">
+    <value>Ідентифікатор папки змінити не можна</value>
+  </data>
+  <data name="FolderDialog_FolderIdRequired" xml:space="preserve">
+    <value>Ідентифікатор папки обов'язковий</value>
+  </data>
+  <data name="FolderDialog_FolderIdNoSpaces" xml:space="preserve">
+    <value>Ідентифікатор папки не може містити пробіли</value>
+  </data>
+  <data name="FolderDialog_FolderIdInvalidChars" xml:space="preserve">
+    <value>Ідентифікатор папки може містити лише літери, цифри, підкреслення, дефіси та крапки</value>
+  </data>
+  <data name="FolderDialog_FolderLabel" xml:space="preserve">
+    <value>Мітка папки</value>
+  </data>
+  <data name="FolderDialog_FolderLabelHint" xml:space="preserve">
+    <value>Необов'язкова описова назва (може відрізнятися на кожному пристрої)</value>
+  </data>
+  <data name="FolderDialog_FolderPath" xml:space="preserve">
+    <value>Шлях до папки</value>
+  </data>
+  <data name="FolderDialog_FolderPathHint" xml:space="preserve">
+    <value>Шлях до папки на локальному диску</value>
+  </data>
+  <data name="FolderDialog_FolderPathRequired" xml:space="preserve">
+    <value>Шлях до папки обов'язковий</value>
+  </data>
+  <data name="FolderDialog_SelectDevices" xml:space="preserve">
+    <value>Виберіть пристрої для спільного доступу до цієї папки:</value>
+  </data>
+  <data name="FolderDialog_NoDevices" xml:space="preserve">
+    <value>Віддалені пристрої не налаштовано. Спочатку додайте пристрої, щоб надавати спільний доступ до папок.</value>
+  </data>
+  <data name="FolderDialog_VersioningType" xml:space="preserve">
+    <value>Тип керування версіями</value>
+  </data>
+  <data name="FolderDialog_VersioningTypeHint" xml:space="preserve">
+    <value>Як обробляти замінені або видалені файли</value>
+  </data>
+  <data name="FolderDialog_VersioningNone" xml:space="preserve">
+    <value>Без керування версіями</value>
+  </data>
+  <data name="FolderDialog_VersioningTrashcan" xml:space="preserve">
+    <value>Кошик</value>
+  </data>
+  <data name="FolderDialog_VersioningSimple" xml:space="preserve">
+    <value>Просте керування версіями</value>
+  </data>
+  <data name="FolderDialog_VersioningStaggered" xml:space="preserve">
+    <value>Ступінчасте керування версіями</value>
+  </data>
+  <data name="FolderDialog_VersioningExternal" xml:space="preserve">
+    <value>Зовнішнє керування версіями</value>
+  </data>
+  <data name="FolderDialog_VersionsPath" xml:space="preserve">
+    <value>Шлях до версій</value>
+  </data>
+  <data name="FolderDialog_VersionsPathHint" xml:space="preserve">
+    <value>Де зберігати версії (порожньо = .stversions у папці)</value>
+  </data>
+  <data name="FolderDialog_CleanupInterval" xml:space="preserve">
+    <value>Інтервал очищення (секунди)</value>
+  </data>
+  <data name="FolderDialog_CleanupIntervalHint" xml:space="preserve">
+    <value>Як часто очищати старі версії (0 = вимкнено)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfter" xml:space="preserve">
+    <value>Очищати через (днів)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfterHint" xml:space="preserve">
+    <value>Скільки днів зберігати файли в кошику (0 = завжди)</value>
+  </data>
+  <data name="FolderDialog_CleanOutAfterHintSimple" xml:space="preserve">
+    <value>Скільки днів зберігати версії (0 = завжди)</value>
+  </data>
+  <data name="FolderDialog_KeepVersions" xml:space="preserve">
+    <value>Зберігати версій</value>
+  </data>
+  <data name="FolderDialog_KeepVersionsHint" xml:space="preserve">
+    <value>Кількість старих версій, які зберігати для кожного файлу</value>
+  </data>
+  <data name="FolderDialog_MaxAge" xml:space="preserve">
+    <value>Максимальний вік (днів)</value>
+  </data>
+  <data name="FolderDialog_MaxAgeHint" xml:space="preserve">
+    <value>Максимальний час зберігання версії</value>
+  </data>
+  <data name="FolderDialog_Command" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderDialog_CommandHint" xml:space="preserve">
+    <value>Зовнішня команда для керування версіями</value>
+  </data>
+  <data name="FolderDialog_FolderType" xml:space="preserve">
+    <value>Тип папки</value>
+  </data>
+  <data name="FolderDialog_FolderTypeHint" xml:space="preserve">
+    <value>Як ця папка синхронізується</value>
+  </data>
+  <data name="FolderDialog_TypeSendReceive" xml:space="preserve">
+    <value>Надсилання та отримання</value>
+  </data>
+  <data name="FolderDialog_TypeSendOnly" xml:space="preserve">
+    <value>Лише надсилання</value>
+  </data>
+  <data name="FolderDialog_TypeReceiveOnly" xml:space="preserve">
+    <value>Лише отримання</value>
+  </data>
+  <data name="FolderDialog_TypeReceiveEncrypted" xml:space="preserve">
+    <value>Отримання зашифрованого</value>
+  </data>
+  <data name="FolderDialog_PullOrder" xml:space="preserve">
+    <value>Порядок завантаження файлів</value>
+  </data>
+  <data name="FolderDialog_PullOrderHint" xml:space="preserve">
+    <value>Порядок, у якому завантажуються файли</value>
+  </data>
+  <data name="FolderDialog_OrderRandom" xml:space="preserve">
+    <value>Випадковий</value>
+  </data>
+  <data name="FolderDialog_OrderAlphabetic" xml:space="preserve">
+    <value>За алфавітом</value>
+  </data>
+  <data name="FolderDialog_OrderSmallestFirst" xml:space="preserve">
+    <value>Спочатку найменші</value>
+  </data>
+  <data name="FolderDialog_OrderLargestFirst" xml:space="preserve">
+    <value>Спочатку найбільші</value>
+  </data>
+  <data name="FolderDialog_OrderOldestFirst" xml:space="preserve">
+    <value>Спочатку найстаріші</value>
+  </data>
+  <data name="FolderDialog_OrderNewestFirst" xml:space="preserve">
+    <value>Спочатку найновіші</value>
+  </data>
+  <data name="FolderDialog_Scanning" xml:space="preserve">
+    <value>Сканування</value>
+  </data>
+  <data name="FolderDialog_WatchForChanges" xml:space="preserve">
+    <value>Стежити за змінами</value>
+  </data>
+  <data name="FolderDialog_WatchForChangesHint" xml:space="preserve">
+    <value>Використовувати сповіщення файлової системи для виявлення змін</value>
+  </data>
+  <data name="FolderDialog_FsWatcherDelay" xml:space="preserve">
+    <value>Затримка спостерігача ФС (секунди)</value>
+  </data>
+  <data name="FolderDialog_FsWatcherDelayHint" xml:space="preserve">
+    <value>Затримка перед реакцією на зміни</value>
+  </data>
+  <data name="FolderDialog_RescanInterval" xml:space="preserve">
+    <value>Інтервал повного сканування (секунди)</value>
+  </data>
+  <data name="FolderDialog_RescanIntervalHint" xml:space="preserve">
+    <value>Періодичне повне сканування папки (0 = вимкнено)</value>
+  </data>
+  <data name="FolderDialog_DiskPermissions" xml:space="preserve">
+    <value>Дисковий простір і права доступу</value>
+  </data>
+  <data name="FolderDialog_MinDiskFree" xml:space="preserve">
+    <value>Мінімум вільного місця на диску</value>
+  </data>
+  <data name="FolderDialog_Unit" xml:space="preserve">
+    <value>Одиниця</value>
+  </data>
+  <data name="FolderDialog_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="FolderDialog_IgnoreDeletes" xml:space="preserve">
+    <value>Ігнорувати видалення</value>
+  </data>
+  <data name="FolderDialog_IgnoreDeletesHint" xml:space="preserve">
+    <value>Не видаляти файли, які видалено на інших пристроях</value>
+  </data>
+  <data name="FolderDialog_OtherOptions" xml:space="preserve">
+    <value>Інші параметри</value>
+  </data>
+  <data name="FolderDialog_AutoNormalize" xml:space="preserve">
+    <value>Автоматична нормалізація</value>
+  </data>
+  <data name="FolderDialog_AutoNormalizeHint" xml:space="preserve">
+    <value>Автоматично нормалізувати кодування назв файлів</value>
+  </data>
+  <data name="FolderDialog_MaxConflicts" xml:space="preserve">
+    <value>Максимум конфліктів</value>
+  </data>
+  <data name="FolderDialog_MaxConflictsHint" xml:space="preserve">
+    <value>Максимальна кількість конфліктних файлів, які зберігати (-1 = без обмежень)</value>
+  </data>
+  <data name="FolderDialog_MaxConcurrentWrites" xml:space="preserve">
+    <value>Максимум одночасних записів</value>
+  </data>
+  <data name="FolderDialog_MaxConcurrentWritesHint" xml:space="preserve">
+    <value>Максимальна кількість одночасних операцій запису файлів</value>
+  </data>
+  <data name="FolderDialog_CaseSensitiveFS" xml:space="preserve">
+    <value>ФС з урахуванням регістру</value>
+  </data>
+  <data name="FolderDialog_JunctionsAsDirs" xml:space="preserve">
+    <value>З'єднання як каталоги</value>
+  </data>
+  <data name="FolderDialog_JunctionsAsDirsHint" xml:space="preserve">
+    <value>Вважати з'єднання та точки повторного розбору каталогами (Windows)</value>
+  </data>
+  <data name="FolderDialog_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="FolderDialog_Save" xml:space="preserve">
+    <value>Зберегти</value>
+  </data>
+  <data name="FolderDialog_AddFolderButton" xml:space="preserve">
+    <value>Додати папку</value>
+  </data>
+  <data name="FolderDialog_SavedMessage" xml:space="preserve">
+    <value>Папку «{0}» збережено</value>
+  </data>
+  <data name="FolderDialog_AddedMessage" xml:space="preserve">
+    <value>Папку «{0}» додано</value>
+  </data>
+  <data name="FolderDialog_ActionSave" xml:space="preserve">
+    <value>зберегти</value>
+  </data>
+  <data name="FolderDialog_ActionAdd" xml:space="preserve">
+    <value>додати</value>
+  </data>
+  <data name="FolderDialog_ErrorMessage" xml:space="preserve">
+    <value>Не вдалося {0} папку: {1}</value>
+  </data>
+  <data name="Settings_Network_Title" xml:space="preserve">
+    <value>Налаштування мережі</value>
+  </data>
+  <data name="Settings_Network_ListenAddresses" xml:space="preserve">
+    <value>Адреси прослуховування</value>
+  </data>
+  <data name="Settings_Network_SyncProtocol" xml:space="preserve">
+    <value>Адреса прослуховування протоколу синхронізації</value>
+  </data>
+  <data name="Settings_Network_SyncProtocolDesc" xml:space="preserve">
+    <value>Адреса для підключень синхронізації (наприклад, tcp://0.0.0.0:22000)</value>
+  </data>
+  <data name="Settings_Network_GuiAddress" xml:space="preserve">
+    <value>Адреса прослуховування інтерфейсу</value>
+  </data>
+  <data name="Settings_Network_GuiAddressDesc" xml:space="preserve">
+    <value>Адреса вебінтерфейсу (наприклад, 127.0.0.1:8384)</value>
+  </data>
+  <data name="Settings_Network_NatSettings" xml:space="preserve">
+    <value>Конфігурація NAT</value>
+  </data>
+  <data name="Settings_Network_NatEnabled" xml:space="preserve">
+    <value>Увімкнути обхід NAT</value>
+  </data>
+  <data name="Settings_Network_NatEnabledDesc" xml:space="preserve">
+    <value>Намагатися автоматично налаштувати перенаправлення портів</value>
+  </data>
+  <data name="Settings_Network_NatLeaseSettings" xml:space="preserve">
+    <value>Параметри оренди NAT</value>
+  </data>
+  <data name="Settings_Network_NatLeaseMins" xml:space="preserve">
+    <value>Тривалість оренди (хвилини)</value>
+  </data>
+  <data name="Settings_Network_NatLeaseMinsDesc" xml:space="preserve">
+    <value>Час оренди зіставлення портів</value>
+  </data>
+  <data name="Settings_Network_NatRenewalMins" xml:space="preserve">
+    <value>Інтервал поновлення (хвилини)</value>
+  </data>
+  <data name="Settings_Network_NatRenewalMinsDesc" xml:space="preserve">
+    <value>За скільки часу до завершення оренди поновлювати її</value>
+  </data>
+  <data name="Settings_Network_NatTimeoutSecs" xml:space="preserve">
+    <value>Час очікування (секунди)</value>
+  </data>
+  <data name="Settings_Network_NatTimeoutSecsDesc" xml:space="preserve">
+    <value>Час очікування виявлення</value>
+  </data>
+  <data name="Settings_Network_StunConfig" xml:space="preserve">
+    <value>Конфігурація STUN</value>
+  </data>
+  <data name="Settings_Network_StunServers" xml:space="preserve">
+    <value>Сервери STUN</value>
+  </data>
+  <data name="Settings_Network_StunServersDesc" xml:space="preserve">
+    <value>По одному серверу в рядку (наприклад, stun.example.com:3478)</value>
+  </data>
+  <data name="Settings_Network_StunKeepalive" xml:space="preserve">
+    <value>Інтервал підтримки STUN (секунди)</value>
+  </data>
+  <data name="Settings_Network_StunKeepaliveDesc" xml:space="preserve">
+    <value>Інтервал між запитами підтримки з'єднання STUN</value>
+  </data>
+  <data name="Settings_Network_Discovery" xml:space="preserve">
+    <value>Виявлення пристроїв</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальне виявлення</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryDesc" xml:space="preserve">
+    <value>Оголошувати себе на серверах глобального виявлення для пошуку пристроїв через інтернет</value>
+  </data>
+  <data name="Settings_Network_LocalDiscovery" xml:space="preserve">
+    <value>Локальне виявлення</value>
+  </data>
+  <data name="Settings_Network_LocalDiscoveryDesc" xml:space="preserve">
+    <value>Виявляти пристрої в локальній мережі через широкомовлення або багатоадресну розсилку</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryServers" xml:space="preserve">
+    <value>Сервери глобального виявлення</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryServersDesc" xml:space="preserve">
+    <value>По одній URL-адресі сервера в рядку (типово = сервери Syncthing)</value>
+  </data>
+  <data name="Settings_Network_LocalDiscoverySettings" xml:space="preserve">
+    <value>Параметри локального виявлення</value>
+  </data>
+  <data name="Settings_Network_LocalAnnouncePort" xml:space="preserve">
+    <value>Порт локальних оголошень</value>
+  </data>
+  <data name="Settings_Network_LocalAnnouncePortDesc" xml:space="preserve">
+    <value>UDP-порт для локальних оголошень</value>
+  </data>
+  <data name="Settings_Network_MulticastAddress" xml:space="preserve">
+    <value>Багатоадресна адреса</value>
+  </data>
+  <data name="Settings_Network_MulticastAddressDesc" xml:space="preserve">
+    <value>Багатоадресна IPv6-адреса для виявлення</value>
+  </data>
+  <data name="Settings_Network_AnnounceInterval" xml:space="preserve">
+    <value>Інтервал оголошень (с)</value>
+  </data>
+  <data name="Settings_Network_AnnounceIntervalDesc" xml:space="preserve">
+    <value>Секунд між оголошеннями</value>
+  </data>
+  <data name="Settings_Network_Relay" xml:space="preserve">
+    <value>Конфігурація ретрансляції</value>
+  </data>
+  <data name="Settings_Network_RelayEnabled" xml:space="preserve">
+    <value>Увімкнути ретрансляцію</value>
+  </data>
+  <data name="Settings_Network_RelayEnabledDesc" xml:space="preserve">
+    <value>Використовувати сервери ретрансляції, коли пряме з'єднання неможливе</value>
+  </data>
+  <data name="Settings_Network_RelayOnlyMode" xml:space="preserve">
+    <value>Лише через ретранслятор</value>
+  </data>
+  <data name="Settings_Network_RelayOnlyModeDesc" xml:space="preserve">
+    <value>Підключатися лише через сервери ретрансляції (без прямих з'єднань)</value>
+  </data>
+  <data name="Settings_Network_RelayWithoutGlobalAnn" xml:space="preserve">
+    <value>Ретрансляція без глобального оголошення</value>
+  </data>
+  <data name="Settings_Network_RelayWithoutGlobalAnnDesc" xml:space="preserve">
+    <value>Використовувати ретранслятори навіть при вимкненому глобальному виявленні</value>
+  </data>
+  <data name="Settings_Network_RelayServers" xml:space="preserve">
+    <value>Сервери ретрансляції</value>
+  </data>
+  <data name="Settings_Network_RelayServersDesc" xml:space="preserve">
+    <value>По одній URL-адресі сервера в рядку (типово = стандартний пул ретрансляторів)</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectInterval" xml:space="preserve">
+    <value>Інтервал перепідключення до ретранслятора (хвилини)</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectIntervalDesc" xml:space="preserve">
+    <value>Хвилин між спробами перепідключення до ретранслятора</value>
+  </data>
+  <data name="Settings_Network_Bandwidth" xml:space="preserve">
+    <value>Обмеження швидкості</value>
+  </data>
+  <data name="Settings_Network_MaxSendKbps" xml:space="preserve">
+    <value>Обмеження відвантаження (КБ/с)</value>
+  </data>
+  <data name="Settings_Network_MaxRecvKbps" xml:space="preserve">
+    <value>Обмеження завантаження (КБ/с)</value>
+  </data>
+  <data name="Settings_Network_UnlimitedHint" xml:space="preserve">
+    <value>0 = без обмежень</value>
+  </data>
+  <data name="Settings_Network_LimitBandwidthLan" xml:space="preserve">
+    <value>Застосовувати обмеження до локальної мережі</value>
+  </data>
+  <data name="Settings_Network_LimitBandwidthLanDesc" xml:space="preserve">
+    <value>Застосовувати обмеження швидкості також до з'єднань у локальній мережі</value>
+  </data>
+  <data name="Settings_Network_ConnectionLimits" xml:space="preserve">
+    <value>Обмеження з'єднань</value>
+  </data>
+  <data name="Settings_Network_MaxIncoming" xml:space="preserve">
+    <value>Максимум вхідних запитів</value>
+  </data>
+  <data name="Settings_Network_MaxOutgoing" xml:space="preserve">
+    <value>Максимум вихідних запитів</value>
+  </data>
+  <data name="Settings_Network_ReconnectInterval" xml:space="preserve">
+    <value>Інтервал перепідключення (с)</value>
+  </data>
+  <data name="Settings_Network_ReconnectIntervalDesc" xml:space="preserve">
+    <value>Секунд між спробами перепідключення</value>
+  </data>
+  <data name="Settings_Advanced_Title" xml:space="preserve">
+    <value>Додаткові налаштування</value>
+  </data>
+  <data name="Settings_Advanced_DefaultFolderPath" xml:space="preserve">
+    <value>Типовий шлях до папки</value>
+  </data>
+  <data name="Settings_Advanced_DefaultFolderPath_Help" xml:space="preserve">
+    <value>Типовий шлях для нових папок</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermissions_Help" xml:space="preserve">
+    <value>Не синхронізувати права доступу до файлів (рекомендовано для Windows)</value>
+  </data>
+  <data name="Settings_Advanced_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автоматична нормалізація назв файлів</value>
+  </data>
+  <data name="Settings_Advanced_AutoNormalizeFilenames_Help" xml:space="preserve">
+    <value>Автоматично нормалізувати Unicode у назвах файлів</value>
+  </data>
+  <data name="Settings_Advanced_FileHandling" xml:space="preserve">
+    <value>Обробка файлів</value>
+  </data>
+  <data name="Settings_Advanced_ConcurrentHashers" xml:space="preserve">
+    <value>Паралельних обчислювачів хешів</value>
+  </data>
+  <data name="Settings_Advanced_ConcurrentHashers_Help" xml:space="preserve">
+    <value>Кількість паралельних операцій хешування</value>
+  </data>
+  <data name="Settings_Advanced_MaxFolderConcurrency" xml:space="preserve">
+    <value>Максимум одночасних папок</value>
+  </data>
+  <data name="Settings_Advanced_MaxFolderConcurrency_Help" xml:space="preserve">
+    <value>Максимум папок, що синхронізуються одночасно</value>
+  </data>
+  <data name="Settings_Advanced_LowPriority" xml:space="preserve">
+    <value>Запускати з низьким пріоритетом</value>
+  </data>
+  <data name="Settings_Advanced_LowPriority_Help" xml:space="preserve">
+    <value>Знизити пріоритет ЦП, щоб зменшити вплив на інші застосунки</value>
+  </data>
+  <data name="Settings_Advanced_ReduceProgressUpdates" xml:space="preserve">
+    <value>Зменшити частоту оновлень поступу</value>
+  </data>
+  <data name="Settings_Advanced_ReduceProgressUpdates_Help" xml:space="preserve">
+    <value>Рідші оновлення інтерфейсу для зменшення навантаження на ЦП</value>
+  </data>
+  <data name="Settings_Advanced_Database" xml:space="preserve">
+    <value>База даних</value>
+  </data>
+  <data name="Settings_Advanced_DatabaseBlockSize" xml:space="preserve">
+    <value>Розмір блока бази даних</value>
+  </data>
+  <data name="Settings_Advanced_CompressionLevel" xml:space="preserve">
+    <value>Рівень стиснення</value>
+  </data>
+  <data name="Settings_Advanced_Compression_None" xml:space="preserve">
+    <value>Немає</value>
+  </data>
+  <data name="Settings_Advanced_Compression_LZ4" xml:space="preserve">
+    <value>LZ4 (швидко)</value>
+  </data>
+  <data name="Settings_Advanced_Compression_Zstd" xml:space="preserve">
+    <value>Zstd (найкраще)</value>
+  </data>
+  <data name="Settings_Advanced_Protocol" xml:space="preserve">
+    <value>Параметри протоколу</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeout" xml:space="preserve">
+    <value>Час очікування ping (с)</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeout_Help" xml:space="preserve">
+    <value>Час очікування підтримки з'єднання</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectionInterval" xml:space="preserve">
+    <value>Інтервал перепідключення (с)</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectionInterval_Help" xml:space="preserve">
+    <value>Час між спробами перепідключення</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingData" xml:space="preserve">
+    <value>Максимум даних у черзі (КіБ)</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingData_Help" xml:space="preserve">
+    <value>Максимум даних, що очікують на обробку</value>
+  </data>
+  <data name="Settings_Advanced_KeepTempFiles" xml:space="preserve">
+    <value>Зберігати тимчасові файли</value>
+  </data>
+  <data name="Settings_Advanced_KeepTempFiles_Help" xml:space="preserve">
+    <value>Не видаляти тимчасові файли при помилці (для налагодження)</value>
+  </data>
+  <data name="Settings_Advanced_CopyOwnership" xml:space="preserve">
+    <value>Успадковувати власника від батьківської папки</value>
+  </data>
+  <data name="Settings_Advanced_CopyOwnership_Help" xml:space="preserve">
+    <value>Нові файли успадковують власника від батьківського каталогу</value>
+  </data>
+  <data name="Settings_General_Startup" xml:space="preserve">
+    <value>Запуск і поведінка</value>
+  </data>
+  <data name="Settings_Advanced_OpenBrowserOnStart" xml:space="preserve">
+    <value>Відкривати браузер після запуску</value>
+  </data>
+  <data name="Settings_Advanced_OpenBrowserOnStart_Help" xml:space="preserve">
+    <value>Автоматично відкривати вебінтерфейс під час запуску агента</value>
+  </data>
+  <data name="Settings_Advanced_Debugging" xml:space="preserve">
+    <value>Налагодження</value>
+  </data>
+  <data name="Settings_Advanced_CrashReporting" xml:space="preserve">
+    <value>Звіти про збої</value>
+  </data>
+  <data name="Settings_Advanced_CrashReporting_Help" xml:space="preserve">
+    <value>Надсилати анонімні звіти про збої, щоб допомогти покращити застосунок</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel" xml:space="preserve">
+    <value>Рівень журналювання</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Warning" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Info" xml:space="preserve">
+    <value>Інформація</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Debug" xml:space="preserve">
+    <value>Налагодження</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Verbose" xml:space="preserve">
+    <value>Докладно</value>
+  </data>
+  <data name="Settings_Advanced_DangerZone" xml:space="preserve">
+    <value>Небезпечна зона</value>
+  </data>
+  <data name="Settings_Advanced_DangerZone_Warning" xml:space="preserve">
+    <value>Ці дії незворотні й можуть призвести до втрати даних. Будьте вкрай обережні.</value>
+  </data>
+  <data name="Settings_Advanced_ResetDb" xml:space="preserve">
+    <value>Скинути базу даних</value>
+  </data>
+  <data name="Settings_Advanced_ResetDbConfirm" xml:space="preserve">
+    <value>Це видалить локальну базу даних і вимагатиме повного повторного сканування всіх папок. Продовжити?</value>
+  </data>
+  <data name="Settings_Advanced_FactoryReset" xml:space="preserve">
+    <value>Скинути до заводських налаштувань</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirm" xml:space="preserve">
+    <value>Це видалить УСІ налаштування та дані. Ви впевнені?</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetYes" xml:space="preserve">
+    <value>Так, скинути все</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirmTitle" xml:space="preserve">
+    <value>Підтвердьте скидання до заводських налаштувань</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirmMessage" xml:space="preserve">
+    <value>Це остання можливість скасувати. Усі дані буде видалено назавжди!</value>
+  </data>
+  <data name="SystemLog_LevelError" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="SystemLog_LevelWarning" xml:space="preserve">
+    <value>Попередження</value>
+  </data>
+  <data name="SystemLog_LevelInfo" xml:space="preserve">
+    <value>Інформація</value>
+  </data>
+  <data name="SystemLog_LevelDebug" xml:space="preserve">
+    <value>Налагодження</value>
+  </data>
+  <data name="SystemLog_Facility" xml:space="preserve">
+    <value>Підсистема</value>
+  </data>
+  <data name="SystemLog_AllFacilities" xml:space="preserve">
+    <value>Усі підсистеми</value>
+  </data>
+  <data name="SystemLog_FacilitySync" xml:space="preserve">
+    <value>Синхронізація</value>
+  </data>
+  <data name="SystemLog_FacilityModel" xml:space="preserve">
+    <value>Модель</value>
+  </data>
+  <data name="SystemLog_FacilityScanner" xml:space="preserve">
+    <value>Сканер</value>
+  </data>
+  <data name="SystemLog_FacilityConnections" xml:space="preserve">
+    <value>З'єднання</value>
+  </data>
+  <data name="SystemLog_FacilityDiscovery" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="SystemLog_FacilityUpnp" xml:space="preserve">
+    <value>UPnP/NAT</value>
+  </data>
+  <data name="SystemLog_EntriesCount" xml:space="preserve">
+    <value>{0} з {1} записів</value>
+  </data>
+  <data name="Profiling_HeapStats" xml:space="preserve">
+    <value>Статистика купи</value>
+  </data>
+  <data name="Profiling_IoStats" xml:space="preserve">
+    <value>Статистика вводу-виводу</value>
+  </data>
+  <data name="Profiling_OpenFiles" xml:space="preserve">
+    <value>Відкриті файли</value>
+  </data>
+  <data name="Profiling_GcTriggered" xml:space="preserve">
+    <value>Збирання сміття запущено</value>
+  </data>
+  <data name="Profiling_GcFailed" xml:space="preserve">
+    <value>Не вдалося запустити збирання сміття: {0}</value>
+  </data>
+  <data name="Profiling_HeapDumpDownloading" xml:space="preserve">
+    <value>Завантаження дампу купи...</value>
+  </data>
+  <data name="Profiling_HeapDumpFailed" xml:space="preserve">
+    <value>Не вдалося завантажити дамп купи: {0}</value>
+  </data>
+  <data name="Profiling_GoroutineDumpDownloading" xml:space="preserve">
+    <value>Завантаження дампу горутин...</value>
+  </data>
+  <data name="Profiling_GoroutineDumpFailed" xml:space="preserve">
+    <value>Не вдалося завантажити дамп горутин: {0}</value>
+  </data>
+  <data name="SupportBundle_FolderStatus" xml:space="preserve">
+    <value>Стан папок</value>
+  </data>
+  <data name="SupportBundle_FolderStatusDesc" xml:space="preserve">
+    <value>Стан синхронізації всіх папок (шляхи приховано)</value>
+  </data>
+  <data name="SupportBundle_DeviceStatus" xml:space="preserve">
+    <value>Стан пристроїв</value>
+  </data>
+  <data name="SupportBundle_DeviceStatusDesc" xml:space="preserve">
+    <value>Стан підключення всіх пристроїв</value>
+  </data>
+  <data name="SupportBundle_Preview" xml:space="preserve">
+    <value>Попередній перегляд</value>
+  </data>
+  <data name="About_Subtitle" xml:space="preserve">
+    <value>Синхронізація файлів, сумісна із Syncthing, із керуванням Creatio</value>
+  </data>
+  <data name="SystemStatus_SystemMemory" xml:space="preserve">
+    <value>Системна пам'ять</value>
+  </data>
+  <data name="SystemStatus_Goroutines" xml:space="preserve">
+    <value>Горутини</value>
+  </data>
+  <data name="SystemStatus_UnableToRetrieve" xml:space="preserve">
+    <value>Не вдалося отримати стан системи</value>
+  </data>
+  <data name="SyncProgress_Syncing" xml:space="preserve">
+    <value>Синхронізація...</value>
+  </data>
+  <data name="SyncProgress_Scanning" xml:space="preserve">
+    <value>Сканування...</value>
+  </data>
+  <data name="SyncProgress_Preparing" xml:space="preserve">
+    <value>Підготовка...</value>
+  </data>
+  <data name="SyncProgress_Waiting" xml:space="preserve">
+    <value>Очікування...</value>
+  </data>
+  <data name="SyncProgress_Cleaning" xml:space="preserve">
+    <value>Очищення...</value>
+  </data>
+  <data name="SyncProgress_CleanWaiting" xml:space="preserve">
+    <value>Очікування очищення...</value>
+  </data>
+  <data name="SyncProgress_Files" xml:space="preserve">
+    <value>файлів</value>
+  </data>
+  <data name="SyncProgress_FilesSyncing" xml:space="preserve">
+    <value>Синхронізується файлів: {0}</value>
+  </data>
+  <data name="SyncProgress_FilesScanned" xml:space="preserve">
+    <value>Проскановано файлів: {0}</value>
+  </data>
+  <data name="EventType_StateChanged" xml:space="preserve">
+    <value>Стан змінено</value>
+  </data>
+  <data name="EventType_ItemStarted" xml:space="preserve">
+    <value>Елемент розпочато</value>
+  </data>
+  <data name="EventType_ItemFinished" xml:space="preserve">
+    <value>Елемент завершено</value>
+  </data>
+  <data name="EventType_FolderCompletion" xml:space="preserve">
+    <value>Завершення папки</value>
+  </data>
+  <data name="EventType_DeviceConnected" xml:space="preserve">
+    <value>Пристрій підключено</value>
+  </data>
+  <data name="EventType_DeviceDisconnected" xml:space="preserve">
+    <value>Пристрій відключено</value>
+  </data>
+  <data name="EventType_FolderErrors" xml:space="preserve">
+    <value>Помилки папки</value>
+  </data>
+  <data name="EventType_State" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="EventType_Started" xml:space="preserve">
+    <value>Розпочато</value>
+  </data>
+  <data name="EventType_Finished" xml:space="preserve">
+    <value>Завершено</value>
+  </data>
+  <data name="EventType_Complete" xml:space="preserve">
+    <value>Готово</value>
+  </data>
+  <data name="EventType_Connected" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="EventType_Disconnected" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="EventType_Error" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="EventType_Unknown" xml:space="preserve">
+    <value>Невідомо</value>
+  </data>
+  <data name="EventType_Starting" xml:space="preserve">
+    <value>Запуск</value>
+  </data>
+  <data name="EventType_StartupComplete" xml:space="preserve">
+    <value>Запущено</value>
+  </data>
+  <data name="EventType_WatchState" xml:space="preserve">
+    <value>Спостереження</value>
+  </data>
+  <data name="EventType_ConfigSaved" xml:space="preserve">
+    <value>Конфігурація</value>
+  </data>
+  <data name="EventType_Paused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="EventType_Resumed" xml:space="preserve">
+    <value>Відновлено</value>
+  </data>
+  <data name="EventType_LocalChange" xml:space="preserve">
+    <value>Локально</value>
+  </data>
+  <data name="EventType_RemoteChange" xml:space="preserve">
+    <value>Віддалено</value>
+  </data>
+  <data name="EventType_Downloading" xml:space="preserve">
+    <value>Завантаження</value>
+  </data>
+  <data name="EventType_Scanning" xml:space="preserve">
+    <value>Сканування</value>
+  </data>
+  <data name="EventType_DiscoveryCompleted" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="EventDesc_FolderCompletion" xml:space="preserve">
+    <value>Папку «{0}» завершено з пристроєм «{1}»</value>
+  </data>
+  <data name="EventDesc_ItemFinished" xml:space="preserve">
+    <value>Файл «{0}» синхронізовано в «{1}»</value>
+  </data>
+  <data name="EventDesc_ItemStarted" xml:space="preserve">
+    <value>Розпочато синхронізацію «{0}» у «{1}»</value>
+  </data>
+  <data name="EventDesc_DeviceConnected" xml:space="preserve">
+    <value>Пристрій «{0}» підключено</value>
+  </data>
+  <data name="EventDesc_DeviceDisconnected" xml:space="preserve">
+    <value>Пристрій «{0}» відключено</value>
+  </data>
+  <data name="EventDesc_FolderErrors" xml:space="preserve">
+    <value>Помилка в папці «{0}»: {1}</value>
+  </data>
+  <data name="EventDesc_StateChanged" xml:space="preserve">
+    <value>Стан змінено: {0} → {1}</value>
+  </data>
+  <data name="EventDesc_Starting" xml:space="preserve">
+    <value>Агент запускається...</value>
+  </data>
+  <data name="EventDesc_StartupComplete" xml:space="preserve">
+    <value>Запуск агента завершено, готовий до синхронізації</value>
+  </data>
+  <data name="EventDesc_WatchStateChanged" xml:space="preserve">
+    <value>Стан спостерігача файлів змінено для «{0}»</value>
+  </data>
+  <data name="EventDesc_DevicePaused" xml:space="preserve">
+    <value>Пристрій «{0}» призупинено</value>
+  </data>
+  <data name="EventDesc_DeviceResumed" xml:space="preserve">
+    <value>Пристрій «{0}» відновлено</value>
+  </data>
+  <data name="EventDesc_FolderPaused" xml:space="preserve">
+    <value>Папку «{0}» призупинено</value>
+  </data>
+  <data name="EventDesc_FolderResumed" xml:space="preserve">
+    <value>Папку «{0}» відновлено</value>
+  </data>
+  <data name="EventDesc_LocalChange" xml:space="preserve">
+    <value>Виявлено локальну зміну: {0}</value>
+  </data>
+  <data name="EventDesc_RemoteChange" xml:space="preserve">
+    <value>Віддалена зміна від «{1}»: {0}</value>
+  </data>
+  <data name="EventDesc_ConfigSaved" xml:space="preserve">
+    <value>Конфігурацію збережено</value>
+  </data>
+  <data name="EventDesc_DiscoveryCompleted" xml:space="preserve">
+    <value>Виявлення завершено для папки «{0}»</value>
+  </data>
+  <data name="EventDesc_DiscoveryCompletedGlobal" xml:space="preserve">
+    <value>Виявлення завершено: {0} файлів, {1}</value>
+  </data>
+  <data name="EventDesc_DiscoveryCompletedSimple" xml:space="preserve">
+    <value>Виявлення завершено</value>
+  </data>
+  <data name="EventDesc_UnknownEvent" xml:space="preserve">
+    <value>Невідома подія</value>
+  </data>
+  <data name="Error_Http401" xml:space="preserve">
+    <value>Потрібна авторизація. Перевірте свої облікові дані.</value>
+  </data>
+  <data name="Error_Http403" xml:space="preserve">
+    <value>Доступ заборонено. У вас немає дозволу на доступ до цього ресурсу.</value>
+  </data>
+  <data name="Error_Http404" xml:space="preserve">
+    <value>Ресурс не знайдено.</value>
+  </data>
+  <data name="Error_Http500" xml:space="preserve">
+    <value>Помилка сервера. Спробуйте пізніше.</value>
+  </data>
+  <data name="Error_Http502" xml:space="preserve">
+    <value>Сервер тимчасово недоступний.</value>
+  </data>
+  <data name="Error_Http503" xml:space="preserve">
+    <value>Служба тимчасово недоступна. Спробуйте пізніше.</value>
+  </data>
+  <data name="Error_HttpGeneric" xml:space="preserve">
+    <value>Сервер повернув код помилки {0}.</value>
+  </data>
+  <data name="Error_Timeout" xml:space="preserve">
+    <value>Час очікування запиту вичерпано. Перевірте з'єднання та повторіть спробу.</value>
+  </data>
+  <data name="Error_Cancelled" xml:space="preserve">
+    <value>Операцію скасовано.</value>
+  </data>
+  <data name="Error_ConnectionFailed" xml:space="preserve">
+    <value>Не вдалося підключитися до сервера. Перевірте, чи запущено агент.</value>
+  </data>
+  <data name="Error_NetworkUnreachable" xml:space="preserve">
+    <value>Мережа недоступна. Перевірте підключення до інтернету.</value>
+  </data>
+  <data name="Error_HostNotFound" xml:space="preserve">
+    <value>Не вдалося визначити адресу сервера. Перевірте адресу.</value>
+  </data>
+  <data name="Error_SslError" xml:space="preserve">
+    <value>Не вдалося встановити захищене з'єднання. Перевірте налаштування сертифіката.</value>
+  </data>
+  <data name="Error_Unknown" xml:space="preserve">
+    <value>Сталася неочікувана помилка. Спробуйте ще раз.</value>
+  </data>
+  <data name="FolderDetails_Dirs" xml:space="preserve">
+    <value>Каталоги</value>
+  </data>
+  <data name="Common_Status" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="Dashboard_Listeners" xml:space="preserve">
+    <value>Слухачі</value>
+  </data>
+  <data name="Dashboard_ListenerAddress" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="Dashboard_NoListeners" xml:space="preserve">
+    <value>Слухачів не налаштовано</value>
+  </data>
+  <data name="Dashboard_Discovery" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="Dashboard_DiscoveryLocal" xml:space="preserve">
+    <value>Локальне виявлення</value>
+  </data>
+  <data name="Dashboard_DiscoveryGlobal" xml:space="preserve">
+    <value>Глобальне виявлення</value>
+  </data>
+  <data name="Dashboard_LocalAnnounce" xml:space="preserve">
+    <value>Локальне оголошення</value>
+  </data>
+  <data name="Dashboard_DiscoveryServer" xml:space="preserve">
+    <value>Сервер</value>
+  </data>
+  <data name="Dashboard_NoDiscoveryServers" xml:space="preserve">
+    <value>Немає серверів виявлення</value>
+  </data>
+  <data name="Dashboard_Identification" xml:space="preserve">
+    <value>Ідентифікація</value>
+  </data>
+  <data name="Dashboard_LocalState" xml:space="preserve">
+    <value>Локальний стан (усього)</value>
+  </data>
+  <data name="FolderDetails_FilePullOrder" xml:space="preserve">
+    <value>Порядок завантаження файлів</value>
+  </data>
+  <data name="FolderDetails_LatestChange" xml:space="preserve">
+    <value>Остання зміна</value>
+  </data>
+  <data name="FolderDetails_PullOrder_Random" xml:space="preserve">
+    <value>Випадковий</value>
+  </data>
+  <data name="FolderDetails_PullOrder_Alphabetic" xml:space="preserve">
+    <value>За алфавітом</value>
+  </data>
+  <data name="FolderDetails_PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Спочатку найменші</value>
+  </data>
+  <data name="FolderDetails_PullOrder_LargestFirst" xml:space="preserve">
+    <value>Спочатку найбільші</value>
+  </data>
+  <data name="FolderDetails_PullOrder_OldestFirst" xml:space="preserve">
+    <value>Спочатку найстаріші</value>
+  </data>
+  <data name="FolderDetails_PullOrder_NewestFirst" xml:space="preserve">
+    <value>Спочатку найновіші</value>
+  </data>
+  <data name="DeviceDetails_NumConnections" xml:space="preserve">
+    <value>Кількість з'єднань</value>
+  </data>
+  <data name="DeviceDetails_SharedFolders" xml:space="preserve">
+    <value>Спільні папки</value>
+  </data>
+  <data name="DeviceDetails_NoSharedFolders" xml:space="preserve">
+    <value>Немає спільних папок</value>
+  </data>
+  <data name="Settings_Users" xml:space="preserve">
+    <value>Користувачі</value>
+  </data>
+  <data name="Users_Title" xml:space="preserve">
+    <value>Керування користувачами</value>
+  </data>
+  <data name="Users_List" xml:space="preserve">
+    <value>Користувачі</value>
+  </data>
+  <data name="Users_Add" xml:space="preserve">
+    <value>Додати користувача</value>
+  </data>
+  <data name="Users_Edit" xml:space="preserve">
+    <value>Редагувати користувача</value>
+  </data>
+  <data name="Users_Delete" xml:space="preserve">
+    <value>Видалити</value>
+  </data>
+  <data name="Users_Username" xml:space="preserve">
+    <value>Ім'я користувача</value>
+  </data>
+  <data name="Users_UsernameRequired" xml:space="preserve">
+    <value>Ім'я користувача обов'язкове</value>
+  </data>
+  <data name="Users_Password" xml:space="preserve">
+    <value>Пароль</value>
+  </data>
+  <data name="Users_PasswordRequired" xml:space="preserve">
+    <value>Пароль обов'язковий</value>
+  </data>
+  <data name="Users_NewPasswordOptional" xml:space="preserve">
+    <value>Новий пароль (необов'язково)</value>
+  </data>
+  <data name="Users_LeaveBlankKeepPassword" xml:space="preserve">
+    <value>Залиште порожнім, щоб зберегти поточний пароль</value>
+  </data>
+  <data name="Users_Role" xml:space="preserve">
+    <value>Роль</value>
+  </data>
+  <data name="Users_Created" xml:space="preserve">
+    <value>Створено</value>
+  </data>
+  <data name="Users_Updated" xml:space="preserve">
+    <value>Оновлено</value>
+  </data>
+  <data name="Users_Actions" xml:space="preserve">
+    <value>Дії</value>
+  </data>
+  <data name="Users_NoUsers" xml:space="preserve">
+    <value>Користувачів не знайдено</value>
+  </data>
+  <data name="Users_CreatedSuccess" xml:space="preserve">
+    <value>Користувача успішно створено</value>
+  </data>
+  <data name="Users_UpdatedSuccess" xml:space="preserve">
+    <value>Користувача успішно оновлено</value>
+  </data>
+  <data name="Users_Deleted" xml:space="preserve">
+    <value>Користувача успішно видалено</value>
+  </data>
+  <data name="Users_DeleteFailed" xml:space="preserve">
+    <value>Не вдалося видалити користувача</value>
+  </data>
+  <data name="Users_DeleteConfirmTitle" xml:space="preserve">
+    <value>Видалення користувача</value>
+  </data>
+  <data name="Users_DeleteConfirmMessage" xml:space="preserve">
+    <value>Ви впевнені, що хочете видалити користувача «{0}»?</value>
+  </data>
+  <data name="Users_ChangePassword" xml:space="preserve">
+    <value>Змінити пароль</value>
+  </data>
+  <data name="Users_CurrentPassword" xml:space="preserve">
+    <value>Поточний пароль</value>
+  </data>
+  <data name="Users_CurrentPasswordRequired" xml:space="preserve">
+    <value>Поточний пароль обов'язковий</value>
+  </data>
+  <data name="Users_NewPassword" xml:space="preserve">
+    <value>Новий пароль</value>
+  </data>
+  <data name="Users_NewPasswordRequired" xml:space="preserve">
+    <value>Новий пароль обов'язковий</value>
+  </data>
+  <data name="Users_ConfirmPassword" xml:space="preserve">
+    <value>Підтвердьте пароль</value>
+  </data>
+  <data name="Users_PasswordsMismatch" xml:space="preserve">
+    <value>Паролі не збігаються</value>
+  </data>
+  <data name="Users_PasswordChanged" xml:space="preserve">
+    <value>Пароль успішно змінено</value>
+  </data>
+  <data name="Users_PasswordChangeFailed" xml:space="preserve">
+    <value>Не вдалося змінити пароль</value>
+  </data>
+  <data name="Nav_WebServer" xml:space="preserve">
+    <value>Вебсервер</value>
+  </data>
+  <data name="WebServer_Title" xml:space="preserve">
+    <value>Вебсервер</value>
+  </data>
+  <data name="WebServer_ElevationRequired" xml:space="preserve">
+    <value>Керування сайтами IIS потребує прав адміністратора — запустіть агент від імені адміністратора. Сайти на основі служб залишаються доступними й без цього.</value>
+  </data>
+  <data name="WebServer_NeedsAdmin" xml:space="preserve">
+    <value>Потрібні права адміністратора</value>
+  </data>
+  <data name="WebServer_NoSites" xml:space="preserve">
+    <value>Вебсайтів не виявлено.</value>
+  </data>
+  <data name="WebServer_Site" xml:space="preserve">
+    <value>Сайт</value>
+  </data>
+  <data name="WebServer_DiscoveredType" xml:space="preserve">
+    <value>Виявлений тип</value>
+  </data>
+  <data name="WebServer_State" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="WebServer_ManagedBy" xml:space="preserve">
+    <value>Керується як</value>
+  </data>
+  <data name="WebServer_AutoDiscovered" xml:space="preserve">
+    <value>авто</value>
+  </data>
+  <data name="WebServer_TypeAuto" xml:space="preserve">
+    <value>Авто (визначити)</value>
+  </data>
+  <data name="WebServer_TypeIis" xml:space="preserve">
+    <value>IIS</value>
+  </data>
+  <data name="WebServer_TypeService" xml:space="preserve">
+    <value>Служба / Kestrel</value>
+  </data>
+  <data name="Msg_FailedToLoadWebServer" xml:space="preserve">
+    <value>Не вдалося завантажити відомості про вебсервер: {0}</value>
+  </data>
+  <data name="Msg_WebServerTypeUpdated" xml:space="preserve">
+    <value>Тип вебсервера для «{0}» оновлено</value>
+  </data>
+  <data name="Msg_FailedToUpdateWebServerType" xml:space="preserve">
+    <value>Не вдалося оновити тип вебсервера: {0}</value>
+  </data>
+  <data name="Connections_Disconnect" xml:space="preserve">
+    <value>Відключено</value>
+  </data>
+  <data name="NotFound_Title" xml:space="preserve">
+    <value>Сторінку не знайдено</value>
+  </data>
+  <data name="NotFound_Message" xml:space="preserve">
+    <value>На жаль, за цією адресою нічого немає.</value>
+  </data>
+  <data name="NotFound_GoDashboard" xml:space="preserve">
+    <value>Перейти до панелі керування</value>
+  </data>
+  <data name="Plural_Files_one" xml:space="preserve">
+    <value>файл</value>
+  </data>
+  <data name="Plural_Files_few" xml:space="preserve">
+    <value>файли</value>
+  </data>
+  <data name="Plural_Files_many" xml:space="preserve">
+    <value>файлів</value>
+  </data>
+  <data name="Plural_Dirs_one" xml:space="preserve">
+    <value>каталог</value>
+  </data>
+  <data name="Plural_Dirs_few" xml:space="preserve">
+    <value>каталоги</value>
+  </data>
+  <data name="Plural_Dirs_many" xml:space="preserve">
+    <value>каталогів</value>
+  </data>
+  <data name="Unit_B" xml:space="preserve">
+    <value>Б</value>
+  </data>
+  <data name="Unit_KB" xml:space="preserve">
+    <value>КБ</value>
+  </data>
+  <data name="Unit_MB" xml:space="preserve">
+    <value>МБ</value>
+  </data>
+  <data name="Unit_GB" xml:space="preserve">
+    <value>ГБ</value>
+  </data>
+  <data name="Unit_TB" xml:space="preserve">
+    <value>ТБ</value>
+  </data>
+  <data name="Unit_PB" xml:space="preserve">
+    <value>ПБ</value>
+  </data>
+  <data name="Common_Edit" xml:space="preserve">
+    <value>Редагувати</value>
+  </data>
+  <data name="Common_Delete" xml:space="preserve">
+    <value>Видалити</value>
+  </data>
+  <data name="WebServer_AddSite" xml:space="preserve">
+    <value>Додати сайт</value>
+  </data>
+  <data name="WebServer_EditSite" xml:space="preserve">
+    <value>Редагувати сайт</value>
+  </data>
+  <data name="WebServer_DisplayName" xml:space="preserve">
+    <value>Відображувана назва</value>
+  </data>
+  <data name="WebServer_DisplayNameRequired" xml:space="preserve">
+    <value>Відображувана назва обов'язкова</value>
+  </data>
+  <data name="WebServer_LinkedFolders" xml:space="preserve">
+    <value>Пов'язані папки</value>
+  </data>
+  <data name="WebServer_IisSiteName" xml:space="preserve">
+    <value>Назва сайту IIS</value>
+  </data>
+  <data name="WebServer_ServiceName" xml:space="preserve">
+    <value>Назва служби</value>
+  </data>
+  <data name="WebServer_HostNameRequired" xml:space="preserve">
+    <value>Назва вузла обов'язкова</value>
+  </data>
+  <data name="WebServer_DetectByFolder" xml:space="preserve">
+    <value>Визначити за папкою</value>
+  </data>
+  <data name="WebServer_DetectedSite" xml:space="preserve">
+    <value>Виявлено сайт IIS: {0}</value>
+  </data>
+  <data name="WebServer_DetectNotFound" xml:space="preserve">
+    <value>Відповідного сайту IIS не знайдено</value>
+  </data>
+  <data name="WebServer_DetectRequiresAdmin" xml:space="preserve">
+    <value>Не вдалося прочитати сайти IIS. Запустіть агент від імені адміністратора, щоб визначати та керувати IIS.</value>
+  </data>
+  <data name="WebServer_DetectMultipleSites" xml:space="preserve">
+    <value>Вибрані папки належать різним сайтам IIS: {0}. Пов'язуйте папки одного сайту.</value>
+  </data>
+  <data name="WebServer_DiscoverSites" xml:space="preserve">
+    <value>Визначити сайти</value>
+  </data>
+  <data name="WebServer_DiscoverTitle" xml:space="preserve">
+    <value>Автоматичний пошук сайтів Creatio</value>
+  </data>
+  <data name="WebServer_DiscoverHint" xml:space="preserve">
+    <value>Сайти Creatio, знайдені в IIS, які ще не налаштовано. Вибір сайту автоматично додає його папки conf і Terrasoft.Configuration до синхронізації.</value>
+  </data>
+  <data name="WebServer_DiscoverEmpty" xml:space="preserve">
+    <value>Нових сайтів Creatio в IIS не знайдено.</value>
+  </data>
+  <data name="WebServer_DiscoverColumnSite" xml:space="preserve">
+    <value>Сайт IIS</value>
+  </data>
+  <data name="WebServer_DiscoverColumnFolders" xml:space="preserve">
+    <value>Папки для синхронізації</value>
+  </data>
+  <data name="WebServer_DiscoverAddSelected" xml:space="preserve">
+    <value>Додати вибрані</value>
+  </data>
+  <data name="WebServer_DiscoverAdded" xml:space="preserve">
+    <value>Додано сайтів: {0}</value>
+  </data>
+  <data name="WebServer_DiscoverFound" xml:space="preserve">
+    <value>Знайдено</value>
+  </data>
+  <data name="WebServer_SiteSaved" xml:space="preserve">
+    <value>Сайт «{0}» збережено</value>
+  </data>
+  <data name="WebServer_SiteSaveFailed" xml:space="preserve">
+    <value>Не вдалося зберегти сайт: {0}</value>
+  </data>
+  <data name="WebServer_NoConfiguredSites" xml:space="preserve">
+    <value>Сайти ще не налаштовано.</value>
+  </data>
+  <data name="WebServer_Host" xml:space="preserve">
+    <value>Вузол</value>
+  </data>
+  <data name="WebServer_AppPool" xml:space="preserve">
+    <value>Пул застосунків</value>
+  </data>
+  <data name="WebServer_IisSiteNameHint" xml:space="preserve">
+    <value>Назва сайту IIS. Заповнюється кнопкою «Визначити за папкою».</value>
+  </data>
+  <data name="WebServer_AppPoolShort" xml:space="preserve">
+    <value>Пул</value>
+  </data>
+  <data name="WebServer_AppPoolHint" xml:space="preserve">
+    <value>Пул застосунків IIS. Заповнюється автоматично під час визначення за папкою.</value>
+  </data>
+  <data name="WebServer_SiteState" xml:space="preserve">
+    <value>Стан сайту</value>
+  </data>
+  <data name="WebServer_PoolState" xml:space="preserve">
+    <value>Стан пулу</value>
+  </data>
+  <data name="WebServer_Restart" xml:space="preserve">
+    <value>Перезапустити</value>
+  </data>
+  <data name="WebServer_RestartTitle" xml:space="preserve">
+    <value>Перезапуск сайту</value>
+  </data>
+  <data name="WebServer_RestartConfirm" xml:space="preserve">
+    <value>Перезапустити сайт «{0}»? Він буде ненадовго недоступний.</value>
+  </data>
+  <data name="WebServer_Restarted" xml:space="preserve">
+    <value>Сайт «{0}» перезапущено</value>
+  </data>
+  <data name="WebServer_SharedPoolHint" xml:space="preserve">
+    <value>Цей пул застосунків спільний з іншими сайтами чи застосунками, тому він ніколи не запускається й не зупиняється — керування відбувається лише самим сайтом.</value>
+  </data>
+  <data name="WebServer_NestedSharedPoolHint" xml:space="preserve">
+    <value>Вкладений застосунок у спільному пулі: IIS не має запуску чи зупинки окремого застосунку, а спільний пул чіпати не можна.</value>
+  </data>
+  <data name="WebServer_Actions" xml:space="preserve">
+    <value>Дії</value>
+  </data>
+  <data name="WebServer_Start" xml:space="preserve">
+    <value>Запустити</value>
+  </data>
+  <data name="WebServer_Stop" xml:space="preserve">
+    <value>Зупинити</value>
+  </data>
+  <data name="WebServer_DeleteTitle" xml:space="preserve">
+    <value>Видалення сайту</value>
+  </data>
+  <data name="WebServer_DeleteConfirm" xml:space="preserve">
+    <value>Видалити сайт «{0}»?</value>
+  </data>
+  <data name="WebServer_SiteDeleted" xml:space="preserve">
+    <value>Сайт «{0}» видалено</value>
+  </data>
+  <data name="WebServer_StopTitle" xml:space="preserve">
+    <value>Зупинка сайту</value>
+  </data>
+  <data name="WebServer_StopConfirm" xml:space="preserve">
+    <value>Зупинити сайт «{0}»? Він стане недоступним.</value>
+  </data>
+  <data name="WebServer_Started" xml:space="preserve">
+    <value>Сайт «{0}» запущено</value>
+  </data>
+  <data name="WebServer_Stopped" xml:space="preserve">
+    <value>Сайт «{0}» зупинено</value>
+  </data>
+  <data name="WebServer_ActionFailed" xml:space="preserve">
+    <value>Не вдалося виконати дію: {0}</value>
+  </data>
+  <data name="FolderBrowser_Title" xml:space="preserve">
+    <value>Вибір папки</value>
+  </data>
+  <data name="FolderBrowser_CurrentPath" xml:space="preserve">
+    <value>Шлях</value>
+  </data>
+  <data name="FolderBrowser_Go" xml:space="preserve">
+    <value>Перейти</value>
+  </data>
+  <data name="FolderBrowser_Select" xml:space="preserve">
+    <value>Вибрати</value>
+  </data>
+  <data name="FolderBrowser_Empty" xml:space="preserve">
+    <value>Немає підпапок</value>
+  </data>
+  <data name="PendingDevices_Title" xml:space="preserve">
+    <value>Пристрої в очікуванні</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptConfig" xml:space="preserve">
+    <value>Налаштування автоприйняття</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabled" xml:space="preserve">
+    <value>Автоприйняття увімкнено</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabledDesc" xml:space="preserve">
+    <value>Автоматично приймати пристрої, що відповідають критеріям</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFolders" xml:space="preserve">
+    <value>Типові папки</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFoldersDesc" xml:space="preserve">
+    <value>Автоматично надавати ці папки новим пристроям</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowListDesc" xml:space="preserve">
+    <value>Приймати лише пристрої з цього списку</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowList" xml:space="preserve">
+    <value>Список дозволених</value>
+  </data>
+  <data name="PendingDevices_NoPending" xml:space="preserve">
+    <value>Немає пристроїв в очікуванні</value>
+  </data>
+  <data name="PendingDevices_NoHistory" xml:space="preserve">
+    <value>Немає історії</value>
+  </data>
+  <data name="PendingDevices_PendingList" xml:space="preserve">
+    <value>Пристрої в очікуванні</value>
+  </data>
+  <data name="PendingDevices_Accept" xml:space="preserve">
+    <value>Прийняти</value>
+  </data>
+  <data name="PendingDevices_AcceptWithFolders" xml:space="preserve">
+    <value>Прийняти та вибрати папки</value>
+  </data>
+  <data name="PendingDevices_SelectFolders" xml:space="preserve">
+    <value>Виберіть папки для спільного доступу</value>
+  </data>
+  <data name="PendingDevices_Reject" xml:space="preserve">
+    <value>Відхилити</value>
+  </data>
+  <data name="PendingDevices_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="PendingDevices_DeviceName" xml:space="preserve">
+    <value>Назва пристрою</value>
+  </data>
+  <data name="PendingDevices_Address" xml:space="preserve">
+    <value>Адреса</value>
+  </data>
+  <data name="PendingDevices_FirstSeen" xml:space="preserve">
+    <value>Уперше виявлено</value>
+  </data>
+  <data name="PendingDevices_AcceptDevice" xml:space="preserve">
+    <value>Прийняти пристрій</value>
+  </data>
+  <data name="PendingDevices_Accepted" xml:space="preserve">
+    <value>Пристрій прийнято</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptIntroduced" xml:space="preserve">
+    <value>Приймати представлені пристрої</value>
+  </data>
+  <data name="PendingDevices_RecentlyAccepted" xml:space="preserve">
+    <value>Нещодавно прийняті</value>
+  </data>
+  <data name="Profiling_CpuUsage" xml:space="preserve">
+    <value>Використання ЦП</value>
+  </data>
+  <data name="Profiling_AllocatedMem" xml:space="preserve">
+    <value>Виділено пам'яті</value>
+  </data>
+  <data name="Profiling_Threads" xml:space="preserve">
+    <value>Потоків</value>
+  </data>
+  <data name="Profiling_GcCollections" xml:space="preserve">
+    <value>Збирань сміття</value>
+  </data>
+  <data name="Profiling_GcPauseTotal" xml:space="preserve">
+    <value>Загальна пауза збирача сміття</value>
+  </data>
+  <data name="Profiling_ForceGc" xml:space="preserve">
+    <value>Примусове збирання сміття</value>
+  </data>
+  <data name="Profiling_DownloadCpuProfile" xml:space="preserve">
+    <value>Завантажити профіль ЦП</value>
+  </data>
+  <data name="SupportBundle_Title" xml:space="preserve">
+    <value>Пакет діагностики</value>
+  </data>
+  <data name="SupportBundle_Description" xml:space="preserve">
+    <value>Створити діагностичний пакет для усунення несправностей. Пакет містить відомості про систему, конфігурацію та журнали.</value>
+  </data>
+  <data name="SupportBundle_IncludeOptions" xml:space="preserve">
+    <value>Що включити</value>
+  </data>
+  <data name="SupportBundle_Configuration" xml:space="preserve">
+    <value>Конфігурація</value>
+  </data>
+  <data name="SupportBundle_ConfigurationDesc" xml:space="preserve">
+    <value>Поточні налаштування (конфіденційні дані вилучено)</value>
+  </data>
+  <data name="SupportBundle_Logs" xml:space="preserve">
+    <value>Журнали</value>
+  </data>
+  <data name="SupportBundle_LogsDesc" xml:space="preserve">
+    <value>Записи журналу за останні {0} дн.</value>
+  </data>
+  <data name="SupportBundle_SystemInfo" xml:space="preserve">
+    <value>Відомості про систему</value>
+  </data>
+  <data name="SupportBundle_SystemInfoDesc" xml:space="preserve">
+    <value>ОС, версія, архітектура, ресурси</value>
+  </data>
+  <data name="SupportBundle_DatabaseStats" xml:space="preserve">
+    <value>Статистика бази даних</value>
+  </data>
+  <data name="SupportBundle_DatabaseStatsDesc" xml:space="preserve">
+    <value>Статистика та метрики бази даних</value>
+  </data>
+  <data name="SupportBundle_NetworkDiag" xml:space="preserve">
+    <value>Мережева діагностика</value>
+  </data>
+  <data name="SupportBundle_NetworkDiagDesc" xml:space="preserve">
+    <value>Стан з'єднання та відомості про виявлення</value>
+  </data>
+  <data name="SupportBundle_PrivacyNote" xml:space="preserve">
+    <value>Примітка про конфіденційність</value>
+  </data>
+  <data name="SupportBundle_PrivacyText" xml:space="preserve">
+    <value>Конфіденційні відомості (ключі API, паролі, ідентифікатори пристроїв) вилучаються з пакета автоматично.</value>
+  </data>
+  <data name="SupportBundle_Generating" xml:space="preserve">
+    <value>Створення пакета...</value>
+  </data>
+  <data name="SupportBundle_Generate" xml:space="preserve">
+    <value>Створити пакет</value>
+  </data>
+  <data name="SystemLog_Title" xml:space="preserve">
+    <value>Системний журнал</value>
+  </data>
+  <data name="SystemLog_AutoScroll" xml:space="preserve">
+    <value>Автопрокручування</value>
+  </data>
+  <data name="SystemLog_TailMode" xml:space="preserve">
+    <value>Режим стеження</value>
+  </data>
+  <data name="SystemLog_Level" xml:space="preserve">
+    <value>Рівень</value>
+  </data>
+  <data name="SystemLog_AllLevels" xml:space="preserve">
+    <value>Усі рівні</value>
+  </data>
+  <data name="SystemLog_Search" xml:space="preserve">
+    <value>Пошук</value>
+  </data>
+  <data name="SystemLog_SearchPlaceholder" xml:space="preserve">
+    <value>Пошук у журналі...</value>
+  </data>
+  <data name="SystemLog_Download" xml:space="preserve">
+    <value>Завантажити</value>
+  </data>
+  <data name="SystemLog_Clear" xml:space="preserve">
+    <value>Очистити</value>
+  </data>
+  <data name="SystemLog_Refresh" xml:space="preserve">
+    <value>Оновити</value>
+  </data>
+  <data name="SystemLog_NoLogs" xml:space="preserve">
+    <value>Немає записів журналу</value>
+  </data>
+  <data name="FolderDetails_Title" xml:space="preserve">
+    <value>Відомості про папку</value>
+  </data>
+  <data name="FolderDetails_Edit" xml:space="preserve">
+    <value>Редагувати</value>
+  </data>
+  <data name="FolderDetails_Rescan" xml:space="preserve">
+    <value>Сканувати повторно</value>
+  </data>
+  <data name="FolderDetails_GlobalState" xml:space="preserve">
+    <value>Глобальний стан</value>
+  </data>
+  <data name="FolderDetails_Files" xml:space="preserve">
+    <value>Файлів</value>
+  </data>
+  <data name="FolderDetails_Size" xml:space="preserve">
+    <value>Розмір</value>
+  </data>
+  <data name="FolderDetails_LocalState" xml:space="preserve">
+    <value>Локальний стан</value>
+  </data>
+  <data name="FolderDetails_FolderType" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="FolderDetails_ViewErrors" xml:space="preserve">
+    <value>Переглянути помилки</value>
+  </data>
+  <data name="FolderDetails_NoSharedDevices" xml:space="preserve">
+    <value>Не надано в спільний доступ жодному пристрою</value>
+  </data>
+  <data name="FolderEdit_FolderLabelDesc" xml:space="preserve">
+    <value>Відображувана назва папки</value>
+  </data>
+  <data name="FolderEdit_FolderPathDesc" xml:space="preserve">
+    <value>Локальний шлях до папки</value>
+  </data>
+  <data name="FolderEdit_FolderTypeDesc" xml:space="preserve">
+    <value>Як ця папка взаємодіє з віддаленими пристроями</value>
+  </data>
+  <data name="FolderEdit_Type_SendReceive" xml:space="preserve">
+    <value>Надсилання та отримання</value>
+  </data>
+  <data name="FolderEdit_Type_SendOnly" xml:space="preserve">
+    <value>Лише надсилання</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveOnly" xml:space="preserve">
+    <value>Лише отримання</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveEncrypted" xml:space="preserve">
+    <value>Отримання зашифрованого</value>
+  </data>
+  <data name="FolderEdit_FileOptions" xml:space="preserve">
+    <value>Параметри файлів</value>
+  </data>
+  <data name="FolderEdit_FsWatcher" xml:space="preserve">
+    <value>Спостерігач файлової системи</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelay" xml:space="preserve">
+    <value>Затримка спостерігача (с)</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelayDesc" xml:space="preserve">
+    <value>Затримка перед обробкою подій зміни</value>
+  </data>
+  <data name="FolderEdit_RescanInterval" xml:space="preserve">
+    <value>Інтервал повторного сканування (с)</value>
+  </data>
+  <data name="FolderEdit_RescanIntervalDesc" xml:space="preserve">
+    <value>Як часто сканувати папку на зміни</value>
+  </data>
+  <data name="FolderEdit_IgnorePerms" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="FolderEdit_PullOrder" xml:space="preserve">
+    <value>Порядок завантаження</value>
+  </data>
+  <data name="FolderEdit_PullOrderDesc" xml:space="preserve">
+    <value>У якому порядку завантажувати файли</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Random" xml:space="preserve">
+    <value>Випадковий</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Alphabetic" xml:space="preserve">
+    <value>За алфавітом</value>
+  </data>
+  <data name="FolderEdit_PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Спочатку найменші</value>
+  </data>
+  <data name="FolderEdit_PullOrder_LargestFirst" xml:space="preserve">
+    <value>Спочатку найбільші</value>
+  </data>
+  <data name="FolderEdit_PullOrder_OldestFirst" xml:space="preserve">
+    <value>Спочатку найстаріші</value>
+  </data>
+  <data name="FolderEdit_PullOrder_NewestFirst" xml:space="preserve">
+    <value>Спочатку найновіші</value>
+  </data>
+  <data name="FolderEdit_Versioning" xml:space="preserve">
+    <value>Керування версіями</value>
+  </data>
+  <data name="FolderEdit_VersioningTypeDesc" xml:space="preserve">
+    <value>Як зберігати старі версії файлів</value>
+  </data>
+  <data name="FolderEdit_Versioning_None" xml:space="preserve">
+    <value>Вимкнено</value>
+  </data>
+  <data name="FolderEdit_Versioning_Trashcan" xml:space="preserve">
+    <value>Кошик</value>
+  </data>
+  <data name="FolderEdit_Versioning_Simple" xml:space="preserve">
+    <value>Просте</value>
+  </data>
+  <data name="FolderEdit_Versioning_Staggered" xml:space="preserve">
+    <value>Ступінчасте</value>
+  </data>
+  <data name="FolderEdit_Versioning_External" xml:space="preserve">
+    <value>Зовнішнє</value>
+  </data>
+  <data name="FolderEdit_StaggeredPath" xml:space="preserve">
+    <value>Шлях до версій</value>
+  </data>
+  <data name="FolderEdit_StaggeredPathDesc" xml:space="preserve">
+    <value>Де зберігати версії (порожньо = .stversions)</value>
+  </data>
+  <data name="FolderEdit_TrashcanDays" xml:space="preserve">
+    <value>Зберігати версії (днів)</value>
+  </data>
+  <data name="FolderEdit_TrashcanDaysDesc" xml:space="preserve">
+    <value>Скільки днів зберігати видалені файли (0 = завжди)</value>
+  </data>
+  <data name="FolderEdit_SimpleKeep" xml:space="preserve">
+    <value>Скільки версій зберігати</value>
+  </data>
+  <data name="FolderEdit_SimpleKeepDesc" xml:space="preserve">
+    <value>Скільки версій зберігати для кожного файлу</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAge" xml:space="preserve">
+    <value>Максимальний вік (днів)</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAgeDesc" xml:space="preserve">
+    <value>Видаляти версії, старші за цей строк</value>
+  </data>
+  <data name="FolderEdit_ExternalCommand" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandDesc" xml:space="preserve">
+    <value>Зовнішня команда для керування версіями</value>
+  </data>
+  <data name="FolderEdit_Save" xml:space="preserve">
+    <value>Зберегти</value>
+  </data>
+  <data name="FolderEdit_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="FolderEdit_Paused" xml:space="preserve">
+    <value>Призупинено</value>
+  </data>
+  <data name="FolderEdit_SaveSuccess" xml:space="preserve">
+    <value>Папку успішно збережено</value>
+  </data>
+  <data name="FolderEdit_SaveError" xml:space="preserve">
+    <value>Не вдалося зберегти папку: {0}</value>
+  </data>
+  <data name="FolderErrors_TotalErrors" xml:space="preserve">
+    <value>Усього помилок: {0}</value>
+  </data>
+  <data name="FolderErrors_File" xml:space="preserve">
+    <value>Файл</value>
+  </data>
+  <data name="FolderErrors_Rescan" xml:space="preserve">
+    <value>Сканувати папку повторно</value>
+  </data>
+  <data name="Connections_ActiveConns" xml:space="preserve">
+    <value>Активні з'єднання</value>
+  </data>
+  <data name="Connections_DirectConns" xml:space="preserve">
+    <value>Прямі з'єднання</value>
+  </data>
+  <data name="Connections_RelayConns" xml:space="preserve">
+    <value>З'єднання через ретранслятор</value>
+  </data>
+  <data name="Connections_InRate" xml:space="preserve">
+    <value>Швидкість завантаження</value>
+  </data>
+  <data name="Connections_OutRate" xml:space="preserve">
+    <value>Швидкість відвантаження</value>
+  </data>
+  <data name="Connections_TotalIn" xml:space="preserve">
+    <value>Усього отримано</value>
+  </data>
+  <data name="Connections_TotalOut" xml:space="preserve">
+    <value>Усього надіслано</value>
+  </data>
+  <data name="Connections_Details" xml:space="preserve">
+    <value>Відомості про з'єднання</value>
+  </data>
+  <data name="Connections_ConnectedAt" xml:space="preserve">
+    <value>Підключено</value>
+  </data>
+  <data name="Connections_Discovery" xml:space="preserve">
+    <value>Виявлення</value>
+  </data>
+  <data name="Connections_ExternalAddr" xml:space="preserve">
+    <value>Зовнішня адреса</value>
+  </data>
+  <data name="Events_FilterByType" xml:space="preserve">
+    <value>Фільтр за типом</value>
+  </data>
+  <data name="Events_AllTypes" xml:space="preserve">
+    <value>Усі типи</value>
+  </data>
+  <data name="Events_WaitingForEvents" xml:space="preserve">
+    <value>Очікування подій...</value>
+  </data>
+  <data name="Events_Data" xml:space="preserve">
+    <value>Дані</value>
+  </data>
+  <data name="Statistics_TotalData" xml:space="preserve">
+    <value>Усього даних</value>
+  </data>
+  <data name="Statistics_TransferStats" xml:space="preserve">
+    <value>Статистика передавання</value>
+  </data>
+  <data name="Statistics_SystemStats" xml:space="preserve">
+    <value>Статистика системи</value>
+  </data>
+  <data name="Statistics_State" xml:space="preserve">
+    <value>Стан</value>
+  </data>
+  <data name="Settings_General_DeviceInfo" xml:space="preserve">
+    <value>Відомості про пристрій</value>
+  </data>
+  <data name="Settings_General_DeviceName" xml:space="preserve">
+    <value>Назва пристрою</value>
+  </data>
+  <data name="Settings_General_DeviceNameDesc" xml:space="preserve">
+    <value>Назва, яку бачать інші пристрої</value>
+  </data>
+  <data name="Settings_General_DeviceId" xml:space="preserve">
+    <value>Ідентифікатор пристрою</value>
+  </data>
+  <data name="Settings_General_SyncDefaults" xml:space="preserve">
+    <value>Типові параметри синхронізації</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPath" xml:space="preserve">
+    <value>Типовий шлях до папок</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPathDesc" xml:space="preserve">
+    <value>Типовий каталог для нових спільних папок</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePerms" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermsDesc" xml:space="preserve">
+    <value>Не синхронізувати права доступу до файлів</value>
+  </data>
+  <data name="Settings_General_ApiSettings" xml:space="preserve">
+    <value>Налаштування API</value>
+  </data>
+  <data name="Settings_General_ApiKey" xml:space="preserve">
+    <value>Ключ API</value>
+  </data>
+  <data name="Settings_General_GenerateKey" xml:space="preserve">
+    <value>Створити ключ</value>
+  </data>
+  <data name="Settings_General_StartMinimized" xml:space="preserve">
+    <value>Запускати згорнутим</value>
+  </data>
+  <data name="Settings_General_StartMinimizedDesc" xml:space="preserve">
+    <value>Запускати застосунок згорнутим</value>
+  </data>
+  <data name="Settings_General_IdCopied" xml:space="preserve">
+    <value>Ідентифікатор пристрою скопійовано</value>
+  </data>
+  <data name="Msg_FailedToLoadDevice" xml:space="preserve">
+    <value>Не вдалося завантажити пристрій: {0}</value>
+  </data>
+  <data name="Msg_FailedToUpdateDevice" xml:space="preserve">
+    <value>Не вдалося оновити пристрій: {0}</value>
+  </data>
+  <data name="Msg_NotImplemented" xml:space="preserve">
+    <value>Цю можливість ще не реалізовано</value>
+  </data>
+  <data name="Common_Copy" xml:space="preserve">
+    <value>Копіювати</value>
+  </data>
+  <data name="Msg_FailedToLoad" xml:space="preserve">
+    <value>Не вдалося завантажити дані: {0}</value>
+  </data>
+  <data name="Msg_FailedToAcceptDevice" xml:space="preserve">
+    <value>Не вдалося прийняти пристрій: {0}</value>
+  </data>
+  <data name="Msg_ConfirmRejectDevice" xml:space="preserve">
+    <value>Відхилити пристрій «{0}»?</value>
+  </data>
+  <data name="Msg_FailedToRejectDevice" xml:space="preserve">
+    <value>Не вдалося відхилити пристрій: {0}</value>
+  </data>
+  <data name="Msg_SettingsSaved" xml:space="preserve">
+    <value>Налаштування збережено</value>
+  </data>
+  <data name="Msg_FailedToSave" xml:space="preserve">
+    <value>Не вдалося зберегти: {0}</value>
+  </data>
+  <data name="Msg_CopiedToClipboard" xml:space="preserve">
+    <value>Скопійовано до буфера обміну</value>
+  </data>
+  <data name="Msg_FailedToCopy" xml:space="preserve">
+    <value>Не вдалося скопіювати до буфера обміну</value>
+  </data>
+  <data name="Profiling_CpuProfileRunning" xml:space="preserve">
+    <value>Профілювання...</value>
+  </data>
+  <data name="Profiling_CpuProfileStarted" xml:space="preserve">
+    <value>Профілювання ЦП розпочато</value>
+  </data>
+  <data name="Profiling_CpuProfileDownloading" xml:space="preserve">
+    <value>Завантаження профілю ЦП...</value>
+  </data>
+  <data name="Profiling_CpuProfileFailed" xml:space="preserve">
+    <value>Не вдалося зібрати профіль ЦП: {0}</value>
+  </data>
+  <data name="Msg_SyncedPercent" xml:space="preserve">
+    <value>{0} синхронізовано</value>
+  </data>
+  <data name="Msg_FilesNeedSync" xml:space="preserve">
+    <value>Потребують синхронізації: {0} файлів ({1})</value>
+  </data>
+  <data name="Common_FileWatcher" xml:space="preserve">
+    <value>Спостерігач файлів</value>
+  </data>
+  <data name="Common_IgnorePermissions" xml:space="preserve">
+    <value>Ігнорувати права доступу</value>
+  </data>
+  <data name="Msg_DeviceCount" xml:space="preserve">
+    <value>Пристроїв: {0}</value>
+  </data>
+  <data name="Common_Errors" xml:space="preserve">
+    <value>Помилки</value>
+  </data>
+  <data name="Common_Folders" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Msg_FailedToLoadFolder" xml:space="preserve">
+    <value>Не вдалося завантажити папку: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartScan" xml:space="preserve">
+    <value>Не вдалося розпочати сканування: {0}</value>
+  </data>
+  <data name="FolderEdit_NotFound" xml:space="preserve">
+    <value>Папку не знайдено</value>
+  </data>
+  <data name="FolderEdit_AutoNormalize" xml:space="preserve">
+    <value>Автоматична нормалізація назв файлів</value>
+  </data>
+  <data name="FolderEdit_MaxConflictsDesc" xml:space="preserve">
+    <value>Максимум конфліктних копій, які зберігати (-1 = без обмежень)</value>
+  </data>
+  <data name="FolderEdit_VersioningDesc" xml:space="preserve">
+    <value>Керування версіями зберігає старі копії файлів, які замінено або видалено.</value>
+  </data>
+  <data name="FolderEdit_TrashcanInfo" xml:space="preserve">
+    <value>Кошик: замінені та видалені файли переміщуються до .stversions і зберігаються до очищення.</value>
+  </data>
+  <data name="FolderEdit_SimpleInfo" xml:space="preserve">
+    <value>Просте: для кожного файлу зберігається фіксована кількість старих версій.</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDays" xml:space="preserve">
+    <value>Очищати через (днів)</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDaysDesc" xml:space="preserve">
+    <value>Видаляти версії, старші за цей строк (0 = зберігати завжди)</value>
+  </data>
+  <data name="FolderEdit_StaggeredInfo" xml:space="preserve">
+    <value>Ступінчасте: що старіші версії, то рідше вони зберігаються.</value>
+  </data>
+  <data name="FolderEdit_ExternalInfo" xml:space="preserve">
+    <value>Зовнішнє: перед заміною файлу виконується вказана вами команда.</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandRequired" xml:space="preserve">
+    <value>Для зовнішнього керування версіями потрібна команда</value>
+  </data>
+  <data name="FolderEdit_Resume" xml:space="preserve">
+    <value>Відновити</value>
+  </data>
+  <data name="FolderEdit_LoadError" xml:space="preserve">
+    <value>Не вдалося завантажити папку: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadErrors" xml:space="preserve">
+    <value>Не вдалося завантажити помилки: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartRescan" xml:space="preserve">
+    <value>Не вдалося розпочати повторне сканування: {0}</value>
+  </data>
+  <data name="Msg_LoadSettingsFailed" xml:space="preserve">
+    <value>Не вдалося завантажити налаштування: {0}</value>
+  </data>
+  <data name="Msg_SaveSettingsFailed" xml:space="preserve">
+    <value>Не вдалося зберегти налаштування: {0}</value>
+  </data>
+  <data name="Common_Reset" xml:space="preserve">
+    <value>Скинути</value>
+  </data>
+  <data name="Msg_ResetDatabaseFailed" xml:space="preserve">
+    <value>Не вдалося скинути базу даних: {0}</value>
+  </data>
+  <data name="Msg_FactoryResetFailed" xml:space="preserve">
+    <value>Не вдалося виконати скидання до заводських налаштувань: {0}</value>
+  </data>
+  <data name="Msg_SettingsResetToDefaults" xml:space="preserve">
+    <value>Налаштування скинуто до типових</value>
+  </data>
+  <data name="SupportBundle_LogDays" xml:space="preserve">
+    <value>Днів</value>
+  </data>
+</root>

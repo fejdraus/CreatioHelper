@@ -7,7 +7,7 @@
 @inject ISignalRService SignalR
 @implements IDisposable
 
-<PageTitle>@L["Dashboard_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Dashboard_Title"] - CreatioHelper Agent</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["Dashboard_Title"]</MudText>
 
@@ -101,8 +101,8 @@
         </MudCard>
     </MudItem>
 
-    @* Local State Total Card *@
-    <MudItem xs="12" sm="6" md="3">
+    @* Local State Total Card - spans two slots to fill the row *@
+    <MudItem xs="12" sm="12" md="6">
         <MudCard Elevation="2">
             <MudCardContent Class="stats-card">
                 <MudIcon Icon="@Icons.Material.Filled.Storage"
@@ -110,7 +110,10 @@
                          Size="Size.Large"
                          Class="mb-2" />
                 <div class="value">@FormatBytes(_totalLocalBytes)</div>
-                <div class="label">@L["Dashboard_LocalState"] (@_totalLocalFiles.ToString("N0") @PluralHelper.Get(L, "Plural_Files", _totalLocalFiles), @_totalLocalDirs.ToString("N0") @PluralHelper.Get(L, "Plural_Dirs", _totalLocalDirs))</div>
+                <div class="label">
+                    <span class="label-title">@L["Dashboard_LocalState"]</span>
+                    <span class="label-counts">@_totalLocalFiles.ToString("N0")&nbsp;@PluralHelper.Get(L, "Plural_Files", _totalLocalFiles), @_totalLocalDirs.ToString("N0")&nbsp;@PluralHelper.Get(L, "Plural_Dirs", _totalLocalDirs)</span>
+                </div>
             </MudCardContent>
         </MudCard>
     </MudItem>
@@ -167,7 +170,7 @@
                                  Size="Size.Small"
                                  Class="mr-3" />
                         <div class="flex-grow-1">
-                            <MudText Typo="Typo.body2">@evt.Summary</MudText>
+                            <MudText Typo="Typo.body2">@EventTypeDisplay.Format(evt.Type, L)</MudText>
                         </div>
                         <MudText Typo="Typo.caption" Color="Color.Default">
                             @evt.Time.ToLocalTime().ToString("HH:mm:ss")
@@ -209,6 +212,9 @@
 }
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     [Inject]
     private NavigationManager NavigationManager { get; set; } = null!;
 
@@ -286,9 +292,9 @@
     {
         try
         {
-            foreach (var folder in State.Folders)
+            var statuses = await Task.WhenAll(State.Folders.Select(f => ApiClient.GetFolderStatusAsync(f.Id, _pageCts.Token)));
+            foreach (var status in statuses)
             {
-                var status = await ApiClient.GetFolderStatusAsync(folder.Id);
                 if (status != null)
                 {
                     State.UpdateFolderStatus(status);
@@ -360,9 +366,15 @@
     {
         try
         {
-            _listenersStatus = await ApiClient.GetListenersStatusAsync();
-            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync();
+            _listenersStatus = await ApiClient.GetListenersStatusAsync(_pageCts.Token);
+            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync(_pageCts.Token);
             UpdateLocalStateTotals();
+
+            if (State.RecentEvents.Count == 0)
+            {
+                var events = await ApiClient.GetEventsAsync(0, 20, cancellationToken: _pageCts.Token);
+                State.SetEvents(events);
+            }
         }
         catch
         {
@@ -404,6 +416,8 @@
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
         SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
         SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;

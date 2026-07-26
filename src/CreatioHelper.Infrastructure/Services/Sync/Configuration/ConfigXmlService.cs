@@ -61,8 +61,15 @@ public class ConfigXmlService : IConfigXmlService
                 throw new InvalidOperationException("Failed to deserialize configuration");
             }
 
+            var removedDuplicates = RemoveDuplicateEntries(config);
+
             _logger.LogInformation("Loaded configuration v{Version} with {FolderCount} folders and {DeviceCount} devices",
                 config.Version, config.Folders.Count, config.Devices.Count);
+
+            if (removedDuplicates > 0)
+            {
+                await SaveAsync(config, cancellationToken);
+            }
 
             return config;
         }
@@ -71,6 +78,52 @@ public class ConfigXmlService : IConfigXmlService
             _logger.LogError(ex, "Error loading configuration from {Path}", _configPath);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Collapses repeated entries in the address lists. Earlier builds seeded these
+    /// collections in their property initialisers; XmlSerializer appends rather than
+    /// replaces, so every load/save cycle duplicated the defaults - existing configs
+    /// have accumulated hundreds of identical entries and are repaired on load.
+    /// </summary>
+    private int RemoveDuplicateEntries(ConfigXml config)
+    {
+        var removed = 0;
+
+        removed += Deduplicate(config.Options.ListenAddresses);
+        removed += Deduplicate(config.Options.GlobalAnnounceServers);
+        removed += Deduplicate(config.Options.StunServers);
+
+        foreach (var device in config.Devices)
+        {
+            removed += Deduplicate(device.Addresses);
+        }
+
+        if (removed > 0)
+        {
+            _logger.LogInformation("Removed {Count} duplicate address entries from the configuration", removed);
+        }
+
+        return removed;
+    }
+
+    private static int Deduplicate(List<string> values)
+    {
+        if (values.Count < 2)
+        {
+            return 0;
+        }
+
+        var unique = values.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+        var removed = values.Count - unique.Count;
+
+        if (removed > 0)
+        {
+            values.Clear();
+            values.AddRange(unique);
+        }
+
+        return removed;
     }
 
     public async Task SaveAsync(ConfigXml config, CancellationToken cancellationToken = default)

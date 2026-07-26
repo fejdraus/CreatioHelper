@@ -15,6 +15,14 @@ using Microsoft.AspNetCore.Authorization;
 ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
 ThreadPool.SetMinThreads(Math.Max(Environment.ProcessorCount * 2, 16), minCompletionPortThreads);
 
+try
+{
+    Console.OutputEncoding = Encoding.UTF8;
+}
+catch (IOException)
+{
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Host.UseSerilog((context, configuration) =>
@@ -33,6 +41,9 @@ if (!string.IsNullOrEmpty(appInsightsConnectionString))
 
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
+
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<CreatioHelper.Agent.Middleware.ApiExceptionHandler>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -215,7 +226,13 @@ builder.Services.AddSyncServices(syncConfig);
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
 app.Services.GetService<CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterKeyAutoAcceptHandler>();
+
+// Resolving it applies the configured process priority; as a lazy singleton it
+// would otherwise never be constructed and the setting would stay inert
+app.Services.GetService<CreatioHelper.Infrastructure.Services.Sync.SystemControl.IProcessPriorityService>();
 
 var applicationLifetime = app.Services.GetRequiredService<IHostApplicationLifetime>();
 applicationLifetime.ApplicationStopping.Register(() =>
@@ -261,9 +278,32 @@ app.Use(async (context, next) =>
                         || (path.Value?.EndsWith("blazor.boot.json", StringComparison.OrdinalIgnoreCase) ?? false);
     if (isBlazorAsset)
     {
-        context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
-        context.Response.Headers.Pragma = "no-cache";
-        context.Response.Headers.Expires = "0";
+        // Most framework files carry a content hash in the name
+        // (System.Text.Json.abc123xyz9.wasm), so their contents can never change:
+        // marking them immutable stops the browser from revalidating all ~230 of
+        // them on every page load. Revalidation is cheap per file but not free -
+        // it costs a round trip each, which added up to ~20 seconds of startup.
+        // The boot manifest and the unhashed loaders decide which hashed files to
+        // fetch, so they must keep revalidating.
+        var fileName = path.Value is { } value
+            ? value[(value.LastIndexOf('/') + 1)..]
+            : string.Empty;
+        var isFingerprinted = System.Text.RegularExpressions.Regex.IsMatch(
+            fileName,
+            @"\.[a-z0-9]{8,}\.(wasm|js|dat|pdb|dll|blat)(\.gz|\.br)?$",
+            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+        var cacheControl = isFingerprinted
+            ? "public, max-age=31536000, immutable"
+            : "no-cache";
+
+        // Set on response start so this replaces the value the static file
+        // middleware writes later instead of being appended to it.
+        context.Response.OnStarting(() =>
+        {
+            context.Response.Headers.CacheControl = cacheControl;
+            return Task.CompletedTask;
+        });
     }
 
     await next();

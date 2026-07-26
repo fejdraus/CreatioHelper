@@ -68,17 +68,25 @@ public class HeartbeatService : BackgroundService
         var gcGen2 = GC.CollectionCount(2);
         var gcMemoryMb = GC.GetTotalMemory(false) / 1024.0 / 1024.0;
 
-        _logger.LogInformation("╔═══════════════════════════════════════════════════════════════╗");
-        _logger.LogInformation("║  💓 HEARTBEAT - Agent is running                              ║");
-        _logger.LogInformation("╠═══════════════════════════════════════════════════════════════╣");
-        _logger.LogInformation("║  Uptime: {Uptime,-51} ║", FormatUptime(uptime));
-        _logger.LogInformation("║  Memory: Working Set {WorkingSet:F1} MB, Private {Private:F1} MB{Padding,-14} ║",
-            workingSetMb, privateMemoryMb, "");
-        _logger.LogInformation("║  GC Memory: {GCMemory:F1} MB{Padding,-42} ║", gcMemoryMb, "");
-        _logger.LogInformation("║  GC Collections: Gen0={Gen0}, Gen1={Gen1}, Gen2={Gen2}{Padding,-28} ║",
-            gcGen0, gcGen1, gcGen2, "");
-        _logger.LogInformation("║  Threads: {Threads,-52} ║", process.Threads.Count);
-        _logger.LogInformation("╚═══════════════════════════════════════════════════════════════╝");
+        _logger.LogInformation("╔{Rule}╗", new string('═', BoxWidth));
+        _logger.LogInformation("║{Row}║", Row("💓 HEARTBEAT - Agent is running"));
+        _logger.LogInformation("╠{Rule}╣", new string('═', BoxWidth));
+        _logger.LogInformation("║{Row}║", Row($"Uptime: {FormatUptime(uptime)}"));
+        _logger.LogInformation("║{Row}║", Row($"Memory: Working Set {workingSetMb:F1} MB, Private {privateMemoryMb:F1} MB"));
+        _logger.LogInformation("║{Row}║", Row($"GC Memory: {gcMemoryMb:F1} MB"));
+        _logger.LogInformation("║{Row}║", Row($"GC Collections: Gen0={gcGen0}, Gen1={gcGen1}, Gen2={gcGen2}"));
+        _logger.LogInformation("║{Row}║", Row($"Threads: {process.Threads.Count}"));
+        _logger.LogInformation("╚{Rule}╝", new string('═', BoxWidth));
+    }
+
+    private const int BoxWidth = 63;
+
+    private static string Row(string text)
+    {
+        var content = "  " + text;
+        return content.Length >= BoxWidth
+            ? content[..BoxWidth]
+            : content.PadRight(BoxWidth);
     }
 
     private static string FormatUptime(TimeSpan uptime)

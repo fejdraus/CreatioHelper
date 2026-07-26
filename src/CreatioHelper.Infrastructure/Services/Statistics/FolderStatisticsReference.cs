@@ -1,8 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
-using OldFolderStatistics = CreatioHelper.Domain.Entities.FolderStatistics;
-using OldLastFileInfo = CreatioHelper.Domain.Entities.LastFileInfo;
 using NewFolderStatistics = CreatioHelper.Domain.Entities.Statistics.FolderStatistics;
 using LastFile = CreatioHelper.Domain.Entities.Statistics.LastFile;
 
@@ -18,11 +16,7 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
     private readonly ILogger _logger;
     
     private readonly object _statisticsLock = new();
-    private OldFolderStatistics _statistics;
-    
-    // Время-скользящие окна для вычисления скорости
-    private readonly Queue<(DateTime Time, int FilesProcessed)> _scanRateSamples = new();
-    private readonly TimeSpan _rateCalculationWindow = TimeSpan.FromMinutes(5);
+    private FolderStatisticsSnapshot _statistics;
     
     private DateTime _lastSyncStartTime;
     private bool _disposed = false;
@@ -33,7 +27,7 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
         _database = database;
         _logger = logger;
         
-        _statistics = new OldFolderStatistics();
+        _statistics = new FolderStatisticsSnapshot();
         
         // Загружаем существующую статистику из базы данных
         _ = Task.Run(async () => await LoadStatisticsAsync(CancellationToken.None));
@@ -58,7 +52,7 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
         
         lock (_statisticsLock)
         {
-            _statistics.LastFile = new OldLastFileInfo
+            _statistics.LastFile = new LastFileSnapshot
             {
                 At = now,
                 FileName = fileName,
@@ -81,24 +75,6 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
                 _statistics.TotalSize += size;
             }
             
-            // Добавляем образец для расчета скорости обработки файлов
-            _scanRateSamples.Enqueue((now, 1));
-            
-            // Удаляем старые образцы
-            while (_scanRateSamples.Count > 0 && (now - _scanRateSamples.Peek().Time) > _rateCalculationWindow)
-            {
-                _scanRateSamples.Dequeue();
-            }
-            
-            // Вычисляем скорость обработки
-            if (_scanRateSamples.Count >= 2)
-            {
-                var timeSpan = _scanRateSamples.Last().Time - _scanRateSamples.First().Time;
-                if (timeSpan.TotalSeconds > 0)
-                {
-                    _statistics.SyncRate = _scanRateSamples.Count / timeSpan.TotalSeconds;
-                }
-            }
         }
         
         await SaveStatisticsAsync(cancellationToken);
@@ -121,13 +97,11 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
             if (totalFiles > 0)
             {
                 _statistics.TotalFiles = totalFiles;
-                _statistics.LocalFiles = totalFiles; // При сканировании считаем все файлы локальными
             }
-            
+
             if (totalSize > 0)
             {
                 _statistics.TotalSize = totalSize;
-                _statistics.LocalSize = totalSize;
             }
         }
         
@@ -176,10 +150,6 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
     {
         lock (_statisticsLock)
         {
-            _statistics.LocalFiles = localFiles;
-            _statistics.LocalSize = localSize;
-            _statistics.RemoteFiles = remoteFiles;
-            _statistics.RemoteSize = remoteSize;
             _statistics.PendingFiles = pendingFiles;
             _statistics.PendingSize = pendingSize;
             _statistics.CompletionPercentage = Math.Max(0, Math.Min(100, completionPercentage));
@@ -216,7 +186,6 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
         
         lock (_statisticsLock)
         {
-            _statistics.LastSync = now;
             _statistics.PendingFiles = 0;
             _statistics.PendingSize = 0;
             _statistics.CompletionPercentage = 100.0;
@@ -289,8 +258,7 @@ public class FolderStatisticsReference : IFolderStatisticsReference, IDisposable
     {
         lock (_statisticsLock)
         {
-            _statistics = new OldFolderStatistics();
-            _scanRateSamples.Clear();
+            _statistics = new FolderStatisticsSnapshot();
         }
         
         await SaveStatisticsAsync(cancellationToken);

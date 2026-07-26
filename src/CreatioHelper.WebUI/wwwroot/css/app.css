@@ -406,11 +406,24 @@ html, body {
 .stats-card .value {
     font-size: 2rem;
     font-weight: 500;
+    overflow-wrap: anywhere;
 }
 
 .stats-card .label {
     font-size: 0.875rem;
     opacity: 0.7;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+
+/* Long counters keep their own line instead of pushing the title around */
+.stats-card .label .label-title,
+.stats-card .label .label-counts {
+    display: inline-block;
+}
+
+.stats-card .label .label-counts::before {
+    content: " ";
 }
 
 
@@ -731,3 +744,256 @@ html, body {
     -webkit-backdrop-filter: blur(10px);
 }
 
+
+/* Secondary buttons (Color.Default) - MudBlazor gives them a 4% tinted background,
+   which is invisible against the gradient page background. Give them the surface
+   colour plus a border so they read as buttons in both themes. */
+.theme-light .mud-button-filled-default,
+.theme-dark .mud-button-filled-default {
+    background-color: var(--mud-palette-surface) !important;
+    border: 1px solid var(--mud-palette-lines-default) !important;
+}
+
+/* Collapsed mini drawer is only 56px wide - the group expand chevron overflows
+   past its right edge and means nothing while the labels are hidden. */
+.mud-drawer-mini.mud-drawer--closed .mud-nav-link-expand-icon {
+    display: none;
+}
+
+/* ===========================================
+   Motion
+   Easing curves follow Apple's HIG: a long, decelerating tail with no
+   bounce for anything the user is waiting on, a light spring only for
+   elements that appear on demand.
+   =========================================== */
+
+:root {
+    --motion-ease-out: cubic-bezier(0.32, 0.72, 0, 1);
+    --motion-ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+    --motion-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+    --motion-fast: 200ms;
+    --motion-base: 320ms;
+    --motion-slow: 460ms;
+}
+
+/* Page content swaps in when the route changes */
+.page-transition {
+    animation: page-enter var(--motion-base) var(--motion-ease-out) both;
+}
+
+@keyframes page-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 10px, 0);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0);
+    }
+}
+
+/* Cards and papers stagger in behind the page itself */
+.page-transition .mud-grid > .mud-grid-item,
+.page-transition > .mud-paper,
+.page-transition > .mud-alert {
+    animation: card-enter var(--motion-base) var(--motion-ease-out) both;
+}
+
+.page-transition .mud-grid > .mud-grid-item:nth-child(1) { animation-delay: 20ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(2) { animation-delay: 50ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(3) { animation-delay: 80ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(4) { animation-delay: 110ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(5) { animation-delay: 140ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(6) { animation-delay: 170ms; }
+.page-transition .mud-grid > .mud-grid-item:nth-child(n+7) { animation-delay: 200ms; }
+
+@keyframes card-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 14px, 0) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+/* Nav group expand/collapse - MudCollapse animates height, this softens the curve */
+.mud-navgroup-collapse {
+    transition-timing-function: var(--motion-ease-out) !important;
+    transition-duration: var(--motion-base) !important;
+}
+
+.mud-nav-link-expand-icon {
+    transition: transform var(--motion-base) var(--motion-ease-out) !important;
+}
+
+/* Drawer slide */
+.mud-drawer {
+    transition: width var(--motion-base) var(--motion-ease-out),
+                transform var(--motion-base) var(--motion-ease-out) !important;
+}
+
+/* Nav links respond to the pointer instead of snapping */
+.mud-drawer-content .mud-nav-link {
+    position: relative;
+    transition: background-color var(--motion-fast) var(--motion-ease-out),
+                color var(--motion-fast) var(--motion-ease-out);
+}
+
+/* An inset marker rather than a padding shift: padding would resize the label
+   and make long entries reflow onto a second line while hovered. */
+.mud-drawer-content .mud-nav-link::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 3px;
+    height: 0;
+    border-radius: 0 2px 2px 0;
+    background-color: var(--mud-palette-primary);
+    transform: translateY(-50%);
+    transition: height var(--motion-fast) var(--motion-ease-out);
+}
+
+.mud-drawer-content .mud-nav-link:not(.mud-nav-link-disabled):hover::before {
+    height: 60%;
+}
+
+/* Cards lift slightly under the pointer */
+.mud-main-content .mud-card,
+.mud-main-content .mud-paper.pa-4 {
+    transition: transform var(--motion-base) var(--motion-ease-out),
+                box-shadow var(--motion-base) var(--motion-ease-out);
+}
+
+.mud-main-content .folder-card:hover,
+.mud-main-content .device-card:hover {
+    transform: translate3d(0, -3px, 0);
+}
+
+/* Buttons and interactive chips */
+.mud-button-root {
+    transition: transform var(--motion-fast) var(--motion-ease-out),
+                background-color var(--motion-fast) var(--motion-ease-out),
+                box-shadow var(--motion-fast) var(--motion-ease-out) !important;
+}
+
+.mud-button-root:active {
+    transform: scale(0.97);
+}
+
+/* Login card arrives with a light spring */
+.auth-content .mud-paper {
+    animation: login-enter var(--motion-slow) var(--motion-spring) both;
+}
+
+@keyframes login-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 24px, 0) scale(0.94);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+/* Dialogs and snackbars */
+.mud-dialog {
+    animation: dialog-enter var(--motion-base) var(--motion-spring) both;
+}
+
+@keyframes dialog-enter {
+    from {
+        opacity: 0;
+        transform: translate3d(0, 12px, 0) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translate3d(0, 0, 0) scale(1);
+    }
+}
+
+/* Values that tick over (rates, counters) fade rather than jump */
+.stats-card .value,
+.transfer-indicator {
+    transition: color var(--motion-base) var(--motion-ease-out);
+}
+
+/* Respect the system setting - no motion means no motion */
+@media (prefers-reduced-motion: reduce) {
+    .page-transition,
+    .page-transition .mud-grid > .mud-grid-item,
+    .page-transition > .mud-paper,
+    .page-transition > .mud-alert,
+    .auth-content .mud-paper,
+    .mud-dialog {
+        animation: none !important;
+    }
+
+    .mud-drawer-content .mud-nav-link:not(.mud-nav-link-disabled):hover::before,
+    .mud-main-content .folder-card:hover,
+    .mud-main-content .device-card:hover,
+    .mud-button-root:active {
+        transform: none;
+        height: 0;
+    }
+
+    * {
+        transition-duration: 1ms !important;
+        animation-duration: 1ms !important;
+    }
+}
+
+/* MudBlazor 9 ships no text-truncate utility, but the markup relies on it to keep
+   long paths and device names inside their cards. Define it once here. */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* A flex child will not shrink below its content width without this, so the
+   ellipsis would never kick in for truncated titles inside a flex row. */
+.d-flex > .text-truncate {
+    min-width: 0;
+}
+
+/* ===========================================
+   Settings pages
+   Settings are a long list of independent cards. On a wide monitor a single
+   column leaves the right half empty and stretches every input to an absurd
+   width, so the cards flow into columns and the page keeps a readable measure.
+   =========================================== */
+
+/* Cards span the full content width; it is the controls inside them that need
+   a limit. Fields flow into as many columns as the width allows, so a wide
+   monitor is filled without stretching a single input across it. */
+.settings-page {
+    width: 100%;
+}
+
+.settings-columns {
+    display: block;
+}
+
+.settings-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 4px 32px;
+    align-items: start;
+}
+
+.settings-field .mud-input-control {
+    max-width: 100%;
+}
+
+.settings-field .mud-typography-caption {
+    display: block;
+    margin-bottom: 12px;
+}
+
+.settings-actions {
+    width: 100%;
+}

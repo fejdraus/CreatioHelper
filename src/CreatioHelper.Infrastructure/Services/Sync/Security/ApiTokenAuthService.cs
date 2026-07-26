@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using CreatioHelper.Domain.Serialization;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Sync.Security;
@@ -396,7 +397,7 @@ public class ApiTokenAuthService : IApiTokenAuthService
                 tokens = _tokens.Values.ToList();
             }
 
-            var json = JsonSerializer.Serialize(tokens, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(tokens, JsonDefaults.Indented);
             File.WriteAllText(_storagePath, json);
         }
         catch (Exception ex)

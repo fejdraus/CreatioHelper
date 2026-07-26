@@ -338,6 +338,15 @@ public class LocalDiscoveryService : ILocalDiscovery, IDeviceDiscovery
                     // UDP client disposed, normal shutdown
                     break;
                 }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted || ex.SocketErrorCode == SocketError.Interrupted)
+                {
+                    // Socket closed underneath the pending receive during shutdown
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Error receiving UDP announcement");

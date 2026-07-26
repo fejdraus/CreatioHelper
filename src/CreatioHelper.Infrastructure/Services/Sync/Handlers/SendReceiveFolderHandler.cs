@@ -37,7 +37,7 @@ public class SendReceiveFolderHandler : SyncFolderHandlerBase
         var localFiles = await GetLocalFilesAsync(folder.Id);
         var localDict = localFiles.ToDictionary(f => f.FileName);
 
-        foreach (var remoteFile in remoteFiles)
+        foreach (var remoteFile in OrderForPull(folder, remoteFiles))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -72,6 +72,11 @@ public class SendReceiveFolderHandler : SyncFolderHandlerBase
 
             if (needsDownload)
             {
+                if (!HasRoomToWrite(folder, remoteFile.Size, remoteFile.FileName))
+                {
+                    continue;
+                }
+
                 var localPath = Path.Combine(folder.Path, remoteFile.FileName);
                 var syncFileInfo = SyncFileInfo.FromFileMetadata(remoteFile);
                 var deviceId = GetActiveDeviceId(folder);

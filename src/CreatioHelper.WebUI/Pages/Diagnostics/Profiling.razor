@@ -8,13 +8,13 @@
 @inject IJSRuntime JSRuntime
 @implements IDisposable
 
-<PageTitle>@L["Profiling_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Profiling_Title"] - CreatioHelper Agent</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["Profiling_Title"]</MudText>
 
 <MudGrid>
     <MudItem xs="12" md="6" lg="3">
-        <MudPaper Elevation="2" Class="pa-4">
+        <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Memory" Color="Color.Primary" Size="Size.Large" Class="mr-3" />
                 <div>
@@ -27,7 +27,7 @@
     </MudItem>
 
     <MudItem xs="12" md="6" lg="3">
-        <MudPaper Elevation="2" Class="pa-4">
+        <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Storage" Color="Color.Secondary" Size="Size.Large" Class="mr-3" />
                 <div>
@@ -43,7 +43,7 @@
     </MudItem>
 
     <MudItem xs="12" md="6" lg="3">
-        <MudPaper Elevation="2" Class="pa-4">
+        <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Speed" Color="Color.Tertiary" Size="Size.Large" Class="mr-3" />
                 <div>
@@ -55,7 +55,7 @@
     </MudItem>
 
     <MudItem xs="12" md="6" lg="3">
-        <MudPaper Elevation="2" Class="pa-4">
+        <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
             <div class="d-flex align-center">
                 <MudIcon Icon="@Icons.Material.Filled.Timer" Color="Color.Info" Size="Size.Large" Class="mr-3" />
                 <div>
@@ -389,10 +389,10 @@
     private string FormatUptime(TimeSpan uptime)
     {
         if (uptime.TotalDays >= 1)
-            return $"{uptime.Days}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]}";
+            return $"{uptime.Days} {L["Time_Days"]} {uptime.Hours} {L["Time_Hours"]}";
         if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
+            return $"{uptime.Hours} {L["Time_Hours"]} {uptime.Minutes} {L["Time_Minutes"]}";
+        return $"{uptime.Minutes} {L["Time_Minutes"]} {uptime.Seconds} {L["Time_Seconds"]}";
     }
 
     private async Task TriggerGC()

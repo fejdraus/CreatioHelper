@@ -3,6 +3,7 @@ using System.Text.Json;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Common;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 using Microsoft.Extensions.Logging;
 
@@ -12,10 +13,7 @@ public class WindowsIisManager : IIisManager
 {
     private readonly ILogger<WindowsIisManager> _logger;
     private readonly IMetricsService _metrics;
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.CaseInsensitive;
     public WindowsIisManager(ILogger<WindowsIisManager> logger, IMetricsService metrics)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));

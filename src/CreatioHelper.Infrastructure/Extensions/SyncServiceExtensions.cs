@@ -1,3 +1,4 @@
+using System.Net.Sockets;
 using System.Security.Cryptography.X509Certificates;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync;
@@ -18,6 +19,7 @@ using CreatioHelper.Infrastructure.Services.Sync.Security;
 using CreatioHelper.Infrastructure.Services.Sync.Transfer;
 using CreatioHelper.Infrastructure.Services.Sync.Upgrade;
 using ScanningNs = CreatioHelper.Infrastructure.Services.Sync.Scanning;
+using SystemControl = CreatioHelper.Infrastructure.Services.Sync.SystemControl;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -297,6 +299,18 @@ public static class SyncServiceExtensions
             return new ScanningNs.ScanProgressService(logger, progressIntervalSeconds: 1);
         });
 
+        // Process priority - the "run with low priority" option in the UI is otherwise inert
+        services.AddSingleton<SystemControl.IProcessPriorityService>(provider =>
+        {
+            var logger = provider.GetRequiredService<ILogger<SystemControl.ProcessPriorityService>>();
+            var service = new SystemControl.ProcessPriorityService(logger);
+            if (syncConfig.SetLowPriority)
+            {
+                service.SetLowPriority(true);
+            }
+            return service;
+        });
+
         services.AddSingleton<ISyncEngine>(provider =>
             new SyncEngine(
                 provider.GetRequiredService<ILogger<SyncEngine>>(),
@@ -321,7 +335,12 @@ public static class SyncServiceExtensions
                 provider.GetService<ICombinedNatService>(),
                 certificate,
                 provider.GetService<ScanningNs.IScanProgressService>(),
-                scanQueue: provider.GetRequiredService<FolderScanQueue>()));
+                scanQueue: provider.GetRequiredService<FolderScanQueue>(),
+                ignoreDeletesHandler: provider.GetService<Services.Sync.Transfer.IIgnoreDeletesHandler>()));
+
+        // Honours the folder's <ignoreDelete> setting when applying remote deletes
+        services.AddSingleton<Services.Sync.Transfer.IIgnoreDeletesHandler,
+            Services.Sync.Transfer.IgnoreDeletesHandler>();
 
         // Bounded folder scan scheduler (keeps scanning off the request pipeline, capped concurrency)
         services.AddSingleton<FolderScanQueue>();
@@ -356,7 +375,15 @@ public static class SyncServiceExtensions
             var databasePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "CreatioHelper", "Sync", $"sync_{syncConfig.DeviceId}.db");
             var connectionString = $"Data Source={databasePath};Cache=Shared;Foreign Keys=True;";
-            return new DatabaseMaintenanceService(logger, connectionString);
+
+            async Task<IReadOnlyCollection<string>> GetActiveFolderIdsAsync(CancellationToken cancellationToken)
+            {
+                var configXmlService = provider.GetRequiredService<IConfigXmlService>();
+                var config = await configXmlService.LoadAsync(cancellationToken);
+                return config.Folders.Select(folder => folder.Id).ToList();
+            }
+
+            return new DatabaseMaintenanceService(logger, connectionString, GetActiveFolderIdsAsync);
         });
         services.AddHostedService<DatabaseMaintenanceService>(provider =>
             (DatabaseMaintenanceService)provider.GetRequiredService<IDatabaseMaintenanceService>());
@@ -541,6 +568,12 @@ public class SyncEngineHostedService : BackgroundService
         catch (OperationCanceledException)
         {
             _logger.LogInformation("Sync engine hosted service is stopping");
+        }
+        catch (SocketException ex)
+        {
+            _logger.LogCritical(ex,
+                "Sync engine could not bind its listening socket, most likely because the sync protocol port is already taken by another agent instance. " +
+                "Synchronization stays disabled, but the agent keeps running so the web interface remains reachable");
         }
         catch (Exception ex)
         {

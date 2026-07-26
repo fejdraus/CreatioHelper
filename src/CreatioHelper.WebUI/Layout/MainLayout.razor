@@ -17,7 +17,7 @@
                        Edge="Edge.Start"
                        OnClick="@ToggleDrawer" />
 
-        <MudText Typo="Typo.h6" Class="ml-3">CreatioHelper</MudText>
+        <MudText Typo="Typo.h6" Class="ml-3">CreatioHelper Agent</MudText>
 
         <MudSpacer />
 
@@ -65,7 +65,9 @@
             {
                 <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
             }
-            @Body
+            <div class="page-transition" @key="_routeKey">
+                @Body
+            </div>
         </MudContainer>
     </MudMainContent>
 </MudLayout>
@@ -78,6 +80,7 @@
     private bool _isLoading;
     private string _syncStatus = "idle";
     private bool? _lastConnectionState;
+    private string _routeKey = string.Empty;
 
     protected override async Task OnInitializedAsync()
     {
@@ -94,6 +97,10 @@
                 return;
             }
         }
+
+        // Re-keying the content wrapper on navigation replays its enter animation
+        _routeKey = Navigation.Uri;
+        Navigation.LocationChanged += OnLocationChanged;
 
         // Subscribe to auth changes
         AuthService.OnAuthStateChanged += OnAuthStateChanged;
@@ -302,8 +309,15 @@
         }
     }
 
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        _routeKey = e.Location;
+        InvokeAsync(StateHasChanged);
+    }
+
     public void Dispose()
     {
+        Navigation.LocationChanged -= OnLocationChanged;
         State.OnChange -= OnStateChanged;
         ThemeService.OnThemeChanged -= OnThemeChanged;
         AuthService.OnAuthStateChanged -= OnAuthStateChanged;

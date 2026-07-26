@@ -8,6 +8,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Interfaces;
 using Microsoft.Extensions.Http;
 using CreatioHelper.Shared.Utils;

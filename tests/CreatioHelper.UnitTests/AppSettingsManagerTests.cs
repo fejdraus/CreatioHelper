@@ -3,6 +3,7 @@ using CreatioHelper.Infrastructure.Services.Configuration;
 
 namespace CreatioHelper.Tests;
 
+[Collection(CurrentDirectoryCollection.Name)]
 public class AppSettingsManagerTests : IDisposable
 {
     private readonly List<DirectoryInfo> _tempDirectories = new();

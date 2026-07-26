@@ -299,13 +299,14 @@ public class SparseFileHandler : ISparseFileHandler
     [SupportedOSPlatform("windows")]
     private async Task CreateSparseFileWindowsAsync(string path, long size, CancellationToken cancellationToken)
     {
-        await using var stream = new FileStream(
+        await using var stream = ResilientFileStream.Open(
             path,
             FileMode.Create,
             FileAccess.Write,
             FileShare.None,
             4096,
-            FileOptions.Asynchronous);
+            FileOptions.Asynchronous,
+            ex => _logger.LogDebug(ex, "Asynchronous open failed for {Path}, retrying with a synchronous handle", path));
 
         // Mark as sparse using DeviceIoControl
         SetSparseFlag(stream.SafeFileHandle);
@@ -443,13 +444,14 @@ public class SparseFileHandler : ISparseFileHandler
     private async Task CreateSparseFileUnixAsync(string path, long size, CancellationToken cancellationToken)
     {
         // On Unix, just creating a file and setting its length creates a sparse file
-        await using var stream = new FileStream(
+        await using var stream = ResilientFileStream.Open(
             path,
             FileMode.Create,
             FileAccess.Write,
             FileShare.None,
             4096,
-            FileOptions.Asynchronous);
+            FileOptions.Asynchronous,
+            ex => _logger.LogDebug(ex, "Asynchronous open failed for {Path}, retrying with a synchronous handle", path));
 
         stream.SetLength(size);
     }

@@ -9,7 +9,7 @@
 @inject ISignalRService SignalR
 @implements IDisposable
 
-<PageTitle>@L["Devices_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Devices_Title"] - CreatioHelper Agent</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Devices_Title"]</MudText>
@@ -360,6 +360,9 @@ else
 }
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = null!;
 
@@ -408,7 +411,7 @@ else
 
         try
         {
-            var connections = await ApiClient.GetConnectionsAsync();
+            var connections = await ApiClient.GetConnectionsAsync(_pageCts.Token);
             foreach (var conn in connections)
             {
                 State.UpdateConnection(conn);
@@ -420,6 +423,10 @@ else
 
             _pendingDevices = await ApiClient.GetPendingDevicesAsync();
             UpdateDeviceLists();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -480,6 +487,10 @@ else
             Snackbar.Add(device.Paused ? L["Msg_DevicePaused"] : L["Msg_DeviceResumed"], Severity.Success);
             StateHasChanged();
         }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
+        }
         catch (Exception ex)
         {
             device.Paused = !device.Paused;
@@ -509,6 +520,10 @@ else
                 UpdateDeviceLists();
                 Snackbar.Add(L["Msg_DeviceRemoved"], Severity.Success);
             }
+            catch (OperationCanceledException)
+            {
+                // The page was left while the request was in flight
+            }
             catch (Exception ex)
             {
                 if (ErrorHelper.IsAuthenticationError(ex))
@@ -530,6 +545,10 @@ else
             Snackbar.Add(L["Msg_DeviceAccepted"], Severity.Success);
             StateHasChanged();
         }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
+        }
         catch (Exception ex)
         {
             if (ErrorHelper.IsAuthenticationError(ex))
@@ -549,6 +568,10 @@ else
             _pendingDevices = _pendingDevices.Where(p => p.DeviceId != pending.DeviceId).ToArray();
             Snackbar.Add(L["Msg_DeviceRejected"], Severity.Success);
             StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -629,9 +652,9 @@ else
     {
         if (!duration.HasValue) return "";
         var d = duration.Value;
-        if (d.TotalDays >= 1) return $"{(int)d.TotalDays}{L["Time_Days"]} {d.Hours}{L["Time_Hours"]}";
-        if (d.TotalHours >= 1) return $"{(int)d.TotalHours}{L["Time_Hours"]} {d.Minutes}{L["Time_Minutes"]}";
-        return $"{(int)d.TotalMinutes}{L["Time_Minutes"]}";
+        if (d.TotalDays >= 1) return $"{(int)d.TotalDays} {L["Time_Days"]} {d.Hours} {L["Time_Hours"]}";
+        if (d.TotalHours >= 1) return $"{(int)d.TotalHours} {L["Time_Hours"]} {d.Minutes} {L["Time_Minutes"]}";
+        return $"{(int)d.TotalMinutes} {L["Time_Minutes"]}";
     }
 
     private void ToggleDeviceExpand(string deviceId)
@@ -834,6 +857,8 @@ else
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
         SignalR.OnConnectionChanged -= OnConnectionChanged;
     }

@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using CreatioHelper.Agent.Configuration;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Agent.Models;
 using Microsoft.Extensions.Options;
 
@@ -313,7 +314,7 @@ public class JsonFileUserStore : IUserStore
                 return false;
             }
             auth["Users"] = new JsonArray();
-            File.WriteAllText(path, root.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(path, root.ToJsonString(JsonDefaults.Indented));
             return true;
         }
         catch (Exception ex)

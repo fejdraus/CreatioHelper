@@ -116,13 +116,14 @@ public class ConcurrentFileWriter : IConcurrentFileWriter
         }
 
         // Open file for concurrent writes
-        _fileStream = new FileStream(
+        _fileStream = FileSystem.ResilientFileStream.Open(
             filePath,
             FileMode.Create,
             FileAccess.Write,
             FileShare.None,
             bufferSize: _options.BufferSize,
-            FileOptions.Asynchronous | FileOptions.RandomAccess);
+            FileOptions.Asynchronous | FileOptions.RandomAccess,
+            ex => _logger.LogDebug(ex, "Asynchronous open failed for {Path}, retrying with a synchronous handle", filePath));
 
         // Pre-allocate file size for better performance
         if (_options.PreAllocate && fileSize > 0)

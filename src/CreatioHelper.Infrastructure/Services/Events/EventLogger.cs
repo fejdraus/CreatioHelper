@@ -61,18 +61,26 @@ public class EventLogger : BackgroundService, IEventLogger
     {
         _logger.LogInformation("EventLogger started, processing events...");
         
-        await foreach (var syncEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
+        try
         {
-            try
+            await foreach (var syncEvent in _eventChannel.Reader.ReadAllAsync(stoppingToken))
             {
-                await ProcessEventAsync(syncEvent);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing event {Type}: {Message}", syncEvent.Type, ex.Message);
+                try
+                {
+                    await ProcessEventAsync(syncEvent);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error processing event {Type}: {Message}", syncEvent.Type, ex.Message);
+                }
             }
         }
-        
+        catch (OperationCanceledException)
+        {
+            // Shutdown requested while waiting for the next event
+        }
+
+
         _logger.LogInformation("EventLogger stopped");
     }
 

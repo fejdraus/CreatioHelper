@@ -5,7 +5,7 @@
 @inject ISnackbar Snackbar
 @inject IStringLocalizer<Localization> L
 
-<PageTitle>@L["Login_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Login_Title"] - CreatioHelper Agent</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Small" Class="d-flex justify-center align-center">
     <MudPaper Elevation="4" Class="pa-8 rounded-xl" Style="width: 100%; max-width: 420px;">
@@ -20,7 +20,7 @@
                 </div>
             </div>
 
-            <MudText Typo="Typo.h4" Align="Align.Center">CreatioHelper</MudText>
+            <MudText Typo="Typo.h4" Align="Align.Center">CreatioHelper Agent</MudText>
             <MudText Typo="Typo.body2" Align="Align.Center" Color="Color.Secondary">
                 @L["Login_SignInToContinue"]
             </MudText>
@@ -87,7 +87,7 @@
         @* API Key login *@
         <MudExpansionPanels Elevation="0">
             <MudExpansionPanel Text="@L["Login_LoginWithApiKey"]" Dense="true">
-                <MudStack Spacing="3">
+                <MudStack Spacing="3" Class="pb-3">
                     <MudTextField @bind-Value="_apiKey"
                                   Label="@L["Login_ApiKey"]"
                                   Variant="Variant.Outlined"

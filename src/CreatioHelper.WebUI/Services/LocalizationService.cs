@@ -36,6 +36,7 @@ public class LocalizationService : ILocalizationService
     {
         { "en", "en-US" },
         { "ru", "ru-RU" },
+        { "uk", "uk-UA" },
         { "de", "de-DE" },
         { "fr", "fr-FR" },
         { "es", "es-ES" }

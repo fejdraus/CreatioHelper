@@ -8,7 +8,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 
-<PageTitle>@L["FolderEdit_Title"] @(_folder?.DisplayName ?? "Folder") - CreatioHelper</PageTitle>
+<PageTitle>@L["FolderEdit_Title"] @(_folder?.DisplayName ?? "Folder") - CreatioHelper Agent</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
     <MudBreadcrumbs Items="_breadcrumbs" Class="mb-4" />
@@ -241,7 +241,7 @@
                     <MudButton Variant="Variant.Text"
                                Color="Color.Warning"
                                OnClick="@(() => _folder.Paused = !_folder.Paused)">
-                        @(_folder.Paused ? L["FolderEdit_Resume"] : L["FolderEdit_Paused"])
+                        @(_folder.Paused ? L["Action_Resume"] : L["Action_Pause"])
                     </MudButton>
                 </div>
             </MudForm>
@@ -286,9 +286,9 @@
             {
                 _breadcrumbs = new List<BreadcrumbItem>
                 {
-                    new("Folders", "/folders"),
+                    new(L["Common_Folders"], "/folders"),
                     new(_folder.DisplayName, $"/folders/{FolderId}"),
-                    new("Edit", null, disabled: true)
+                    new(L["FolderDetails_Edit"], null, disabled: true)
                 };
 
                 // Load versioning configuration

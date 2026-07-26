@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
@@ -291,10 +292,7 @@ public class FeatureFlagsService : IFeatureFlagsService, IDisposable
             {
                 Directory.CreateDirectory(directory);
             }
-            var json = JsonSerializer.Serialize(_flags.Values.ToList(), new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(_flags.Values.ToList(), JsonDefaults.Indented);
             await File.WriteAllTextAsync(_storagePath, json, cancellationToken);
             _logger.LogDebug("Saved {Count} feature flags to storage", _flags.Count);
         }

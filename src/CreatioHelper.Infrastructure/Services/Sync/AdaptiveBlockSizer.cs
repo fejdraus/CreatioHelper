@@ -33,7 +33,7 @@ public class AdaptiveBlockSizer
     {
         if (fileSize <= 0)
         {
-            _logger.LogDebug("File size is zero or negative, using minimum block size");
+            _logger.LogTrace("File size is zero or negative, using minimum block size");
             return MIN_BLOCK_SIZE;
         }
 
@@ -54,7 +54,7 @@ public class AdaptiveBlockSizer
             idealBlockSize = ApplyHysteresis(idealBlockSize, currentBlockSize.Value);
         }
 
-        _logger.LogDebug("Calculated block size for file {FileSize} bytes: {BlockSize} ({BlockCount} blocks)", 
+        _logger.LogTrace("Calculated block size for file {FileSize} bytes: {BlockSize} ({BlockCount} blocks)", 
             fileSize, idealBlockSize, (fileSize + idealBlockSize - 1) / idealBlockSize);
 
         return idealBlockSize;

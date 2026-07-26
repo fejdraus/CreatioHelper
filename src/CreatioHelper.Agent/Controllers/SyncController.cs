@@ -5,6 +5,7 @@ using CreatioHelper.Domain.Entities;
 using CreatioHelper.Contracts.Requests;
 using CreatioHelper.Contracts.Responses;
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Mapping;
 
 namespace CreatioHelper.Agent.Controllers;
 
@@ -33,16 +34,8 @@ public class SyncController : ControllerBase
     [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<string>> GetDeviceId()
     {
-        try
-        {
-            var config = await _syncEngine.GetConfigurationAsync();
-            return Ok(config.DeviceId);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting device ID");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var config = await _syncEngine.GetConfigurationAsync();
+        return Ok(config.DeviceId);
     }
 
     /// <summary>
@@ -51,31 +44,11 @@ public class SyncController : ControllerBase
     [HttpGet("status")]
     public async Task<ActionResult<SyncSystemStatus>> GetStatus()
     {
-        try
-        {
-            var statistics = await _syncEngine.GetStatisticsAsync();
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
+        var statistics = await _syncEngine.GetStatisticsAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
 
-            var status = new SyncSystemStatus
-            {
-                Uptime = statistics.Uptime,
-                ConnectedDevices = statistics.ConnectedDevices,
-                TotalDevices = statistics.TotalDevices,
-                SyncedFolders = statistics.SyncedFolders,
-                TotalFolders = statistics.TotalFolders,
-                TotalBytesIn = statistics.TotalBytesIn,
-                TotalBytesOut = statistics.TotalBytesOut,
-                IsOnline = devices.Any(d => d.IsConnected)
-            };
-
-            return Ok(status);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting sync status");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(statistics.ToSystemStatus(devices));
     }
 
     /// <summary>
@@ -84,27 +57,10 @@ public class SyncController : ControllerBase
     [HttpGet("devices")]
     public async Task<ActionResult<List<SyncDeviceDto>>> GetDevices()
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var deviceDtos = devices.Select(d => new SyncDeviceDto
-            {
-                DeviceId = d.DeviceId,
-                Name = d.DeviceName,
-                IsConnected = d.IsConnected,
-                LastSeen = d.LastSeen ?? DateTime.MinValue,
-                Status = d.Status.ToString(),
-                IsPaused = d.IsPaused,
-                Addresses = d.Addresses
-            }).ToList();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var deviceDtos = devices.Select(d => d.ToDto()).ToList();
 
-            return Ok(deviceDtos);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting devices");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(deviceDtos);
     }
 
     /// <summary>
@@ -114,32 +70,15 @@ public class SyncController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<SyncDeviceDto>> AddDevice([FromBody] AddDeviceRequest request)
     {
-        try
-        {
-            var device = await _syncEngine.AddDeviceAsync(
-                request.DeviceId, 
-                request.Name, 
-                request.CertificateFingerprint, 
-                request.Addresses);
+        var device = await _syncEngine.AddDeviceAsync(
+            request.DeviceId, 
+            request.Name, 
+            request.CertificateFingerprint, 
+            request.Addresses);
 
-            var deviceDto = new SyncDeviceDto
-            {
-                DeviceId = device.DeviceId,
-                Name = device.DeviceName,
-                IsConnected = device.IsConnected,
-                LastSeen = device.LastSeen ?? DateTime.MinValue,
-                Status = device.Status.ToString(),
-                IsPaused = device.IsPaused,
-                Addresses = device.Addresses
-            };
+        var deviceDto = device.ToDto();
 
-            return CreatedAtAction(nameof(GetDevice), new { deviceId = device.DeviceId }, deviceDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding device {DeviceId}", request.DeviceId);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return CreatedAtAction(nameof(GetDevice), new { deviceId = device.DeviceId }, deviceDto);
     }
 
     /// <summary>
@@ -148,32 +87,15 @@ public class SyncController : ControllerBase
     [HttpGet("devices/{deviceId}")]
     public async Task<ActionResult<SyncDeviceDto>> GetDevice(string deviceId)
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
+        var devices = await _syncEngine.GetDevicesAsync();
+        var device = devices.FirstOrDefault(d => d.DeviceId == deviceId);
 
-            if (device == null)
-                return NotFound();
+        if (device == null)
+            return NotFound();
 
-            var deviceDto = new SyncDeviceDto
-            {
-                DeviceId = device.DeviceId,
-                Name = device.DeviceName,
-                IsConnected = device.IsConnected,
-                LastSeen = device.LastSeen ?? DateTime.MinValue,
-                Status = device.Status.ToString(),
-                IsPaused = device.IsPaused,
-                Addresses = device.Addresses
-            };
+        var deviceDto = device.ToDto();
 
-            return Ok(deviceDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(deviceDto);
     }
 
     /// <summary>
@@ -228,39 +150,16 @@ public class SyncController : ControllerBase
     [HttpGet("folders")]
     public async Task<ActionResult<List<SyncFolderDto>>> GetFolders()
     {
-        try
-        {
-            var folders = await _syncEngine.GetFoldersAsync();
-            var folderDtos = new List<SyncFolderDto>();
+        var folders = await _syncEngine.GetFoldersAsync();
+        var folderDtos = new List<SyncFolderDto>();
 
-            foreach (var folder in folders)
-            {
-                var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
-                folderDtos.Add(new SyncFolderDto
-                {
-                    FolderId = folder.Id,
-                    Label = folder.Label,
-                    Path = folder.Path,
-                    Type = folder.Type.ToString(),
-                    IsPaused = folder.IsPaused,
-                    State = status.State.ToString(),
-                    GlobalBytes = status.GlobalBytes,
-                    LocalBytes = status.LocalBytes,
-                    GlobalFiles = status.GlobalFiles,
-                    LocalFiles = status.LocalFiles,
-                    LastScan = status.LastScan,
-                    LastSync = status.LastSync,
-                    DeviceIds = folder.Devices.ToList()
-                });
-            }
-
-            return Ok(folderDtos);
-        }
-        catch (Exception ex)
+        foreach (var folder in folders)
         {
-            _logger.LogError(ex, "Error getting folders");
-            return StatusCode(500, new { error = "Internal server error" });
+            var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
+            folderDtos.Add(folder.ToDto(status));
         }
+
+        return Ok(folderDtos);
     }
 
     /// <summary>
@@ -270,39 +169,16 @@ public class SyncController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<SyncFolderDto>> AddFolder([FromBody] AddFolderRequest request)
     {
-        try
-        {
-            var folder = await _syncEngine.AddFolderAsync(
-                request.FolderId, 
-                request.Label, 
-                request.Path, 
-                request.Type);
+        var folder = await _syncEngine.AddFolderAsync(
+            request.FolderId, 
+            request.Label, 
+            request.Path, 
+            request.Type);
 
-            var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
-            var folderDto = new SyncFolderDto
-            {
-                FolderId = folder.Id,
-                Label = folder.Label,
-                Path = folder.Path,
-                Type = folder.Type.ToString(),
-                IsPaused = folder.IsPaused,
-                State = status.State.ToString(),
-                GlobalBytes = status.GlobalBytes,
-                LocalBytes = status.LocalBytes,
-                GlobalFiles = status.GlobalFiles,
-                LocalFiles = status.LocalFiles,
-                LastScan = status.LastScan,
-                LastSync = status.LastSync,
-                DeviceIds = folder.Devices.ToList()
-            };
+        var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
+        var folderDto = folder.ToDto(status);
 
-            return CreatedAtAction(nameof(GetFolder), new { folderId = folder.Id }, folderDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error adding folder {FolderId}", request.FolderId);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return CreatedAtAction(nameof(GetFolder), new { folderId = folder.Id }, folderDto);
     }
 
     /// <summary>
@@ -311,39 +187,16 @@ public class SyncController : ControllerBase
     [HttpGet("folders/{folderId}")]
     public async Task<ActionResult<SyncFolderDto>> GetFolder(string folderId)
     {
-        try
-        {
-            var folders = await _syncEngine.GetFoldersAsync();
-            var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
+        var folders = await _syncEngine.GetFoldersAsync();
+        var folder = folders.FirstOrDefault(f => f.FolderId == folderId);
 
-            if (folder == null)
-                return NotFound();
+        if (folder == null)
+            return NotFound();
 
-            var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
-            var folderDto = new SyncFolderDto
-            {
-                FolderId = folder.Id,
-                Label = folder.Label,
-                Path = folder.Path,
-                Type = folder.Type.ToString(),
-                IsPaused = folder.IsPaused,
-                State = status.State.ToString(),
-                GlobalBytes = status.GlobalBytes,
-                LocalBytes = status.LocalBytes,
-                GlobalFiles = status.GlobalFiles,
-                LocalFiles = status.LocalFiles,
-                LastScan = status.LastScan,
-                LastSync = status.LastSync,
-                DeviceIds = folder.Devices.ToList()
-            };
+        var status = await _syncEngine.GetSyncStatusAsync(folder.Id);
+        var folderDto = folder.ToDto(status);
 
-            return Ok(folderDto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting folder {FolderId}", folderId);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(folderDto);
     }
 
     /// <summary>
@@ -475,15 +328,7 @@ public class SyncController : ControllerBase
     [HttpGet("statistics")]
     public async Task<ActionResult<SyncStatistics>> GetStatistics()
     {
-        try
-        {
-            var statistics = await _syncEngine.GetStatisticsAsync();
-            return Ok(statistics);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting statistics");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var statistics = await _syncEngine.GetStatisticsAsync();
+        return Ok(statistics);
     }
 }

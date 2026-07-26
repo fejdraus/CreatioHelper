@@ -367,11 +367,18 @@ public class FileWatcher : IDisposable
 
     private async Task<string> CalculateFileHashAsync(string filePath)
     {
-        await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-            bufferSize: 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        await using var stream = OpenForSequentialRead(filePath);
         using var sha256 = SHA256.Create();
         var hash = await sha256.ComputeHashAsync(stream);
         return Convert.ToHexString(hash).ToLower();
+    }
+
+    private FileStream OpenForSequentialRead(string filePath)
+    {
+        return FileSystem.ResilientFileStream.Open(
+            filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
+            bufferSize: 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan,
+            ex => _logger.LogDebug(ex, "Asynchronous open failed for {FilePath}, retrying with a synchronous handle", filePath));
     }
 
     private async Task<List<BlockInfo>> CreateBlocksAsync(string filePath, long fileSize)
@@ -383,11 +390,12 @@ public class FileWatcher : IDisposable
             // Calculate optimal block size using Syncthing's adaptive algorithm
             int blockSize = _blockSizer.CalculateBlockSize(fileSize, useLargeBlocks: true);
             
-            _logger.LogDebug("Creating blocks for {FilePath} ({FileSize} bytes) with block size {BlockSize}", 
+            // Per-file, so it fires once for every scanned file - Trace keeps a normal
+            // Debug session from drowning in it (~5800 lines/second on a large folder)
+            _logger.LogTrace("Creating blocks for {FilePath} ({FileSize} bytes) with block size {BlockSize}", 
                 filePath, fileSize, AdaptiveBlockSizer.FormatBlockSize(blockSize));
 
-            await using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read,
-                bufferSize: 1 << 16, FileOptions.Asynchronous | FileOptions.SequentialScan);
+            await using var stream = OpenForSequentialRead(filePath);
             var buffer = new byte[blockSize];
             long offset = 0;
 
@@ -411,7 +419,11 @@ public class FileWatcher : IDisposable
         }
         catch (Exception ex)
         {
+            // Returning a partial or empty block list here would index the file as
+            // if it were readable: the hash is already computed, so it would look
+            // synchronised while having nothing to transfer. Let the caller drop it.
             _logger.LogError(ex, "Error creating blocks for file {FilePath}", filePath);
+            throw;
         }
 
         return blocks;

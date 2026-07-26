@@ -1,111 +1,130 @@
 @page "/settings/gui"
 @using System.Globalization
 @inject ILocalizationService LocalizationService
+@inject IApiClient ApiClient
 @inject ISnackbar Snackbar
 @inject Blazored.LocalStorage.ILocalStorageService LocalStorage
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
 
-<PageTitle>@L["Settings_GUI"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_GUI"] - CreatioHelper Agent</PageTitle>
 
+<div class="settings-page">
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings_GUI"]</MudText>
+<div class="settings-columns">
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Language"]</MudText>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Language"]</MudText>
-
-    <MudSelect @bind-Value="_language"
+        <MudSelect @bind-Value="_language"
                Label="@L["Settings_Language"]"
                Variant="Variant.Filled"
-               Style="max-width: 300px;">
+>
         <MudSelectItem Value="@("en")">English</MudSelectItem>
         <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
+        <MudSelectItem Value="@("uk")">Українська</MudSelectItem>
         <MudSelectItem Value="@("de")">Deutsch</MudSelectItem>
         <MudSelectItem Value="@("fr")">Français</MudSelectItem>
         <MudSelectItem Value="@("es")">Español</MudSelectItem>
-    </MudSelect>
-</MudPaper>
+        </MudSelect>
+        </MudPaper>
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Nav_Dashboard"]</MudText>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">@L["Nav_Dashboard"]</MudText>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_showTransferChart"
+                   Color="Color.Primary"
+                   Label="@L["Settings_ShowTransferChart"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_ShowTransferChartHint"]
+        </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_showRecentEvents"
+                   Color="Color.Primary"
+                   Label="@L["Settings_ShowRecentEvents"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_ShowRecentEventsHint"]
+        </MudText>
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxRecentEvents"
+                             Label="@L["Settings_MaxRecentEvents"]"
+                             Variant="Variant.Filled"
+                             Min="5"
+                             Max="50"
+                             Class="mt-3"
+                             Style="max-width: 300px;" />
+            </div>
+        </div>
+        </MudPaper>
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Notifications"]</MudText>
 
-    <MudSwitch @bind-Value="_showTransferChart"
-               Color="Color.Primary"
-               Label="@L["Settings_ShowTransferChart"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        @L["Settings_ShowTransferChartHint"]
-    </MudText>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_notifyOnSyncComplete"
+                   Color="Color.Primary"
+                   Label="@L["Settings_NotifySyncComplete"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_NotifySyncCompleteHint"]
+        </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_notifyOnDeviceConnect"
+                   Color="Color.Primary"
+                   Label="@L["Settings_NotifyDeviceConnect"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_NotifyDeviceConnectHint"]
+        </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_notifyOnError"
+                   Color="Color.Primary"
+                   Label="@L["Settings_NotifyError"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+            @L["Settings_NotifyErrorHint"]
+        </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_notifyOnPendingDevice"
+                   Color="Color.Primary"
+                   Label="@L["Settings_NotifyPendingDevice"]" />
+        <MudText Typo="Typo.caption" Color="Color.Default">
+            @L["Settings_NotifyPendingDeviceHint"]
+        </MudText>
+            </div>
+        </div>
+        </MudPaper>
+        <MudPaper Elevation="2" Class="pa-4 mb-4">
+        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_DisplayOptions"]</MudText>
 
-    <MudSwitch @bind-Value="_showRecentEvents"
-               Color="Color.Primary"
-               Label="@L["Settings_ShowRecentEvents"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        @L["Settings_ShowRecentEventsHint"]
-    </MudText>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudSelect @bind-Value="_dateFormat"
+                   Label="@L["Settings_DateFormat"]"
+                   Variant="Variant.Filled"
+                   Class="mb-3">
+            <MudSelectItem Value="@("short")">@L["Settings_DateShort"] (01/20/26)</MudSelectItem>
+            <MudSelectItem Value="@("medium")">@L["Settings_DateMedium"] (Jan 20, 2026)</MudSelectItem>
+            <MudSelectItem Value="@("long")">@L["Settings_DateLong"] (January 20, 2026)</MudSelectItem>
+            <MudSelectItem Value="@("iso")">ISO (2026-01-20)</MudSelectItem>
+            </MudSelect>
+            </div>
+            <div class="settings-field">
+            <MudSelect @bind-Value="_sizeFormat"
+                   Label="@L["Settings_SizeFormat"]"
+                   Variant="Variant.Filled">
+            <MudSelectItem Value="@("binary")">@L["Settings_SizeBinary"] (KiB, MiB, GiB)</MudSelectItem>
+            <MudSelectItem Value="@("decimal")">@L["Settings_SizeDecimal"] (KB, MB, GB)</MudSelectItem>
+            </MudSelect>
+            </div>
+        </div>
+        </MudPaper>
+</div>
 
-    <MudNumericField @bind-Value="_maxRecentEvents"
-                     Label="@L["Settings_MaxRecentEvents"]"
-                     Variant="Variant.Filled"
-                     Min="5"
-                     Max="50"
-                     Class="mt-3"
-                     Style="max-width: 300px;" />
-</MudPaper>
-
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Notifications"]</MudText>
-
-    <MudSwitch @bind-Value="_notifyOnSyncComplete"
-               Color="Color.Primary"
-               Label="@L["Settings_NotifySyncComplete"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        @L["Settings_NotifySyncCompleteHint"]
-    </MudText>
-
-    <MudSwitch @bind-Value="_notifyOnDeviceConnect"
-               Color="Color.Primary"
-               Label="@L["Settings_NotifyDeviceConnect"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        @L["Settings_NotifyDeviceConnectHint"]
-    </MudText>
-
-    <MudSwitch @bind-Value="_notifyOnError"
-               Color="Color.Primary"
-               Label="@L["Settings_NotifyError"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-        @L["Settings_NotifyErrorHint"]
-    </MudText>
-
-    <MudSwitch @bind-Value="_notifyOnPendingDevice"
-               Color="Color.Primary"
-               Label="@L["Settings_NotifyPendingDevice"]" />
-    <MudText Typo="Typo.caption" Color="Color.Default">
-        @L["Settings_NotifyPendingDeviceHint"]
-    </MudText>
-</MudPaper>
-
-<MudPaper Elevation="2" Class="pa-4 mb-4">
-    <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_DisplayOptions"]</MudText>
-
-    <MudSelect @bind-Value="_dateFormat"
-               Label="@L["Settings_DateFormat"]"
-               Variant="Variant.Filled"
-               Class="mb-3">
-        <MudSelectItem Value="@("short")">@L["Settings_DateShort"] (01/20/26)</MudSelectItem>
-        <MudSelectItem Value="@("medium")">@L["Settings_DateMedium"] (Jan 20, 2026)</MudSelectItem>
-        <MudSelectItem Value="@("long")">@L["Settings_DateLong"] (January 20, 2026)</MudSelectItem>
-        <MudSelectItem Value="@("iso")">ISO (2026-01-20)</MudSelectItem>
-    </MudSelect>
-
-    <MudSelect @bind-Value="_sizeFormat"
-               Label="@L["Settings_SizeFormat"]"
-               Variant="Variant.Filled">
-        <MudSelectItem Value="@("binary")">@L["Settings_SizeBinary"] (KiB, MiB, GiB)</MudSelectItem>
-        <MudSelectItem Value="@("decimal")">@L["Settings_SizeDecimal"] (KB, MB, GB)</MudSelectItem>
-    </MudSelect>
-</MudPaper>
-
-<div class="d-flex justify-end gap-2">
+<div class="d-flex justify-end gap-2 settings-actions">
     <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
         @L["Settings_ResetDefaults"]
     </MudButton>
@@ -119,7 +138,7 @@
         }
         @L["Settings_Save"]
     </MudButton>
-</div>
+</div></div>
 
 @code {
     private bool _isSaving;
@@ -184,6 +203,7 @@
             // Apply language change (requires page reload)
             if (_language != _initialLanguage)
             {
+                await ApiClient.SetUiLanguageAsync(_language);
                 Snackbar.Add(L["Settings_ApplyingLanguage"], Severity.Info);
                 await LocalizationService.SetLanguageAsync(_language);
                 // SetLanguageAsync will reload the page, code below won't execute
@@ -228,6 +248,6 @@
     private static string DetectCulture()
     {
         var code = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
-        return code is "en" or "ru" or "de" or "fr" or "es" ? code : "en";
+        return code is "en" or "ru" or "uk" or "de" or "fr" or "es" ? code : "en";
     }
 }

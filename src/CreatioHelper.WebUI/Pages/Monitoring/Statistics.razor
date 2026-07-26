@@ -8,7 +8,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<PageTitle>@L["Statistics_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Statistics_Title"] - CreatioHelper Agent</PageTitle>
 
 <MudText Typo="Typo.h4" Class="mb-4">@L["Statistics_Title"]</MudText>
 
@@ -127,7 +127,7 @@
                     </tr>
                     <tr>
                         <td>@L["Statistics_Started"]</td>
-                        <td class="text-right font-weight-bold">@_startedAt.ToString("g")</td>
+                        <td class="text-right font-weight-bold">@(_systemStartTime?.ToLocalTime().ToString("g") ?? "-")</td>
                     </tr>
                 </tbody>
             </MudSimpleTable>
@@ -234,6 +234,9 @@
 </MudPaper>
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     private bool _isLoading;
     private bool _initialLoadComplete;
 
@@ -258,7 +261,6 @@
     private long _databaseSize = 0;
     private int _goroutines;
     private string _version = "...";
-    private DateTime _startedAt = DateTime.UtcNow;
 
     private List<FolderStat> _folderStats = new();
     private List<DeviceStat> _deviceStats = new();
@@ -385,10 +387,10 @@
 
         try
         {
-            var status = await ApiClient.GetSystemStatusAsync();
-            var folders = await ApiClient.GetFoldersAsync();
-            var devices = await ApiClient.GetDevicesAsync();
-            var connections = await ApiClient.GetConnectionsAsync();
+            var status = await ApiClient.GetSystemStatusAsync(_pageCts.Token);
+            var folders = await ApiClient.GetFoldersAsync(_pageCts.Token);
+            var devices = await ApiClient.GetDevicesAsync(_pageCts.Token);
+            var connections = await ApiClient.GetConnectionsAsync(_pageCts.Token);
 
             var myId = status?.MyId;
 
@@ -409,9 +411,12 @@
             _totalFiles = 0;
             _totalBytes = 0;
 
-            foreach (var folder in folders)
+            var folderStatuses = await Task.WhenAll(folders.Select(f => ApiClient.GetFolderStatusAsync(f.Id, _pageCts.Token)));
+
+            for (var i = 0; i < folders.Length; i++)
             {
-                var folderStatus = await ApiClient.GetFolderStatusAsync(folder.Id);
+                var folder = folders[i];
+                var folderStatus = folderStatuses[i];
                 if (folderStatus != null)
                 {
                     _totalFiles += folderStatus.GlobalFiles;
@@ -438,10 +443,14 @@
             _downloadRate = 0;
             _uploadRate = 0;
 
-            foreach (var device in devices.Where(d => d.DeviceId != myId))
+            var remoteDevices = devices.Where(d => d.DeviceId != myId).ToArray();
+            var deviceStats = await Task.WhenAll(remoteDevices.Select(d => ApiClient.GetDeviceStatsAsync(d.DeviceId, _pageCts.Token)));
+
+            for (var i = 0; i < remoteDevices.Length; i++)
             {
+                var device = remoteDevices[i];
                 var conn = connections.FirstOrDefault(c => c.DeviceId == device.DeviceId);
-                var stats = await ApiClient.GetDeviceStatsAsync(device.DeviceId);
+                var stats = deviceStats[i];
 
                 _totalDownloaded += conn?.InBytesTotal ?? 0;
                 _totalUploaded += conn?.OutBytesTotal ?? 0;
@@ -461,13 +470,17 @@
             _deviceStats = newDeviceStats;
 
             // B1: Fetch real version
-            var ver = await ApiClient.GetVersionAsync();
+            var ver = await ApiClient.GetVersionAsync(_pageCts.Token);
             if (!string.IsNullOrEmpty(ver)) _version = ver;
 
             // B2: Calculate bytesSynced
             _bytesSynced = _totalDownloaded + _totalUploaded;
 
             _initialLoadComplete = true;
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -514,18 +527,13 @@
 
     private string GetLocalizedState(string state)
     {
-        return state.ToLower() switch
-        {
-            "idle" => L["FolderState_Idle"],
-            "syncing" => L["FolderState_Syncing"],
-            "scanning" => L["FolderState_Scanning"],
-            "error" => L["FolderState_Error"],
-            _ => L["FolderState_Unknown"]
-        };
+        return FolderDisplay.FormatState(state, L);
     }
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
         SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;
         SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;

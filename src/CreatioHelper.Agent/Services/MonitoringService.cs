@@ -88,6 +88,10 @@ public class MonitoringService : BackgroundService
             
                 await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error in monitoring service");
@@ -96,8 +100,15 @@ public class MonitoringService : BackgroundService
                 using var scope = _serviceProvider.CreateScope();
                 var metrics = scope.ServiceProvider.GetService<IMetricsService>();
                 metrics?.IncrementCounter("monitoring_error");
-                
-                await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(30), stoppingToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
             }
         }
     }

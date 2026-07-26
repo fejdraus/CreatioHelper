@@ -14,6 +14,7 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
 {
     private readonly ILogger<DatabaseMaintenanceService> _logger;
     private readonly string _connectionString;
+    private readonly Func<CancellationToken, Task<IReadOnlyCollection<string>>>? _activeFolderIdsProvider;
     private Timer? _timer;
     private bool _isRunning;
 
@@ -44,10 +45,12 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
 
     public DatabaseMaintenanceService(
         ILogger<DatabaseMaintenanceService> logger,
-        string connectionString)
+        string connectionString,
+        Func<CancellationToken, Task<IReadOnlyCollection<string>>>? activeFolderIdsProvider = null)
     {
         _logger = logger;
         _connectionString = connectionString;
+        _activeFolderIdsProvider = activeFolderIdsProvider;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -56,13 +59,25 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
         _logger.LogInformation("Database maintenance service started with interval {Interval}", MaintenanceInterval);
 
         // Run initial maintenance after a short delay
-        await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        try
+        {
+            await Task.Delay(TimeSpan.FromMinutes(1), stoppingToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _logger.LogInformation("Database maintenance service stopped before the first run");
+            return;
+        }
 
         while (!stoppingToken.IsCancellationRequested)
         {
             try
             {
                 await RunMaintenanceNowAsync(stoppingToken);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
             }
             catch (Exception ex)
             {
@@ -156,6 +171,12 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
                 "Database maintenance completed in {Duration}ms. Cleaned: {DeletedFiles} deleted files, {Orphaned} orphaned records, {Events} old events",
                 duration.TotalMilliseconds, deletedFilesCount, orphanedCount, eventsCount);
         }
+        catch (OperationCanceledException)
+        {
+            // Shutdown interrupted the maintenance pass - nothing went wrong
+            _logger.LogDebug("Database maintenance cancelled");
+            throw;
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Database maintenance failed");
@@ -176,14 +197,72 @@ public class DatabaseMaintenanceService : BackgroundService, IDatabaseMaintenanc
         return await command.ExecuteNonQueryAsync(cancellationToken);
     }
 
+    /// <summary>
+    /// Deletes metadata belonging to folders that are no longer configured.
+    /// The folder_config table is never populated - folders live in config.xml - so
+    /// scoping the delete to that table wiped the entire index on every run. The set
+    /// of known folder ids comes from the configuration, and an empty set aborts the
+    /// cleanup rather than deleting everything.
+    /// </summary>
     private async Task<int> CleanupOrphanedRecordsAsync(SqliteConnection connection, CancellationToken cancellationToken)
     {
+        var knownFolderIds = await GetKnownFolderIdsAsync(connection, cancellationToken);
+
+        if (knownFolderIds.Count == 0)
+        {
+            _logger.LogDebug("Skipping orphaned record cleanup: no configured folders are known");
+            return 0;
+        }
+
         using var command = connection.CreateCommand();
-        command.CommandText = @"
+        var parameterNames = new List<string>(knownFolderIds.Count);
+
+        var index = 0;
+        foreach (var folderId in knownFolderIds)
+        {
+            var parameterName = $"@folder{index++}";
+            parameterNames.Add(parameterName);
+            command.Parameters.AddWithValue(parameterName, folderId);
+        }
+
+        command.CommandText = $@"
             DELETE FROM file_metadata
-            WHERE folder_id NOT IN (SELECT folder_id FROM folder_config)";
+            WHERE folder_id NOT IN ({string.Join(", ", parameterNames)})";
 
         return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task<IReadOnlyCollection<string>> GetKnownFolderIdsAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        if (_activeFolderIdsProvider != null)
+        {
+            try
+            {
+                return await _activeFolderIdsProvider(cancellationToken);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not determine the configured folders; skipping orphaned record cleanup");
+                return Array.Empty<string>();
+            }
+        }
+
+        var ids = new List<string>();
+
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT folder_id FROM folder_config";
+
+        using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
+        {
+            ids.Add(reader.GetString(0));
+        }
+
+        return ids;
     }
 
     private async Task<int> CleanupOldEventsAsync(SqliteConnection connection, CancellationToken cancellationToken)

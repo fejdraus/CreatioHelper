@@ -78,6 +78,13 @@ public class StateContainer
         NotifyStateChanged();
     }
 
+    public void SetEvents(IEnumerable<SyncEvent> events)
+    {
+        _recentEvents.Clear();
+        _recentEvents.AddRange(events.OrderByDescending(e => e.Time).Take(100));
+        NotifyStateChanged();
+    }
+
     public void ClearEvents()
     {
         _recentEvents.Clear();

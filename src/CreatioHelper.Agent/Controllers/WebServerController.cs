@@ -140,36 +140,28 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var result = await webServerService.StopSiteAsync(siteName);
+        var dto = new WebServerResultDto
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var result = await webServerService.StopSiteAsync(siteName);
-            var dto = new WebServerResultDto
+            Success = result.Success,
+            Message = result.Message,
+            Data = result.Data is null ? null : new DataDto
             {
-                Success = result.Success,
-                Message = result.Message,
-                Data = result.Data is null ? null : new DataDto
-                {
-                    ServiceName = result.Data.ServiceName,
-                    Status = result.Data.Status,
-                    Details = result.Data.Details,
-                    PoolName = result.Data.PoolName
-                }
-            };
+                ServiceName = result.Data.ServiceName,
+                Status = result.Data.Status,
+                Details = result.Data.Details,
+                PoolName = result.Data.PoolName
+            }
+        };
 
-            if (result.Success)
-            {
-                return Ok(dto);
-            }
-            else
-            {
-                return BadRequest(dto);
-            }
-        }
-        catch (Exception ex)
+        if (result.Success)
         {
-            _logger.LogError(ex, "Error stopping site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
+            return Ok(dto);
+        }
+        else
+        {
+            return BadRequest(dto);
         }
     }
 
@@ -182,36 +174,28 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var result = await webServerService.StartAppPoolAsync(poolName);
+        var dto = new WebServerResultDto
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var result = await webServerService.StartAppPoolAsync(poolName);
-            var dto = new WebServerResultDto
+            Success = result.Success,
+            Message = result.Message,
+            Data = result.Data is null ? null : new DataDto
             {
-                Success = result.Success,
-                Message = result.Message,
-                Data = result.Data is null ? null : new DataDto
-                {
-                    ServiceName = result.Data.ServiceName,
-                    Status = result.Data.Status,
-                    Details = result.Data.Details,
-                    PoolName = result.Data.PoolName
-                }
-            };
+                ServiceName = result.Data.ServiceName,
+                Status = result.Data.Status,
+                Details = result.Data.Details,
+                PoolName = result.Data.PoolName
+            }
+        };
 
-            if (result.Success)
-            {
-                return Ok(dto);
-            }
-            else
-            {
-                return BadRequest(dto);
-            }
-        }
-        catch (Exception ex)
+        if (result.Success)
         {
-            _logger.LogError(ex, "Error starting app pool {PoolName}", poolName);
-            return StatusCode(500, new { error = "Internal server error" });
+            return Ok(dto);
+        }
+        else
+        {
+            return BadRequest(dto);
         }
     }
 
@@ -224,36 +208,28 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var result = await webServerService.StopAppPoolAsync(poolName);
+        var dto = new WebServerResultDto
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var result = await webServerService.StopAppPoolAsync(poolName);
-            var dto = new WebServerResultDto
+            Success = result.Success,
+            Message = result.Message,
+            Data = result.Data is null ? null : new DataDto
             {
-                Success = result.Success,
-                Message = result.Message,
-                Data = result.Data is null ? null : new DataDto
-                {
-                    ServiceName = result.Data.ServiceName,
-                    Status = result.Data.Status,
-                    Details = result.Data.Details,
-                    PoolName = result.Data.PoolName
-                }
-            };
+                ServiceName = result.Data.ServiceName,
+                Status = result.Data.Status,
+                Details = result.Data.Details,
+                PoolName = result.Data.PoolName
+            }
+        };
 
-            if (result.Success)
-            {
-                return Ok(dto);
-            }
-            else
-            {
-                return BadRequest(dto);
-            }
-        }
-        catch (Exception ex)
+        if (result.Success)
         {
-            _logger.LogError(ex, "Error stopping app pool {PoolName}", poolName);
-            return StatusCode(500, new { error = "Internal server error" });
+            return Ok(dto);
+        }
+        else
+        {
+            return BadRequest(dto);
         }
     }
 
@@ -266,47 +242,39 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        if (OperatingSystem.IsWindows() && _iisStatusService != null)
         {
-            if (OperatingSystem.IsWindows() && _iisStatusService != null)
+            var status = await _iisStatusService.GetServerStatusAsync(siteName, poolName);
+            var dto = new ServerStatusInfo
             {
-                var status = await _iisStatusService.GetServerStatusAsync(siteName, poolName);
-                var dto = new ServerStatusInfo
-                {
-                    ServerName = status.ServerName,
-                    SiteName = status.SiteName,
-                    PoolName = status.PoolName,
-                    SiteStatus = status.SiteStatus,
-                    PoolStatus = status.PoolStatus,
-                    IsStatusLoading = status.IsStatusLoading,
-                    IsHealthy = status.IsHealthy,
-                    LastUpdated = status.LastUpdated,
-                    ErrorMessage = status.ErrorMessage
-                };
-                return Ok(dto);
-            }
-
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var siteResult = await webServerService.GetSiteStatusAsync(siteName);
-        var resultDto = new WebServerResultDto
-            {
-                Success = siteResult.Success,
-                Message = siteResult.Message,
-                Data = siteResult.Data is null ? null : new DataDto
-                {
-                    ServiceName = siteResult.Data.ServiceName,
-                    Status = siteResult.Data.Status,
-                    Details = siteResult.Data.Details,
-                    PoolName = siteResult.Data.PoolName
-                }
+                ServerName = status.ServerName,
+                SiteName = status.SiteName,
+                PoolName = status.PoolName,
+                SiteStatus = status.SiteStatus,
+                PoolStatus = status.PoolStatus,
+                IsStatusLoading = status.IsStatusLoading,
+                IsHealthy = status.IsHealthy,
+                LastUpdated = status.LastUpdated,
+                ErrorMessage = status.ErrorMessage
             };
-            return Ok(resultDto);
+            return Ok(dto);
         }
-        catch (Exception ex)
+
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var siteResult = await webServerService.GetSiteStatusAsync(siteName);
+    var resultDto = new WebServerResultDto
         {
-            _logger.LogError(ex, "Error getting status for site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            Success = siteResult.Success,
+            Message = siteResult.Message,
+            Data = siteResult.Data is null ? null : new DataDto
+            {
+                ServiceName = siteResult.Data.ServiceName,
+                Status = siteResult.Data.Status,
+                Details = siteResult.Data.Details,
+                PoolName = siteResult.Data.PoolName
+            }
+        };
+        return Ok(resultDto);
     }
 
     [HttpGet("sites")]
@@ -318,28 +286,20 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var sites = await webServerService.GetAllSitesAsync();
+        var dto = sites.Select(s => new WebServerStatus
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var sites = await webServerService.GetAllSitesAsync();
-            var dto = sites.Select(s => new WebServerStatus
-            {
-                Name = s.Name,
-                Status = s.Status,
-                Type = s.Type,
-                Port = s.Port,
-                IsRunning = s.IsRunning,
-                LastChecked = s.LastChecked,
-                ErrorMessage = s.ErrorMessage,
-                Properties = s.Properties
-            });
-            return Ok(dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all sites");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            Name = s.Name,
+            Status = s.Status,
+            Type = s.Type,
+            Port = s.Port,
+            IsRunning = s.IsRunning,
+            LastChecked = s.LastChecked,
+            ErrorMessage = s.ErrorMessage,
+            Properties = s.Properties
+        });
+        return Ok(dto);
     }
 
     [HttpGet("apppools")]
@@ -351,28 +311,20 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var appPools = await webServerService.GetAllAppPoolsAsync();
+        var dto = appPools.Select(p => new WebServerStatus
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var appPools = await webServerService.GetAllAppPoolsAsync();
-            var dto = appPools.Select(p => new WebServerStatus
-            {
-                Name = p.Name,
-                Status = p.Status,
-                Type = p.Type,
-                Port = p.Port,
-                IsRunning = p.IsRunning,
-                LastChecked = p.LastChecked,
-                ErrorMessage = p.ErrorMessage,
-                Properties = p.Properties
-            });
-            return Ok(dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting all app pools");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            Name = p.Name,
+            Status = p.Status,
+            Type = p.Type,
+            Port = p.Port,
+            IsRunning = p.IsRunning,
+            LastChecked = p.LastChecked,
+            ErrorMessage = p.ErrorMessage,
+            Properties = p.Properties
+        });
+        return Ok(dto);
     }
 
     [HttpPost("status/multiple")]
@@ -384,28 +336,20 @@ public class WebServerController : ControllerBase
             return BadRequest("Server status checking is not supported on this platform");
         }
 
-        try
+        var statuses = await _iisStatusService.GetMultipleServersStatusAsync(requests);
+        var dto = statuses.Select(s => new ServerStatusInfo
         {
-            var statuses = await _iisStatusService.GetMultipleServersStatusAsync(requests);
-            var dto = statuses.Select(s => new ServerStatusInfo
-            {
-                ServerName = s.ServerName,
-                SiteName = s.SiteName,
-                PoolName = s.PoolName,
-                SiteStatus = s.SiteStatus,
-                PoolStatus = s.PoolStatus,
-                IsStatusLoading = s.IsStatusLoading,
-                IsHealthy = s.IsHealthy,
-                LastUpdated = s.LastUpdated,
-                ErrorMessage = s.ErrorMessage
-            });
-            return Ok(dto);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting multiple server statuses");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            ServerName = s.ServerName,
+            SiteName = s.SiteName,
+            PoolName = s.PoolName,
+            SiteStatus = s.SiteStatus,
+            PoolStatus = s.PoolStatus,
+            IsStatusLoading = s.IsStatusLoading,
+            IsHealthy = s.IsHealthy,
+            LastUpdated = s.LastUpdated,
+            ErrorMessage = s.ErrorMessage
+        });
+        return Ok(dto);
     }
 
     // Additional methods with detailed information
@@ -418,28 +362,20 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var sites = await webServerService.GetAllSitesAsync();
+        
+        // Group by status for easier display
+        var result = new
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var sites = await webServerService.GetAllSitesAsync();
-            
-            // Group by status for easier display
-            var result = new
-            {
-                TotalSites = sites.Count,
-                RunningSites = sites.Count(s => s.IsRunning),
-                StoppedSites = sites.Count(s => !s.IsRunning),
-                Sites = sites.OrderBy(s => s.Name).ToList(),
-                LastUpdated = DateTime.UtcNow
-            };
-            
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting detailed sites information");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            TotalSites = sites.Count,
+            RunningSites = sites.Count(s => s.IsRunning),
+            StoppedSites = sites.Count(s => !s.IsRunning),
+            Sites = sites.OrderBy(s => s.Name).ToList(),
+            LastUpdated = DateTime.UtcNow
+        };
+        
+        return Ok(result);
     }
 
     [HttpGet("apppools/detailed")]
@@ -451,28 +387,20 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var appPools = await webServerService.GetAllAppPoolsAsync();
+        
+        // Group by status for easier display
+        var result = new
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var appPools = await webServerService.GetAllAppPoolsAsync();
-            
-            // Group by status for easier display
-            var result = new
-            {
-                TotalAppPools = appPools.Count,
-                RunningAppPools = appPools.Count(s => s.IsRunning),
-                StoppedAppPools = appPools.Count(s => !s.IsRunning),
-                AppPools = appPools.OrderBy(s => s.Name).ToList(),
-                LastUpdated = DateTime.UtcNow
-            };
-            
-            return Ok(result);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting detailed app pools information");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            TotalAppPools = appPools.Count,
+            RunningAppPools = appPools.Count(s => s.IsRunning),
+            StoppedAppPools = appPools.Count(s => !s.IsRunning),
+            AppPools = appPools.OrderBy(s => s.Name).ToList(),
+            LastUpdated = DateTime.UtcNow
+        };
+        
+        return Ok(result);
     }
 
     [HttpGet("overview")]
@@ -484,47 +412,39 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
-        {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var sitesTask = webServerService.GetAllSitesAsync();
-            var appPoolsTask = webServerService.GetAllAppPoolsAsync();
-            
-            await Task.WhenAll(sitesTask, appPoolsTask);
-            
-            var sites = await sitesTask;
-            var appPools = await appPoolsTask;
-            
-            var webServerType = await _webServerFactory.GetSupportedWebServerTypeAsync();
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var sitesTask = webServerService.GetAllSitesAsync();
+        var appPoolsTask = webServerService.GetAllAppPoolsAsync();
+        
+        await Task.WhenAll(sitesTask, appPoolsTask);
+        
+        var sites = await sitesTask;
+        var appPools = await appPoolsTask;
+        
+        var webServerType = await _webServerFactory.GetSupportedWebServerTypeAsync();
 
-            var overview = new
-            {
-                ServerName = Environment.MachineName,
-                Platform = $"{_platformService.GetPlatform()}/{webServerType}",
-                LastUpdated = DateTime.UtcNow,
-                Sites = new
-                {
-                    Total = sites.Count,
-                    Running = sites.Count(s => s.IsRunning),
-                    Stopped = sites.Count(s => !s.IsRunning),
-                    Details = sites.Select(s => new { s.Name, s.Status, s.Port }).ToList()
-                },
-                AppPools = new
-                {
-                    Total = appPools.Count,
-                    Running = appPools.Count(s => s.IsRunning),
-                    Stopped = appPools.Count(s => !s.IsRunning),
-                    Details = appPools.Select(s => new { s.Name, s.Status }).ToList()
-                }
-            };
-            
-            return Ok(overview);
-        }
-        catch (Exception ex)
+        var overview = new
         {
-            _logger.LogError(ex, "Error getting web server overview");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            ServerName = Environment.MachineName,
+            Platform = $"{_platformService.GetPlatform()}/{webServerType}",
+            LastUpdated = DateTime.UtcNow,
+            Sites = new
+            {
+                Total = sites.Count,
+                Running = sites.Count(s => s.IsRunning),
+                Stopped = sites.Count(s => !s.IsRunning),
+                Details = sites.Select(s => new { s.Name, s.Status, s.Port }).ToList()
+            },
+            AppPools = new
+            {
+                Total = appPools.Count,
+                Running = appPools.Count(s => s.IsRunning),
+                Stopped = appPools.Count(s => !s.IsRunning),
+                Details = appPools.Select(s => new { s.Name, s.Status }).ToList()
+            }
+        };
+        
+        return Ok(overview);
     }
     
     [HttpPost("sites/{siteName}/start")]
@@ -536,36 +456,28 @@ public class WebServerController : ControllerBase
             return BadRequest("Web server management is not supported on this platform");
         }
 
-        try
+        var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
+        var result = await webServerService.StartSiteAsync(siteName);
+        var dto = new WebServerResultDto
         {
-            var webServerService = await _webServerFactory.CreateWebServerServiceAsync();
-            var result = await webServerService.StartSiteAsync(siteName);
-            var dto = new WebServerResultDto
+            Success = result.Success,
+            Message = result.Message,
+        Data = result.Data is null ? null : new DataDto
             {
-                Success = result.Success,
-                Message = result.Message,
-            Data = result.Data is null ? null : new DataDto
-                {
-                    ServiceName = result.Data.ServiceName,
-                    Status = result.Data.Status,
-                    Details = result.Data.Details,
-                    PoolName = result.Data.PoolName
-                }
-            };
+                ServiceName = result.Data.ServiceName,
+                Status = result.Data.Status,
+                Details = result.Data.Details,
+                PoolName = result.Data.PoolName
+            }
+        };
 
-            if (result.Success)
-            {
-                return Ok(dto);
-            }
-            else
-            {
-                return BadRequest(dto);
-            }
-        }
-        catch (Exception ex)
+        if (result.Success)
         {
-            _logger.LogError(ex, "Error starting site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
+            return Ok(dto);
+        }
+        else
+        {
+            return BadRequest(dto);
         }
     }
 }

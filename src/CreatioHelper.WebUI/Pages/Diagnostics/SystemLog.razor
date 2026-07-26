@@ -7,7 +7,7 @@
 @inject NavigationManager Navigation
 @implements IDisposable
 
-<PageTitle>@L["SystemLog_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["SystemLog_Title"] - CreatioHelper Agent</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["SystemLog_Title"]</MudText>
@@ -101,7 +101,7 @@
             @foreach (var log in _filteredLogs)
             {
                 <div class="log-entry @GetLogLevelClass(log.Level)">
-                    <span class="log-timestamp">@log.Timestamp.ToString("HH:mm:ss.fff")</span>
+                    <span class="log-timestamp">@LocalTimeConverter.ToLocal(log.Timestamp).ToString("HH:mm:ss.fff")</span>
                     <span class="log-level">@log.Level.ToUpper()</span>
                     <span class="log-facility">[@log.Facility]</span>
                     <span class="log-message">@log.Message</span>
@@ -126,10 +126,13 @@
 
     .log-viewer {
         flex: 1;
+        /* app.css caps .log-viewer at 400px; here it has to fill the card instead */
+        max-height: none;
         overflow-y: auto;
         font-family: 'Consolas', 'Monaco', monospace;
         font-size: 12px;
         background: var(--mud-palette-background);
+        color: var(--mud-palette-text-primary);
     }
 
     .log-viewer.auto-scroll {
@@ -139,7 +142,10 @@
     .log-entry {
         padding: 2px 8px;
         border-bottom: 1px solid var(--mud-palette-lines-default);
-        white-space: nowrap;
+        /* Long file paths would otherwise stretch the list far past the viewport,
+           leaving a horizontal scrollbar and empty space next to the shorter rows */
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
 
     .log-entry:hover {

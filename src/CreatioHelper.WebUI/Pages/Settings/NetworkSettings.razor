@@ -5,8 +5,9 @@
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
 
-<PageTitle>@L["Settings_Network_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_Network_Title"] - CreatioHelper Agent</PageTitle>
 
+<div class="settings-page">
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings_Network_Title"]</MudText>
 
 @if (_isLoading)
@@ -15,299 +16,313 @@
 }
 else if (_config != null)
 {
+    <div class="settings-columns">
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_ListenAddresses"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_syncProtocolListen"
-                              Label="@L["Settings_Network_SyncProtocol"]"
-                              Variant="Variant.Filled"
-                              HelperText="@L["Settings_Network_SyncProtocolDesc"]" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_guiAddress"
-                              Label="@L["Settings_Network_GuiAddress"]"
-                              Variant="Variant.Filled"
-                              HelperText="@L["Settings_Network_GuiAddressDesc"]" />
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_NatSettings"]</MudText>
-
-        <MudSwitch @bind-Value="_natEnabled"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Network_NatEnabled"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Network_NatEnabledDesc"]
-        </MudText>
-
-        @if (_natEnabled)
-        {
-            <MudDivider Class="my-3" />
-
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatMethods"]</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="_upnpEnabled"
-                               Color="Color.Secondary"
-                               Label="@L["Settings_Network_UpnpEnabled"]" />
-                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                        @L["Settings_Network_UpnpEnabledDesc"]
-                    </MudText>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="_natPmpEnabled"
-                               Color="Color.Secondary"
-                               Label="@L["Settings_Network_NatPmpEnabled"]" />
-                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                        @L["Settings_Network_NatPmpEnabledDesc"]
-                    </MudText>
-                </MudItem>
-            </MudGrid>
-
-            <MudDivider Class="my-3" />
-
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatLeaseSettings"]</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="_natLeaseMinutes"
-                                     Label="@L["Settings_Network_NatLeaseMins"]"
-                                     Variant="Variant.Filled"
-                                     Min="5"
-                                     Max="1440"
-                                     HelperText="@L["Settings_Network_NatLeaseMinsDesc"]" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="_natRenewalMinutes"
-                                     Label="@L["Settings_Network_NatRenewalMins"]"
-                                     Variant="Variant.Filled"
-                                     Min="1"
-                                     Max="120"
-                                     HelperText="@L["Settings_Network_NatRenewalMinsDesc"]" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="_natTimeoutSeconds"
-                                     Label="@L["Settings_Network_NatTimeoutSecs"]"
-                                     Variant="Variant.Filled"
-                                     Min="5"
-                                     Max="60"
-                                     HelperText="@L["Settings_Network_NatTimeoutSecsDesc"]" />
-                </MudItem>
-            </MudGrid>
-
-            <MudDivider Class="my-3" />
-
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_StunConfig"]</MudText>
-
-            <MudTextField @bind-Value="_stunServers"
-                          Label="@L["Settings_Network_StunServers"]"
-                          Lines="3"
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudTextField @bind-Value="_syncProtocolListen"
+                          Label="@L["Settings_Network_SyncProtocol"]"
                           Variant="Variant.Filled"
-                          HelperText="@L["Settings_Network_StunServersDesc"]" />
-
-            <MudNumericField @bind-Value="_stunKeepaliveSeconds"
-                             Label="@L["Settings_Network_StunKeepalive"]"
-                             Variant="Variant.Filled"
-                             Min="10"
-                             Max="300"
-                             Class="mt-3"
-                             HelperText="@L["Settings_Network_StunKeepaliveDesc"]" />
-        }
+                          HelperText="@L["Settings_Network_SyncProtocolDesc"]" />
+            </div>
+            <div class="settings-field">
+            <MudTextField @bind-Value="_guiAddress"
+                          Label="@L["Settings_Network_GuiAddress"]"
+                          Variant="Variant.Filled"
+                          HelperText="@L["Settings_Network_GuiAddressDesc"]" />
+            </div>
+        </div>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Discovery"]</MudText>
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_NatSettings"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudSwitch @bind-Value="_globalAnnounceEnabled"
-                           Color="Color.Primary"
-                           Label="@L["Settings_Network_GlobalDiscovery"]" />
-                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-                    @L["Settings_Network_GlobalDiscoveryDesc"]
+<MudSwitch @bind-Value="_natEnabled"
+           Color="Color.Primary"
+           Label="@L["Settings_Network_NatEnabled"]" />
+<MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+    @L["Settings_Network_NatEnabledDesc"]
+</MudText>
+
+@if (_natEnabled)
+{
+    <MudDivider Class="my-3" />
+
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatMethods"]</MudText>
+
+            <div class="settings-fields">
+                <div class="settings-field">
+                <MudSwitch @bind-Value="_upnpEnabled"
+                           Color="Color.Secondary"
+                           Label="@L["Settings_Network_UpnpEnabled"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                    @L["Settings_Network_UpnpEnabledDesc"]
                 </MudText>
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSwitch @bind-Value="_localAnnounceEnabled"
-                           Color="Color.Primary"
-                           Label="@L["Settings_Network_LocalDiscovery"]" />
-                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-                    @L["Settings_Network_LocalDiscoveryDesc"]
+                </div>
+                <div class="settings-field">
+                <MudSwitch @bind-Value="_natPmpEnabled"
+                           Color="Color.Secondary"
+                           Label="@L["Settings_Network_NatPmpEnabled"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                    @L["Settings_Network_NatPmpEnabledDesc"]
                 </MudText>
-            </MudItem>
-        </MudGrid>
+                </div>
+            </div>
 
-        <MudDivider Class="my-3" />
+    <MudDivider Class="my-3" />
 
-        @if (_globalAnnounceEnabled)
-        {
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_GlobalDiscoveryServers"]</MudText>
-            <MudTextField @bind-Value="_globalAnnounceServers"
-                          Lines="3"
-                          Variant="Variant.Filled"
-                          HelperText="@L["Settings_Network_GlobalDiscoveryServersDesc"]" />
-        }
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_NatLeaseSettings"]</MudText>
 
-        @if (_localAnnounceEnabled)
-        {
-            <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">@L["Settings_Network_LocalDiscoverySettings"]</MudText>
-
-            <MudGrid>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="_localAnnouncePort"
-                                     Label="@L["Settings_Network_LocalAnnouncePort"]"
-                                     Variant="Variant.Filled"
-                                     Min="1024"
-                                     Max="65535"
-                                     HelperText="@L["Settings_Network_LocalAnnouncePortDesc"]" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudTextField @bind-Value="_localAnnounceMCAddr"
-                                  Label="@L["Settings_Network_MulticastAddress"]"
-                                  Variant="Variant.Filled"
-                                  HelperText="@L["Settings_Network_MulticastAddressDesc"]" />
-                </MudItem>
-                <MudItem xs="12" md="4">
-                    <MudNumericField @bind-Value="_announceIntervalS"
-                                     Label="@L["Settings_Network_AnnounceInterval"]"
-                                     Variant="Variant.Filled"
-                                     Min="10"
-                                     Max="3600"
-                                     HelperText="@L["Settings_Network_AnnounceIntervalDesc"]" />
-                </MudItem>
-            </MudGrid>
-        }
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Relay"]</MudText>
-
-        <MudSwitch @bind-Value="_relaysEnabled"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Network_RelayEnabled"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Network_RelayEnabledDesc"]
-        </MudText>
-
-        @if (_relaysEnabled)
-        {
-            <MudDivider Class="my-3" />
-
-            <MudGrid>
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="_relaysOnly"
-                               Color="Color.Secondary"
-                               Label="@L["Settings_Network_RelayOnlyMode"]" />
-                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                        @L["Settings_Network_RelayOnlyModeDesc"]
-                    </MudText>
-                </MudItem>
-                <MudItem xs="12" md="6">
-                    <MudSwitch @bind-Value="_relayWithoutGlobalAnn"
-                               Color="Color.Secondary"
-                               Label="@L["Settings_Network_RelayWithoutGlobalAnn"]" />
-                    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-                        @L["Settings_Network_RelayWithoutGlobalAnnDesc"]
-                    </MudText>
-                </MudItem>
-            </MudGrid>
-
-            <MudDivider Class="my-3" />
-
-            <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_RelayServers"]</MudText>
-            <MudTextField @bind-Value="_relayServers"
-                          Lines="3"
-                          Variant="Variant.Filled"
-                          HelperText="@L["Settings_Network_RelayServersDesc"]" />
-
-            <MudNumericField @bind-Value="_relayReconnectIntervalM"
-                             Label="@L["Settings_Network_RelayReconnectInterval"]"
-                             Variant="Variant.Filled"
-                             Min="1"
-                             Max="60"
-                             Class="mt-3"
-                             HelperText="@L["Settings_Network_RelayReconnectIntervalDesc"]" />
-        }
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Bandwidth"]</MudText>
-
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudNumericField @bind-Value="_maxSendKbps"
-                                 Label="@L["Settings_Network_MaxSendKbps"]"
+            <div class="settings-fields">
+                <div class="settings-field">
+                <MudNumericField @bind-Value="_natLeaseMinutes"
+                                 Label="@L["Settings_Network_NatLeaseMins"]"
                                  Variant="Variant.Filled"
-                                 Min="0"
-                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudNumericField @bind-Value="_maxRecvKbps"
-                                 Label="@L["Settings_Network_MaxRecvKbps"]"
+                                 Min="5"
+                                 Max="1440"
+                                 HelperText="@L["Settings_Network_NatLeaseMinsDesc"]" />
+                </div>
+                <div class="settings-field">
+                <MudNumericField @bind-Value="_natRenewalMinutes"
+                                 Label="@L["Settings_Network_NatRenewalMins"]"
                                  Variant="Variant.Filled"
-                                 Min="0"
-                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
-            </MudItem>
-        </MudGrid>
-
-        <MudSwitch @bind-Value="_limitBandwidthInLan"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Network_LimitBandwidthLan"]"
-                   Class="mt-3" />
-        <MudText Typo="Typo.caption" Color="Color.Default">
-            @L["Settings_Network_LimitBandwidthLanDesc"]
-        </MudText>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_ConnectionLimits"]</MudText>
-
-        <MudGrid>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_maxConcurrentIncoming"
-                                 Label="@L["Settings_Network_MaxIncoming"]"
+                                 Min="1"
+                                 Max="120"
+                                 HelperText="@L["Settings_Network_NatRenewalMinsDesc"]" />
+                </div>
+                <div class="settings-field">
+                <MudNumericField @bind-Value="_natTimeoutSeconds"
+                                 Label="@L["Settings_Network_NatTimeoutSecs"]"
                                  Variant="Variant.Filled"
-                                 Min="0"
-                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_maxConcurrentOutgoing"
-                                 Label="@L["Settings_Network_MaxOutgoing"]"
-                                 Variant="Variant.Filled"
-                                 Min="0"
-                                 HelperText="@L["Settings_Network_UnlimitedHint"]" />
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_reconnectionIntervalS"
-                                 Label="@L["Settings_Network_ReconnectInterval"]"
-                                 Variant="Variant.Filled"
-                                 Min="10"
-                                 HelperText="@L["Settings_Network_ReconnectIntervalDesc"]" />
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
+                                 Min="5"
+                                 Max="60"
+                                 HelperText="@L["Settings_Network_NatTimeoutSecsDesc"]" />
+                </div>
+            </div>
 
-    <div class="d-flex justify-end gap-2">
-        <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
-            @L["Common_ResetDefaults"]
-        </MudButton>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="SaveSettingsAsync"
-                   Disabled="@_isSaving">
-            @if (_isSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @L["Common_Save"]
-        </MudButton>
+    <MudDivider Class="my-3" />
+
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_StunConfig"]</MudText>
+
+    <div class="settings-fields">
+        <div class="settings-field">
+        <MudTextField @bind-Value="_stunServers"
+                      Label="@L["Settings_Network_StunServers"]"
+                      Lines="3"
+                      Variant="Variant.Filled"
+                      HelperText="@L["Settings_Network_StunServersDesc"]" />
+        </div>
+        <div class="settings-field">
+        <MudNumericField @bind-Value="_stunKeepaliveSeconds"
+                         Label="@L["Settings_Network_StunKeepalive"]"
+                         Variant="Variant.Filled"
+                         Min="10"
+                         Max="300"
+                         Class="mt-3"
+                         HelperText="@L["Settings_Network_StunKeepaliveDesc"]" />
+        </div>
     </div>
 }
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Discovery"]</MudText>
+
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_globalAnnounceEnabled"
+                       Color="Color.Primary"
+                       Label="@L["Settings_Network_GlobalDiscovery"]" />
+            <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+                @L["Settings_Network_GlobalDiscoveryDesc"]
+            </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_localAnnounceEnabled"
+                       Color="Color.Primary"
+                       Label="@L["Settings_Network_LocalDiscovery"]" />
+            <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+                @L["Settings_Network_LocalDiscoveryDesc"]
+            </MudText>
+            </div>
+        </div>
+
+<MudDivider Class="my-3" />
+
+@if (_globalAnnounceEnabled)
+{
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_GlobalDiscoveryServers"]</MudText>
+    <MudTextField @bind-Value="_globalAnnounceServers"
+                  Lines="3"
+                  Variant="Variant.Filled"
+                  HelperText="@L["Settings_Network_GlobalDiscoveryServersDesc"]" />
+}
+
+@if (_localAnnounceEnabled)
+{
+    <MudText Typo="Typo.subtitle2" Class="mb-2 mt-4">@L["Settings_Network_LocalDiscoverySettings"]</MudText>
+
+            <div class="settings-fields">
+                <div class="settings-field">
+                <MudNumericField @bind-Value="_localAnnouncePort"
+                                 Label="@L["Settings_Network_LocalAnnouncePort"]"
+                                 Variant="Variant.Filled"
+                                 Min="1024"
+                                 Max="65535"
+                                 HelperText="@L["Settings_Network_LocalAnnouncePortDesc"]" />
+                </div>
+                <div class="settings-field">
+                <MudTextField @bind-Value="_localAnnounceMCAddr"
+                              Label="@L["Settings_Network_MulticastAddress"]"
+                              Variant="Variant.Filled"
+                              HelperText="@L["Settings_Network_MulticastAddressDesc"]" />
+                </div>
+                <div class="settings-field">
+                <MudNumericField @bind-Value="_announceIntervalS"
+                                 Label="@L["Settings_Network_AnnounceInterval"]"
+                                 Variant="Variant.Filled"
+                                 Min="10"
+                                 Max="3600"
+                                 HelperText="@L["Settings_Network_AnnounceIntervalDesc"]" />
+                </div>
+            </div>
+}
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Relay"]</MudText>
+
+<MudSwitch @bind-Value="_relaysEnabled"
+           Color="Color.Primary"
+           Label="@L["Settings_Network_RelayEnabled"]" />
+<MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+    @L["Settings_Network_RelayEnabledDesc"]
+</MudText>
+
+@if (_relaysEnabled)
+{
+    <MudDivider Class="my-3" />
+
+            <div class="settings-fields">
+                <div class="settings-field">
+                <MudSwitch @bind-Value="_relaysOnly"
+                           Color="Color.Secondary"
+                           Label="@L["Settings_Network_RelayOnlyMode"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                    @L["Settings_Network_RelayOnlyModeDesc"]
+                </MudText>
+                </div>
+                <div class="settings-field">
+                <MudSwitch @bind-Value="_relayWithoutGlobalAnn"
+                           Color="Color.Secondary"
+                           Label="@L["Settings_Network_RelayWithoutGlobalAnn"]" />
+                <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                    @L["Settings_Network_RelayWithoutGlobalAnnDesc"]
+                </MudText>
+                </div>
+            </div>
+
+    <MudDivider Class="my-3" />
+
+    <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_RelayServers"]</MudText>
+    <div class="settings-fields">
+        <div class="settings-field">
+        <MudTextField @bind-Value="_relayServers"
+                      Lines="3"
+                      Variant="Variant.Filled"
+                      HelperText="@L["Settings_Network_RelayServersDesc"]" />
+        </div>
+        <div class="settings-field">
+        <MudNumericField @bind-Value="_relayReconnectIntervalM"
+                         Label="@L["Settings_Network_RelayReconnectInterval"]"
+                         Variant="Variant.Filled"
+                         Min="1"
+                         Max="60"
+                         Class="mt-3"
+                         HelperText="@L["Settings_Network_RelayReconnectIntervalDesc"]" />
+        </div>
+    </div>
+}
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_Bandwidth"]</MudText>
+
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxSendKbps"
+                             Label="@L["Settings_Network_MaxSendKbps"]"
+                             Variant="Variant.Filled"
+                             Min="0"
+                             HelperText="@L["Settings_Network_UnlimitedHint"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxRecvKbps"
+                             Label="@L["Settings_Network_MaxRecvKbps"]"
+                             Variant="Variant.Filled"
+                             Min="0"
+                             HelperText="@L["Settings_Network_UnlimitedHint"]" />
+            </div>
+            <div class="settings-field">
+    <MudSwitch @bind-Value="_limitBandwidthInLan"
+               Color="Color.Primary"
+               Label="@L["Settings_Network_LimitBandwidthLan"]"
+               Class="mt-3" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        @L["Settings_Network_LimitBandwidthLanDesc"]
+    </MudText>
+            </div>
+        </div>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Network_ConnectionLimits"]</MudText>
+
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxConcurrentIncoming"
+                             Label="@L["Settings_Network_MaxIncoming"]"
+                             Variant="Variant.Filled"
+                             Min="0"
+                             HelperText="@L["Settings_Network_UnlimitedHint"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxConcurrentOutgoing"
+                             Label="@L["Settings_Network_MaxOutgoing"]"
+                             Variant="Variant.Filled"
+                             Min="0"
+                             HelperText="@L["Settings_Network_UnlimitedHint"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_reconnectionIntervalS"
+                             Label="@L["Settings_Network_ReconnectInterval"]"
+                             Variant="Variant.Filled"
+                             Min="10"
+                             HelperText="@L["Settings_Network_ReconnectIntervalDesc"]" />
+            </div>
+        </div>
+    </MudPaper>
+    </div>
+
+    <div class="d-flex justify-end gap-2 settings-actions">
+<MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
+    @L["Common_ResetDefaults"]
+</MudButton>
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           OnClick="SaveSettingsAsync"
+           Disabled="@_isSaving">
+    @if (_isSaving)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+    }
+    @L["Common_Save"]
+</MudButton>
+    </div>
+}
+</div>
 
 @code {
     private bool _isLoading;
@@ -355,190 +370,190 @@ else if (_config != null)
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadSettingsAsync();
+await LoadSettingsAsync();
     }
 
     private async Task LoadSettingsAsync()
     {
-        _isLoading = true;
-        StateHasChanged();
+_isLoading = true;
+StateHasChanged();
 
-        try
-        {
-            _config = await ApiClient.GetConfigAsync();
-            if (_config?.Options != null)
-            {
-                // Listening addresses
-                _syncProtocolListen = _config.Options.ListenAddresses?.FirstOrDefault() ?? "tcp://0.0.0.0:22000";
+try
+{
+    _config = await ApiClient.GetConfigAsync();
+    if (_config?.Options != null)
+    {
+        // Listening addresses
+        _syncProtocolListen = _config.Options.ListenAddresses?.FirstOrDefault() ?? "tcp://0.0.0.0:22000";
 
-                // NAT settings
-                _natEnabled = _config.Options.NatEnabled ?? true;
-                _upnpEnabled = _config.Options.UpnpEnabled ?? true;
-                _natPmpEnabled = _config.Options.NatPmpEnabled ?? true;
-                _natLeaseMinutes = _config.Options.NatLeaseMinutes ?? 60;
-                _natRenewalMinutes = _config.Options.NatRenewalMinutes ?? 30;
-                _natTimeoutSeconds = _config.Options.NatTimeoutSeconds ?? 10;
-                _stunServers = string.Join("\n", _config.Options.StunServers ?? []);
-                _stunKeepaliveSeconds = _config.Options.StunKeepaliveSeconds ?? 30;
+        // NAT settings
+        _natEnabled = _config.Options.NatEnabled ?? true;
+        _upnpEnabled = _config.Options.UpnpEnabled ?? true;
+        _natPmpEnabled = _config.Options.NatPmpEnabled ?? true;
+        _natLeaseMinutes = _config.Options.NatLeaseMinutes ?? 60;
+        _natRenewalMinutes = _config.Options.NatRenewalMinutes ?? 30;
+        _natTimeoutSeconds = _config.Options.NatTimeoutSeconds ?? 10;
+        _stunServers = string.Join("\n", _config.Options.StunServers ?? []);
+        _stunKeepaliveSeconds = _config.Options.StunKeepaliveSeconds ?? 30;
 
-                // Discovery settings
-                _globalAnnounceEnabled = _config.Options.GlobalAnnounceEnabled ?? true;
-                _localAnnounceEnabled = _config.Options.LocalAnnounceEnabled ?? true;
-                _globalAnnounceServers = string.Join("\n", _config.Options.GlobalAnnounceServers ?? ["default"]);
-                _localAnnouncePort = _config.Options.LocalAnnouncePort ?? 21027;
-                _localAnnounceMCAddr = _config.Options.LocalAnnounceMCAddr ?? "[ff12::8384]:21027";
-                _announceIntervalS = _config.Options.AnnounceIntervalS ?? 30;
+        // Discovery settings
+        _globalAnnounceEnabled = _config.Options.GlobalAnnounceEnabled ?? true;
+        _localAnnounceEnabled = _config.Options.LocalAnnounceEnabled ?? true;
+        _globalAnnounceServers = string.Join("\n", _config.Options.GlobalAnnounceServers ?? ["default"]);
+        _localAnnouncePort = _config.Options.LocalAnnouncePort ?? 21027;
+        _localAnnounceMCAddr = _config.Options.LocalAnnounceMCAddr ?? "[ff12::8384]:21027";
+        _announceIntervalS = _config.Options.AnnounceIntervalS ?? 30;
 
-                // Relay settings
-                _relaysEnabled = _config.Options.RelaysEnabled ?? true;
-                _relaysOnly = _config.Options.RelaysOnly ?? false;
-                _relayWithoutGlobalAnn = _config.Options.RelayWithoutGlobalAnn ?? false;
-                _relayServers = string.Join("\n", _config.Options.RelayServers ?? ["default"]);
-                _relayReconnectIntervalM = _config.Options.RelayReconnectIntervalM ?? 10;
+        // Relay settings
+        _relaysEnabled = _config.Options.RelaysEnabled ?? true;
+        _relaysOnly = _config.Options.RelaysOnly ?? false;
+        _relayWithoutGlobalAnn = _config.Options.RelayWithoutGlobalAnn ?? false;
+        _relayServers = string.Join("\n", _config.Options.RelayServers ?? ["default"]);
+        _relayReconnectIntervalM = _config.Options.RelayReconnectIntervalM ?? 10;
 
-                // Bandwidth settings
-                _maxSendKbps = _config.Options.MaxSendKbps ?? 0;
-                _maxRecvKbps = _config.Options.MaxRecvKbps ?? 0;
-                _limitBandwidthInLan = _config.Options.LimitBandwidthInLan ?? false;
+        // Bandwidth settings
+        _maxSendKbps = _config.Options.MaxSendKbps ?? 0;
+        _maxRecvKbps = _config.Options.MaxRecvKbps ?? 0;
+        _limitBandwidthInLan = _config.Options.LimitBandwidthInLan ?? false;
 
-                // Connection settings
-                _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
-            }
+        // Connection settings
+        _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
+    }
 
-            if (_config?.Gui != null)
-            {
-                _guiAddress = _config.Gui.Address ?? "127.0.0.1:8384";
-            }
-        }
-        catch (Exception ex)
-        {
-            if (ErrorHelper.IsAuthenticationError(ex))
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return;
-            }
-            Snackbar.Add(string.Format(L["Msg_LoadFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
+    if (_config?.Gui != null)
+    {
+        _guiAddress = _config.Gui.Address ?? "127.0.0.1:8384";
+    }
+}
+catch (Exception ex)
+{
+    if (ErrorHelper.IsAuthenticationError(ex))
+    {
+        Navigation.NavigateTo("/login", forceLoad: true);
+        return;
+    }
+    Snackbar.Add(string.Format(L["Msg_LoadFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+}
+finally
+{
+    _isLoading = false;
+    StateHasChanged();
+}
     }
 
     private async Task SaveSettingsAsync()
     {
-        if (_config == null) return;
+if (_config == null) return;
 
-        _isSaving = true;
-        StateHasChanged();
+_isSaving = true;
+StateHasChanged();
 
-        try
-        {
-            if (_config.Options != null)
-            {
-                // Listening addresses
-                _config.Options.ListenAddresses = [_syncProtocolListen];
+try
+{
+    if (_config.Options != null)
+    {
+        // Listening addresses
+        _config.Options.ListenAddresses = [_syncProtocolListen];
 
-                // NAT settings
-                _config.Options.NatEnabled = _natEnabled;
-                _config.Options.UpnpEnabled = _upnpEnabled;
-                _config.Options.NatPmpEnabled = _natPmpEnabled;
-                _config.Options.NatLeaseMinutes = _natLeaseMinutes;
-                _config.Options.NatRenewalMinutes = _natRenewalMinutes;
-                _config.Options.NatTimeoutSeconds = _natTimeoutSeconds;
-                _config.Options.StunServers = _stunServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                _config.Options.StunKeepaliveSeconds = _stunKeepaliveSeconds;
+        // NAT settings
+        _config.Options.NatEnabled = _natEnabled;
+        _config.Options.UpnpEnabled = _upnpEnabled;
+        _config.Options.NatPmpEnabled = _natPmpEnabled;
+        _config.Options.NatLeaseMinutes = _natLeaseMinutes;
+        _config.Options.NatRenewalMinutes = _natRenewalMinutes;
+        _config.Options.NatTimeoutSeconds = _natTimeoutSeconds;
+        _config.Options.StunServers = _stunServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        _config.Options.StunKeepaliveSeconds = _stunKeepaliveSeconds;
 
-                // Discovery settings
-                _config.Options.GlobalAnnounceEnabled = _globalAnnounceEnabled;
-                _config.Options.LocalAnnounceEnabled = _localAnnounceEnabled;
-                _config.Options.GlobalAnnounceServers = _globalAnnounceServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                _config.Options.LocalAnnouncePort = _localAnnouncePort;
-                _config.Options.LocalAnnounceMCAddr = _localAnnounceMCAddr;
-                _config.Options.AnnounceIntervalS = _announceIntervalS;
+        // Discovery settings
+        _config.Options.GlobalAnnounceEnabled = _globalAnnounceEnabled;
+        _config.Options.LocalAnnounceEnabled = _localAnnounceEnabled;
+        _config.Options.GlobalAnnounceServers = _globalAnnounceServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        _config.Options.LocalAnnouncePort = _localAnnouncePort;
+        _config.Options.LocalAnnounceMCAddr = _localAnnounceMCAddr;
+        _config.Options.AnnounceIntervalS = _announceIntervalS;
 
-                // Relay settings
-                _config.Options.RelaysEnabled = _relaysEnabled;
-                _config.Options.RelaysOnly = _relaysOnly;
-                _config.Options.RelayWithoutGlobalAnn = _relayWithoutGlobalAnn;
-                _config.Options.RelayServers = _relayServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                _config.Options.RelayReconnectIntervalM = _relayReconnectIntervalM;
+        // Relay settings
+        _config.Options.RelaysEnabled = _relaysEnabled;
+        _config.Options.RelaysOnly = _relaysOnly;
+        _config.Options.RelayWithoutGlobalAnn = _relayWithoutGlobalAnn;
+        _config.Options.RelayServers = _relayServers.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        _config.Options.RelayReconnectIntervalM = _relayReconnectIntervalM;
 
-                // Bandwidth settings
-                _config.Options.MaxSendKbps = _maxSendKbps;
-                _config.Options.MaxRecvKbps = _maxRecvKbps;
-                _config.Options.LimitBandwidthInLan = _limitBandwidthInLan;
+        // Bandwidth settings
+        _config.Options.MaxSendKbps = _maxSendKbps;
+        _config.Options.MaxRecvKbps = _maxRecvKbps;
+        _config.Options.LimitBandwidthInLan = _limitBandwidthInLan;
 
-                // Connection settings
-                _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
-            }
+        // Connection settings
+        _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
+    }
 
-            if (_config.Gui != null)
-            {
-                _config.Gui.Address = _guiAddress;
-            }
+    if (_config.Gui != null)
+    {
+        _config.Gui.Address = _guiAddress;
+    }
 
-            await ApiClient.UpdateConfigAsync(_config);
-            Snackbar.Add(L["Msg_SaveSuccess"], Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            if (ErrorHelper.IsAuthenticationError(ex))
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return;
-            }
-            Snackbar.Add(string.Format(L["Msg_SaveFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-        }
-        finally
-        {
-            _isSaving = false;
-            StateHasChanged();
-        }
+    await ApiClient.UpdateConfigAsync(_config);
+    Snackbar.Add(L["Msg_SaveSuccess"], Severity.Success);
+}
+catch (Exception ex)
+{
+    if (ErrorHelper.IsAuthenticationError(ex))
+    {
+        Navigation.NavigateTo("/login", forceLoad: true);
+        return;
+    }
+    Snackbar.Add(string.Format(L["Msg_SaveFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+}
+finally
+{
+    _isSaving = false;
+    StateHasChanged();
+}
     }
 
     private void ResetToDefaults()
     {
-        // Listening addresses
-        _syncProtocolListen = "tcp://0.0.0.0:22000";
-        _guiAddress = "127.0.0.1:8384";
+// Listening addresses
+_syncProtocolListen = "tcp://0.0.0.0:22000";
+_guiAddress = "127.0.0.1:8384";
 
-        // NAT settings
-        _natEnabled = true;
-        _upnpEnabled = true;
-        _natPmpEnabled = true;
-        _natLeaseMinutes = 60;
-        _natRenewalMinutes = 30;
-        _natTimeoutSeconds = 10;
-        _stunServers = "";
-        _stunKeepaliveSeconds = 30;
+// NAT settings
+_natEnabled = true;
+_upnpEnabled = true;
+_natPmpEnabled = true;
+_natLeaseMinutes = 60;
+_natRenewalMinutes = 30;
+_natTimeoutSeconds = 10;
+_stunServers = "";
+_stunKeepaliveSeconds = 30;
 
-        // Discovery settings
-        _globalAnnounceEnabled = true;
-        _localAnnounceEnabled = true;
-        _globalAnnounceServers = "default";
-        _localAnnouncePort = 21027;
-        _localAnnounceMCAddr = "[ff12::8384]:21027";
-        _announceIntervalS = 30;
+// Discovery settings
+_globalAnnounceEnabled = true;
+_localAnnounceEnabled = true;
+_globalAnnounceServers = "default";
+_localAnnouncePort = 21027;
+_localAnnounceMCAddr = "[ff12::8384]:21027";
+_announceIntervalS = 30;
 
-        // Relay settings
-        _relaysEnabled = true;
-        _relaysOnly = false;
-        _relayWithoutGlobalAnn = false;
-        _relayServers = "default";
-        _relayReconnectIntervalM = 10;
+// Relay settings
+_relaysEnabled = true;
+_relaysOnly = false;
+_relayWithoutGlobalAnn = false;
+_relayServers = "default";
+_relayReconnectIntervalM = 10;
 
-        // Bandwidth settings
-        _maxSendKbps = 0;
-        _maxRecvKbps = 0;
-        _limitBandwidthInLan = false;
+// Bandwidth settings
+_maxSendKbps = 0;
+_maxRecvKbps = 0;
+_limitBandwidthInLan = false;
 
-        // Connection settings
-        _maxConcurrentIncoming = 10;
-        _maxConcurrentOutgoing = 10;
-        _reconnectionIntervalS = 60;
+// Connection settings
+_maxConcurrentIncoming = 10;
+_maxConcurrentOutgoing = 10;
+_reconnectionIntervalS = 60;
 
-        Snackbar.Add(L["Msg_ResetToDefaults"], Severity.Info);
+Snackbar.Add(L["Msg_ResetToDefaults"], Severity.Info);
     }
 }

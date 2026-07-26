@@ -637,8 +637,9 @@ public class WorkspacePreparer : IWorkspacePreparer
             var (_, fileDesignModeEnabled, _) = ReadWebConfigSettings(webConfigPath);
             return string.Equals(fileDesignModeEnabled, "true", StringComparison.OrdinalIgnoreCase);
         }
-        catch
+        catch (Exception ex)
         {
+            _output.WriteLine($"[WARN] Could not read FileDesignMode from {webConfigPath}, assuming disabled: {ex.Message}");
             return false;
         }
     }

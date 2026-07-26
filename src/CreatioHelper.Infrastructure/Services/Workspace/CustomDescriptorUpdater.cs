@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Interfaces;
 using CreatioHelper.Shared.Utils;
 
@@ -78,7 +79,7 @@ public class CustomDescriptorUpdater : ICustomDescriptorUpdater
                 return 0;
             }
 
-            var options = new JsonSerializerOptions { WriteIndented = true };
+            var options = JsonDefaults.Indented;
             var updatedJson = root.ToJsonString(options);
             File.WriteAllText(descriptorPath, updatedJson);
 

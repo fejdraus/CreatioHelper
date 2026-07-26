@@ -9,7 +9,7 @@
 @inject ISignalRService SignalR
 @implements IDisposable
 
-<PageTitle>@L["Folders_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Folders_Title"] - CreatioHelper Agent</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Folders_Title"]</MudText>
@@ -114,21 +114,27 @@ else
                                 <tr>
                                     <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_GlobalState"]</MudText></td>
                                     <td>
-                                        <MudText Typo="Typo.body2">
-                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.GlobalFiles.ToString("N0")
-                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@status.GlobalDirectories.ToString("N0")
-                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(status.GlobalBytes)
-                                        </MudText>
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />
+                                            <MudText Typo="Typo.body2">@status.GlobalFiles.ToString("N0")</MudText>
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-3 mr-1" />
+                                            <MudText Typo="Typo.body2">@status.GlobalDirectories.ToString("N0")</MudText>
+                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-3 mr-1" />
+                                            <MudText Typo="Typo.body2">~@FormatBytes(status.GlobalBytes)</MudText>
+                                        </div>
                                     </td>
                                 </tr>
                                 <tr>
                                     <td><MudText Typo="Typo.body2" Color="Color.Default">@L["Folders_LocalState"]</MudText></td>
                                     <td>
-                                        <MudText Typo="Typo.body2">
-                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />@status.LocalFiles.ToString("N0")
-                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-2 mr-1" />@status.LocalDirectories.ToString("N0")
-                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-2 mr-1" />~@FormatBytes(status.LocalBytes)
-                                        </MudText>
+                                        <div class="d-flex align-center">
+                                            <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" Class="mr-1" />
+                                            <MudText Typo="Typo.body2">@status.LocalFiles.ToString("N0")</MudText>
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Class="ml-3 mr-1" />
+                                            <MudText Typo="Typo.body2">@status.LocalDirectories.ToString("N0")</MudText>
+                                            <MudIcon Icon="@Icons.Material.Filled.Storage" Size="Size.Small" Class="ml-3 mr-1" />
+                                            <MudText Typo="Typo.body2">~@FormatBytes(status.LocalBytes)</MudText>
+                                        </div>
                                     </td>
                                 </tr>
                                 @if (status.NeedFiles > 0 || status.NeedBytes > 0)
@@ -235,6 +241,9 @@ else
 }
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     private bool _isLoading;
     private HashSet<string> _expandedFolders = new();
 
@@ -266,14 +275,18 @@ else
 
         try
         {
-            foreach (var folder in State.Folders)
+            var statuses = await Task.WhenAll(State.Folders.Select(f => ApiClient.GetFolderStatusAsync(f.Id, _pageCts.Token)));
+            foreach (var status in statuses)
             {
-                var status = await ApiClient.GetFolderStatusAsync(folder.Id);
                 if (status != null)
                 {
                     State.UpdateFolderStatus(status);
                 }
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -351,6 +364,10 @@ else
             await ApiClient.ScanFolderAsync(folderId);
             Snackbar.Add(L["Msg_ScanStarted"], Severity.Success);
         }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
+        }
         catch (Exception ex)
         {
             if (ErrorHelper.IsAuthenticationError(ex))
@@ -370,6 +387,10 @@ else
             await ApiClient.UpdateFolderAsync(folder);
             Snackbar.Add(folder.Paused ? L["Msg_FolderPaused"] : L["Msg_FolderResumed"], Severity.Success);
             StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -453,6 +474,10 @@ else
                     {
                         await ApiClient.DeleteSiteAsync(site.Name);
                     }
+                    catch (OperationCanceledException)
+                    {
+                        // The page was left while the request was in flight
+                    }
                     catch (Exception siteEx)
                     {
                         Snackbar.Add($"{L["Common_Error"]}: {ErrorHelper.GetUserFriendlyMessage(siteEx)}", Severity.Warning);
@@ -461,6 +486,10 @@ else
             }
 
             Snackbar.Add(L["Msg_FolderRemoved"], Severity.Success);
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -557,22 +586,15 @@ else
 
     private string GetFolderTypeDisplay(string? type)
     {
-        return type?.ToLowerInvariant() switch
-        {
-            "sendreceive" or null => L["FolderType_SendReceive"],
-            "sendonly" => L["FolderType_SendOnly"],
-            "receiveonly" => L["FolderType_ReceiveOnly"],
-            "receiveencrypted" => L["FolderType_ReceiveEncrypted"],
-            _ => type ?? L["FolderType_SendReceive"]
-        };
+        return FolderDisplay.FormatType(type, L);
     }
 
     private string FormatInterval(int seconds)
     {
-        if (seconds < 60) return $"{seconds}{L["Time_Seconds"]}";
-        if (seconds < 3600) return $"{seconds / 60}{L["Time_Minutes"]}";
-        if (seconds < 86400) return $"{seconds / 3600}{L["Time_Hours"]}";
-        return $"{seconds / 86400}{L["Time_Days"]}";
+        if (seconds < 60) return $"{seconds} {L["Time_Seconds"]}";
+        if (seconds < 3600) return $"{seconds / 60} {L["Time_Minutes"]}";
+        if (seconds < 86400) return $"{seconds / 3600} {L["Time_Hours"]}";
+        return $"{seconds / 86400} {L["Time_Days"]}";
     }
 
     private string GetPullOrderDisplay(string? order)
@@ -597,6 +619,8 @@ else
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
         SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
     }

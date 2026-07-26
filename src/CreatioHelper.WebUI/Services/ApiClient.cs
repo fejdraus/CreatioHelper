@@ -9,11 +9,12 @@ namespace CreatioHelper.WebUI.Services;
 public interface IApiClient
 {
     // System
-    Task<SystemStatus?> GetSystemStatusAsync();
-    Task<SystemConfig?> GetConfigAsync();
+    Task<SystemStatus?> GetSystemStatusAsync(CancellationToken cancellationToken = default);
+    Task<SystemConfig?> GetConfigAsync(CancellationToken cancellationToken = default);
     Task RestartAsync();
     Task ShutdownAsync();
-    Task<string?> GetVersionAsync();
+    Task<string?> GetVersionAsync(CancellationToken cancellationToken = default);
+    Task SetUiLanguageAsync(string language);
     Task<SystemVersionInfo?> GetVersionInfoAsync();
 
     // User Management
@@ -24,9 +25,9 @@ public interface IApiClient
     Task<bool> ChangePasswordAsync(string username, ChangePasswordModel model);
 
     // Folders
-    Task<FolderConfig[]> GetFoldersAsync();
-    Task<FolderStatus?> GetFolderStatusAsync(string folderId);
-    Task<FileError[]> GetFolderErrorsAsync(string folderId);
+    Task<FolderConfig[]> GetFoldersAsync(CancellationToken cancellationToken = default);
+    Task<FolderStatus?> GetFolderStatusAsync(string folderId, CancellationToken cancellationToken = default);
+    Task<FileError[]> GetFolderErrorsAsync(string folderId, CancellationToken cancellationToken = default);
     Task ScanFolderAsync(string folderId, string? subPath = null);
     Task UpdateFolderAsync(FolderConfig folder);
     Task AddFolderAsync(FolderConfig folder);
@@ -37,9 +38,9 @@ public interface IApiClient
     Task RevertFolderAsync(string folderId);
 
     // Devices
-    Task<DeviceConfig[]> GetDevicesAsync();
-    Task<DeviceStats?> GetDeviceStatsAsync(string deviceId);
-    Task<ConnectionInfo[]> GetConnectionsAsync();
+    Task<DeviceConfig[]> GetDevicesAsync(CancellationToken cancellationToken = default);
+    Task<DeviceStats?> GetDeviceStatsAsync(string deviceId, CancellationToken cancellationToken = default);
+    Task<ConnectionInfo[]> GetConnectionsAsync(CancellationToken cancellationToken = default);
     Task UpdateDeviceAsync(DeviceConfig device);
     Task AddDeviceAsync(DeviceConfig device);
     Task DeleteDeviceAsync(string deviceId);
@@ -48,11 +49,11 @@ public interface IApiClient
     Task RejectDeviceAsync(string deviceId);
 
     // Events
-    Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null);
+    Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null, CancellationToken cancellationToken = default);
 
     // Discovery & Listeners
-    Task<DiscoveryStatus?> GetDiscoveryStatusAsync();
-    Task<ListenersStatus> GetListenersStatusAsync();
+    Task<DiscoveryStatus?> GetDiscoveryStatusAsync(CancellationToken cancellationToken = default);
+    Task<ListenersStatus> GetListenersStatusAsync(CancellationToken cancellationToken = default);
 
     // Web server
     Task<WebServerAccessStatusInfo?> GetWebServerAccessStatusAsync();
@@ -108,14 +109,14 @@ public class ApiClient : IApiClient
 
     #region System
 
-    public async Task<SystemStatus?> GetSystemStatusAsync()
+    public async Task<SystemStatus?> GetSystemStatusAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<SystemStatus>("/rest/system/status");
+        return await _httpClient.GetFromJsonAsync<SystemStatus>("/rest/system/status", cancellationToken);
     }
 
-    public async Task<SystemConfig?> GetConfigAsync()
+    public async Task<SystemConfig?> GetConfigAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<SystemConfig>("/rest/config");
+        return await _httpClient.GetFromJsonAsync<SystemConfig>("/rest/config", cancellationToken);
     }
 
     public async Task RestartAsync()
@@ -128,9 +129,15 @@ public class ApiClient : IApiClient
         await _httpClient.PostAsync("/rest/system/shutdown", null);
     }
 
-    public async Task<string?> GetVersionAsync()
+    public async Task SetUiLanguageAsync(string language)
     {
-        var result = await _httpClient.GetFromJsonAsync<VersionInfo>("/rest/system/version");
+        var response = await _httpClient.PutAsJsonAsync("/rest/system/ui-language", new { language });
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<string?> GetVersionAsync(CancellationToken cancellationToken = default)
+    {
+        var result = await _httpClient.GetFromJsonAsync<VersionInfo>("/rest/system/version", cancellationToken);
         return result?.Version;
     }
 
@@ -152,19 +159,19 @@ public class ApiClient : IApiClient
 
     #region Folders
 
-    public async Task<FolderConfig[]> GetFoldersAsync()
+    public async Task<FolderConfig[]> GetFoldersAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<FolderConfig[]>("/rest/config/folders") ?? [];
+        return await _httpClient.GetFromJsonAsync<FolderConfig[]>("/rest/config/folders", cancellationToken) ?? [];
     }
 
-    public async Task<FolderStatus?> GetFolderStatusAsync(string folderId)
+    public async Task<FolderStatus?> GetFolderStatusAsync(string folderId, CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<FolderStatus>($"/rest/db/status?folder={Uri.EscapeDataString(folderId)}");
+        return await _httpClient.GetFromJsonAsync<FolderStatus>($"/rest/db/status?folder={Uri.EscapeDataString(folderId)}", cancellationToken);
     }
 
-    public async Task<FileError[]> GetFolderErrorsAsync(string folderId)
+    public async Task<FileError[]> GetFolderErrorsAsync(string folderId, CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<FileError[]>($"/rest/folder/errors?folder={Uri.EscapeDataString(folderId)}") ?? [];
+        return await _httpClient.GetFromJsonAsync<FileError[]>($"/rest/folder/errors?folder={Uri.EscapeDataString(folderId)}", cancellationToken) ?? [];
     }
 
     public async Task ScanFolderAsync(string folderId, string? subPath = null)
@@ -218,19 +225,19 @@ public class ApiClient : IApiClient
 
     #region Devices
 
-    public async Task<DeviceConfig[]> GetDevicesAsync()
+    public async Task<DeviceConfig[]> GetDevicesAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<DeviceConfig[]>("/rest/config/devices") ?? [];
+        return await _httpClient.GetFromJsonAsync<DeviceConfig[]>("/rest/config/devices", cancellationToken) ?? [];
     }
 
-    public async Task<DeviceStats?> GetDeviceStatsAsync(string deviceId)
+    public async Task<DeviceStats?> GetDeviceStatsAsync(string deviceId, CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<DeviceStats>($"/rest/stats/device?device={Uri.EscapeDataString(deviceId)}");
+        return await _httpClient.GetFromJsonAsync<DeviceStats>($"/rest/stats/device?device={Uri.EscapeDataString(deviceId)}", cancellationToken);
     }
 
-    public async Task<ConnectionInfo[]> GetConnectionsAsync()
+    public async Task<ConnectionInfo[]> GetConnectionsAsync(CancellationToken cancellationToken = default)
     {
-        var result = await _httpClient.GetFromJsonAsync<ConnectionsResponse>("/rest/system/connections");
+        var result = await _httpClient.GetFromJsonAsync<ConnectionsResponse>("/rest/system/connections", cancellationToken);
         return result?.Connections?.Values.ToArray() ?? [];
     }
 
@@ -278,7 +285,7 @@ public class ApiClient : IApiClient
 
     #region Events
 
-    public async Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null)
+    public async Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null, CancellationToken cancellationToken = default)
     {
         // Use timeout=0 to get immediate response without long-polling
         var url = $"/rest/events?since={since}&limit={limit}&timeout=0";
@@ -293,12 +300,12 @@ public class ApiClient : IApiClient
 
     #region Discovery
 
-    public async Task<DiscoveryStatus?> GetDiscoveryStatusAsync()
+    public async Task<DiscoveryStatus?> GetDiscoveryStatusAsync(CancellationToken cancellationToken = default)
     {
-        return await _httpClient.GetFromJsonAsync<DiscoveryStatus>("/rest/system/discovery");
+        return await _httpClient.GetFromJsonAsync<DiscoveryStatus>("/rest/system/discovery", cancellationToken);
     }
 
-    public async Task<ListenersStatus> GetListenersStatusAsync()
+    public async Task<ListenersStatus> GetListenersStatusAsync(CancellationToken cancellationToken = default)
     {
         var result = new ListenersStatus();
         try

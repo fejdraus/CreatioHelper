@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.Windows;
@@ -10,10 +11,7 @@ public class IisManagerService : IWebServerService
     private readonly ILogger<IisManagerService> _logger;
     private readonly WebServerAccessStatus _accessStatus;
 
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        PropertyNameCaseInsensitive = true
-    };
+    private static readonly JsonSerializerOptions JsonOptions = JsonDefaults.CaseInsensitive;
 
         private static string EscapePowerShellString(string value)
         => PowerShellRunner.EscapeSingleQuoted(value);

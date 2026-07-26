@@ -5,7 +5,7 @@ namespace CreatioHelper.Domain.Entities;
 /// <summary>
 /// Статистика устройства (на основе Syncthing DeviceStatistics)
 /// </summary>
-public class DeviceStatistics
+public class DeviceStatisticsSnapshot
 {
     /// <summary>
     /// Время последнего подключения устройства
@@ -38,21 +38,6 @@ public class DeviceStatistics
     public long FailedConnections { get; set; }
     
     /// <summary>
-    /// Средняя скорость отправки (байт/сек)
-    /// </summary>
-    public double AverageUploadSpeed { get; set; }
-    
-    /// <summary>
-    /// Средняя скорость получения (байт/сек)
-    /// </summary>
-    public double AverageDownloadSpeed { get; set; }
-    
-    /// <summary>
-    /// Время первого подключения
-    /// </summary>
-    public DateTime FirstSeen { get; set; } = DateTime.UnixEpoch;
-    
-    /// <summary>
     /// Общее время подключения
     /// </summary>
     public TimeSpan TotalConnectionTime { get; set; }
@@ -61,7 +46,7 @@ public class DeviceStatistics
 /// <summary>
 /// Информация о последнем файле (на основе Syncthing LastFile)
 /// </summary>
-public class LastFileInfo
+public class LastFileSnapshot
 {
     /// <summary>
     /// Время обработки файла
@@ -92,12 +77,12 @@ public class LastFileInfo
 /// <summary>
 /// Статистика папки (на основе Syncthing FolderStatistics)
 /// </summary>
-public class FolderStatistics
+public class FolderStatisticsSnapshot
 {
     /// <summary>
     /// Информация о последнем файле
     /// </summary>
-    public LastFileInfo LastFile { get; set; } = new();
+    public LastFileSnapshot LastFile { get; set; } = new();
     
     /// <summary>
     /// Время последнего сканирования
@@ -113,26 +98,6 @@ public class FolderStatistics
     /// Общий размер папки в байтах
     /// </summary>
     public long TotalSize { get; set; }
-    
-    /// <summary>
-    /// Количество локальных файлов
-    /// </summary>
-    public long LocalFiles { get; set; }
-    
-    /// <summary>
-    /// Размер локальных файлов
-    /// </summary>
-    public long LocalSize { get; set; }
-    
-    /// <summary>
-    /// Количество удаленных файлов
-    /// </summary>
-    public long RemoteFiles { get; set; }
-    
-    /// <summary>
-    /// Размер удаленных файлов
-    /// </summary>
-    public long RemoteSize { get; set; }
     
     /// <summary>
     /// Количество файлов в очереди синхронизации
@@ -159,15 +124,6 @@ public class FolderStatistics
     /// </summary>
     public long Errors { get; set; }
     
-    /// <summary>
-    /// Время последней синхронизации
-    /// </summary>
-    public DateTime LastSync { get; set; }
-    
-    /// <summary>
-    /// Скорость синхронизации (файлов в секунду)
-    /// </summary>
-    public double SyncRate { get; set; }
 }
 
 /// <summary>

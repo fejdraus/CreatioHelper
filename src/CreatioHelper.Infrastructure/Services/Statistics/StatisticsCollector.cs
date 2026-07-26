@@ -4,6 +4,7 @@ using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Entities.Events;
 using CreatioHelper.Domain.Entities.Statistics;
+using CreatioHelper.Domain.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Hosting;
 using EventType = CreatioHelper.Domain.Entities.Events.SyncEventType;
@@ -371,11 +372,7 @@ public class StatisticsCollector : BackgroundService, IStatisticsCollector
             UploadStatistics = await GetUploadStatisticsAsync(cancellationToken)
         };
 
-        return JsonSerializer.Serialize(export, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        return JsonSerializer.Serialize(export, JsonDefaults.CamelCaseIndented);
     }
 
     public Task RecordUploadAsync(UploadRecordInfo uploadInfo, CancellationToken cancellationToken = default)

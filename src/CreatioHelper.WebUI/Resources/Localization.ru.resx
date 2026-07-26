@@ -38,8 +38,7 @@
     <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
   </resheader>
 
-  <!-- Navigation -->
-  <data name="Nav_Dashboard" xml:space="preserve">
+    <data name="Nav_Dashboard" xml:space="preserve">
     <value>Панель управления</value>
   </data>
   <data name="Nav_Sync" xml:space="preserve">
@@ -75,8 +74,6 @@
   <data name="Nav_About" xml:space="preserve">
     <value>О программе</value>
   </data>
-
-  <!-- Dashboard -->
   <data name="Dashboard_Title" xml:space="preserve">
     <value>Панель управления</value>
   </data>
@@ -110,8 +107,6 @@
   <data name="Dashboard_SyncingFolders" xml:space="preserve">
     <value>Синхронизируемые папки</value>
   </data>
-
-  <!-- Folders -->
   <data name="Folders_Title" xml:space="preserve">
     <value>Папки</value>
   </data>
@@ -214,8 +209,6 @@
   <data name="Folders_AddFolderHint" xml:space="preserve">
     <value>Нажмите "Добавить папку" для настройки первой папки</value>
   </data>
-
-  <!-- Folder Types -->
   <data name="FolderType_SendReceive" xml:space="preserve">
     <value>Отправка и получение</value>
   </data>
@@ -228,8 +221,6 @@
   <data name="FolderType_ReceiveEncrypted" xml:space="preserve">
     <value>Получение зашифрованных</value>
   </data>
-
-  <!-- Pull Order -->
   <data name="PullOrder_Random" xml:space="preserve">
     <value>Случайный</value>
   </data>
@@ -248,8 +239,6 @@
   <data name="PullOrder_NewestFirst" xml:space="preserve">
     <value>Сначала новые</value>
   </data>
-
-  <!-- Scan Phases -->
   <data name="ScanPhase_Enumerating" xml:space="preserve">
     <value>Перечисление</value>
   </data>
@@ -268,8 +257,6 @@
   <data name="ScanPhase_Failed" xml:space="preserve">
     <value>Ошибка</value>
   </data>
-
-  <!-- Folder States -->
   <data name="FolderState_Idle" xml:space="preserve">
     <value>Ожидание</value>
   </data>
@@ -285,8 +272,6 @@
   <data name="FolderState_Unknown" xml:space="preserve">
     <value>Неизвестно</value>
   </data>
-
-  <!-- Devices -->
   <data name="Devices_Title" xml:space="preserve">
     <value>Устройства</value>
   </data>
@@ -419,8 +404,6 @@
   <data name="Msg_TogglePauseFailed" xml:space="preserve">
     <value>Не удалось переключить паузу: {0}</value>
   </data>
-
-  <!-- Compression -->
   <data name="Compression_Metadata" xml:space="preserve">
     <value>Только метаданные</value>
   </data>
@@ -430,8 +413,6 @@
   <data name="Compression_Never" xml:space="preserve">
     <value>Никогда</value>
   </data>
-
-  <!-- Connection Types -->
   <data name="ConnectionType_TcpClient" xml:space="preserve">
     <value>TCP клиент</value>
   </data>
@@ -450,8 +431,6 @@
   <data name="ConnectionType_RelayServer" xml:space="preserve">
     <value>Relay сервер</value>
   </data>
-
-  <!-- Settings -->
   <data name="Settings_Title" xml:space="preserve">
     <value>Настройки</value>
   </data>
@@ -584,8 +563,6 @@
   <data name="Settings_ApplyingLanguage" xml:space="preserve">
     <value>Применение языка...</value>
   </data>
-
-  <!-- Events -->
   <data name="Events_Title" xml:space="preserve">
     <value>События</value>
   </data>
@@ -601,14 +578,6 @@
   <data name="Events_Resume" xml:space="preserve">
     <value>Продолжить</value>
   </data>
-  <data name="Events_AllFolders" xml:space="preserve">
-    <value>Все папки</value>
-  </data>
-  <data name="Events_AllDevices" xml:space="preserve">
-    <value>Все устройства</value>
-  </data>
-
-  <!-- Diagnostics -->
   <data name="Diagnostics_Title" xml:space="preserve">
     <value>Диагностика</value>
   </data>
@@ -624,8 +593,6 @@
   <data name="Diagnostics_CreateBundle" xml:space="preserve">
     <value>Создать пакет поддержки</value>
   </data>
-
-  <!-- Actions -->
   <data name="Action_Restart" xml:space="preserve">
     <value>Перезапуск</value>
   </data>
@@ -656,8 +623,6 @@
   <data name="Action_Logout" xml:space="preserve">
     <value>Выйти</value>
   </data>
-
-  <!-- Common -->
   <data name="Common_Yes" xml:space="preserve">
     <value>Да</value>
   </data>
@@ -748,8 +713,6 @@
   <data name="Common_Cancel" xml:space="preserve">
     <value>Отмена</value>
   </data>
-
-  <!-- Status Messages -->
   <data name="Status_UpToDate" xml:space="preserve">
     <value>Актуально</value>
   </data>
@@ -786,8 +749,6 @@
   <data name="Status_StatusUnknown" xml:space="preserve">
     <value>Статус неизвестен</value>
   </data>
-
-  <!-- Time Format -->
   <data name="Time_Days" xml:space="preserve">
     <value>д</value>
   </data>
@@ -800,8 +761,6 @@
   <data name="Time_Seconds" xml:space="preserve">
     <value>с</value>
   </data>
-
-  <!-- Login -->
   <data name="Login_Title" xml:space="preserve">
     <value>Вход</value>
   </data>
@@ -844,8 +803,6 @@
   <data name="Login_ApiKeyFailed" xml:space="preserve">
     <value>Ошибка аутентификации по API ключу</value>
   </data>
-
-  <!-- Status -->
   <data name="Status_Online" xml:space="preserve">
     <value>В сети</value>
   </data>
@@ -861,8 +818,6 @@
   <data name="Status_ConnectedPaused" xml:space="preserve">
     <value>Подключено (Приостановлено)</value>
   </data>
-
-  <!-- Messages -->
   <data name="Msg_Connected" xml:space="preserve">
     <value>Подключено к агенту</value>
   </data>
@@ -932,7 +887,6 @@
   <data name="Msg_DeleteFolderOnly" xml:space="preserve">
     <value>Только папку</value>
   </data>
-
   <data name="Time_JustNow" xml:space="preserve">
     <value>Только что</value>
   </data>
@@ -945,406 +899,458 @@
   <data name="Time_DaysAgo" xml:space="preserve">
     <value>{0} дней назад</value>
   </data>
-
-  <!-- General Settings Page -->
-  <data name="Settings_General_DeviceInfo" xml:space="preserve">
-    <value>Информация об устройстве</value>
+  <data name="Settings_DeviceInformation" xml:space="preserve">
+    <value>Сведения об устройстве</value>
   </data>
-  <data name="Settings_General_DeviceName" xml:space="preserve">
-    <value>Имя устройства</value>
+  <data name="Settings_DeviceNameHint" xml:space="preserve">
+    <value>Понятное имя для этого устройства</value>
   </data>
-  <data name="Settings_General_DeviceNameDesc" xml:space="preserve">
-    <value>Имя, отображаемое другим устройствам</value>
-  </data>
-  <data name="Settings_General_DeviceId" xml:space="preserve">
+  <data name="Settings_DeviceId" xml:space="preserve">
     <value>ID устройства</value>
   </data>
-  <data name="Settings_General_CopyId" xml:space="preserve">
-    <value>Копировать ID</value>
-  </data>
-  <data name="Settings_General_ShowQr" xml:space="preserve">
-    <value>Показать QR-код</value>
-  </data>
-  <data name="Settings_General_IdCopied" xml:space="preserve">
-    <value>ID устройства скопирован</value>
-  </data>
-  <data name="Settings_General_SyncDefaults" xml:space="preserve">
+  <data name="Settings_SyncDefaults" xml:space="preserve">
     <value>Настройки синхронизации по умолчанию</value>
   </data>
-  <data name="Settings_General_DefaultFolderPath" xml:space="preserve">
-    <value>Путь к папкам по умолчанию</value>
+  <data name="Settings_DefaultFolderPath" xml:space="preserve">
+    <value>Путь к папке по умолчанию</value>
   </data>
-  <data name="Settings_General_DefaultFolderPathDesc" xml:space="preserve">
-    <value>Каталог по умолчанию для новых общих папок</value>
+  <data name="Settings_DefaultFolderPathHint" xml:space="preserve">
+    <value>Путь по умолчанию для новых папок</value>
   </data>
-  <data name="Settings_General_MinDiskFree" xml:space="preserve">
-    <value>Минимум свободного места</value>
+  <data name="Settings_DefaultFolderType" xml:space="preserve">
+    <value>Тип папки по умолчанию</value>
   </data>
-  <data name="Settings_General_MinDiskFreeDesc" xml:space="preserve">
-    <value>Остановить синхронизацию, если свободного места меньше этого значения</value>
+  <data name="Settings_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права</value>
   </data>
-  <data name="Settings_General_AutoAcceptFolders" xml:space="preserve">
-    <value>Автопринятие папок</value>
+  <data name="Settings_IgnorePermissionsHint" xml:space="preserve">
+    <value>Изменения прав доступа к файлам не будут синхронизироваться</value>
   </data>
-  <data name="Settings_General_AutoAcceptFoldersDesc" xml:space="preserve">
-    <value>Автоматически принимать папки от доверенных устройств</value>
+  <data name="Settings_AutoNormalizeUnicode" xml:space="preserve">
+    <value>Автонормализация Unicode</value>
   </data>
-  <data name="Settings_General_ApiSettings" xml:space="preserve">
-    <value>Настройки API</value>
+  <data name="Settings_AutoNormalizeUnicodeHint" xml:space="preserve">
+    <value>Автоматически нормализовать имена файлов в Unicode (рекомендуется)</value>
   </data>
-  <data name="Settings_General_ApiKey" xml:space="preserve">
-    <value>API-ключ</value>
+  <data name="Settings_API" xml:space="preserve">
+    <value>API</value>
   </data>
-  <data name="Settings_General_ApiKeyDesc" xml:space="preserve">
-    <value>Ключ для REST API аутентификации</value>
+  <data name="Settings_ApiKey" xml:space="preserve">
+    <value>API ключ</value>
   </data>
-  <data name="Settings_General_ApiEnabled" xml:space="preserve">
-    <value>API включён</value>
+  <data name="Settings_GenerateNewApiKey" xml:space="preserve">
+    <value>Создать новый ключ API</value>
   </data>
-  <data name="Settings_General_ApiEnabledDesc" xml:space="preserve">
-    <value>Включить REST API для внешних интеграций</value>
-  </data>
-  <data name="Settings_General_GenerateKey" xml:space="preserve">
-    <value>Сгенерировать ключ</value>
-  </data>
-  <data name="Settings_General_Startup" xml:space="preserve">
+  <data name="Settings_Startup" xml:space="preserve">
     <value>Запуск</value>
   </data>
-  <data name="Settings_General_StartMinimized" xml:space="preserve">
+  <data name="Settings_StartMinimized" xml:space="preserve">
     <value>Запускать свёрнутым</value>
   </data>
-  <data name="Settings_General_StartMinimizedDesc" xml:space="preserve">
-    <value>Запускать приложение в свёрнутом виде</value>
+  <data name="Settings_StartMinimizedHint" xml:space="preserve">
+    <value>Запускать в системном трее</value>
   </data>
-  <data name="Settings_General_StartOnBoot" xml:space="preserve">
-    <value>Запускать при загрузке</value>
+  <data name="Settings_StartAtLogin" xml:space="preserve">
+    <value>Запускать при входе</value>
   </data>
-  <data name="Settings_General_StartOnBootDesc" xml:space="preserve">
-    <value>Автоматически запускать при старте системы</value>
+  <data name="Settings_StartAtLoginHint" xml:space="preserve">
+    <value>Автоматически запускать после входа в систему</value>
   </data>
-
-  <!-- Network Settings Page -->
-  <data name="Settings_Network_Title" xml:space="preserve">
+  <data name="Settings_SaveChanges" xml:space="preserve">
+    <value>Сохранить изменения</value>
+  </data>
+  <data name="Msg_ApiKeyGenerated" xml:space="preserve">
+    <value>Новый API-ключ сгенерирован. Не забудьте сохранить изменения.</value>
+  </data>
+  <data name="Network_Title" xml:space="preserve">
     <value>Настройки сети</value>
   </data>
-  <data name="Settings_Network_ListenAddresses" xml:space="preserve">
+  <data name="Network_ListeningAddresses" xml:space="preserve">
     <value>Адреса прослушивания</value>
   </data>
-  <data name="Settings_Network_SyncProtocol" xml:space="preserve">
+  <data name="Network_SyncProtocolListen" xml:space="preserve">
     <value>Протокол синхронизации</value>
   </data>
-  <data name="Settings_Network_SyncProtocolDesc" xml:space="preserve">
-    <value>TCP адрес для входящих соединений синхронизации</value>
+  <data name="Network_SyncProtocolListenHint" xml:space="preserve">
+    <value>Формат: tcp://0.0.0.0:22000 или dynamic</value>
   </data>
-  <data name="Settings_Network_GuiAddress" xml:space="preserve">
+  <data name="Network_GUIListenAddress" xml:space="preserve">
     <value>Адрес GUI</value>
   </data>
-  <data name="Settings_Network_GuiAddressDesc" xml:space="preserve">
-    <value>HTTP адрес для веб-интерфейса</value>
+  <data name="Network_GUIListenAddressHint" xml:space="preserve">
+    <value>Формат: 127.0.0.1:8384</value>
   </data>
-  <data name="Settings_Network_NatSettings" xml:space="preserve">
-    <value>Настройки NAT</value>
+  <data name="Network_NATTraversal" xml:space="preserve">
+    <value>NAT Traversal</value>
   </data>
-  <data name="Settings_Network_NatEnabled" xml:space="preserve">
+  <data name="Network_EnableNATTraversal" xml:space="preserve">
     <value>NAT Traversal включён</value>
   </data>
-  <data name="Settings_Network_NatEnabledDesc" xml:space="preserve">
-    <value>Автоматическая настройка маршрутизатора для входящих соединений</value>
+  <data name="Network_NATTraversalHint" xml:space="preserve">
+    <value>Автоматически настраивать перенаправление портов для лучшей связи</value>
   </data>
-  <data name="Settings_Network_NatLeaseMins" xml:space="preserve">
+  <data name="Network_NATMethods" xml:space="preserve">
+    <value>Методы NAT</value>
+  </data>
+  <data name="Network_EnableUPnP" xml:space="preserve">
+    <value>Включить UPnP</value>
+  </data>
+  <data name="Network_UPnPHint" xml:space="preserve">
+    <value>Universal Plug and Play переадресация портов</value>
+  </data>
+  <data name="Network_EnableNATPMP" xml:space="preserve">
+    <value>Включить NAT-PMP</value>
+  </data>
+  <data name="Network_NATPMPHint" xml:space="preserve">
+    <value>NAT Port Mapping Protocol (роутеры Apple)</value>
+  </data>
+  <data name="Network_NATLeaseSettings" xml:space="preserve">
+    <value>Настройки аренды NAT</value>
+  </data>
+  <data name="Network_LeaseDuration" xml:space="preserve">
     <value>Продолжительность аренды NAT (минуты)</value>
   </data>
-  <data name="Settings_Network_NatLeaseDesc" xml:space="preserve">
-    <value>Как долго сохранять переадресацию портов перед обновлением</value>
+  <data name="Network_LeaseDurationHint" xml:space="preserve">
+    <value>Время аренды маппинга порта</value>
   </data>
-  <data name="Settings_Network_NatRenewalMins" xml:space="preserve">
+  <data name="Network_RenewalInterval" xml:space="preserve">
     <value>Интервал обновления NAT (минуты)</value>
   </data>
-  <data name="Settings_Network_NatRenewalDesc" xml:space="preserve">
-    <value>Как часто обновлять переадресацию портов</value>
+  <data name="Network_RenewalIntervalHint" xml:space="preserve">
+    <value>Время до истечения для обновления</value>
   </data>
-  <data name="Settings_Network_NatTimeoutSecs" xml:space="preserve">
+  <data name="Network_Timeout" xml:space="preserve">
     <value>Таймаут NAT (секунды)</value>
   </data>
-  <data name="Settings_Network_NatTimeoutDesc" xml:space="preserve">
-    <value>Таймаут операций обнаружения NAT</value>
+  <data name="Network_TimeoutHint" xml:space="preserve">
+    <value>Таймаут обнаружения</value>
   </data>
-  <data name="Settings_Network_Discovery" xml:space="preserve">
+  <data name="Network_STUNConfiguration" xml:space="preserve">
+    <value>Конфигурация STUN</value>
+  </data>
+  <data name="Network_STUNServers" xml:space="preserve">
+    <value>STUN серверы</value>
+  </data>
+  <data name="Network_STUNServersHint" xml:space="preserve">
+    <value>Один сервер на строку (например, stun.example.com:3478)</value>
+  </data>
+  <data name="Network_STUNKeepalive" xml:space="preserve">
+    <value>Интервал STUN Keepalive (секунды)</value>
+  </data>
+  <data name="Network_STUNKeepaliveHint" xml:space="preserve">
+    <value>Интервал между STUN keepalive запросами</value>
+  </data>
+  <data name="Network_DeviceDiscovery" xml:space="preserve">
     <value>Обнаружение</value>
   </data>
-  <data name="Settings_Network_LocalDiscovery" xml:space="preserve">
-    <value>Локальное обнаружение</value>
-  </data>
-  <data name="Settings_Network_LocalDiscoveryDesc" xml:space="preserve">
-    <value>Обнаруживать устройства в локальной сети</value>
-  </data>
-  <data name="Settings_Network_GlobalDiscovery" xml:space="preserve">
+  <data name="Network_GlobalDiscovery" xml:space="preserve">
     <value>Глобальное обнаружение</value>
   </data>
-  <data name="Settings_Network_GlobalDiscoveryDesc" xml:space="preserve">
+  <data name="Network_GlobalDiscoveryHint" xml:space="preserve">
     <value>Использовать глобальные серверы обнаружения для поиска устройств</value>
   </data>
-  <data name="Settings_Network_LocalAnnouncePort" xml:space="preserve">
-    <value>Порт локального анонсирования</value>
+  <data name="Network_LocalDiscovery" xml:space="preserve">
+    <value>Локальное обнаружение</value>
   </data>
-  <data name="Settings_Network_LocalAnnouncePortDesc" xml:space="preserve">
-    <value>Порт для широковещательных объявлений в локальной сети</value>
+  <data name="Network_LocalDiscoveryHint" xml:space="preserve">
+    <value>Обнаруживать устройства в локальной сети</value>
   </data>
-  <data name="Settings_Network_LocalAnnounceMcast" xml:space="preserve">
-    <value>Адрес мультикаста</value>
-  </data>
-  <data name="Settings_Network_LocalAnnounceMcastDesc" xml:space="preserve">
-    <value>Адрес для мультикастового обнаружения (IPv6)</value>
-  </data>
-  <data name="Settings_Network_GlobalServers" xml:space="preserve">
+  <data name="Network_GlobalDiscoveryServers" xml:space="preserve">
     <value>Серверы глобального обнаружения</value>
   </data>
-  <data name="Settings_Network_GlobalServersDesc" xml:space="preserve">
-    <value>Список серверов глобального обнаружения</value>
+  <data name="Network_GlobalDiscoveryServersHint" xml:space="preserve">
+    <value>Один URL сервера на строку (default = серверы Syncthing)</value>
   </data>
-  <data name="Settings_Network_Relay" xml:space="preserve">
+  <data name="Network_LocalDiscoverySettings" xml:space="preserve">
+    <value>Настройки локального обнаружения</value>
+  </data>
+  <data name="Network_LocalAnnouncePort" xml:space="preserve">
+    <value>Порт локального анонсирования</value>
+  </data>
+  <data name="Network_LocalAnnouncePortHint" xml:space="preserve">
+    <value>Порт для широковещательных объявлений в локальной сети</value>
+  </data>
+  <data name="Network_MulticastAddress" xml:space="preserve">
+    <value>Multicast адрес</value>
+  </data>
+  <data name="Network_MulticastAddressHint" xml:space="preserve">
+    <value>IPv6 multicast адрес для обнаружения</value>
+  </data>
+  <data name="Network_AnnounceInterval" xml:space="preserve">
+    <value>Интервал анонсирования (с)</value>
+  </data>
+  <data name="Network_AnnounceIntervalHint" xml:space="preserve">
+    <value>Секунд между анонсами</value>
+  </data>
+  <data name="Network_RelayConfiguration" xml:space="preserve">
     <value>Ретрансляция</value>
   </data>
-  <data name="Settings_Network_RelayEnabled" xml:space="preserve">
+  <data name="Network_EnableRelaying" xml:space="preserve">
     <value>Ретрансляция включена</value>
   </data>
-  <data name="Settings_Network_RelayEnabledDesc" xml:space="preserve">
+  <data name="Network_RelayingHint" xml:space="preserve">
     <value>Разрешить соединения через релейные серверы</value>
   </data>
-  <data name="Settings_Network_RelayReconnectMins" xml:space="preserve">
-    <value>Интервал переподключения (минуты)</value>
+  <data name="Network_RelayOnlyMode" xml:space="preserve">
+    <value>Только через релей</value>
   </data>
-  <data name="Settings_Network_RelayReconnectDesc" xml:space="preserve">
-    <value>Время ожидания перед попыткой переподключения к реле</value>
+  <data name="Network_RelayOnlyModeHint" xml:space="preserve">
+    <value>Соединяться только через релейные серверы (без прямых соединений)</value>
   </data>
-  <data name="Settings_Network_RelayServers" xml:space="preserve">
+  <data name="Network_RelayWithoutGlobalAnnounce" xml:space="preserve">
+    <value>Релей без глобального анонса</value>
+  </data>
+  <data name="Network_RelayWithoutGlobalAnnounceHint" xml:space="preserve">
+    <value>Использовать релеи даже при отключённом глобальном обнаружении</value>
+  </data>
+  <data name="Network_RelayServers" xml:space="preserve">
     <value>Релейные серверы</value>
   </data>
-  <data name="Settings_Network_RelayServersDesc" xml:space="preserve">
+  <data name="Network_RelayServersHint" xml:space="preserve">
     <value>Список предпочитаемых релейных серверов</value>
   </data>
-  <data name="Settings_Network_Bandwidth" xml:space="preserve">
+  <data name="Network_RelayReconnectInterval" xml:space="preserve">
+    <value>Интервал переподключения к релею (минуты)</value>
+  </data>
+  <data name="Network_RelayReconnectIntervalHint" xml:space="preserve">
+    <value>Минут между попытками переподключения к релею</value>
+  </data>
+  <data name="Network_BandwidthLimits" xml:space="preserve">
     <value>Пропускная способность</value>
   </data>
-  <data name="Settings_Network_MaxSendKbps" xml:space="preserve">
+  <data name="Network_UploadLimit" xml:space="preserve">
     <value>Максимальная скорость отправки (КБ/с)</value>
   </data>
-  <data name="Settings_Network_MaxSendDesc" xml:space="preserve">
-    <value>Ограничение скорости исходящего трафика (0 = без ограничений)</value>
-  </data>
-  <data name="Settings_Network_MaxRecvKbps" xml:space="preserve">
+  <data name="Network_DownloadLimit" xml:space="preserve">
     <value>Максимальная скорость приёма (КБ/с)</value>
   </data>
-  <data name="Settings_Network_MaxRecvDesc" xml:space="preserve">
-    <value>Ограничение скорости входящего трафика (0 = без ограничений)</value>
+  <data name="Network_UnlimitedHint" xml:space="preserve">
+    <value>0 = без ограничений</value>
   </data>
-  <data name="Settings_Network_LimitBandwidthLan" xml:space="preserve">
+  <data name="Network_ApplyLimitsToLAN" xml:space="preserve">
     <value>Ограничивать скорость в LAN</value>
   </data>
-  <data name="Settings_Network_LimitBandwidthLanDesc" xml:space="preserve">
+  <data name="Network_ApplyLimitsToLANHint" xml:space="preserve">
     <value>Применять ограничения скорости также к соединениям в локальной сети</value>
   </data>
-
-  <!-- Advanced Settings Page -->
-  <data name="Settings_Advanced_Title" xml:space="preserve">
+  <data name="Network_ConnectionLimits" xml:space="preserve">
+    <value>Лимиты соединений</value>
+  </data>
+  <data name="Network_MaxIncomingRequests" xml:space="preserve">
+    <value>Макс. входящих запросов</value>
+  </data>
+  <data name="Network_MaxOutgoingRequests" xml:space="preserve">
+    <value>Макс. исходящих запросов</value>
+  </data>
+  <data name="Network_ReconnectInterval" xml:space="preserve">
+    <value>Интервал переподключения (с)</value>
+  </data>
+  <data name="Network_ReconnectIntervalHint" xml:space="preserve">
+    <value>Секунд между попытками переподключения</value>
+  </data>
+  <data name="Msg_NetworkSettingsSaved" xml:space="preserve">
+    <value>Сетевые настройки сохранены. Некоторые изменения могут потребовать перезапуска.</value>
+  </data>
+  <data name="Advanced_Title" xml:space="preserve">
     <value>Расширенные настройки</value>
   </data>
-  <data name="Settings_Advanced_FileHandling" xml:space="preserve">
+  <data name="Advanced_Warning" xml:space="preserve">
+    <value>Эти настройки для опытных пользователей. Неправильная конфигурация может повлиять на производительность или вызвать проблемы синхронизации.</value>
+  </data>
+  <data name="Advanced_SyncDefaults" xml:space="preserve">
+    <value>Настройки синхронизации по умолчанию</value>
+  </data>
+  <data name="Advanced_DefaultFolderPathHint" xml:space="preserve">
+    <value>Путь по умолчанию для новых синхронизируемых папок</value>
+  </data>
+  <data name="Advanced_IgnorePermissionsHint" xml:space="preserve">
+    <value>Не синхронизировать права доступа к файлам (полезно для межплатформенной синхронизации)</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автонормализация имён файлов</value>
+  </data>
+  <data name="Advanced_AutoNormalizeFilenamesHint" xml:space="preserve">
+    <value>Автоматически приводить имена файлов к нормализации Unicode NFC</value>
+  </data>
+  <data name="Advanced_FileHandling" xml:space="preserve">
     <value>Обработка файлов</value>
   </data>
-  <data name="Settings_Advanced_SymlinksEnabled" xml:space="preserve">
-    <value>Символические ссылки</value>
+  <data name="Advanced_ConcurrentHashers" xml:space="preserve">
+    <value>Параллельные хешеры</value>
   </data>
-  <data name="Settings_Advanced_SymlinksDesc" xml:space="preserve">
-    <value>Синхронизировать символические ссылки</value>
+  <data name="Advanced_ConcurrentHashersHint" xml:space="preserve">
+    <value>Количество параллельных потоков хеширования</value>
   </data>
-  <data name="Settings_Advanced_IgnorePerms" xml:space="preserve">
-    <value>Игнорировать права доступа</value>
+  <data name="Advanced_MaxFolderConcurrency" xml:space="preserve">
+    <value>Макс. параллельных папок</value>
   </data>
-  <data name="Settings_Advanced_IgnorePermsDesc" xml:space="preserve">
-    <value>Не синхронизировать права доступа к файлам</value>
+  <data name="Advanced_MaxFolderConcurrencyHint" xml:space="preserve">
+    <value>Максимум папок, синхронизируемых одновременно</value>
   </data>
-  <data name="Settings_Advanced_IgnoreDelete" xml:space="preserve">
-    <value>Игнорировать удаления</value>
+  <data name="Advanced_LowPriorityProcess" xml:space="preserve">
+    <value>Процесс с низким приоритетом</value>
   </data>
-  <data name="Settings_Advanced_IgnoreDeleteDesc" xml:space="preserve">
-    <value>Не распространять удаления файлов</value>
+  <data name="Advanced_LowPriorityProcessHint" xml:space="preserve">
+    <value>Выполнять с пониженным приоритетом ЦП (снижает нагрузку на систему)</value>
   </data>
-  <data name="Settings_Advanced_TempIndexes" xml:space="preserve">
-    <value>Временные индексы</value>
+  <data name="Advanced_ReduceProgressUpdates" xml:space="preserve">
+    <value>Реже обновлять прогресс</value>
   </data>
-  <data name="Settings_Advanced_TempIndexesDesc" xml:space="preserve">
-    <value>Хранить индексы во временных файлах во время загрузки</value>
+  <data name="Advanced_ReduceProgressUpdatesHint" xml:space="preserve">
+    <value>Более редкие обновления интерфейса (экономит трафик на медленных соединениях)</value>
   </data>
-  <data name="Settings_Advanced_CopyOwnership" xml:space="preserve">
-    <value>Копировать владельца</value>
-  </data>
-  <data name="Settings_Advanced_CopyOwnershipDesc" xml:space="preserve">
-    <value>Синхронизировать владельца файлов (требует root)</value>
-  </data>
-  <data name="Settings_Advanced_SendOwnership" xml:space="preserve">
-    <value>Отправлять информацию о владельце</value>
-  </data>
-  <data name="Settings_Advanced_SendOwnershipDesc" xml:space="preserve">
-    <value>Отправлять UID/GID другим устройствам</value>
-  </data>
-  <data name="Settings_Advanced_SyncXattrs" xml:space="preserve">
-    <value>Синхронизировать Xattrs</value>
-  </data>
-  <data name="Settings_Advanced_SyncXattrsDesc" xml:space="preserve">
-    <value>Синхронизировать расширенные атрибуты файлов</value>
-  </data>
-  <data name="Settings_Advanced_SendXattrs" xml:space="preserve">
-    <value>Отправлять Xattrs</value>
-  </data>
-  <data name="Settings_Advanced_SendXattrsDesc" xml:space="preserve">
-    <value>Отправлять расширенные атрибуты другим устройствам</value>
-  </data>
-  <data name="Settings_Advanced_Database" xml:space="preserve">
+  <data name="Advanced_Database" xml:space="preserve">
     <value>База данных</value>
   </data>
-  <data name="Settings_Advanced_DbTuning" xml:space="preserve">
-    <value>Тюнинг базы данных</value>
+  <data name="Advanced_DatabaseBlockSize" xml:space="preserve">
+    <value>Размер блока базы данных (байт)</value>
   </data>
-  <data name="Settings_Advanced_DbTuningDesc" xml:space="preserve">
-    <value>Режим оптимизации базы данных</value>
+  <data name="Advanced_CompressionLevel" xml:space="preserve">
+    <value>Уровень сжатия</value>
   </data>
-  <data name="Settings_Advanced_DbTuning_Auto" xml:space="preserve">
-    <value>Авто</value>
+  <data name="Advanced_CompressionNone" xml:space="preserve">
+    <value>Нет (быстрее всего)</value>
   </data>
-  <data name="Settings_Advanced_DbTuning_Small" xml:space="preserve">
-    <value>Малый</value>
+  <data name="Advanced_CompressionLZ4" xml:space="preserve">
+    <value>LZ4 (Быстрое)</value>
   </data>
-  <data name="Settings_Advanced_DbTuning_Large" xml:space="preserve">
-    <value>Большой</value>
+  <data name="Advanced_CompressionZstd" xml:space="preserve">
+    <value>Zstandard (сбалансированно)</value>
   </data>
-  <data name="Settings_Advanced_HashLength" xml:space="preserve">
-    <value>Длина хеша</value>
-  </data>
-  <data name="Settings_Advanced_HashLengthDesc" xml:space="preserve">
-    <value>Количество байт контрольной суммы (по умолчанию: 21)</value>
-  </data>
-  <data name="Settings_Advanced_Protocol" xml:space="preserve">
+  <data name="Advanced_ProtocolOptions" xml:space="preserve">
     <value>Протокол</value>
   </data>
-  <data name="Settings_Advanced_MaxConns" xml:space="preserve">
-    <value>Максимум соединений</value>
+  <data name="Advanced_PingTimeout" xml:space="preserve">
+    <value>Тайм-аут ping (секунды)</value>
   </data>
-  <data name="Settings_Advanced_MaxConnsDesc" xml:space="preserve">
-    <value>Максимальное количество одновременных соединений</value>
+  <data name="Advanced_PingTimeoutHint" xml:space="preserve">
+    <value>Тайм-аут ping для поддержания соединения</value>
   </data>
-  <data name="Settings_Advanced_MaxPendingKiB" xml:space="preserve">
-    <value>Максимум ожидающих данных (КиБ)</value>
+  <data name="Advanced_ReconnectionInterval" xml:space="preserve">
+    <value>Интервал переподключения (секунды)</value>
   </data>
-  <data name="Settings_Advanced_MaxPendingDesc" xml:space="preserve">
-    <value>Максимум данных в очереди на отправку</value>
+  <data name="Advanced_ReconnectionIntervalHint" xml:space="preserve">
+    <value>Время между попытками переподключения</value>
   </data>
-  <data name="Settings_Advanced_MaxReqKiB" xml:space="preserve">
-    <value>Максимальный размер запроса (КиБ)</value>
+  <data name="Advanced_MaxPendingData" xml:space="preserve">
+    <value>Макс. ожидающих данных (КиБ)</value>
   </data>
-  <data name="Settings_Advanced_MaxReqDesc" xml:space="preserve">
-    <value>Максимальный размер одного запроса данных</value>
+  <data name="Advanced_MaxPendingDataHint" xml:space="preserve">
+    <value>Максимум данных, ожидающих ответа</value>
   </data>
-  <data name="Settings_Advanced_ReconnectIntervalSecs" xml:space="preserve">
-    <value>Интервал переподключения (сек)</value>
+  <data name="Advanced_KeepTemporaryFiles" xml:space="preserve">
+    <value>Сохранять временные файлы</value>
   </data>
-  <data name="Settings_Advanced_ReconnectIntervalDesc" xml:space="preserve">
-    <value>Время ожидания между попытками подключения</value>
+  <data name="Advanced_KeepTemporaryFilesHint" xml:space="preserve">
+    <value>Не удалять временные файлы при ошибке (для отладки)</value>
   </data>
-  <data name="Settings_Advanced_PingTimeoutSecs" xml:space="preserve">
-    <value>Таймаут пинга (сек)</value>
+  <data name="Advanced_CopyOwnershipFromParent" xml:space="preserve">
+    <value>Копировать владельца</value>
   </data>
-  <data name="Settings_Advanced_PingTimeoutDesc" xml:space="preserve">
-    <value>Таймаут для сообщений проверки соединения</value>
+  <data name="Advanced_CopyOwnershipFromParentHint" xml:space="preserve">
+    <value>Новые файлы наследуют владельца от родительского каталога</value>
   </data>
-  <data name="Settings_Advanced_Debugging" xml:space="preserve">
+  <data name="Advanced_StartupBehavior" xml:space="preserve">
+    <value>Запуск</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStart" xml:space="preserve">
+    <value>Открывать браузер при запуске</value>
+  </data>
+  <data name="Advanced_OpenBrowserOnStartHint" xml:space="preserve">
+    <value>Автоматически открывать веб-интерфейс при запуске программы</value>
+  </data>
+  <data name="Advanced_Debugging" xml:space="preserve">
     <value>Отладка</value>
   </data>
-  <data name="Settings_Advanced_DebugEnabled" xml:space="preserve">
-    <value>Режим отладки</value>
+  <data name="Advanced_EnableCrashReporting" xml:space="preserve">
+    <value>Включить отчёты о сбоях</value>
   </data>
-  <data name="Settings_Advanced_DebugEnabledDesc" xml:space="preserve">
-    <value>Включить расширенное ведение журнала для устранения неполадок</value>
+  <data name="Advanced_EnableCrashReportingHint" xml:space="preserve">
+    <value>Отправлять анонимные отчёты о сбоях, чтобы помочь улучшить программу</value>
   </data>
-  <data name="Settings_Advanced_ProfilerEnabled" xml:space="preserve">
-    <value>Профилировщик</value>
+  <data name="Advanced_LogLevel" xml:space="preserve">
+    <value>Уровень логирования</value>
   </data>
-  <data name="Settings_Advanced_ProfilerEnabledDesc" xml:space="preserve">
-    <value>Включить профилирование производительности</value>
-  </data>
-  <data name="Settings_Advanced_ProfilingHttp" xml:space="preserve">
-    <value>Профилирование HTTP</value>
-  </data>
-  <data name="Settings_Advanced_ProfilingHttpDesc" xml:space="preserve">
-    <value>Включить HTTP-эндпоинты pprof</value>
-  </data>
-  <data name="Settings_Advanced_ProfilingBlock" xml:space="preserve">
-    <value>Профилирование блокировок</value>
-  </data>
-  <data name="Settings_Advanced_ProfilingBlockDesc" xml:space="preserve">
-    <value>Отслеживать события блокировки</value>
-  </data>
-  <data name="Settings_Advanced_DangerZone" xml:space="preserve">
+  <data name="Advanced_DangerZone" xml:space="preserve">
     <value>Опасная зона</value>
   </data>
-  <data name="Settings_Advanced_ResetDb" xml:space="preserve">
+  <data name="Advanced_DangerZoneWarning" xml:space="preserve">
+    <value>Эти действия нельзя отменить.</value>
+  </data>
+  <data name="Advanced_ResetDatabase" xml:space="preserve">
     <value>Сбросить базу данных</value>
   </data>
-  <data name="Settings_Advanced_ResetDbDesc" xml:space="preserve">
-    <value>Удалить всю информацию индекса и начать заново</value>
-  </data>
-  <data name="Settings_Advanced_FactoryReset" xml:space="preserve">
+  <data name="Advanced_FactoryReset" xml:space="preserve">
     <value>Сброс к заводским настройкам</value>
   </data>
-  <data name="Settings_Advanced_FactoryResetDesc" xml:space="preserve">
-    <value>Удалить всю конфигурацию и данные</value>
+  <data name="Msg_ResetDatabaseConfirm" xml:space="preserve">
+    <value>База данных синхронизации будет сброшена. Все папки потребуют повторного сканирования. Продолжить?</value>
   </data>
-  <data name="Settings_Advanced_ResetDbConfirm" xml:space="preserve">
-    <value>Вы уверены, что хотите сбросить базу данных? Все файлы будут повторно проиндексированы.</value>
+  <data name="Msg_DatabaseResetInitiated" xml:space="preserve">
+    <value>Сброс базы данных начат. Папки будут просканированы заново.</value>
   </data>
-  <data name="Settings_Advanced_FactoryResetConfirm" xml:space="preserve">
-    <value>Вы уверены, что хотите выполнить сброс к заводским настройкам? Это действие нельзя отменить.</value>
+  <data name="Msg_FactoryResetConfirm" xml:space="preserve">
+    <value>Это удалит ВСЕ настройки и данные. Действие нельзя отменить. Вы абсолютно уверены?</value>
   </data>
-
-  <!-- About Page -->
+  <data name="Msg_FactoryResetTypeConfirm" xml:space="preserve">
+    <value>Введите «RESET», чтобы подтвердить удаление всех данных.</value>
+  </data>
+  <data name="Msg_FactoryResetComplete" xml:space="preserve">
+    <value>Сброс к заводским настройкам завершён. Программа будет перезапущена.</value>
+  </data>
+  <data name="Msg_AdvancedSettingsSaved" xml:space="preserve">
+    <value>Дополнительные настройки сохранены. Некоторые изменения требуют перезапуска.</value>
+  </data>
   <data name="About_Title" xml:space="preserve">
     <value>О программе</value>
   </data>
-  <data name="About_Subtitle" xml:space="preserve">
+  <data name="About_Description" xml:space="preserve">
     <value>Syncthing-совместимая синхронизация файлов с управлением Creatio</value>
   </data>
   <data name="About_Version" xml:space="preserve">
     <value>Версия</value>
   </data>
-  <data name="About_DeviceId" xml:space="preserve">
-    <value>ID устройства</value>
-  </data>
   <data name="About_Uptime" xml:space="preserve">
     <value>Время работы</value>
   </data>
-  <data name="About_MemoryUsage" xml:space="preserve">
-    <value>Использование памяти</value>
-  </data>
-  <data name="About_BuildDate" xml:space="preserve">
-    <value>Дата сборки</value>
-  </data>
-  <data name="About_Runtime" xml:space="preserve">
-    <value>Среда выполнения</value>
-  </data>
-  <data name="About_Os" xml:space="preserve">
-    <value>Операционная система</value>
+  <data name="About_Platform" xml:space="preserve">
+    <value>Платформа</value>
   </data>
   <data name="About_Architecture" xml:space="preserve">
     <value>Архитектура</value>
   </data>
+  <data name="About_MemoryUsage" xml:space="preserve">
+    <value>Использование памяти</value>
+  </data>
   <data name="About_Features" xml:space="preserve">
     <value>Возможности</value>
   </data>
-  <data name="About_FeaturesList" xml:space="preserve">
-    <value>P2P синхронизация файлов, сквозное шифрование, дельта-синхронизация, обнаружение конфликтов, контроль версий</value>
+  <data name="About_Feature_Sync" xml:space="preserve">
+    <value>Синхронизация файлов, совместимая с Syncthing</value>
+  </data>
+  <data name="About_Feature_Encryption" xml:space="preserve">
+    <value>Сквозное шифрование</value>
+  </data>
+  <data name="About_Feature_NAT" xml:space="preserve">
+    <value>Обход NAT (UPnP, NAT-PMP, STUN)</value>
+  </data>
+  <data name="About_Feature_Creatio" xml:space="preserve">
+    <value>Интеграция с Creatio CRM</value>
+  </data>
+  <data name="About_Feature_WebUI" xml:space="preserve">
+    <value>Веб-интерфейс управления</value>
   </data>
   <data name="About_Links" xml:space="preserve">
     <value>Ссылки</value>
+  </data>
+  <data name="About_GitHub" xml:space="preserve">
+    <value>GitHub</value>
+  </data>
+  <data name="About_SyncthingDocs" xml:space="preserve">
+    <value>Документация Syncthing</value>
+  </data>
+  <data name="About_Documentation" xml:space="preserve">
+    <value>Документация</value>
   </data>
   <data name="About_ReportIssue" xml:space="preserve">
     <value>Сообщить о проблеме</value>
@@ -1355,64 +1361,53 @@
   <data name="About_LicenseText" xml:space="preserve">
     <value>Лицензия GPL-3.0. Файлы протокола основаны на Syncthing (MPL-2.0).</value>
   </data>
-
-  <!-- Connections Page -->
+  <data name="About_Os" xml:space="preserve">
+    <value>Операционная система</value>
+  </data>
+  <data name="About_FeaturesList" xml:space="preserve">
+    <value>P2P синхронизация файлов, сквозное шифрование, дельта-синхронизация, обнаружение конфликтов, контроль версий</value>
+  </data>
   <data name="Connections_Title" xml:space="preserve">
     <value>Соединения</value>
   </data>
   <data name="Connections_Summary" xml:space="preserve">
     <value>Сводка</value>
   </data>
-  <data name="Connections_ActiveConns" xml:space="preserve">
-    <value>Активные соединения</value>
-  </data>
   <data name="Connections_TotalDevices" xml:space="preserve">
     <value>Всего устройств</value>
   </data>
-  <data name="Connections_RelayConns" xml:space="preserve">
-    <value>Релейные соединения</value>
+  <data name="Connections_Connected" xml:space="preserve">
+    <value>Подключено</value>
   </data>
-  <data name="Connections_DirectConns" xml:space="preserve">
+  <data name="Connections_Disconnected" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="Connections_DirectConnections" xml:space="preserve">
     <value>Прямые соединения</value>
+  </data>
+  <data name="Connections_RelayConnections" xml:space="preserve">
+    <value>Соединения через ретранслятор</value>
   </data>
   <data name="Connections_Bandwidth" xml:space="preserve">
     <value>Пропускная способность</value>
   </data>
-  <data name="Connections_InRate" xml:space="preserve">
-    <value>Скорость приёма</value>
+  <data name="Connections_DownloadRate" xml:space="preserve">
+    <value>Скорость загрузки</value>
   </data>
-  <data name="Connections_OutRate" xml:space="preserve">
-    <value>Скорость отправки</value>
+  <data name="Connections_UploadRate" xml:space="preserve">
+    <value>Скорость отдачи</value>
   </data>
-  <data name="Connections_TotalIn" xml:space="preserve">
-    <value>Всего принято</value>
+  <data name="Connections_TotalDownloaded" xml:space="preserve">
+    <value>Всего загружено</value>
   </data>
-  <data name="Connections_TotalOut" xml:space="preserve">
+  <data name="Connections_TotalUploaded" xml:space="preserve">
     <value>Всего отправлено</value>
-  </data>
-  <data name="Connections_Discovery" xml:space="preserve">
-    <value>Обнаружение</value>
-  </data>
-  <data name="Connections_LocalDiscovery" xml:space="preserve">
-    <value>Локальное обнаружение</value>
-  </data>
-  <data name="Connections_GlobalDiscovery" xml:space="preserve">
-    <value>Глобальное обнаружение</value>
-  </data>
-  <data name="Connections_Servers" xml:space="preserve">
-    <value>серверов</value>
-  </data>
-  <data name="Connections_NatType" xml:space="preserve">
-    <value>Тип NAT</value>
-  </data>
-  <data name="Connections_ExternalAddr" xml:space="preserve">
-    <value>Внешний адрес</value>
-  </data>
-  <data name="Connections_Details" xml:space="preserve">
-    <value>Детали соединения</value>
   </data>
   <data name="Connections_Device" xml:space="preserve">
     <value>Устройство</value>
+  </data>
+  <data name="Connections_Status" xml:space="preserve">
+    <value>Статус</value>
   </data>
   <data name="Connections_Type" xml:space="preserve">
     <value>Тип</value>
@@ -1420,126 +1415,110 @@
   <data name="Connections_Address" xml:space="preserve">
     <value>Адрес</value>
   </data>
-  <data name="Connections_ConnectedAt" xml:space="preserve">
+  <data name="Connections_Download" xml:space="preserve">
+    <value>Загрузка</value>
+  </data>
+  <data name="Connections_Upload" xml:space="preserve">
+    <value>Отдача</value>
+  </data>
+  <data name="Connections_ConnectedTime" xml:space="preserve">
     <value>Подключено</value>
   </data>
-  <data name="Connections_InOut" xml:space="preserve">
-    <value>Вход/Выход</value>
+  <data name="Connections_Direct" xml:space="preserve">
+    <value>Прямое</value>
   </data>
-  <data name="Connections_Actions" xml:space="preserve">
-    <value>Действия</value>
+  <data name="Connections_Relay" xml:space="preserve">
+    <value>Реле</value>
   </data>
-  <data name="Connections_Disconnect" xml:space="preserve">
-    <value>Отключено</value>
+  <data name="Connections_DiscoveryStatus" xml:space="preserve">
+    <value>Состояние обнаружения</value>
   </data>
-  <data name="Connections_NoActiveConns" xml:space="preserve">
-    <value>Нет активных соединений</value>
+  <data name="Connections_LocalDiscovery" xml:space="preserve">
+    <value>Локальное обнаружение</value>
   </data>
-
-  <!-- Events Page (additional keys) -->
+  <data name="Connections_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальное обнаружение</value>
+  </data>
+  <data name="Connections_ExternalAddresses" xml:space="preserve">
+    <value>Внешние адреса</value>
+  </data>
+  <data name="Connections_Servers" xml:space="preserve">
+    <value>серверов</value>
+  </data>
   <data name="Events_LiveUpdates" xml:space="preserve">
     <value>Обновления в реальном времени</value>
-  </data>
-  <data name="Events_Filter" xml:space="preserve">
-    <value>Фильтр</value>
-  </data>
-  <data name="Events_AllTypes" xml:space="preserve">
-    <value>Все типы</value>
-  </data>
-  <data name="Events_FilterByType" xml:space="preserve">
-    <value>Фильтр по типу</value>
-  </data>
-  <data name="Events_Time" xml:space="preserve">
-    <value>Время</value>
   </data>
   <data name="Events_EventType" xml:space="preserve">
     <value>Тип события</value>
   </data>
-  <data name="Events_Data" xml:space="preserve">
-    <value>Данные</value>
+  <data name="Events_AllEvents" xml:space="preserve">
+    <value>Все события</value>
   </data>
-  <data name="Events_WaitingForEvents" xml:space="preserve">
-    <value>Ожидание событий...</value>
+  <data name="Events_StateChanged" xml:space="preserve">
+    <value>Изменение состояния</value>
   </data>
-  <data name="Events_Paused" xml:space="preserve">
-    <value>Приостановлено</value>
+  <data name="Events_ItemStarted" xml:space="preserve">
+    <value>Начало синхронизации</value>
   </data>
-
-  <!-- Statistics Page -->
-  <data name="Statistics_Title" xml:space="preserve">
-    <value>Статистика</value>
+  <data name="Events_ItemFinished" xml:space="preserve">
+    <value>Завершение синхронизации</value>
   </data>
-  <data name="Statistics_TransferStats" xml:space="preserve">
-    <value>Статистика передачи</value>
+  <data name="Events_FolderCompletion" xml:space="preserve">
+    <value>Завершение папки</value>
   </data>
-  <data name="Statistics_TotalFiles" xml:space="preserve">
-    <value>Всего файлов</value>
+  <data name="Events_DeviceConnected" xml:space="preserve">
+    <value>Устройство подключено</value>
   </data>
-  <data name="Statistics_TotalDirs" xml:space="preserve">
-    <value>Всего каталогов</value>
+  <data name="Events_DeviceDisconnected" xml:space="preserve">
+    <value>Устройство отключено</value>
   </data>
-  <data name="Statistics_TotalData" xml:space="preserve">
-    <value>Всего данных</value>
+  <data name="Events_FolderErrors" xml:space="preserve">
+    <value>Ошибки папки</value>
   </data>
-  <data name="Statistics_DataIn" xml:space="preserve">
-    <value>Получено данных</value>
-  </data>
-  <data name="Statistics_DataOut" xml:space="preserve">
-    <value>Отправлено данных</value>
-  </data>
-  <data name="Statistics_Uptime" xml:space="preserve">
-    <value>Время работы</value>
-  </data>
-  <data name="Statistics_SystemStats" xml:space="preserve">
-    <value>Системная статистика</value>
-  </data>
-  <data name="Statistics_CpuUsage" xml:space="preserve">
-    <value>Использование CPU</value>
-  </data>
-  <data name="Statistics_MemoryUsage" xml:space="preserve">
-    <value>Использование памяти</value>
-  </data>
-  <data name="Statistics_GoroutineCount" xml:space="preserve">
-    <value>Количество задач</value>
-  </data>
-  <data name="Statistics_HeapAlloc" xml:space="preserve">
-    <value>Выделено в куче</value>
-  </data>
-  <data name="Statistics_FolderStats" xml:space="preserve">
-    <value>Статистика по папкам</value>
-  </data>
-  <data name="Statistics_Folder" xml:space="preserve">
+  <data name="Events_Folder" xml:space="preserve">
     <value>Папка</value>
   </data>
-  <data name="Statistics_LocalFiles" xml:space="preserve">
-    <value>Локальных файлов</value>
+  <data name="Events_AllFolders" xml:space="preserve">
+    <value>Все папки</value>
   </data>
-  <data name="Statistics_GlobalFiles" xml:space="preserve">
-    <value>Глобальных файлов</value>
+  <data name="Events_Device" xml:space="preserve">
+    <value>Устройство</value>
   </data>
-  <data name="Statistics_NeedFiles" xml:space="preserve">
-    <value>Требуется файлов</value>
+  <data name="Events_AllDevices" xml:space="preserve">
+    <value>Все устройства</value>
   </data>
-  <data name="Statistics_State" xml:space="preserve">
-    <value>Состояние</value>
+  <data name="Events_NoEventsMatch" xml:space="preserve">
+    <value>Нет событий, соответствующих текущим фильтрам</value>
   </data>
-  <data name="Statistics_DeviceStats" xml:space="preserve">
-    <value>Статистика по устройствам</value>
+  <data name="Events_Time" xml:space="preserve">
+    <value>Время</value>
   </data>
-  <data name="Statistics_LastSeen" xml:space="preserve">
-    <value>Последнее подключение</value>
+  <data name="Events_Type" xml:space="preserve">
+    <value>Тип</value>
   </data>
-  <data name="Statistics_BytesRecv" xml:space="preserve">
-    <value>Получено байт</value>
+  <data name="Events_Details" xml:space="preserve">
+    <value>Подробности</value>
   </data>
-  <data name="Statistics_BytesSent" xml:space="preserve">
-    <value>Отправлено байт</value>
+  <data name="Events_LoadMore" xml:space="preserve">
+    <value>Загрузить ещё</value>
+  </data>
+  <data name="Statistics_Title" xml:space="preserve">
+    <value>Статистика</value>
   </data>
   <data name="Statistics_TotalFolders" xml:space="preserve">
     <value>Всего папок</value>
   </data>
+  <data name="Statistics_TotalFiles" xml:space="preserve">
+    <value>Всего файлов</value>
+  </data>
+  <data name="Statistics_TotalSize" xml:space="preserve">
+    <value>Общий размер</value>
+  </data>
   <data name="Statistics_ConnectedDevices" xml:space="preserve">
     <value>Подключённых устройств</value>
+  </data>
+  <data name="Statistics_TransferStatistics" xml:space="preserve">
+    <value>Статистика передачи</value>
   </data>
   <data name="Statistics_TotalDownloaded" xml:space="preserve">
     <value>Всего загружено</value>
@@ -1559,23 +1538,26 @@
   <data name="Statistics_BytesSynced" xml:space="preserve">
     <value>Синхронизировано данных</value>
   </data>
-  <data name="Statistics_SyncPercent" xml:space="preserve">
-    <value>Sync %</value>
+  <data name="Statistics_FilesSyncedSession" xml:space="preserve">
+    <value>Синхронизировано файлов (сеанс)</value>
   </data>
-  <data name="Statistics_Device" xml:space="preserve">
-    <value>Устройство</value>
+  <data name="Statistics_BytesSyncedSession" xml:space="preserve">
+    <value>Синхронизировано байт (сеанс)</value>
   </data>
-  <data name="Statistics_Status" xml:space="preserve">
-    <value>Статус</value>
+  <data name="Statistics_SystemStatistics" xml:space="preserve">
+    <value>Статистика системы</value>
   </data>
-  <data name="Statistics_Connected" xml:space="preserve">
-    <value>Подключён</value>
+  <data name="Statistics_Uptime" xml:space="preserve">
+    <value>Время работы</value>
   </data>
-  <data name="Statistics_Disconnected" xml:space="preserve">
-    <value>Отключён</value>
+  <data name="Statistics_MemoryUsage" xml:space="preserve">
+    <value>Использование памяти</value>
   </data>
-  <data name="Statistics_Never" xml:space="preserve">
-    <value>Никогда</value>
+  <data name="Statistics_DatabaseSize" xml:space="preserve">
+    <value>Размер БД</value>
+  </data>
+  <data name="Statistics_ActiveGoroutines" xml:space="preserve">
+    <value>Активные горутины</value>
   </data>
   <data name="Statistics_Version" xml:space="preserve">
     <value>Версия</value>
@@ -1583,100 +1565,86 @@
   <data name="Statistics_Started" xml:space="preserve">
     <value>Запущен</value>
   </data>
-  <data name="Statistics_DatabaseSize" xml:space="preserve">
-    <value>Размер БД</value>
+  <data name="Statistics_FolderStatistics" xml:space="preserve">
+    <value>Статистика по папкам</value>
   </data>
-
-  <!-- Profiling Page -->
+  <data name="Statistics_Folder" xml:space="preserve">
+    <value>Папка</value>
+  </data>
+  <data name="Statistics_Files" xml:space="preserve">
+    <value>Файлы</value>
+  </data>
+  <data name="Statistics_Directories" xml:space="preserve">
+    <value>Каталогов</value>
+  </data>
+  <data name="Statistics_Size" xml:space="preserve">
+    <value>Размер</value>
+  </data>
+  <data name="Statistics_SyncPercent" xml:space="preserve">
+    <value>Sync %</value>
+  </data>
+  <data name="Statistics_Status" xml:space="preserve">
+    <value>Статус</value>
+  </data>
+  <data name="Statistics_DeviceStatistics" xml:space="preserve">
+    <value>Статистика по устройствам</value>
+  </data>
+  <data name="Statistics_Device" xml:space="preserve">
+    <value>Устройство</value>
+  </data>
+  <data name="Statistics_Downloaded" xml:space="preserve">
+    <value>Загружено</value>
+  </data>
+  <data name="Statistics_Uploaded" xml:space="preserve">
+    <value>Отправлено</value>
+  </data>
+  <data name="Statistics_LastSeen" xml:space="preserve">
+    <value>Последнее подключение</value>
+  </data>
+  <data name="Statistics_LocalFiles" xml:space="preserve">
+    <value>Локальных файлов</value>
+  </data>
+  <data name="Statistics_TotalDirs" xml:space="preserve">
+    <value>Всего каталогов</value>
+  </data>
+  <data name="Statistics_BytesRecv" xml:space="preserve">
+    <value>Получено байт</value>
+  </data>
+  <data name="Statistics_BytesSent" xml:space="preserve">
+    <value>Отправлено байт</value>
+  </data>
+  <data name="Statistics_Never" xml:space="preserve">
+    <value>Никогда</value>
+  </data>
+  <data name="Statistics_Connected" xml:space="preserve">
+    <value>Подключён</value>
+  </data>
+  <data name="Statistics_Disconnected" xml:space="preserve">
+    <value>Отключён</value>
+  </data>
+  <data name="Statistics_GoroutineCount" xml:space="preserve">
+    <value>Количество задач</value>
+  </data>
+  <data name="Statistics_FolderStats" xml:space="preserve">
+    <value>Статистика по папкам</value>
+  </data>
+  <data name="Statistics_DeviceStats" xml:space="preserve">
+    <value>Статистика по устройствам</value>
+  </data>
   <data name="Profiling_Title" xml:space="preserve">
     <value>Профилирование</value>
   </data>
-  <data name="Profiling_CpuProfile" xml:space="preserve">
-    <value>Профиль CPU</value>
+  <data name="Profiling_AppMemory" xml:space="preserve">
+    <value>Память программы</value>
   </data>
-  <data name="Profiling_CpuUsage" xml:space="preserve">
-    <value>Использование CPU</value>
+  <data name="Profiling_OSMemory" xml:space="preserve">
+    <value>ОС</value>
   </data>
-  <data name="Profiling_Threads" xml:space="preserve">
-    <value>Потоков</value>
+  <data name="Profiling_Goroutines" xml:space="preserve">
+    <value>Горутины</value>
   </data>
-  <data name="Profiling_StartCpuProfile" xml:space="preserve">
-    <value>Начать профилирование CPU</value>
-  </data>
-  <data name="Profiling_StopCpuProfile" xml:space="preserve">
-    <value>Остановить профилирование CPU</value>
-  </data>
-  <data name="Profiling_DownloadCpuProfile" xml:space="preserve">
-    <value>Скачать профиль CPU</value>
-  </data>
-  <data name="Profiling_MemoryProfile" xml:space="preserve">
-    <value>Профиль памяти</value>
-  </data>
-  <data name="Profiling_AllocatedMem" xml:space="preserve">
-    <value>Выделено памяти</value>
-  </data>
-  <data name="Profiling_GcCollections" xml:space="preserve">
-    <value>Сборок мусора</value>
-  </data>
-  <data name="Profiling_TakeHeapSnapshot" xml:space="preserve">
-    <value>Сделать снимок кучи</value>
-  </data>
-  <data name="Profiling_ForceGc" xml:space="preserve">
-    <value>Принудительная сборка мусора</value>
-  </data>
-  <data name="Profiling_HeapStats" xml:space="preserve">
-    <value>Статистика кучи</value>
-  </data>
-  <data name="Profiling_HeapInUse" xml:space="preserve">
-    <value>Используется кучи</value>
-  </data>
-  <data name="Profiling_HeapSys" xml:space="preserve">
-    <value>Куча (системная)</value>
-  </data>
-  <data name="Profiling_HeapIdle" xml:space="preserve">
-    <value>Куча (простой)</value>
-  </data>
-  <data name="Profiling_HeapReleased" xml:space="preserve">
-    <value>Куча (освобождено)</value>
-  </data>
-  <data name="Profiling_IoStats" xml:space="preserve">
-    <value>Статистика ввода-вывода</value>
-  </data>
-  <data name="Profiling_OpenFiles" xml:space="preserve">
-    <value>Открытых файлов</value>
-  </data>
-  <data name="Profiling_ReadBytes" xml:space="preserve">
-    <value>Прочитано байт</value>
-  </data>
-  <data name="Profiling_WriteBytes" xml:space="preserve">
-    <value>Записано байт</value>
-  </data>
-  <data name="Profiling_ReadOps" xml:space="preserve">
-    <value>Операций чтения</value>
-  </data>
-  <data name="Profiling_WriteOps" xml:space="preserve">
-    <value>Операций записи</value>
-  </data>
-  <data name="Profiling_DebugActions" xml:space="preserve">
-    <value>Действия отладки</value>
-  </data>
-  <data name="Profiling_DumpStacks" xml:space="preserve">
-    <value>Дамп стеков</value>
-  </data>
-  <data name="Profiling_DumpStacksDesc" xml:space="preserve">
-    <value>Вывести трассировку стека всех потоков</value>
-  </data>
-  <data name="Profiling_ToggleVerbose" xml:space="preserve">
-    <value>Подробное логирование</value>
-  </data>
-  <data name="Profiling_ToggleVerboseDesc" xml:space="preserve">
-    <value>Включить/выключить подробные отладочные логи</value>
-  </data>
-  <data name="Profiling_ReloadConfig" xml:space="preserve">
-    <value>Перезагрузить конфигурацию</value>
-  </data>
-  <data name="Profiling_ReloadConfigDesc" xml:space="preserve">
-    <value>Перезагрузить конфигурацию с диска</value>
+  <data name="Profiling_Uptime" xml:space="preserve">
+    <value>Время работы</value>
   </data>
   <data name="Profiling_ResourceHistory" xml:space="preserve">
     <value>История ресурсов</value>
@@ -1684,8 +1652,20 @@
   <data name="Profiling_CollectingData" xml:space="preserve">
     <value>Сбор данных...</value>
   </data>
+  <data name="Profiling_CPU" xml:space="preserve">
+    <value>ЦП</value>
+  </data>
+  <data name="Profiling_Memory" xml:space="preserve">
+    <value>Память</value>
+  </data>
+  <data name="Profiling_HeapStatistics" xml:space="preserve">
+    <value>Статистика кучи</value>
+  </data>
   <data name="Profiling_HeapAllocated" xml:space="preserve">
     <value>Выделено в куче</value>
+  </data>
+  <data name="Profiling_HeapInUse" xml:space="preserve">
+    <value>Используется кучи</value>
   </data>
   <data name="Profiling_HeapObjects" xml:space="preserve">
     <value>Объектов в куче</value>
@@ -1693,8 +1673,11 @@
   <data name="Profiling_StackInUse" xml:space="preserve">
     <value>Используется стека</value>
   </data>
-  <data name="Profiling_GcPauseTotal" xml:space="preserve">
-    <value>Общая пауза GC</value>
+  <data name="Profiling_IOStatistics" xml:space="preserve">
+    <value>Статистика ввода-вывода</value>
+  </data>
+  <data name="Profiling_FilesOpen" xml:space="preserve">
+    <value>Открытых файлов</value>
   </data>
   <data name="Profiling_NetworkConnections" xml:space="preserve">
     <value>Сетевых соединений</value>
@@ -1711,281 +1694,215 @@
   <data name="Profiling_WriteRate" xml:space="preserve">
     <value>Скорость записи</value>
   </data>
+  <data name="Profiling_DebugActions" xml:space="preserve">
+    <value>Действия отладки</value>
+  </data>
   <data name="Profiling_DownloadHeapDump" xml:space="preserve">
     <value>Скачать дамп кучи</value>
   </data>
   <data name="Profiling_DownloadGoroutineDump" xml:space="preserve">
     <value>Скачать дамп горутин</value>
   </data>
-  <data name="Profiling_GcTriggered" xml:space="preserve">
+  <data name="Msg_GCTriggered" xml:space="preserve">
     <value>Сборка мусора запущена</value>
   </data>
-  <data name="Profiling_GcFailed" xml:space="preserve">
-    <value>Ошибка запуска сборки мусора: {0}</value>
-  </data>
-  <data name="Profiling_HeapDumpDownloading" xml:space="preserve">
+  <data name="Msg_HeapDumpDownloading" xml:space="preserve">
     <value>Загрузка дампа кучи...</value>
   </data>
-  <data name="Profiling_HeapDumpFailed" xml:space="preserve">
-    <value>Ошибка получения дампа кучи: {0}</value>
-  </data>
-  <data name="Profiling_GoroutineDumpDownloading" xml:space="preserve">
+  <data name="Msg_GoroutineDumpDownloading" xml:space="preserve">
     <value>Загрузка дампа горутин...</value>
   </data>
-  <data name="Profiling_GoroutineDumpFailed" xml:space="preserve">
-    <value>Ошибка получения дампа горутин: {0}</value>
-  </data>
-
-  <!-- Support Bundle Page -->
-  <data name="SupportBundle_Title" xml:space="preserve">
+  <data name="Support_Title" xml:space="preserve">
     <value>Пакет поддержки</value>
   </data>
-  <data name="SupportBundle_Description" xml:space="preserve">
-    <value>Создать диагностический пакет для устранения неполадок. Пакет содержит информацию о системе, конфигурацию и логи.</value>
+  <data name="Support_Description" xml:space="preserve">
+    <value>Пакет диагностики содержит сведения, помогающие устранять неполадки. В него входят конфигурация, журналы и системная информация, но не входят конфиденциальные данные, такие как ключи API и пароли.</value>
   </data>
-  <data name="SupportBundle_IncludeOptions" xml:space="preserve">
-    <value>Что включить</value>
+  <data name="Support_BundleContents" xml:space="preserve">
+    <value>Содержимое пакета</value>
   </data>
-  <data name="SupportBundle_SystemInfo" xml:space="preserve">
-    <value>Информация о системе</value>
-  </data>
-  <data name="SupportBundle_SystemInfoDesc" xml:space="preserve">
-    <value>ОС, версия, архитектура, ресурсы</value>
-  </data>
-  <data name="SupportBundle_Configuration" xml:space="preserve">
+  <data name="Support_Configuration" xml:space="preserve">
     <value>Конфигурация</value>
   </data>
-  <data name="SupportBundle_ConfigurationDesc" xml:space="preserve">
-    <value>Текущие настройки (чувствительные данные удалены)</value>
+  <data name="Support_ConfigurationHint" xml:space="preserve">
+    <value>Очищенная конфигурация без конфиденциальных данных</value>
   </data>
-  <data name="SupportBundle_Logs" xml:space="preserve">
-    <value>Логи</value>
+  <data name="Support_SystemLogs" xml:space="preserve">
+    <value>Системные журналы</value>
   </data>
-  <data name="SupportBundle_LogsDesc" xml:space="preserve">
-    <value>Последние записи журнала</value>
+  <data name="Support_SystemLogsHint" xml:space="preserve">
+    <value>Последние записи журнала (за последние {0} дней)</value>
   </data>
-  <data name="SupportBundle_DatabaseStats" xml:space="preserve">
-    <value>Статистика БД</value>
+  <data name="Support_SystemInformation" xml:space="preserve">
+    <value>Системная информация</value>
   </data>
-  <data name="SupportBundle_DatabaseStatsDesc" xml:space="preserve">
-    <value>Статистика и метрики базы данных</value>
+  <data name="Support_SystemInformationHint" xml:space="preserve">
+    <value>Версия ОС, архитектура, окружение</value>
   </data>
-  <data name="SupportBundle_NetworkDiag" xml:space="preserve">
-    <value>Диагностика сети</value>
+  <data name="Support_PerformanceMetrics" xml:space="preserve">
+    <value>Метрики производительности</value>
   </data>
-  <data name="SupportBundle_NetworkDiagDesc" xml:space="preserve">
-    <value>Состояние соединения и информация обнаружения</value>
+  <data name="Support_PerformanceMetricsHint" xml:space="preserve">
+    <value>Статистика ЦП, памяти и ввода-вывода</value>
   </data>
-  <data name="SupportBundle_PrivacyNote" xml:space="preserve">
-    <value>Примечание о конфиденциальности</value>
-  </data>
-  <data name="SupportBundle_PrivacyText" xml:space="preserve">
-    <value>Чувствительная информация (API ключи, пароли, ID устройств) будет автоматически удалена из пакета.</value>
-  </data>
-  <data name="SupportBundle_Generate" xml:space="preserve">
-    <value>Создать пакет</value>
-  </data>
-  <data name="SupportBundle_Generating" xml:space="preserve">
-    <value>Создание пакета...</value>
-  </data>
-  <data name="SupportBundle_Download" xml:space="preserve">
-    <value>Скачать пакет</value>
-  </data>
-  <data name="SupportBundle_GeneratedAt" xml:space="preserve">
-    <value>Создан: {0}</value>
-  </data>
-  <data name="SupportBundle_Size" xml:space="preserve">
-    <value>Размер: {0}</value>
-  </data>
-  <data name="SupportBundle_FolderStatus" xml:space="preserve">
+  <data name="Support_FolderStatus" xml:space="preserve">
     <value>Состояние папок</value>
   </data>
-  <data name="SupportBundle_FolderStatusDesc" xml:space="preserve">
+  <data name="Support_FolderStatusHint" xml:space="preserve">
     <value>Состояние синхронизации всех папок (пути скрыты)</value>
   </data>
-  <data name="SupportBundle_DeviceStatus" xml:space="preserve">
+  <data name="Support_DeviceStatus" xml:space="preserve">
     <value>Состояние устройств</value>
   </data>
-  <data name="SupportBundle_DeviceStatusDesc" xml:space="preserve">
+  <data name="Support_DeviceStatusHint" xml:space="preserve">
     <value>Состояние подключения всех устройств</value>
   </data>
-  <data name="SupportBundle_Preview" xml:space="preserve">
+  <data name="Support_NetworkDiagnostics" xml:space="preserve">
+    <value>Сетевая диагностика</value>
+  </data>
+  <data name="Support_NetworkDiagnosticsHint" xml:space="preserve">
+    <value>Тип NAT, состояние обнаружения, соединения</value>
+  </data>
+  <data name="Support_PrivacyOptions" xml:space="preserve">
+    <value>Параметры конфиденциальности</value>
+  </data>
+  <data name="Support_RedactPaths" xml:space="preserve">
+    <value>Скрыть пути к файлам</value>
+  </data>
+  <data name="Support_RedactPathsHint" xml:space="preserve">
+    <value>Заменить полные пути заполнителями (например, /home/user/Sync -&gt; [SYNC_FOLDER])</value>
+  </data>
+  <data name="Support_RedactDeviceIds" xml:space="preserve">
+    <value>Скрыть идентификаторы устройств</value>
+  </data>
+  <data name="Support_RedactDeviceIdsHint" xml:space="preserve">
+    <value>Заменить идентификаторы устройств анонимными</value>
+  </data>
+  <data name="Support_RedactIPs" xml:space="preserve">
+    <value>Скрыть IP-адреса</value>
+  </data>
+  <data name="Support_RedactIPsHint" xml:space="preserve">
+    <value>Заменить IP-адреса заполнителями</value>
+  </data>
+  <data name="Support_Generating" xml:space="preserve">
+    <value>Создание пакета диагностики...</value>
+  </data>
+  <data name="Support_Preview" xml:space="preserve">
     <value>Предпросмотр</value>
   </data>
-
-  <!-- System Log Page -->
-  <data name="SystemLog_Title" xml:space="preserve">
-    <value>Системный журнал</value>
+  <data name="Support_GenerateAndDownload" xml:space="preserve">
+    <value>Создать и скачать</value>
   </data>
-  <data name="SystemLog_Filter" xml:space="preserve">
-    <value>Фильтр</value>
+  <data name="Msg_SupportBundleDownloaded" xml:space="preserve">
+    <value>Пакет диагностики успешно скачан</value>
   </data>
-  <data name="SystemLog_Level" xml:space="preserve">
-    <value>Уровень</value>
+  <data name="Log_Title" xml:space="preserve">
+    <value>Системные журналы</value>
   </data>
-  <data name="SystemLog_AllLevels" xml:space="preserve">
-    <value>Все уровни</value>
-  </data>
-  <data name="SystemLog_Search" xml:space="preserve">
-    <value>Поиск</value>
-  </data>
-  <data name="SystemLog_SearchPlaceholder" xml:space="preserve">
-    <value>Поиск в логах...</value>
-  </data>
-  <data name="SystemLog_Refresh" xml:space="preserve">
-    <value>Обновить</value>
-  </data>
-  <data name="SystemLog_AutoScroll" xml:space="preserve">
+  <data name="Log_AutoScroll" xml:space="preserve">
     <value>Автопрокрутка</value>
   </data>
-  <data name="SystemLog_Clear" xml:space="preserve">
-    <value>Очистить</value>
+  <data name="Log_LiveTail" xml:space="preserve">
+    <value>Слежение в реальном времени</value>
   </data>
-  <data name="SystemLog_Download" xml:space="preserve">
-    <value>Скачать</value>
+  <data name="Log_Level" xml:space="preserve">
+    <value>Уровень логирования</value>
   </data>
-  <data name="SystemLog_Timestamp" xml:space="preserve">
-    <value>Время</value>
+  <data name="Log_AllLevels" xml:space="preserve">
+    <value>Все уровни</value>
   </data>
-  <data name="SystemLog_Source" xml:space="preserve">
-    <value>Источник</value>
-  </data>
-  <data name="SystemLog_Message" xml:space="preserve">
-    <value>Сообщение</value>
-  </data>
-  <data name="SystemLog_NoLogs" xml:space="preserve">
-    <value>Нет записей журнала</value>
-  </data>
-  <data name="SystemLog_TailMode" xml:space="preserve">
-    <value>Режим слежения</value>
-  </data>
-  <data name="SystemLog_LevelError" xml:space="preserve">
+  <data name="Log_Error" xml:space="preserve">
     <value>Ошибка</value>
   </data>
-  <data name="SystemLog_LevelWarning" xml:space="preserve">
+  <data name="Log_Warning" xml:space="preserve">
     <value>Предупреждение</value>
   </data>
-  <data name="SystemLog_LevelInfo" xml:space="preserve">
-    <value>Инфо</value>
+  <data name="Log_Info" xml:space="preserve">
+    <value>Информация</value>
   </data>
-  <data name="SystemLog_LevelDebug" xml:space="preserve">
+  <data name="Log_Debug" xml:space="preserve">
     <value>Отладка</value>
   </data>
-  <data name="SystemLog_Facility" xml:space="preserve">
+  <data name="Log_Verbose" xml:space="preserve">
+    <value>Подробно</value>
+  </data>
+  <data name="Log_Facility" xml:space="preserve">
     <value>Источник</value>
   </data>
-  <data name="SystemLog_AllFacilities" xml:space="preserve">
+  <data name="Log_AllFacilities" xml:space="preserve">
     <value>Все источники</value>
   </data>
-  <data name="SystemLog_FacilitySync" xml:space="preserve">
+  <data name="Log_Sync" xml:space="preserve">
     <value>Синхронизация</value>
   </data>
-  <data name="SystemLog_FacilityModel" xml:space="preserve">
+  <data name="Log_Model" xml:space="preserve">
     <value>Модель</value>
   </data>
-  <data name="SystemLog_FacilityScanner" xml:space="preserve">
+  <data name="Log_Scanner" xml:space="preserve">
     <value>Сканер</value>
   </data>
-  <data name="SystemLog_FacilityConnections" xml:space="preserve">
-    <value>Соединения</value>
+  <data name="Log_Connections" xml:space="preserve">
+    <value>Подключения</value>
   </data>
-  <data name="SystemLog_FacilityDiscovery" xml:space="preserve">
+  <data name="Log_Discovery" xml:space="preserve">
     <value>Обнаружение</value>
   </data>
-  <data name="SystemLog_FacilityUpnp" xml:space="preserve">
+  <data name="Log_UPnPNAT" xml:space="preserve">
     <value>UPnP/NAT</value>
   </data>
-  <data name="SystemLog_EntriesCount" xml:space="preserve">
+  <data name="Log_Entries" xml:space="preserve">
     <value>{0} из {1} записей</value>
   </data>
-
-  <!-- Device Details Page -->
-  <data name="DeviceDetails_Title" xml:space="preserve">
-    <value>Детали устройства</value>
+  <data name="Log_NoEntriesMatch" xml:space="preserve">
+    <value>Нет записей журнала, соответствующих фильтру</value>
   </data>
-  <data name="DeviceDetails_ConnectionInfo" xml:space="preserve">
-    <value>Информация о соединении</value>
+  <data name="Msg_LogsDownloaded" xml:space="preserve">
+    <value>Журналы скачаны</value>
   </data>
-  <data name="DeviceDetails_Status" xml:space="preserve">
-    <value>Состояние</value>
-  </data>
-  <data name="DeviceDetails_ConnectionType" xml:space="preserve">
-    <value>Тип соединения</value>
+  <data name="DeviceDetails_Connection" xml:space="preserve">
+    <value>Соединение</value>
   </data>
   <data name="DeviceDetails_Address" xml:space="preserve">
     <value>Адрес</value>
   </data>
-  <data name="DeviceDetails_ClientVersion" xml:space="preserve">
-    <value>Версия клиента</value>
+  <data name="DeviceDetails_Type" xml:space="preserve">
+    <value>Тип</value>
   </data>
-  <data name="DeviceDetails_Crypto" xml:space="preserve">
+  <data name="DeviceDetails_Encryption" xml:space="preserve">
     <value>Шифрование</value>
   </data>
-  <data name="DeviceDetails_TransferInfo" xml:space="preserve">
-    <value>Информация о передаче</value>
-  </data>
-  <data name="DeviceDetails_InRate" xml:space="preserve">
-    <value>Скорость приёма</value>
-  </data>
-  <data name="DeviceDetails_OutRate" xml:space="preserve">
-    <value>Скорость отправки</value>
-  </data>
-  <data name="DeviceDetails_TotalIn" xml:space="preserve">
-    <value>Всего принято</value>
-  </data>
-  <data name="DeviceDetails_TotalOut" xml:space="preserve">
-    <value>Всего отправлено</value>
-  </data>
-  <data name="DeviceDetails_Configuration" xml:space="preserve">
-    <value>Конфигурация</value>
-  </data>
-  <data name="DeviceDetails_DeviceName" xml:space="preserve">
-    <value>Имя устройства</value>
-  </data>
-  <data name="DeviceDetails_DeviceId" xml:space="preserve">
-    <value>ID устройства</value>
-  </data>
-  <data name="DeviceDetails_Compression" xml:space="preserve">
-    <value>Сжатие</value>
-  </data>
-  <data name="DeviceDetails_Introducer" xml:space="preserve">
-    <value>Представитель</value>
-  </data>
-  <data name="DeviceDetails_SharedFolders" xml:space="preserve">
-    <value>Общие папки</value>
-  </data>
-  <data name="DeviceDetails_NoSharedFolders" xml:space="preserve">
-    <value>Нет общих папок с этим устройством</value>
-  </data>
-  <data name="DeviceDetails_ManageFolders" xml:space="preserve">
-    <value>Управление папками</value>
-  </data>
-  <data name="DeviceDetails_Disconnect" xml:space="preserve">
-    <value>Отключить</value>
-  </data>
-  <data name="DeviceDetails_Remove" xml:space="preserve">
-    <value>Удалить устройство</value>
-  </data>
-  <data name="DeviceDetails_RemoveConfirm" xml:space="preserve">
-    <value>Вы уверены, что хотите удалить устройство "{0}"?</value>
-  </data>
-  <data name="DeviceDetails_Status_Connected" xml:space="preserve">
-    <value>Подключено</value>
-  </data>
-  <data name="DeviceDetails_Status_Disconnected" xml:space="preserve">
-    <value>Отключено</value>
-  </data>
-  <data name="DeviceDetails_Status_Paused" xml:space="preserve">
-    <value>Приостановлено</value>
-  </data>
-  <data name="DeviceDetails_Relay" xml:space="preserve">
-    <value>Реле</value>
+  <data name="DeviceDetails_ClientVersion" xml:space="preserve">
+    <value>Версия клиента</value>
   </data>
   <data name="DeviceDetails_ConnectedSince" xml:space="preserve">
     <value>Подключено с</value>
   </data>
   <data name="DeviceDetails_Duration" xml:space="preserve">
     <value>Длительность</value>
+  </data>
+  <data name="DeviceDetails_Transfer" xml:space="preserve">
+    <value>Передача</value>
+  </data>
+  <data name="DeviceDetails_DownloadRate" xml:space="preserve">
+    <value>Скорость загрузки</value>
+  </data>
+  <data name="DeviceDetails_UploadRate" xml:space="preserve">
+    <value>Скорость отдачи</value>
+  </data>
+  <data name="DeviceDetails_TotalDownloaded" xml:space="preserve">
+    <value>Всего загружено</value>
+  </data>
+  <data name="DeviceDetails_TotalUploaded" xml:space="preserve">
+    <value>Всего отправлено</value>
+  </data>
+  <data name="DeviceDetails_Configuration" xml:space="preserve">
+    <value>Конфигурация</value>
+  </data>
+  <data name="DeviceDetails_Compression" xml:space="preserve">
+    <value>Сжатие</value>
+  </data>
+  <data name="DeviceDetails_Introducer" xml:space="preserve">
+    <value>Представитель</value>
   </data>
   <data name="DeviceDetails_AutoAcceptFolders" xml:space="preserve">
     <value>Автопринятие папок</value>
@@ -2014,176 +1931,239 @@
   <data name="DeviceDetails_LastConnectionDuration" xml:space="preserve">
     <value>Длительность последнего подключения</value>
   </data>
+  <data name="DeviceDetails_Status_Connected" xml:space="preserve">
+    <value>Подключено</value>
+  </data>
+  <data name="DeviceDetails_Status_Disconnected" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="DeviceDetails_Status_Paused" xml:space="preserve">
+    <value>Приостановлено</value>
+  </data>
+  <data name="DeviceDetails_Relay" xml:space="preserve">
+    <value>Реле</value>
+  </data>
   <data name="DeviceDetails_Resume" xml:space="preserve">
     <value>Возобновить</value>
   </data>
   <data name="DeviceDetails_Pause" xml:space="preserve">
     <value>Приостановить</value>
   </data>
-
-  <!-- Pending Devices Page -->
-  <data name="PendingDevices_Title" xml:space="preserve">
+  <data name="DeviceDetails_Remove" xml:space="preserve">
+    <value>Удалить устройство</value>
+  </data>
+  <data name="DeviceDetails_Title" xml:space="preserve">
+    <value>Детали устройства</value>
+  </data>
+  <data name="DeviceDetails_ConnectionInfo" xml:space="preserve">
+    <value>Информация о соединении</value>
+  </data>
+  <data name="DeviceDetails_ConnectionType" xml:space="preserve">
+    <value>Тип соединения</value>
+  </data>
+  <data name="DeviceDetails_Crypto" xml:space="preserve">
+    <value>Шифрование</value>
+  </data>
+  <data name="DeviceDetails_TransferInfo" xml:space="preserve">
+    <value>Информация о передаче</value>
+  </data>
+  <data name="DeviceDetails_InRate" xml:space="preserve">
+    <value>Скорость приёма</value>
+  </data>
+  <data name="DeviceDetails_OutRate" xml:space="preserve">
+    <value>Скорость отправки</value>
+  </data>
+  <data name="DeviceDetails_TotalIn" xml:space="preserve">
+    <value>Всего принято</value>
+  </data>
+  <data name="DeviceDetails_TotalOut" xml:space="preserve">
+    <value>Всего отправлено</value>
+  </data>
+  <data name="Pending_Title" xml:space="preserve">
     <value>Ожидающие устройства</value>
   </data>
-  <data name="PendingDevices_AutoAcceptConfig" xml:space="preserve">
-    <value>Конфигурация автопринятия</value>
+  <data name="Pending_AutoAcceptConfiguration" xml:space="preserve">
+    <value>Настройка автоприёма</value>
   </data>
-  <data name="PendingDevices_AutoAcceptEnabled" xml:space="preserve">
-    <value>Автопринятие включено</value>
+  <data name="Pending_DevicesWithAutoAccept" xml:space="preserve">
+    <value>Устройств с включённым автоприёмом: {0}</value>
   </data>
-  <data name="PendingDevices_AutoAcceptEnabledDesc" xml:space="preserve">
-    <value>Автоматически принимать устройства, соответствующие критериям</value>
+  <data name="Pending_NoDevicesAutoAccept" xml:space="preserve">
+    <value>Ни у одного устройства не включён автоприём</value>
   </data>
-  <data name="PendingDevices_AutoAcceptIntroduced" xml:space="preserve">
-    <value>Принимать представленные устройства</value>
+  <data name="Pending_AutoAcceptDescription" xml:space="preserve">
+    <value>Автоприём позволяет устройствам автоматически принимать запросы на общий доступ к папкам. Включите его для отдельных устройств в настройках устройства или при приёме устройства ниже.</value>
   </data>
-  <data name="PendingDevices_AutoAcceptAllowList" xml:space="preserve">
-    <value>Список разрешённых</value>
+  <data name="Pending_DefaultFolderPath" xml:space="preserve">
+    <value>Путь к папке по умолчанию</value>
   </data>
-  <data name="PendingDevices_AutoAcceptAllowListDesc" xml:space="preserve">
-    <value>Принимать только устройства из этого списка</value>
+  <data name="Pending_DefaultFolderPathPlaceholder" xml:space="preserve">
+    <value>Оставьте пустым для расположения по умолчанию</value>
   </data>
-  <data name="PendingDevices_AutoAcceptDefaultFolders" xml:space="preserve">
-    <value>Папки по умолчанию</value>
+  <data name="Pending_DefaultFolderPathHint" xml:space="preserve">
+    <value>Базовый путь для автоматически принятых папок</value>
   </data>
-  <data name="PendingDevices_AutoAcceptDefaultFoldersDesc" xml:space="preserve">
-    <value>Автоматически делиться этими папками с новыми устройствами</value>
+  <data name="Pending_DevicesWithAutoAcceptLabel" xml:space="preserve">
+    <value>Устройства с автоприёмом</value>
   </data>
-  <data name="PendingDevices_PendingList" xml:space="preserve">
-    <value>Ожидающие устройства</value>
+  <data name="Pending_More" xml:space="preserve">
+    <value>+ещё {0}</value>
   </data>
-  <data name="PendingDevices_NoPending" xml:space="preserve">
-    <value>Нет ожидающих устройств</value>
+  <data name="Pending_SaveSettings" xml:space="preserve">
+    <value>Сохранить настройки</value>
   </data>
-  <data name="PendingDevices_DeviceId" xml:space="preserve">
-    <value>ID устройства</value>
+  <data name="Pending_NoPendingDevices" xml:space="preserve">
+    <value>Нет устройств в ожидании</value>
   </data>
-  <data name="PendingDevices_DeviceName" xml:space="preserve">
-    <value>Имя устройства</value>
+  <data name="Pending_AllRequestsProcessed" xml:space="preserve">
+    <value>Все запросы на подключение устройств обработаны.</value>
   </data>
-  <data name="PendingDevices_Address" xml:space="preserve">
-    <value>Адрес</value>
+  <data name="Pending_ViewAllDevices" xml:space="preserve">
+    <value>Показать все устройства</value>
   </data>
-  <data name="PendingDevices_FirstSeen" xml:space="preserve">
-    <value>Впервые обнаружено</value>
+  <data name="Pending_PendingRequests" xml:space="preserve">
+    <value>{0} запрос в ожидании</value>
   </data>
-  <data name="PendingDevices_Accept" xml:space="preserve">
+  <data name="Pending_PendingRequestsPlural" xml:space="preserve">
+    <value>Запросов в ожидании: {0}</value>
+  </data>
+  <data name="Pending_Accept" xml:space="preserve">
     <value>Принять</value>
   </data>
-  <data name="PendingDevices_Reject" xml:space="preserve">
+  <data name="Pending_AcceptWithAutoAccept" xml:space="preserve">
+    <value>Принять с автоприёмом</value>
+  </data>
+  <data name="Pending_AcceptAndShareFolders" xml:space="preserve">
+    <value>Принять и открыть доступ к папкам...</value>
+  </data>
+  <data name="Pending_Reject" xml:space="preserve">
     <value>Отклонить</value>
   </data>
-  <data name="PendingDevices_AcceptAll" xml:space="preserve">
-    <value>Принять все</value>
+  <data name="Pending_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
   </data>
-  <data name="PendingDevices_RejectAll" xml:space="preserve">
-    <value>Отклонить все</value>
+  <data name="Pending_AnnouncedName" xml:space="preserve">
+    <value>Объявленное имя</value>
   </data>
-  <data name="PendingDevices_AcceptWithFolders" xml:space="preserve">
-    <value>Принять и выбрать папки</value>
+  <data name="Pending_Address" xml:space="preserve">
+    <value>Адрес</value>
   </data>
-  <data name="PendingDevices_SelectFolders" xml:space="preserve">
+  <data name="Pending_Discovered" xml:space="preserve">
+    <value>Обнаружено</value>
+  </data>
+  <data name="Pending_AcceptOptions" xml:space="preserve">
+    <value>Параметры приёма</value>
+  </data>
+  <data name="Pending_SimpleAccept" xml:space="preserve">
+    <value>Простой приём</value>
+  </data>
+  <data name="Pending_SimpleAcceptHint" xml:space="preserve">
+    <value>Принять устройство с настройками по умолчанию</value>
+  </data>
+  <data name="Pending_AcceptAutoAccept" xml:space="preserve">
+    <value>Принять + автоприём</value>
+  </data>
+  <data name="Pending_AcceptAutoAcceptHint" xml:space="preserve">
+    <value>Автоматически принимать папки от этого устройства</value>
+  </data>
+  <data name="Pending_AcceptShareFolders" xml:space="preserve">
+    <value>Принять + открыть доступ к папкам</value>
+  </data>
+  <data name="Pending_AcceptShareFoldersHint" xml:space="preserve">
+    <value>Выберите папки для немедленного открытия доступа</value>
+  </data>
+  <data name="Msg_AutoAcceptSettingsSaved" xml:space="preserve">
+    <value>Настройки автоприёма сохранены</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithAutoAccept" xml:space="preserve">
+    <value>Устройство «{0}» принято с включённым автоприёмом</value>
+  </data>
+  <data name="Msg_DeviceAcceptedAutoAcceptFailed" xml:space="preserve">
+    <value>Устройство «{0}» принято (не удалось включить автоприём)</value>
+  </data>
+  <data name="Msg_DeviceAcceptedWithFolders" xml:space="preserve">
+    <value>Устройство «{0}» принято, общих папок: {1}</value>
+  </data>
+  <data name="Msg_RejectDeviceConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите отклонить «{0}»? Этому устройству придётся повторно отправить запрос на подключение.</value>
+  </data>
+  <data name="Msg_NoFoldersAvailable" xml:space="preserve">
+    <value>Нет доступных папок</value>
+  </data>
+  <data name="Msg_NoFoldersConfigured" xml:space="preserve">
+    <value>Папки не настроены. Сначала примите устройство, а папки добавьте позже.</value>
+  </data>
+  <data name="Pending_AcceptAnyway" xml:space="preserve">
+    <value>Всё равно принять</value>
+  </data>
+  <data name="Pending_SelectFoldersToShare" xml:space="preserve">
     <value>Выберите папки для общего доступа</value>
-  </data>
-  <data name="PendingDevices_AcceptDevice" xml:space="preserve">
-    <value>Принять устройство</value>
-  </data>
-  <data name="PendingDevices_Accepted" xml:space="preserve">
-    <value>Устройство принято</value>
-  </data>
-  <data name="PendingDevices_Rejected" xml:space="preserve">
-    <value>Устройство отклонено</value>
-  </data>
-  <data name="PendingDevices_History" xml:space="preserve">
-    <value>История</value>
-  </data>
-  <data name="PendingDevices_RecentlyAccepted" xml:space="preserve">
-    <value>Недавно принятые</value>
-  </data>
-  <data name="PendingDevices_RecentlyRejected" xml:space="preserve">
-    <value>Недавно отклонённые</value>
-  </data>
-  <data name="PendingDevices_NoHistory" xml:space="preserve">
-    <value>Нет истории</value>
-  </data>
-
-  <!-- Folder Details Page -->
-  <data name="FolderDetails_Title" xml:space="preserve">
-    <value>Детали папки</value>
   </data>
   <data name="FolderDetails_SyncProgress" xml:space="preserve">
     <value>Прогресс синхронизации</value>
   </data>
-  <data name="FolderDetails_GlobalState" xml:space="preserve">
-    <value>Глобальное состояние</value>
+  <data name="FolderDetails_Synced" xml:space="preserve">
+    <value>синхронизировано</value>
   </data>
-  <data name="FolderDetails_LocalState" xml:space="preserve">
-    <value>Локальное состояние</value>
+  <data name="FolderDetails_GlobalFiles" xml:space="preserve">
+    <value>Глобальные файлы</value>
+  </data>
+  <data name="FolderDetails_LocalFiles" xml:space="preserve">
+    <value>Локальные файлы</value>
+  </data>
+  <data name="FolderDetails_GlobalSize" xml:space="preserve">
+    <value>Глобальный размер</value>
+  </data>
+  <data name="FolderDetails_LocalSize" xml:space="preserve">
+    <value>Локальный размер</value>
   </data>
   <data name="FolderDetails_OutOfSync" xml:space="preserve">
     <value>Не синхронизировано</value>
   </data>
-  <data name="FolderDetails_Files" xml:space="preserve">
-    <value>Файлов</value>
-  </data>
-  <data name="FolderDetails_Dirs" xml:space="preserve">
-    <value>Каталогов</value>
-  </data>
-  <data name="FolderDetails_Size" xml:space="preserve">
-    <value>Размер</value>
+  <data name="FolderDetails_NeedSyncing" xml:space="preserve">
+    <value>{0} файлов ({1}) требуют синхронизации</value>
   </data>
   <data name="FolderDetails_Configuration" xml:space="preserve">
     <value>Конфигурация</value>
   </data>
+  <data name="FolderDetails_Type" xml:space="preserve">
+    <value>Тип</value>
+  </data>
   <data name="FolderDetails_FolderId" xml:space="preserve">
     <value>ID папки</value>
-  </data>
-  <data name="FolderDetails_FolderLabel" xml:space="preserve">
-    <value>Метка</value>
-  </data>
-  <data name="FolderDetails_FolderPath" xml:space="preserve">
-    <value>Путь</value>
-  </data>
-  <data name="FolderDetails_FolderType" xml:space="preserve">
-    <value>Тип</value>
   </data>
   <data name="FolderDetails_RescanInterval" xml:space="preserve">
     <value>Интервал сканирования</value>
   </data>
+  <data name="FolderDetails_FileWatcher" xml:space="preserve">
+    <value>Отслеживание файлов</value>
+  </data>
+  <data name="FolderDetails_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права</value>
+  </data>
   <data name="FolderDetails_SharedWith" xml:space="preserve">
     <value>Общий доступ с</value>
   </data>
-  <data name="FolderDetails_NoSharedDevices" xml:space="preserve">
-    <value>Не расшарено ни с одним устройством</value>
+  <data name="FolderDetails_Devices" xml:space="preserve">
+    <value>устройств</value>
   </data>
-  <data name="FolderDetails_ManageDevices" xml:space="preserve">
-    <value>Управление устройствами</value>
+  <data name="FolderDetails_Errors" xml:space="preserve">
+    <value>Ошибки</value>
   </data>
-  <data name="FolderDetails_Rescan" xml:space="preserve">
-    <value>Пересканировать</value>
+  <data name="FolderDetails_NotShared" xml:space="preserve">
+    <value>Не открыт доступ ни одному устройству</value>
   </data>
-  <data name="FolderDetails_ViewErrors" xml:space="preserve">
-    <value>Просмотр ошибок</value>
-  </data>
-  <data name="FolderDetails_Edit" xml:space="preserve">
-    <value>Редактировать</value>
-  </data>
-  <data name="FolderDetails_Remove" xml:space="preserve">
-    <value>Удалить</value>
-  </data>
-  <data name="FolderDetails_RemoveConfirm" xml:space="preserve">
-    <value>Вы уверены, что хотите удалить папку "{0}"?</value>
-  </data>
-
-  <!-- Folder Errors Page -->
   <data name="FolderErrors_Title" xml:space="preserve">
     <value>Ошибки папки</value>
   </data>
   <data name="FolderErrors_NoErrors" xml:space="preserve">
     <value>Ошибок не найдено</value>
   </data>
-  <data name="FolderErrors_File" xml:space="preserve">
-    <value>Файл</value>
+  <data name="FolderErrors_ErrorsFound" xml:space="preserve">
+    <value>Найдено ошибок: {0}. Эти файлы не удалось синхронизировать.</value>
+  </data>
+  <data name="FolderErrors_FilePath" xml:space="preserve">
+    <value>Путь к файлу</value>
   </data>
   <data name="FolderErrors_Error" xml:space="preserve">
     <value>Ошибка</value>
@@ -2191,216 +2171,146 @@
   <data name="FolderErrors_Time" xml:space="preserve">
     <value>Время</value>
   </data>
-  <data name="FolderErrors_Rescan" xml:space="preserve">
-    <value>Пересканировать папку</value>
+  <data name="FolderErrors_HelpText" xml:space="preserve">
+    <value>Ошибки обычно исчезают автоматически после устранения первопричины (например, прав доступа к файлам или нехватки места на диске). Можно также повторно просканировать папку, чтобы очистить устранённые ошибки.</value>
   </data>
-  <data name="FolderErrors_RescanFile" xml:space="preserve">
-    <value>Пересканировать файл</value>
+  <data name="FolderErrors_RescanFolder" xml:space="preserve">
+    <value>Просканировать папку заново</value>
   </data>
-  <data name="FolderErrors_Dismiss" xml:space="preserve">
-    <value>Скрыть</value>
+  <data name="Msg_RescanStarted" xml:space="preserve">
+    <value>Повторное сканирование начато</value>
   </data>
-  <data name="FolderErrors_DismissAll" xml:space="preserve">
-    <value>Скрыть все</value>
-  </data>
-  <data name="FolderErrors_TotalErrors" xml:space="preserve">
-    <value>Всего ошибок: {0}</value>
-  </data>
-
-  <!-- Folder Edit Page -->
   <data name="FolderEdit_Title" xml:space="preserve">
     <value>Редактирование папки</value>
-  </data>
-  <data name="FolderEdit_CreateTitle" xml:space="preserve">
-    <value>Создание папки</value>
   </data>
   <data name="FolderEdit_General" xml:space="preserve">
     <value>Основные</value>
   </data>
-  <data name="FolderEdit_FolderId" xml:space="preserve">
-    <value>ID папки</value>
-  </data>
-  <data name="FolderEdit_FolderIdDesc" xml:space="preserve">
-    <value>Уникальный идентификатор папки</value>
-  </data>
   <data name="FolderEdit_FolderLabel" xml:space="preserve">
     <value>Метка папки</value>
-  </data>
-  <data name="FolderEdit_FolderLabelDesc" xml:space="preserve">
-    <value>Отображаемое имя папки</value>
   </data>
   <data name="FolderEdit_FolderPath" xml:space="preserve">
     <value>Путь к папке</value>
   </data>
-  <data name="FolderEdit_FolderPathDesc" xml:space="preserve">
-    <value>Локальный путь к папке</value>
-  </data>
-  <data name="FolderEdit_Browse" xml:space="preserve">
-    <value>Обзор</value>
+  <data name="FolderEdit_PathRequired" xml:space="preserve">
+    <value>Путь обязателен</value>
   </data>
   <data name="FolderEdit_FolderType" xml:space="preserve">
     <value>Тип папки</value>
   </data>
-  <data name="FolderEdit_FolderTypeDesc" xml:space="preserve">
-    <value>Как эта папка взаимодействует с удалёнными устройствами</value>
+  <data name="FolderEdit_FileWatching" xml:space="preserve">
+    <value>Наблюдение за файлами</value>
   </data>
-  <data name="FolderEdit_Type_SendReceive" xml:space="preserve">
-    <value>Отправка и приём</value>
+  <data name="FolderEdit_WatchForChanges" xml:space="preserve">
+    <value>Отслеживать изменения</value>
   </data>
-  <data name="FolderEdit_Type_SendOnly" xml:space="preserve">
-    <value>Только отправка</value>
+  <data name="FolderEdit_WatchDelay" xml:space="preserve">
+    <value>Задержка наблюдения (секунды)</value>
   </data>
-  <data name="FolderEdit_Type_ReceiveOnly" xml:space="preserve">
-    <value>Только приём</value>
+  <data name="FolderEdit_FullRescanInterval" xml:space="preserve">
+    <value>Интервал полного сканирования (секунды)</value>
   </data>
-  <data name="FolderEdit_Type_ReceiveEncrypted" xml:space="preserve">
-    <value>Приём зашифрованных</value>
-  </data>
-  <data name="FolderEdit_FileOptions" xml:space="preserve">
-    <value>Параметры файлов</value>
-  </data>
-  <data name="FolderEdit_RescanInterval" xml:space="preserve">
-    <value>Интервал пересканирования (сек)</value>
-  </data>
-  <data name="FolderEdit_RescanIntervalDesc" xml:space="preserve">
-    <value>Как часто сканировать папку на изменения</value>
-  </data>
-  <data name="FolderEdit_FsWatcher" xml:space="preserve">
-    <value>Наблюдатель файловой системы</value>
-  </data>
-  <data name="FolderEdit_FsWatcherDesc" xml:space="preserve">
-    <value>Использовать уведомления ОС об изменениях файлов</value>
-  </data>
-  <data name="FolderEdit_FsWatcherDelay" xml:space="preserve">
-    <value>Задержка наблюдателя (сек)</value>
-  </data>
-  <data name="FolderEdit_FsWatcherDelayDesc" xml:space="preserve">
-    <value>Задержка перед обработкой событий изменения</value>
-  </data>
-  <data name="FolderEdit_IgnorePerms" xml:space="preserve">
-    <value>Игнорировать права доступа</value>
-  </data>
-  <data name="FolderEdit_IgnorePermsDesc" xml:space="preserve">
-    <value>Не синхронизировать права доступа к файлам</value>
-  </data>
-  <data name="FolderEdit_IgnoreDelete" xml:space="preserve">
-    <value>Игнорировать удаления</value>
-  </data>
-  <data name="FolderEdit_IgnoreDeleteDesc" xml:space="preserve">
-    <value>Не удалять файлы при удалении на других устройствах</value>
-  </data>
-  <data name="FolderEdit_Versioning" xml:space="preserve">
-    <value>Версионирование</value>
-  </data>
-  <data name="FolderEdit_VersioningType" xml:space="preserve">
-    <value>Тип версионирования</value>
-  </data>
-  <data name="FolderEdit_VersioningTypeDesc" xml:space="preserve">
-    <value>Как сохранять старые версии файлов</value>
-  </data>
-  <data name="FolderEdit_Versioning_None" xml:space="preserve">
-    <value>Отключено</value>
-  </data>
-  <data name="FolderEdit_Versioning_Trashcan" xml:space="preserve">
-    <value>Корзина</value>
-  </data>
-  <data name="FolderEdit_Versioning_Simple" xml:space="preserve">
-    <value>Простое</value>
-  </data>
-  <data name="FolderEdit_Versioning_Staggered" xml:space="preserve">
-    <value>Ступенчатое</value>
-  </data>
-  <data name="FolderEdit_Versioning_External" xml:space="preserve">
-    <value>Внешнее</value>
-  </data>
-  <data name="FolderEdit_TrashcanDays" xml:space="preserve">
-    <value>Хранить версии (дней)</value>
-  </data>
-  <data name="FolderEdit_TrashcanDaysDesc" xml:space="preserve">
-    <value>Сколько дней хранить удалённые файлы (0 = бессрочно)</value>
-  </data>
-  <data name="FolderEdit_SimpleKeep" xml:space="preserve">
-    <value>Хранить версий</value>
-  </data>
-  <data name="FolderEdit_SimpleKeepDesc" xml:space="preserve">
-    <value>Сколько версий хранить для каждого файла</value>
-  </data>
-  <data name="FolderEdit_StaggeredMaxAge" xml:space="preserve">
-    <value>Максимальный возраст (дней)</value>
-  </data>
-  <data name="FolderEdit_StaggeredMaxAgeDesc" xml:space="preserve">
-    <value>Удалять версии старше этого срока</value>
-  </data>
-  <data name="FolderEdit_StaggeredPath" xml:space="preserve">
-    <value>Путь версий</value>
-  </data>
-  <data name="FolderEdit_StaggeredPathDesc" xml:space="preserve">
-    <value>Где хранить версии (пусто = .stversions)</value>
-  </data>
-  <data name="FolderEdit_ExternalCommand" xml:space="preserve">
-    <value>Команда</value>
-  </data>
-  <data name="FolderEdit_ExternalCommandDesc" xml:space="preserve">
-    <value>Внешняя команда для версионирования</value>
-  </data>
-  <data name="FolderEdit_SharedDevices" xml:space="preserve">
-    <value>Общий доступ</value>
-  </data>
-  <data name="FolderEdit_SelectDevices" xml:space="preserve">
-    <value>Выберите устройства для общего доступа</value>
-  </data>
-  <data name="FolderEdit_NoDevices" xml:space="preserve">
-    <value>Нет доступных устройств</value>
+  <data name="FolderEdit_FullRescanIntervalHint" xml:space="preserve">
+    <value>0 — отключить периодическое сканирование</value>
   </data>
   <data name="FolderEdit_Advanced" xml:space="preserve">
     <value>Расширенные</value>
   </data>
-  <data name="FolderEdit_PullOrder" xml:space="preserve">
-    <value>Порядок загрузки</value>
+  <data name="FolderEdit_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права</value>
   </data>
-  <data name="FolderEdit_PullOrderDesc" xml:space="preserve">
-    <value>В каком порядке загружать файлы</value>
+  <data name="FolderEdit_IgnoreDelete" xml:space="preserve">
+    <value>Игнорировать удаления</value>
   </data>
-  <data name="FolderEdit_PullOrder_Random" xml:space="preserve">
-    <value>Случайный</value>
+  <data name="FolderEdit_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автонормализация имён файлов</value>
   </data>
-  <data name="FolderEdit_PullOrder_Alphabetic" xml:space="preserve">
-    <value>По алфавиту</value>
+  <data name="FolderEdit_FilePullOrder" xml:space="preserve">
+    <value>Порядок загрузки файлов</value>
   </data>
-  <data name="FolderEdit_PullOrder_SmallestFirst" xml:space="preserve">
-    <value>Сначала маленькие</value>
+  <data name="FolderEdit_MaxConflicts" xml:space="preserve">
+    <value>Макс. конфликтов</value>
   </data>
-  <data name="FolderEdit_PullOrder_LargestFirst" xml:space="preserve">
-    <value>Сначала большие</value>
+  <data name="FolderEdit_MaxConflictsHint" xml:space="preserve">
+    <value>-1 — без ограничений, 0 — отключить</value>
   </data>
-  <data name="FolderEdit_PullOrder_NewestFirst" xml:space="preserve">
-    <value>Сначала новые</value>
+  <data name="FolderEdit_FileVersioning" xml:space="preserve">
+    <value>Версионирование</value>
   </data>
-  <data name="FolderEdit_PullOrder_OldestFirst" xml:space="preserve">
-    <value>Сначала старые</value>
+  <data name="FolderEdit_FileVersioningDescription" xml:space="preserve">
+    <value>Управление версиями сохраняет старые копии файлов, когда их заменяют или удаляют другие устройства.</value>
   </data>
-  <data name="FolderEdit_Paused" xml:space="preserve">
-    <value>Приостановлена</value>
+  <data name="FolderEdit_VersioningType" xml:space="preserve">
+    <value>Тип версионирования</value>
   </data>
-  <data name="FolderEdit_PausedDesc" xml:space="preserve">
-    <value>Приостановить синхронизацию этой папки</value>
+  <data name="FolderEdit_VersioningTypeHint" xml:space="preserve">
+    <value>Выберите, как хранить старые версии файлов</value>
   </data>
-  <data name="FolderEdit_Save" xml:space="preserve">
-    <value>Сохранить</value>
+  <data name="FolderEdit_NoVersioning" xml:space="preserve">
+    <value>Без версионирования</value>
   </data>
-  <data name="FolderEdit_Cancel" xml:space="preserve">
-    <value>Отмена</value>
+  <data name="FolderEdit_TrashCan" xml:space="preserve">
+    <value>Корзина</value>
   </data>
-  <data name="FolderEdit_SaveSuccess" xml:space="preserve">
+  <data name="FolderEdit_Simple" xml:space="preserve">
+    <value>Простое</value>
+  </data>
+  <data name="FolderEdit_Staggered" xml:space="preserve">
+    <value>Ступенчатое</value>
+  </data>
+  <data name="FolderEdit_External" xml:space="preserve">
+    <value>Внешнее</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPath" xml:space="preserve">
+    <value>Свой путь к версиям</value>
+  </data>
+  <data name="FolderEdit_CustomVersionsPathHint" xml:space="preserve">
+    <value>Оставьте пустым, чтобы использовать путь по умолчанию (папка .stversions)</value>
+  </data>
+  <data name="FolderEdit_TrashCanDescription" xml:space="preserve">
+    <value>Корзина: перемещает файлы в папку корзины при замене или удалении. Файлы хранятся до очистки.</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfter" xml:space="preserve">
+    <value>Очищать через (дни)</value>
+  </data>
+  <data name="FolderEdit_CleanOutAfterHint" xml:space="preserve">
+    <value>0 — хранить версии всегда</value>
+  </data>
+  <data name="FolderEdit_SimpleDescription" xml:space="preserve">
+    <value>Простое: хранит заданное количество старых версий каждого файла.</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeep" xml:space="preserve">
+    <value>Сколько версий хранить</value>
+  </data>
+  <data name="FolderEdit_VersionsToKeepHint" xml:space="preserve">
+    <value>Количество сохраняемых старых версий</value>
+  </data>
+  <data name="FolderEdit_StaggeredDescription" xml:space="preserve">
+    <value>Ступенчатое: хранит версии с уменьшением частоты со временем. Для недавних изменений версий больше, для давних — меньше.</value>
+  </data>
+  <data name="FolderEdit_MaximumAge" xml:space="preserve">
+    <value>Максимальный возраст (дни)</value>
+  </data>
+  <data name="FolderEdit_MaximumAgeHint" xml:space="preserve">
+    <value>Максимальный возраст сохраняемых версий (по умолчанию: 365 дней)</value>
+  </data>
+  <data name="FolderEdit_ExternalDescription" xml:space="preserve">
+    <value>Внешнее: запускает внешнюю команду перед заменой файла. Команда получает путь к файлу как аргумент.</value>
+  </data>
+  <data name="FolderEdit_Command" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderEdit_CommandRequired" xml:space="preserve">
+    <value>Для внешнего управления версиями нужна команда</value>
+  </data>
+  <data name="FolderEdit_CommandHint" xml:space="preserve">
+    <value>Команда для выполнения (например, /path/to/script.sh)</value>
+  </data>
+  <data name="Msg_FolderSaved" xml:space="preserve">
     <value>Папка успешно сохранена</value>
   </data>
-  <data name="FolderEdit_SaveError" xml:space="preserve">
-    <value>Ошибка сохранения папки: {0}</value>
-  </data>
-
-  <!-- Additional Missing Keys -->
-  <data name="Msg_ApiKeyGenerated" xml:space="preserve">
-    <value>Новый API-ключ сгенерирован. Не забудьте сохранить изменения.</value>
+  <data name="Msg_ExternalVersioningCommandRequired" xml:space="preserve">
+    <value>Внешнее управление версиями требует команды</value>
   </data>
   <data name="Msg_ResetToDefaults" xml:space="preserve">
     <value>Настройки сброшены к значениям по умолчанию. Не забудьте сохранить изменения.</value>
@@ -2483,224 +2393,12 @@
   <data name="Settings_Network_NatPmpEnabledDesc" xml:space="preserve">
     <value>NAT Port Mapping Protocol (роутеры Apple)</value>
   </data>
-  <data name="Settings_Network_NatLeaseSettings" xml:space="preserve">
-    <value>Настройки аренды NAT</value>
-  </data>
-  <data name="Settings_Network_NatLeaseMinsDesc" xml:space="preserve">
-    <value>Время аренды маппинга порта</value>
-  </data>
-  <data name="Settings_Network_NatRenewalMinsDesc" xml:space="preserve">
-    <value>Время до истечения для обновления</value>
-  </data>
-  <data name="Settings_Network_NatTimeoutSecsDesc" xml:space="preserve">
-    <value>Таймаут обнаружения</value>
-  </data>
-  <data name="Settings_Network_StunConfig" xml:space="preserve">
-    <value>Конфигурация STUN</value>
-  </data>
-  <data name="Settings_Network_StunServers" xml:space="preserve">
-    <value>STUN серверы</value>
-  </data>
-  <data name="Settings_Network_StunServersDesc" xml:space="preserve">
-    <value>Один сервер на строку (например, stun.example.com:3478)</value>
-  </data>
-  <data name="Settings_Network_StunKeepalive" xml:space="preserve">
-    <value>Интервал STUN Keepalive (секунды)</value>
-  </data>
-  <data name="Settings_Network_StunKeepaliveDesc" xml:space="preserve">
-    <value>Интервал между STUN keepalive запросами</value>
-  </data>
-  <data name="Settings_Network_GlobalDiscoveryServers" xml:space="preserve">
-    <value>Серверы глобального обнаружения</value>
-  </data>
-  <data name="Settings_Network_GlobalDiscoveryServersDesc" xml:space="preserve">
-    <value>Один URL сервера на строку (default = серверы Syncthing)</value>
-  </data>
-  <data name="Settings_Network_LocalDiscoverySettings" xml:space="preserve">
-    <value>Настройки локального обнаружения</value>
-  </data>
-  <data name="Settings_Network_MulticastAddress" xml:space="preserve">
-    <value>Multicast адрес</value>
-  </data>
-  <data name="Settings_Network_MulticastAddressDesc" xml:space="preserve">
-    <value>IPv6 multicast адрес для обнаружения</value>
-  </data>
-  <data name="Settings_Network_AnnounceInterval" xml:space="preserve">
-    <value>Интервал анонсирования (с)</value>
-  </data>
-  <data name="Settings_Network_AnnounceIntervalDesc" xml:space="preserve">
-    <value>Секунд между анонсами</value>
-  </data>
-  <data name="Settings_Network_RelayOnlyMode" xml:space="preserve">
-    <value>Только через релей</value>
-  </data>
-  <data name="Settings_Network_RelayOnlyModeDesc" xml:space="preserve">
-    <value>Соединяться только через релейные серверы (без прямых соединений)</value>
-  </data>
-  <data name="Settings_Network_RelayWithoutGlobalAnn" xml:space="preserve">
-    <value>Релей без глобального анонса</value>
-  </data>
-  <data name="Settings_Network_RelayWithoutGlobalAnnDesc" xml:space="preserve">
-    <value>Использовать релеи даже при отключённом глобальном обнаружении</value>
-  </data>
-  <data name="Settings_Network_RelayReconnectInterval" xml:space="preserve">
-    <value>Интервал переподключения к релею (минуты)</value>
-  </data>
-  <data name="Settings_Network_RelayReconnectIntervalDesc" xml:space="preserve">
-    <value>Минут между попытками переподключения к релею</value>
-  </data>
-  <data name="Settings_Network_UnlimitedHint" xml:space="preserve">
-    <value>0 = без ограничений</value>
-  </data>
-  <data name="Settings_Network_ConnectionLimits" xml:space="preserve">
-    <value>Лимиты соединений</value>
-  </data>
-  <data name="Settings_Network_MaxIncoming" xml:space="preserve">
-    <value>Макс. входящих запросов</value>
-  </data>
-  <data name="Settings_Network_MaxOutgoing" xml:space="preserve">
-    <value>Макс. исходящих запросов</value>
-  </data>
-  <data name="Settings_Network_ReconnectInterval" xml:space="preserve">
-    <value>Интервал переподключения (с)</value>
-  </data>
-  <data name="Settings_Network_ReconnectIntervalDesc" xml:space="preserve">
-    <value>Секунд между попытками переподключения</value>
-  </data>
   <data name="Settings_Advanced_Warning" xml:space="preserve">
     <value>Эти настройки для опытных пользователей. Неправильная конфигурация может повлиять на производительность или вызвать проблемы синхронизации.</value>
   </data>
   <data name="Settings_Advanced_SyncDefaults" xml:space="preserve">
     <value>Настройки синхронизации по умолчанию</value>
   </data>
-  <data name="Settings_Advanced_DefaultFolderPath" xml:space="preserve">
-    <value>Путь к папке по умолчанию</value>
-  </data>
-  <data name="Settings_Advanced_DefaultFolderPath_Help" xml:space="preserve">
-    <value>Путь по умолчанию для новых папок</value>
-  </data>
-  <data name="Settings_Advanced_IgnorePermissions" xml:space="preserve">
-    <value>Игнорировать права доступа</value>
-  </data>
-  <data name="Settings_Advanced_IgnorePermissions_Help" xml:space="preserve">
-    <value>Не синхронизировать права доступа к файлам (рекомендуется для Windows)</value>
-  </data>
-  <data name="Settings_Advanced_AutoNormalizeFilenames" xml:space="preserve">
-    <value>Автонормализация имён файлов</value>
-  </data>
-  <data name="Settings_Advanced_AutoNormalizeFilenames_Help" xml:space="preserve">
-    <value>Автоматически нормализовать unicode в именах файлов</value>
-  </data>
-  <data name="Settings_Advanced_ConcurrentHashers" xml:space="preserve">
-    <value>Параллельные хешеры</value>
-  </data>
-  <data name="Settings_Advanced_ConcurrentHashers_Help" xml:space="preserve">
-    <value>Количество параллельных операций хеширования</value>
-  </data>
-  <data name="Settings_Advanced_MaxFolderConcurrency" xml:space="preserve">
-    <value>Макс. параллельных папок</value>
-  </data>
-  <data name="Settings_Advanced_MaxFolderConcurrency_Help" xml:space="preserve">
-    <value>Максимум папок, синхронизируемых одновременно</value>
-  </data>
-  <data name="Settings_Advanced_LowPriority" xml:space="preserve">
-    <value>Низкий приоритет</value>
-  </data>
-  <data name="Settings_Advanced_LowPriority_Help" xml:space="preserve">
-    <value>Снизить приоритет CPU для минимизации влияния на другие приложения</value>
-  </data>
-  <data name="Settings_Advanced_ReduceProgressUpdates" xml:space="preserve">
-    <value>Реже обновлять прогресс</value>
-  </data>
-  <data name="Settings_Advanced_ReduceProgressUpdates_Help" xml:space="preserve">
-    <value>Реже обновлять интерфейс для снижения нагрузки на CPU</value>
-  </data>
-  <data name="Settings_Advanced_DatabaseBlockSize" xml:space="preserve">
-    <value>Размер блока БД</value>
-  </data>
-  <data name="Settings_Advanced_CompressionLevel" xml:space="preserve">
-    <value>Уровень сжатия</value>
-  </data>
-  <data name="Settings_Advanced_Compression_None" xml:space="preserve">
-    <value>Без сжатия</value>
-  </data>
-  <data name="Settings_Advanced_Compression_LZ4" xml:space="preserve">
-    <value>LZ4 (Быстрое)</value>
-  </data>
-  <data name="Settings_Advanced_Compression_Zstd" xml:space="preserve">
-    <value>Zstd (Оптимальное)</value>
-  </data>
-  <data name="Settings_Advanced_PingTimeout" xml:space="preserve">
-    <value>Таймаут пинга (с)</value>
-  </data>
-  <data name="Settings_Advanced_PingTimeout_Help" xml:space="preserve">
-    <value>Таймаут для проверки соединения</value>
-  </data>
-  <data name="Settings_Advanced_ReconnectionInterval" xml:space="preserve">
-    <value>Интервал переподключения (с)</value>
-  </data>
-  <data name="Settings_Advanced_ReconnectionInterval_Help" xml:space="preserve">
-    <value>Время между попытками переподключения</value>
-  </data>
-  <data name="Settings_Advanced_MaxPendingData" xml:space="preserve">
-    <value>Макс. ожидающих данных (КиБ)</value>
-  </data>
-  <data name="Settings_Advanced_MaxPendingData_Help" xml:space="preserve">
-    <value>Максимум данных в очереди обработки</value>
-  </data>
-  <data name="Settings_Advanced_KeepTempFiles" xml:space="preserve">
-    <value>Сохранять временные файлы</value>
-  </data>
-  <data name="Settings_Advanced_KeepTempFiles_Help" xml:space="preserve">
-    <value>Не удалять временные файлы при ошибке (для отладки)</value>
-  </data>
-  <data name="Settings_Advanced_CopyOwnership_Help" xml:space="preserve">
-    <value>Новые файлы наследуют владельца от родительской папки</value>
-  </data>
-  <data name="Settings_Advanced_OpenBrowserOnStart" xml:space="preserve">
-    <value>Открывать браузер при запуске</value>
-  </data>
-  <data name="Settings_Advanced_OpenBrowserOnStart_Help" xml:space="preserve">
-    <value>Автоматически открывать веб-интерфейс при запуске агента</value>
-  </data>
-  <data name="Settings_Advanced_CrashReporting" xml:space="preserve">
-    <value>Отчёты о сбоях</value>
-  </data>
-  <data name="Settings_Advanced_CrashReporting_Help" xml:space="preserve">
-    <value>Отправлять анонимные отчёты о сбоях для улучшения приложения</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel" xml:space="preserve">
-    <value>Уровень логирования</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel_Error" xml:space="preserve">
-    <value>Ошибки</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel_Warning" xml:space="preserve">
-    <value>Предупреждения</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel_Info" xml:space="preserve">
-    <value>Информация</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel_Debug" xml:space="preserve">
-    <value>Отладка</value>
-  </data>
-  <data name="Settings_Advanced_LogLevel_Verbose" xml:space="preserve">
-    <value>Подробно</value>
-  </data>
-  <data name="Settings_Advanced_DangerZone_Warning" xml:space="preserve">
-    <value>Эти действия необратимы и могут привести к потере данных. Действуйте с осторожностью.</value>
-  </data>
-  <data name="Settings_Advanced_FactoryResetYes" xml:space="preserve">
-    <value>Да, сбросить всё</value>
-  </data>
-  <data name="Settings_Advanced_FactoryResetConfirmTitle" xml:space="preserve">
-    <value>Подтверждение сброса</value>
-  </data>
-  <data name="Settings_Advanced_FactoryResetConfirmMessage" xml:space="preserve">
-    <value>Вы уверены? Все настройки и данные будут удалены безвозвратно.</value>
-  </data>
-
-  <!-- Device Dialog -->
   <data name="DeviceDialog_EditDevice" xml:space="preserve">
     <value>Редактировать устройство</value>
   </data>
@@ -2812,8 +2510,6 @@
   <data name="DeviceDialog_FailedToUpdateFolder" xml:space="preserve">
     <value>Не удалось обновить папку «{0}»: {1}</value>
   </data>
-
-  <!-- Add Folder Dialog -->
   <data name="FolderDialog_EditFolder" xml:space="preserve">
     <value>Редактировать папку</value>
   </data>
@@ -3066,8 +2762,423 @@
   <data name="FolderDialog_ErrorMessage" xml:space="preserve">
     <value>Не удалось {0} папку: {1}</value>
   </data>
-
-  <!-- System Status Card -->
+  <data name="Settings_Network_Title" xml:space="preserve">
+    <value>Настройки сети</value>
+  </data>
+  <data name="Settings_Network_ListenAddresses" xml:space="preserve">
+    <value>Адреса прослушивания</value>
+  </data>
+  <data name="Settings_Network_SyncProtocol" xml:space="preserve">
+    <value>Протокол синхронизации</value>
+  </data>
+  <data name="Settings_Network_SyncProtocolDesc" xml:space="preserve">
+    <value>TCP адрес для входящих соединений синхронизации</value>
+  </data>
+  <data name="Settings_Network_GuiAddress" xml:space="preserve">
+    <value>Адрес GUI</value>
+  </data>
+  <data name="Settings_Network_GuiAddressDesc" xml:space="preserve">
+    <value>HTTP адрес для веб-интерфейса</value>
+  </data>
+  <data name="Settings_Network_NatSettings" xml:space="preserve">
+    <value>Настройки NAT</value>
+  </data>
+  <data name="Settings_Network_NatEnabled" xml:space="preserve">
+    <value>NAT Traversal включён</value>
+  </data>
+  <data name="Settings_Network_NatEnabledDesc" xml:space="preserve">
+    <value>Автоматическая настройка маршрутизатора для входящих соединений</value>
+  </data>
+  <data name="Settings_Network_NatLeaseSettings" xml:space="preserve">
+    <value>Настройки аренды NAT</value>
+  </data>
+  <data name="Settings_Network_NatLeaseMins" xml:space="preserve">
+    <value>Продолжительность аренды NAT (минуты)</value>
+  </data>
+  <data name="Settings_Network_NatLeaseMinsDesc" xml:space="preserve">
+    <value>Время аренды маппинга порта</value>
+  </data>
+  <data name="Settings_Network_NatRenewalMins" xml:space="preserve">
+    <value>Интервал обновления NAT (минуты)</value>
+  </data>
+  <data name="Settings_Network_NatRenewalMinsDesc" xml:space="preserve">
+    <value>Время до истечения для обновления</value>
+  </data>
+  <data name="Settings_Network_NatTimeoutSecs" xml:space="preserve">
+    <value>Таймаут NAT (секунды)</value>
+  </data>
+  <data name="Settings_Network_NatTimeoutSecsDesc" xml:space="preserve">
+    <value>Таймаут обнаружения</value>
+  </data>
+  <data name="Settings_Network_StunConfig" xml:space="preserve">
+    <value>Конфигурация STUN</value>
+  </data>
+  <data name="Settings_Network_StunServers" xml:space="preserve">
+    <value>STUN серверы</value>
+  </data>
+  <data name="Settings_Network_StunServersDesc" xml:space="preserve">
+    <value>Один сервер на строку (например, stun.example.com:3478)</value>
+  </data>
+  <data name="Settings_Network_StunKeepalive" xml:space="preserve">
+    <value>Интервал STUN Keepalive (секунды)</value>
+  </data>
+  <data name="Settings_Network_StunKeepaliveDesc" xml:space="preserve">
+    <value>Интервал между STUN keepalive запросами</value>
+  </data>
+  <data name="Settings_Network_Discovery" xml:space="preserve">
+    <value>Обнаружение</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscovery" xml:space="preserve">
+    <value>Глобальное обнаружение</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryDesc" xml:space="preserve">
+    <value>Использовать глобальные серверы обнаружения для поиска устройств</value>
+  </data>
+  <data name="Settings_Network_LocalDiscovery" xml:space="preserve">
+    <value>Локальное обнаружение</value>
+  </data>
+  <data name="Settings_Network_LocalDiscoveryDesc" xml:space="preserve">
+    <value>Обнаруживать устройства в локальной сети</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryServers" xml:space="preserve">
+    <value>Серверы глобального обнаружения</value>
+  </data>
+  <data name="Settings_Network_GlobalDiscoveryServersDesc" xml:space="preserve">
+    <value>Один URL сервера на строку (default = серверы Syncthing)</value>
+  </data>
+  <data name="Settings_Network_LocalDiscoverySettings" xml:space="preserve">
+    <value>Настройки локального обнаружения</value>
+  </data>
+  <data name="Settings_Network_LocalAnnouncePort" xml:space="preserve">
+    <value>Порт локального анонсирования</value>
+  </data>
+  <data name="Settings_Network_LocalAnnouncePortDesc" xml:space="preserve">
+    <value>Порт для широковещательных объявлений в локальной сети</value>
+  </data>
+  <data name="Settings_Network_MulticastAddress" xml:space="preserve">
+    <value>Multicast адрес</value>
+  </data>
+  <data name="Settings_Network_MulticastAddressDesc" xml:space="preserve">
+    <value>IPv6 multicast адрес для обнаружения</value>
+  </data>
+  <data name="Settings_Network_AnnounceInterval" xml:space="preserve">
+    <value>Интервал анонсирования (с)</value>
+  </data>
+  <data name="Settings_Network_AnnounceIntervalDesc" xml:space="preserve">
+    <value>Секунд между анонсами</value>
+  </data>
+  <data name="Settings_Network_Relay" xml:space="preserve">
+    <value>Ретрансляция</value>
+  </data>
+  <data name="Settings_Network_RelayEnabled" xml:space="preserve">
+    <value>Ретрансляция включена</value>
+  </data>
+  <data name="Settings_Network_RelayEnabledDesc" xml:space="preserve">
+    <value>Разрешить соединения через релейные серверы</value>
+  </data>
+  <data name="Settings_Network_RelayOnlyMode" xml:space="preserve">
+    <value>Только через релей</value>
+  </data>
+  <data name="Settings_Network_RelayOnlyModeDesc" xml:space="preserve">
+    <value>Соединяться только через релейные серверы (без прямых соединений)</value>
+  </data>
+  <data name="Settings_Network_RelayWithoutGlobalAnn" xml:space="preserve">
+    <value>Релей без глобального анонса</value>
+  </data>
+  <data name="Settings_Network_RelayWithoutGlobalAnnDesc" xml:space="preserve">
+    <value>Использовать релеи даже при отключённом глобальном обнаружении</value>
+  </data>
+  <data name="Settings_Network_RelayServers" xml:space="preserve">
+    <value>Релейные серверы</value>
+  </data>
+  <data name="Settings_Network_RelayServersDesc" xml:space="preserve">
+    <value>Список предпочитаемых релейных серверов</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectInterval" xml:space="preserve">
+    <value>Интервал переподключения к релею (минуты)</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectIntervalDesc" xml:space="preserve">
+    <value>Минут между попытками переподключения к релею</value>
+  </data>
+  <data name="Settings_Network_Bandwidth" xml:space="preserve">
+    <value>Пропускная способность</value>
+  </data>
+  <data name="Settings_Network_MaxSendKbps" xml:space="preserve">
+    <value>Максимальная скорость отправки (КБ/с)</value>
+  </data>
+  <data name="Settings_Network_MaxRecvKbps" xml:space="preserve">
+    <value>Максимальная скорость приёма (КБ/с)</value>
+  </data>
+  <data name="Settings_Network_UnlimitedHint" xml:space="preserve">
+    <value>0 = без ограничений</value>
+  </data>
+  <data name="Settings_Network_LimitBandwidthLan" xml:space="preserve">
+    <value>Ограничивать скорость в LAN</value>
+  </data>
+  <data name="Settings_Network_LimitBandwidthLanDesc" xml:space="preserve">
+    <value>Применять ограничения скорости также к соединениям в локальной сети</value>
+  </data>
+  <data name="Settings_Network_ConnectionLimits" xml:space="preserve">
+    <value>Лимиты соединений</value>
+  </data>
+  <data name="Settings_Network_MaxIncoming" xml:space="preserve">
+    <value>Макс. входящих запросов</value>
+  </data>
+  <data name="Settings_Network_MaxOutgoing" xml:space="preserve">
+    <value>Макс. исходящих запросов</value>
+  </data>
+  <data name="Settings_Network_ReconnectInterval" xml:space="preserve">
+    <value>Интервал переподключения (с)</value>
+  </data>
+  <data name="Settings_Network_ReconnectIntervalDesc" xml:space="preserve">
+    <value>Секунд между попытками переподключения</value>
+  </data>
+  <data name="Settings_Advanced_Title" xml:space="preserve">
+    <value>Расширенные настройки</value>
+  </data>
+  <data name="Settings_Advanced_DefaultFolderPath" xml:space="preserve">
+    <value>Путь к папке по умолчанию</value>
+  </data>
+  <data name="Settings_Advanced_DefaultFolderPath_Help" xml:space="preserve">
+    <value>Путь по умолчанию для новых папок</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права доступа</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermissions_Help" xml:space="preserve">
+    <value>Не синхронизировать права доступа к файлам (рекомендуется для Windows)</value>
+  </data>
+  <data name="Settings_Advanced_AutoNormalizeFilenames" xml:space="preserve">
+    <value>Автонормализация имён файлов</value>
+  </data>
+  <data name="Settings_Advanced_AutoNormalizeFilenames_Help" xml:space="preserve">
+    <value>Автоматически нормализовать unicode в именах файлов</value>
+  </data>
+  <data name="Settings_Advanced_FileHandling" xml:space="preserve">
+    <value>Обработка файлов</value>
+  </data>
+  <data name="Settings_Advanced_ConcurrentHashers" xml:space="preserve">
+    <value>Параллельные хешеры</value>
+  </data>
+  <data name="Settings_Advanced_ConcurrentHashers_Help" xml:space="preserve">
+    <value>Количество параллельных операций хеширования</value>
+  </data>
+  <data name="Settings_Advanced_MaxFolderConcurrency" xml:space="preserve">
+    <value>Макс. параллельных папок</value>
+  </data>
+  <data name="Settings_Advanced_MaxFolderConcurrency_Help" xml:space="preserve">
+    <value>Максимум папок, синхронизируемых одновременно</value>
+  </data>
+  <data name="Settings_Advanced_LowPriority" xml:space="preserve">
+    <value>Низкий приоритет</value>
+  </data>
+  <data name="Settings_Advanced_LowPriority_Help" xml:space="preserve">
+    <value>Снизить приоритет CPU для минимизации влияния на другие приложения</value>
+  </data>
+  <data name="Settings_Advanced_ReduceProgressUpdates" xml:space="preserve">
+    <value>Реже обновлять прогресс</value>
+  </data>
+  <data name="Settings_Advanced_ReduceProgressUpdates_Help" xml:space="preserve">
+    <value>Реже обновлять интерфейс для снижения нагрузки на CPU</value>
+  </data>
+  <data name="Settings_Advanced_Database" xml:space="preserve">
+    <value>База данных</value>
+  </data>
+  <data name="Settings_Advanced_DatabaseBlockSize" xml:space="preserve">
+    <value>Размер блока БД</value>
+  </data>
+  <data name="Settings_Advanced_CompressionLevel" xml:space="preserve">
+    <value>Уровень сжатия</value>
+  </data>
+  <data name="Settings_Advanced_Compression_None" xml:space="preserve">
+    <value>Без сжатия</value>
+  </data>
+  <data name="Settings_Advanced_Compression_LZ4" xml:space="preserve">
+    <value>LZ4 (Быстрое)</value>
+  </data>
+  <data name="Settings_Advanced_Compression_Zstd" xml:space="preserve">
+    <value>Zstd (Оптимальное)</value>
+  </data>
+  <data name="Settings_Advanced_Protocol" xml:space="preserve">
+    <value>Протокол</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeout" xml:space="preserve">
+    <value>Таймаут пинга (с)</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeout_Help" xml:space="preserve">
+    <value>Таймаут для проверки соединения</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectionInterval" xml:space="preserve">
+    <value>Интервал переподключения (с)</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectionInterval_Help" xml:space="preserve">
+    <value>Время между попытками переподключения</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingData" xml:space="preserve">
+    <value>Макс. ожидающих данных (КиБ)</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingData_Help" xml:space="preserve">
+    <value>Максимум данных в очереди обработки</value>
+  </data>
+  <data name="Settings_Advanced_KeepTempFiles" xml:space="preserve">
+    <value>Сохранять временные файлы</value>
+  </data>
+  <data name="Settings_Advanced_KeepTempFiles_Help" xml:space="preserve">
+    <value>Не удалять временные файлы при ошибке (для отладки)</value>
+  </data>
+  <data name="Settings_Advanced_CopyOwnership" xml:space="preserve">
+    <value>Копировать владельца</value>
+  </data>
+  <data name="Settings_Advanced_CopyOwnership_Help" xml:space="preserve">
+    <value>Новые файлы наследуют владельца от родительской папки</value>
+  </data>
+  <data name="Settings_General_Startup" xml:space="preserve">
+    <value>Запуск</value>
+  </data>
+  <data name="Settings_Advanced_OpenBrowserOnStart" xml:space="preserve">
+    <value>Открывать браузер при запуске</value>
+  </data>
+  <data name="Settings_Advanced_OpenBrowserOnStart_Help" xml:space="preserve">
+    <value>Автоматически открывать веб-интерфейс при запуске агента</value>
+  </data>
+  <data name="Settings_Advanced_Debugging" xml:space="preserve">
+    <value>Отладка</value>
+  </data>
+  <data name="Settings_Advanced_CrashReporting" xml:space="preserve">
+    <value>Отчёты о сбоях</value>
+  </data>
+  <data name="Settings_Advanced_CrashReporting_Help" xml:space="preserve">
+    <value>Отправлять анонимные отчёты о сбоях для улучшения приложения</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel" xml:space="preserve">
+    <value>Уровень логирования</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Error" xml:space="preserve">
+    <value>Ошибки</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Warning" xml:space="preserve">
+    <value>Предупреждения</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Info" xml:space="preserve">
+    <value>Информация</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Debug" xml:space="preserve">
+    <value>Отладка</value>
+  </data>
+  <data name="Settings_Advanced_LogLevel_Verbose" xml:space="preserve">
+    <value>Подробно</value>
+  </data>
+  <data name="Settings_Advanced_DangerZone" xml:space="preserve">
+    <value>Опасная зона</value>
+  </data>
+  <data name="Settings_Advanced_DangerZone_Warning" xml:space="preserve">
+    <value>Эти действия необратимы и могут привести к потере данных. Действуйте с осторожностью.</value>
+  </data>
+  <data name="Settings_Advanced_ResetDb" xml:space="preserve">
+    <value>Сбросить базу данных</value>
+  </data>
+  <data name="Settings_Advanced_ResetDbConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите сбросить базу данных? Все файлы будут повторно проиндексированы.</value>
+  </data>
+  <data name="Settings_Advanced_FactoryReset" xml:space="preserve">
+    <value>Сброс к заводским настройкам</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите выполнить сброс к заводским настройкам? Это действие нельзя отменить.</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetYes" xml:space="preserve">
+    <value>Да, сбросить всё</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirmTitle" xml:space="preserve">
+    <value>Подтверждение сброса</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetConfirmMessage" xml:space="preserve">
+    <value>Вы уверены? Все настройки и данные будут удалены безвозвратно.</value>
+  </data>
+  <data name="SystemLog_LevelError" xml:space="preserve">
+    <value>Ошибка</value>
+  </data>
+  <data name="SystemLog_LevelWarning" xml:space="preserve">
+    <value>Предупреждение</value>
+  </data>
+  <data name="SystemLog_LevelInfo" xml:space="preserve">
+    <value>Инфо</value>
+  </data>
+  <data name="SystemLog_LevelDebug" xml:space="preserve">
+    <value>Отладка</value>
+  </data>
+  <data name="SystemLog_Facility" xml:space="preserve">
+    <value>Источник</value>
+  </data>
+  <data name="SystemLog_AllFacilities" xml:space="preserve">
+    <value>Все источники</value>
+  </data>
+  <data name="SystemLog_FacilitySync" xml:space="preserve">
+    <value>Синхронизация</value>
+  </data>
+  <data name="SystemLog_FacilityModel" xml:space="preserve">
+    <value>Модель</value>
+  </data>
+  <data name="SystemLog_FacilityScanner" xml:space="preserve">
+    <value>Сканер</value>
+  </data>
+  <data name="SystemLog_FacilityConnections" xml:space="preserve">
+    <value>Соединения</value>
+  </data>
+  <data name="SystemLog_FacilityDiscovery" xml:space="preserve">
+    <value>Обнаружение</value>
+  </data>
+  <data name="SystemLog_FacilityUpnp" xml:space="preserve">
+    <value>UPnP/NAT</value>
+  </data>
+  <data name="SystemLog_EntriesCount" xml:space="preserve">
+    <value>{0} из {1} записей</value>
+  </data>
+  <data name="Profiling_HeapStats" xml:space="preserve">
+    <value>Статистика кучи</value>
+  </data>
+  <data name="Profiling_IoStats" xml:space="preserve">
+    <value>Статистика ввода-вывода</value>
+  </data>
+  <data name="Profiling_OpenFiles" xml:space="preserve">
+    <value>Открытых файлов</value>
+  </data>
+  <data name="Profiling_GcTriggered" xml:space="preserve">
+    <value>Сборка мусора запущена</value>
+  </data>
+  <data name="Profiling_GcFailed" xml:space="preserve">
+    <value>Ошибка запуска сборки мусора: {0}</value>
+  </data>
+  <data name="Profiling_HeapDumpDownloading" xml:space="preserve">
+    <value>Загрузка дампа кучи...</value>
+  </data>
+  <data name="Profiling_HeapDumpFailed" xml:space="preserve">
+    <value>Ошибка получения дампа кучи: {0}</value>
+  </data>
+  <data name="Profiling_GoroutineDumpDownloading" xml:space="preserve">
+    <value>Загрузка дампа горутин...</value>
+  </data>
+  <data name="Profiling_GoroutineDumpFailed" xml:space="preserve">
+    <value>Ошибка получения дампа горутин: {0}</value>
+  </data>
+  <data name="SupportBundle_FolderStatus" xml:space="preserve">
+    <value>Состояние папок</value>
+  </data>
+  <data name="SupportBundle_FolderStatusDesc" xml:space="preserve">
+    <value>Состояние синхронизации всех папок (пути скрыты)</value>
+  </data>
+  <data name="SupportBundle_DeviceStatus" xml:space="preserve">
+    <value>Состояние устройств</value>
+  </data>
+  <data name="SupportBundle_DeviceStatusDesc" xml:space="preserve">
+    <value>Состояние подключения всех устройств</value>
+  </data>
+  <data name="SupportBundle_Preview" xml:space="preserve">
+    <value>Предпросмотр</value>
+  </data>
+  <data name="About_Subtitle" xml:space="preserve">
+    <value>Syncthing-совместимая синхронизация файлов с управлением Creatio</value>
+  </data>
   <data name="SystemStatus_SystemMemory" xml:space="preserve">
     <value>Системная память</value>
   </data>
@@ -3077,8 +3188,6 @@
   <data name="SystemStatus_UnableToRetrieve" xml:space="preserve">
     <value>Не удалось получить статус системы</value>
   </data>
-
-  <!-- Sync Progress -->
   <data name="SyncProgress_Syncing" xml:space="preserve">
     <value>Синхронизация...</value>
   </data>
@@ -3106,8 +3215,6 @@
   <data name="SyncProgress_FilesScanned" xml:space="preserve">
     <value>{0} файлов просканировано</value>
   </data>
-
-  <!-- Event Types - Filter dropdown -->
   <data name="EventType_StateChanged" xml:space="preserve">
     <value>Изменение состояния</value>
   </data>
@@ -3129,8 +3236,6 @@
   <data name="EventType_FolderErrors" xml:space="preserve">
     <value>Ошибки папки</value>
   </data>
-
-  <!-- Event Types - Short display in table -->
   <data name="EventType_State" xml:space="preserve">
     <value>Состояние</value>
   </data>
@@ -3188,8 +3293,6 @@
   <data name="EventType_DiscoveryCompleted" xml:space="preserve">
     <value>Обнаружение</value>
   </data>
-
-  <!-- Event Descriptions -->
   <data name="EventDesc_FolderCompletion" xml:space="preserve">
     <value>Папка '{0}' синхронизирована с устройством '{1}'</value>
   </data>
@@ -3253,8 +3356,6 @@
   <data name="EventDesc_UnknownEvent" xml:space="preserve">
     <value>Неизвестное событие</value>
   </data>
-
-  <!-- Error Messages -->
   <data name="Error_Http401" xml:space="preserve">
     <value>Требуется авторизация. Проверьте учётные данные.</value>
   </data>
@@ -3297,12 +3398,12 @@
   <data name="Error_Unknown" xml:space="preserve">
     <value>Произошла непредвиденная ошибка. Попробуйте снова.</value>
   </data>
-
+  <data name="FolderDetails_Dirs" xml:space="preserve">
+    <value>Каталогов</value>
+  </data>
   <data name="Common_Status" xml:space="preserve">
     <value>Статус</value>
   </data>
-
-  <!-- Dashboard: Listeners, Discovery, Identification, Local State -->
   <data name="Dashboard_Listeners" xml:space="preserve">
     <value>Слушатели</value>
   </data>
@@ -3336,8 +3437,6 @@
   <data name="Dashboard_LocalState" xml:space="preserve">
     <value>Локальное состояние (всего)</value>
   </data>
-
-  <!-- FolderDetails: Pull Order, Latest Change -->
   <data name="FolderDetails_FilePullOrder" xml:space="preserve">
     <value>Порядок загрузки файлов</value>
   </data>
@@ -3362,13 +3461,15 @@
   <data name="FolderDetails_PullOrder_NewestFirst" xml:space="preserve">
     <value>Сначала новые</value>
   </data>
-
-  <!-- DeviceDetails: Connections -->
   <data name="DeviceDetails_NumConnections" xml:space="preserve">
     <value>Количество соединений</value>
   </data>
-
-  <!-- User Management -->
+  <data name="DeviceDetails_SharedFolders" xml:space="preserve">
+    <value>Общие папки</value>
+  </data>
+  <data name="DeviceDetails_NoSharedFolders" xml:space="preserve">
+    <value>Нет общих папок с этим устройством</value>
+  </data>
   <data name="Settings_Users" xml:space="preserve">
     <value>Пользователи</value>
   </data>
@@ -3512,6 +3613,9 @@
   </data>
   <data name="Msg_FailedToUpdateWebServerType" xml:space="preserve">
     <value>Не удалось обновить тип веб-сервера: {0}</value>
+  </data>
+  <data name="Connections_Disconnect" xml:space="preserve">
+    <value>Отключено</value>
   </data>
   <data name="NotFound_Title" xml:space="preserve">
     <value>Страница не найдена</value>
@@ -3725,5 +3829,991 @@
   </data>
   <data name="FolderBrowser_Empty" xml:space="preserve">
     <value>Нет подпапок</value>
+  </data>
+
+  <!-- Obsolete keys kept for backward compatibility -->
+  <data name="Settings_General_DeviceInfo" xml:space="preserve">
+    <value>Информация об устройстве</value>
+  </data>
+  <data name="Settings_General_DeviceName" xml:space="preserve">
+    <value>Имя устройства</value>
+  </data>
+  <data name="Settings_General_DeviceNameDesc" xml:space="preserve">
+    <value>Имя, отображаемое другим устройствам</value>
+  </data>
+  <data name="Settings_General_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="Settings_General_CopyId" xml:space="preserve">
+    <value>Копировать ID</value>
+  </data>
+  <data name="Settings_General_ShowQr" xml:space="preserve">
+    <value>Показать QR-код</value>
+  </data>
+  <data name="Settings_General_IdCopied" xml:space="preserve">
+    <value>ID устройства скопирован</value>
+  </data>
+  <data name="Settings_General_SyncDefaults" xml:space="preserve">
+    <value>Настройки синхронизации по умолчанию</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPath" xml:space="preserve">
+    <value>Путь к папкам по умолчанию</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPathDesc" xml:space="preserve">
+    <value>Каталог по умолчанию для новых общих папок</value>
+  </data>
+  <data name="Settings_General_MinDiskFree" xml:space="preserve">
+    <value>Минимум свободного места</value>
+  </data>
+  <data name="Settings_General_MinDiskFreeDesc" xml:space="preserve">
+    <value>Остановить синхронизацию, если свободного места меньше этого значения</value>
+  </data>
+  <data name="Settings_General_AutoAcceptFolders" xml:space="preserve">
+    <value>Автопринятие папок</value>
+  </data>
+  <data name="Settings_General_AutoAcceptFoldersDesc" xml:space="preserve">
+    <value>Автоматически принимать папки от доверенных устройств</value>
+  </data>
+  <data name="Settings_General_ApiSettings" xml:space="preserve">
+    <value>Настройки API</value>
+  </data>
+  <data name="Settings_General_ApiKey" xml:space="preserve">
+    <value>API-ключ</value>
+  </data>
+  <data name="Settings_General_ApiKeyDesc" xml:space="preserve">
+    <value>Ключ для REST API аутентификации</value>
+  </data>
+  <data name="Settings_General_ApiEnabled" xml:space="preserve">
+    <value>API включён</value>
+  </data>
+  <data name="Settings_General_ApiEnabledDesc" xml:space="preserve">
+    <value>Включить REST API для внешних интеграций</value>
+  </data>
+  <data name="Settings_General_GenerateKey" xml:space="preserve">
+    <value>Сгенерировать ключ</value>
+  </data>
+  <data name="Settings_General_StartMinimized" xml:space="preserve">
+    <value>Запускать свёрнутым</value>
+  </data>
+  <data name="Settings_General_StartMinimizedDesc" xml:space="preserve">
+    <value>Запускать приложение в свёрнутом виде</value>
+  </data>
+  <data name="Settings_General_StartOnBoot" xml:space="preserve">
+    <value>Запускать при загрузке</value>
+  </data>
+  <data name="Settings_General_StartOnBootDesc" xml:space="preserve">
+    <value>Автоматически запускать при старте системы</value>
+  </data>
+  <data name="Settings_Network_NatLeaseDesc" xml:space="preserve">
+    <value>Как долго сохранять переадресацию портов перед обновлением</value>
+  </data>
+  <data name="Settings_Network_NatRenewalDesc" xml:space="preserve">
+    <value>Как часто обновлять переадресацию портов</value>
+  </data>
+  <data name="Settings_Network_NatTimeoutDesc" xml:space="preserve">
+    <value>Таймаут операций обнаружения NAT</value>
+  </data>
+  <data name="Settings_Network_LocalAnnounceMcast" xml:space="preserve">
+    <value>Адрес мультикаста</value>
+  </data>
+  <data name="Settings_Network_LocalAnnounceMcastDesc" xml:space="preserve">
+    <value>Адрес для мультикастового обнаружения (IPv6)</value>
+  </data>
+  <data name="Settings_Network_GlobalServers" xml:space="preserve">
+    <value>Серверы глобального обнаружения</value>
+  </data>
+  <data name="Settings_Network_GlobalServersDesc" xml:space="preserve">
+    <value>Список серверов глобального обнаружения</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectMins" xml:space="preserve">
+    <value>Интервал переподключения (минуты)</value>
+  </data>
+  <data name="Settings_Network_RelayReconnectDesc" xml:space="preserve">
+    <value>Время ожидания перед попыткой переподключения к реле</value>
+  </data>
+  <data name="Settings_Network_MaxSendDesc" xml:space="preserve">
+    <value>Ограничение скорости исходящего трафика (0 = без ограничений)</value>
+  </data>
+  <data name="Settings_Network_MaxRecvDesc" xml:space="preserve">
+    <value>Ограничение скорости входящего трафика (0 = без ограничений)</value>
+  </data>
+  <data name="Settings_Advanced_SymlinksEnabled" xml:space="preserve">
+    <value>Символические ссылки</value>
+  </data>
+  <data name="Settings_Advanced_SymlinksDesc" xml:space="preserve">
+    <value>Синхронизировать символические ссылки</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePerms" xml:space="preserve">
+    <value>Игнорировать права доступа</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermsDesc" xml:space="preserve">
+    <value>Не синхронизировать права доступа к файлам</value>
+  </data>
+  <data name="Settings_Advanced_IgnoreDelete" xml:space="preserve">
+    <value>Игнорировать удаления</value>
+  </data>
+  <data name="Settings_Advanced_IgnoreDeleteDesc" xml:space="preserve">
+    <value>Не распространять удаления файлов</value>
+  </data>
+  <data name="Settings_Advanced_TempIndexes" xml:space="preserve">
+    <value>Временные индексы</value>
+  </data>
+  <data name="Settings_Advanced_TempIndexesDesc" xml:space="preserve">
+    <value>Хранить индексы во временных файлах во время загрузки</value>
+  </data>
+  <data name="Settings_Advanced_CopyOwnershipDesc" xml:space="preserve">
+    <value>Синхронизировать владельца файлов (требует root)</value>
+  </data>
+  <data name="Settings_Advanced_SendOwnership" xml:space="preserve">
+    <value>Отправлять информацию о владельце</value>
+  </data>
+  <data name="Settings_Advanced_SendOwnershipDesc" xml:space="preserve">
+    <value>Отправлять UID/GID другим устройствам</value>
+  </data>
+  <data name="Settings_Advanced_SyncXattrs" xml:space="preserve">
+    <value>Синхронизировать Xattrs</value>
+  </data>
+  <data name="Settings_Advanced_SyncXattrsDesc" xml:space="preserve">
+    <value>Синхронизировать расширенные атрибуты файлов</value>
+  </data>
+  <data name="Settings_Advanced_SendXattrs" xml:space="preserve">
+    <value>Отправлять Xattrs</value>
+  </data>
+  <data name="Settings_Advanced_SendXattrsDesc" xml:space="preserve">
+    <value>Отправлять расширенные атрибуты другим устройствам</value>
+  </data>
+  <data name="Settings_Advanced_DbTuning" xml:space="preserve">
+    <value>Тюнинг базы данных</value>
+  </data>
+  <data name="Settings_Advanced_DbTuningDesc" xml:space="preserve">
+    <value>Режим оптимизации базы данных</value>
+  </data>
+  <data name="Settings_Advanced_DbTuning_Auto" xml:space="preserve">
+    <value>Авто</value>
+  </data>
+  <data name="Settings_Advanced_DbTuning_Small" xml:space="preserve">
+    <value>Малый</value>
+  </data>
+  <data name="Settings_Advanced_DbTuning_Large" xml:space="preserve">
+    <value>Большой</value>
+  </data>
+  <data name="Settings_Advanced_HashLength" xml:space="preserve">
+    <value>Длина хеша</value>
+  </data>
+  <data name="Settings_Advanced_HashLengthDesc" xml:space="preserve">
+    <value>Количество байт контрольной суммы (по умолчанию: 21)</value>
+  </data>
+  <data name="Settings_Advanced_MaxConns" xml:space="preserve">
+    <value>Максимум соединений</value>
+  </data>
+  <data name="Settings_Advanced_MaxConnsDesc" xml:space="preserve">
+    <value>Максимальное количество одновременных соединений</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingKiB" xml:space="preserve">
+    <value>Максимум ожидающих данных (КиБ)</value>
+  </data>
+  <data name="Settings_Advanced_MaxPendingDesc" xml:space="preserve">
+    <value>Максимум данных в очереди на отправку</value>
+  </data>
+  <data name="Settings_Advanced_MaxReqKiB" xml:space="preserve">
+    <value>Максимальный размер запроса (КиБ)</value>
+  </data>
+  <data name="Settings_Advanced_MaxReqDesc" xml:space="preserve">
+    <value>Максимальный размер одного запроса данных</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectIntervalSecs" xml:space="preserve">
+    <value>Интервал переподключения (сек)</value>
+  </data>
+  <data name="Settings_Advanced_ReconnectIntervalDesc" xml:space="preserve">
+    <value>Время ожидания между попытками подключения</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeoutSecs" xml:space="preserve">
+    <value>Таймаут пинга (сек)</value>
+  </data>
+  <data name="Settings_Advanced_PingTimeoutDesc" xml:space="preserve">
+    <value>Таймаут для сообщений проверки соединения</value>
+  </data>
+  <data name="Settings_Advanced_DebugEnabled" xml:space="preserve">
+    <value>Режим отладки</value>
+  </data>
+  <data name="Settings_Advanced_DebugEnabledDesc" xml:space="preserve">
+    <value>Включить расширенное ведение журнала для устранения неполадок</value>
+  </data>
+  <data name="Settings_Advanced_ProfilerEnabled" xml:space="preserve">
+    <value>Профилировщик</value>
+  </data>
+  <data name="Settings_Advanced_ProfilerEnabledDesc" xml:space="preserve">
+    <value>Включить профилирование производительности</value>
+  </data>
+  <data name="Settings_Advanced_ProfilingHttp" xml:space="preserve">
+    <value>Профилирование HTTP</value>
+  </data>
+  <data name="Settings_Advanced_ProfilingHttpDesc" xml:space="preserve">
+    <value>Включить HTTP-эндпоинты pprof</value>
+  </data>
+  <data name="Settings_Advanced_ProfilingBlock" xml:space="preserve">
+    <value>Профилирование блокировок</value>
+  </data>
+  <data name="Settings_Advanced_ProfilingBlockDesc" xml:space="preserve">
+    <value>Отслеживать события блокировки</value>
+  </data>
+  <data name="Settings_Advanced_ResetDbDesc" xml:space="preserve">
+    <value>Удалить всю информацию индекса и начать заново</value>
+  </data>
+  <data name="Settings_Advanced_FactoryResetDesc" xml:space="preserve">
+    <value>Удалить всю конфигурацию и данные</value>
+  </data>
+  <data name="About_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="About_BuildDate" xml:space="preserve">
+    <value>Дата сборки</value>
+  </data>
+  <data name="About_Runtime" xml:space="preserve">
+    <value>Среда выполнения</value>
+  </data>
+  <data name="Connections_ActiveConns" xml:space="preserve">
+    <value>Активные соединения</value>
+  </data>
+  <data name="Connections_RelayConns" xml:space="preserve">
+    <value>Релейные соединения</value>
+  </data>
+  <data name="Connections_DirectConns" xml:space="preserve">
+    <value>Прямые соединения</value>
+  </data>
+  <data name="Connections_InRate" xml:space="preserve">
+    <value>Скорость приёма</value>
+  </data>
+  <data name="Connections_OutRate" xml:space="preserve">
+    <value>Скорость отправки</value>
+  </data>
+  <data name="Connections_TotalIn" xml:space="preserve">
+    <value>Всего принято</value>
+  </data>
+  <data name="Connections_TotalOut" xml:space="preserve">
+    <value>Всего отправлено</value>
+  </data>
+  <data name="Connections_Discovery" xml:space="preserve">
+    <value>Обнаружение</value>
+  </data>
+  <data name="Connections_NatType" xml:space="preserve">
+    <value>Тип NAT</value>
+  </data>
+  <data name="Connections_ExternalAddr" xml:space="preserve">
+    <value>Внешний адрес</value>
+  </data>
+  <data name="Connections_Details" xml:space="preserve">
+    <value>Детали соединения</value>
+  </data>
+  <data name="Connections_ConnectedAt" xml:space="preserve">
+    <value>Подключено</value>
+  </data>
+  <data name="Connections_InOut" xml:space="preserve">
+    <value>Вход/Выход</value>
+  </data>
+  <data name="Connections_Actions" xml:space="preserve">
+    <value>Действия</value>
+  </data>
+  <data name="Connections_NoActiveConns" xml:space="preserve">
+    <value>Нет активных соединений</value>
+  </data>
+  <data name="Events_Filter" xml:space="preserve">
+    <value>Фильтр</value>
+  </data>
+  <data name="Events_AllTypes" xml:space="preserve">
+    <value>Все типы</value>
+  </data>
+  <data name="Events_FilterByType" xml:space="preserve">
+    <value>Фильтр по типу</value>
+  </data>
+  <data name="Events_Data" xml:space="preserve">
+    <value>Данные</value>
+  </data>
+  <data name="Events_WaitingForEvents" xml:space="preserve">
+    <value>Ожидание событий...</value>
+  </data>
+  <data name="Events_Paused" xml:space="preserve">
+    <value>Приостановлено</value>
+  </data>
+  <data name="Statistics_TransferStats" xml:space="preserve">
+    <value>Статистика передачи</value>
+  </data>
+  <data name="Statistics_TotalData" xml:space="preserve">
+    <value>Всего данных</value>
+  </data>
+  <data name="Statistics_DataIn" xml:space="preserve">
+    <value>Получено данных</value>
+  </data>
+  <data name="Statistics_DataOut" xml:space="preserve">
+    <value>Отправлено данных</value>
+  </data>
+  <data name="Statistics_SystemStats" xml:space="preserve">
+    <value>Системная статистика</value>
+  </data>
+  <data name="Statistics_CpuUsage" xml:space="preserve">
+    <value>Использование CPU</value>
+  </data>
+  <data name="Statistics_HeapAlloc" xml:space="preserve">
+    <value>Выделено в куче</value>
+  </data>
+  <data name="Statistics_GlobalFiles" xml:space="preserve">
+    <value>Глобальных файлов</value>
+  </data>
+  <data name="Statistics_NeedFiles" xml:space="preserve">
+    <value>Требуется файлов</value>
+  </data>
+  <data name="Statistics_State" xml:space="preserve">
+    <value>Состояние</value>
+  </data>
+  <data name="Profiling_CpuProfile" xml:space="preserve">
+    <value>Профиль CPU</value>
+  </data>
+  <data name="Profiling_CpuUsage" xml:space="preserve">
+    <value>Использование CPU</value>
+  </data>
+  <data name="Profiling_Threads" xml:space="preserve">
+    <value>Потоков</value>
+  </data>
+  <data name="Profiling_StartCpuProfile" xml:space="preserve">
+    <value>Начать профилирование CPU</value>
+  </data>
+  <data name="Profiling_StopCpuProfile" xml:space="preserve">
+    <value>Остановить профилирование CPU</value>
+  </data>
+  <data name="Profiling_DownloadCpuProfile" xml:space="preserve">
+    <value>Скачать профиль CPU</value>
+  </data>
+  <data name="Profiling_MemoryProfile" xml:space="preserve">
+    <value>Профиль памяти</value>
+  </data>
+  <data name="Profiling_AllocatedMem" xml:space="preserve">
+    <value>Выделено памяти</value>
+  </data>
+  <data name="Profiling_GcCollections" xml:space="preserve">
+    <value>Сборок мусора</value>
+  </data>
+  <data name="Profiling_TakeHeapSnapshot" xml:space="preserve">
+    <value>Сделать снимок кучи</value>
+  </data>
+  <data name="Profiling_ForceGc" xml:space="preserve">
+    <value>Принудительная сборка мусора</value>
+  </data>
+  <data name="Profiling_HeapSys" xml:space="preserve">
+    <value>Куча (системная)</value>
+  </data>
+  <data name="Profiling_HeapIdle" xml:space="preserve">
+    <value>Куча (простой)</value>
+  </data>
+  <data name="Profiling_HeapReleased" xml:space="preserve">
+    <value>Куча (освобождено)</value>
+  </data>
+  <data name="Profiling_ReadBytes" xml:space="preserve">
+    <value>Прочитано байт</value>
+  </data>
+  <data name="Profiling_WriteBytes" xml:space="preserve">
+    <value>Записано байт</value>
+  </data>
+  <data name="Profiling_ReadOps" xml:space="preserve">
+    <value>Операций чтения</value>
+  </data>
+  <data name="Profiling_WriteOps" xml:space="preserve">
+    <value>Операций записи</value>
+  </data>
+  <data name="Profiling_DumpStacks" xml:space="preserve">
+    <value>Дамп стеков</value>
+  </data>
+  <data name="Profiling_DumpStacksDesc" xml:space="preserve">
+    <value>Вывести трассировку стека всех потоков</value>
+  </data>
+  <data name="Profiling_ToggleVerbose" xml:space="preserve">
+    <value>Подробное логирование</value>
+  </data>
+  <data name="Profiling_ToggleVerboseDesc" xml:space="preserve">
+    <value>Включить/выключить подробные отладочные логи</value>
+  </data>
+  <data name="Profiling_ReloadConfig" xml:space="preserve">
+    <value>Перезагрузить конфигурацию</value>
+  </data>
+  <data name="Profiling_ReloadConfigDesc" xml:space="preserve">
+    <value>Перезагрузить конфигурацию с диска</value>
+  </data>
+  <data name="Profiling_GcPauseTotal" xml:space="preserve">
+    <value>Общая пауза GC</value>
+  </data>
+  <data name="SupportBundle_Title" xml:space="preserve">
+    <value>Пакет поддержки</value>
+  </data>
+  <data name="SupportBundle_Description" xml:space="preserve">
+    <value>Создать диагностический пакет для устранения неполадок. Пакет содержит информацию о системе, конфигурацию и логи.</value>
+  </data>
+  <data name="SupportBundle_IncludeOptions" xml:space="preserve">
+    <value>Что включить</value>
+  </data>
+  <data name="SupportBundle_SystemInfo" xml:space="preserve">
+    <value>Информация о системе</value>
+  </data>
+  <data name="SupportBundle_SystemInfoDesc" xml:space="preserve">
+    <value>ОС, версия, архитектура, ресурсы</value>
+  </data>
+  <data name="SupportBundle_Configuration" xml:space="preserve">
+    <value>Конфигурация</value>
+  </data>
+  <data name="SupportBundle_ConfigurationDesc" xml:space="preserve">
+    <value>Текущие настройки (чувствительные данные удалены)</value>
+  </data>
+  <data name="SupportBundle_Logs" xml:space="preserve">
+    <value>Логи</value>
+  </data>
+  <data name="SupportBundle_LogsDesc" xml:space="preserve">
+    <value>Записи журнала за последние {0} дн.</value>
+  </data>
+  <data name="SupportBundle_DatabaseStats" xml:space="preserve">
+    <value>Статистика БД</value>
+  </data>
+  <data name="SupportBundle_DatabaseStatsDesc" xml:space="preserve">
+    <value>Статистика и метрики базы данных</value>
+  </data>
+  <data name="SupportBundle_NetworkDiag" xml:space="preserve">
+    <value>Диагностика сети</value>
+  </data>
+  <data name="SupportBundle_NetworkDiagDesc" xml:space="preserve">
+    <value>Состояние соединения и информация обнаружения</value>
+  </data>
+  <data name="SupportBundle_PrivacyNote" xml:space="preserve">
+    <value>Примечание о конфиденциальности</value>
+  </data>
+  <data name="SupportBundle_PrivacyText" xml:space="preserve">
+    <value>Чувствительная информация (API ключи, пароли, ID устройств) будет автоматически удалена из пакета.</value>
+  </data>
+  <data name="SupportBundle_Generate" xml:space="preserve">
+    <value>Создать пакет</value>
+  </data>
+  <data name="SupportBundle_Generating" xml:space="preserve">
+    <value>Создание пакета...</value>
+  </data>
+  <data name="SupportBundle_Download" xml:space="preserve">
+    <value>Скачать пакет</value>
+  </data>
+  <data name="SupportBundle_GeneratedAt" xml:space="preserve">
+    <value>Создан: {0}</value>
+  </data>
+  <data name="SupportBundle_Size" xml:space="preserve">
+    <value>Размер: {0}</value>
+  </data>
+  <data name="SystemLog_Title" xml:space="preserve">
+    <value>Системный журнал</value>
+  </data>
+  <data name="SystemLog_Filter" xml:space="preserve">
+    <value>Фильтр</value>
+  </data>
+  <data name="SystemLog_Level" xml:space="preserve">
+    <value>Уровень</value>
+  </data>
+  <data name="SystemLog_AllLevels" xml:space="preserve">
+    <value>Все уровни</value>
+  </data>
+  <data name="SystemLog_Search" xml:space="preserve">
+    <value>Поиск</value>
+  </data>
+  <data name="SystemLog_SearchPlaceholder" xml:space="preserve">
+    <value>Поиск в логах...</value>
+  </data>
+  <data name="SystemLog_Refresh" xml:space="preserve">
+    <value>Обновить</value>
+  </data>
+  <data name="SystemLog_AutoScroll" xml:space="preserve">
+    <value>Автопрокрутка</value>
+  </data>
+  <data name="SystemLog_Clear" xml:space="preserve">
+    <value>Очистить</value>
+  </data>
+  <data name="SystemLog_Download" xml:space="preserve">
+    <value>Скачать</value>
+  </data>
+  <data name="SystemLog_Timestamp" xml:space="preserve">
+    <value>Время</value>
+  </data>
+  <data name="SystemLog_Source" xml:space="preserve">
+    <value>Источник</value>
+  </data>
+  <data name="SystemLog_Message" xml:space="preserve">
+    <value>Сообщение</value>
+  </data>
+  <data name="SystemLog_NoLogs" xml:space="preserve">
+    <value>Нет записей журнала</value>
+  </data>
+  <data name="SystemLog_TailMode" xml:space="preserve">
+    <value>Режим слежения</value>
+  </data>
+  <data name="DeviceDetails_Status" xml:space="preserve">
+    <value>Состояние</value>
+  </data>
+  <data name="DeviceDetails_DeviceName" xml:space="preserve">
+    <value>Имя устройства</value>
+  </data>
+  <data name="DeviceDetails_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="DeviceDetails_ManageFolders" xml:space="preserve">
+    <value>Управление папками</value>
+  </data>
+  <data name="DeviceDetails_Disconnect" xml:space="preserve">
+    <value>Отключить</value>
+  </data>
+  <data name="DeviceDetails_RemoveConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите удалить устройство "{0}"?</value>
+  </data>
+  <data name="PendingDevices_Title" xml:space="preserve">
+    <value>Ожидающие устройства</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptConfig" xml:space="preserve">
+    <value>Конфигурация автопринятия</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabled" xml:space="preserve">
+    <value>Автопринятие включено</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabledDesc" xml:space="preserve">
+    <value>Автоматически принимать устройства, соответствующие критериям</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptIntroduced" xml:space="preserve">
+    <value>Принимать представленные устройства</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowList" xml:space="preserve">
+    <value>Список разрешённых</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowListDesc" xml:space="preserve">
+    <value>Принимать только устройства из этого списка</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFolders" xml:space="preserve">
+    <value>Папки по умолчанию</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFoldersDesc" xml:space="preserve">
+    <value>Автоматически делиться этими папками с новыми устройствами</value>
+  </data>
+  <data name="PendingDevices_PendingList" xml:space="preserve">
+    <value>Ожидающие устройства</value>
+  </data>
+  <data name="PendingDevices_NoPending" xml:space="preserve">
+    <value>Нет ожидающих устройств</value>
+  </data>
+  <data name="PendingDevices_DeviceId" xml:space="preserve">
+    <value>ID устройства</value>
+  </data>
+  <data name="PendingDevices_DeviceName" xml:space="preserve">
+    <value>Имя устройства</value>
+  </data>
+  <data name="PendingDevices_Address" xml:space="preserve">
+    <value>Адрес</value>
+  </data>
+  <data name="PendingDevices_FirstSeen" xml:space="preserve">
+    <value>Впервые обнаружено</value>
+  </data>
+  <data name="PendingDevices_Accept" xml:space="preserve">
+    <value>Принять</value>
+  </data>
+  <data name="PendingDevices_Reject" xml:space="preserve">
+    <value>Отклонить</value>
+  </data>
+  <data name="PendingDevices_AcceptAll" xml:space="preserve">
+    <value>Принять все</value>
+  </data>
+  <data name="PendingDevices_RejectAll" xml:space="preserve">
+    <value>Отклонить все</value>
+  </data>
+  <data name="PendingDevices_AcceptWithFolders" xml:space="preserve">
+    <value>Принять и выбрать папки</value>
+  </data>
+  <data name="PendingDevices_SelectFolders" xml:space="preserve">
+    <value>Выберите папки для общего доступа</value>
+  </data>
+  <data name="PendingDevices_AcceptDevice" xml:space="preserve">
+    <value>Принять устройство</value>
+  </data>
+  <data name="PendingDevices_Accepted" xml:space="preserve">
+    <value>Устройство принято</value>
+  </data>
+  <data name="PendingDevices_Rejected" xml:space="preserve">
+    <value>Устройство отклонено</value>
+  </data>
+  <data name="PendingDevices_History" xml:space="preserve">
+    <value>История</value>
+  </data>
+  <data name="PendingDevices_RecentlyAccepted" xml:space="preserve">
+    <value>Недавно принятые</value>
+  </data>
+  <data name="PendingDevices_RecentlyRejected" xml:space="preserve">
+    <value>Недавно отклонённые</value>
+  </data>
+  <data name="PendingDevices_NoHistory" xml:space="preserve">
+    <value>Нет истории</value>
+  </data>
+  <data name="FolderDetails_Title" xml:space="preserve">
+    <value>Детали папки</value>
+  </data>
+  <data name="FolderDetails_GlobalState" xml:space="preserve">
+    <value>Глобальное состояние</value>
+  </data>
+  <data name="FolderDetails_LocalState" xml:space="preserve">
+    <value>Локальное состояние</value>
+  </data>
+  <data name="FolderDetails_Files" xml:space="preserve">
+    <value>Файлов</value>
+  </data>
+  <data name="FolderDetails_Size" xml:space="preserve">
+    <value>Размер</value>
+  </data>
+  <data name="FolderDetails_FolderLabel" xml:space="preserve">
+    <value>Метка</value>
+  </data>
+  <data name="FolderDetails_FolderPath" xml:space="preserve">
+    <value>Путь</value>
+  </data>
+  <data name="FolderDetails_FolderType" xml:space="preserve">
+    <value>Тип</value>
+  </data>
+  <data name="FolderDetails_NoSharedDevices" xml:space="preserve">
+    <value>Не расшарено ни с одним устройством</value>
+  </data>
+  <data name="FolderDetails_ManageDevices" xml:space="preserve">
+    <value>Управление устройствами</value>
+  </data>
+  <data name="FolderDetails_Rescan" xml:space="preserve">
+    <value>Пересканировать</value>
+  </data>
+  <data name="FolderDetails_ViewErrors" xml:space="preserve">
+    <value>Просмотр ошибок</value>
+  </data>
+  <data name="FolderDetails_Edit" xml:space="preserve">
+    <value>Редактировать</value>
+  </data>
+  <data name="FolderDetails_Remove" xml:space="preserve">
+    <value>Удалить</value>
+  </data>
+  <data name="FolderDetails_RemoveConfirm" xml:space="preserve">
+    <value>Вы уверены, что хотите удалить папку "{0}"?</value>
+  </data>
+  <data name="FolderErrors_File" xml:space="preserve">
+    <value>Файл</value>
+  </data>
+  <data name="FolderErrors_Rescan" xml:space="preserve">
+    <value>Пересканировать папку</value>
+  </data>
+  <data name="FolderErrors_RescanFile" xml:space="preserve">
+    <value>Пересканировать файл</value>
+  </data>
+  <data name="FolderErrors_Dismiss" xml:space="preserve">
+    <value>Скрыть</value>
+  </data>
+  <data name="FolderErrors_DismissAll" xml:space="preserve">
+    <value>Скрыть все</value>
+  </data>
+  <data name="FolderErrors_TotalErrors" xml:space="preserve">
+    <value>Всего ошибок: {0}</value>
+  </data>
+  <data name="FolderEdit_CreateTitle" xml:space="preserve">
+    <value>Создание папки</value>
+  </data>
+  <data name="FolderEdit_FolderId" xml:space="preserve">
+    <value>ID папки</value>
+  </data>
+  <data name="FolderEdit_FolderIdDesc" xml:space="preserve">
+    <value>Уникальный идентификатор папки</value>
+  </data>
+  <data name="FolderEdit_FolderLabelDesc" xml:space="preserve">
+    <value>Отображаемое имя папки</value>
+  </data>
+  <data name="FolderEdit_FolderPathDesc" xml:space="preserve">
+    <value>Локальный путь к папке</value>
+  </data>
+  <data name="FolderEdit_Browse" xml:space="preserve">
+    <value>Обзор</value>
+  </data>
+  <data name="FolderEdit_FolderTypeDesc" xml:space="preserve">
+    <value>Как эта папка взаимодействует с удалёнными устройствами</value>
+  </data>
+  <data name="FolderEdit_Type_SendReceive" xml:space="preserve">
+    <value>Отправка и приём</value>
+  </data>
+  <data name="FolderEdit_Type_SendOnly" xml:space="preserve">
+    <value>Только отправка</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveOnly" xml:space="preserve">
+    <value>Только приём</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveEncrypted" xml:space="preserve">
+    <value>Приём зашифрованных</value>
+  </data>
+  <data name="FolderEdit_FileOptions" xml:space="preserve">
+    <value>Параметры файлов</value>
+  </data>
+  <data name="FolderEdit_RescanInterval" xml:space="preserve">
+    <value>Интервал пересканирования (сек)</value>
+  </data>
+  <data name="FolderEdit_RescanIntervalDesc" xml:space="preserve">
+    <value>Как часто сканировать папку на изменения</value>
+  </data>
+  <data name="FolderEdit_FsWatcher" xml:space="preserve">
+    <value>Наблюдатель файловой системы</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDesc" xml:space="preserve">
+    <value>Использовать уведомления ОС об изменениях файлов</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelay" xml:space="preserve">
+    <value>Задержка наблюдателя (сек)</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelayDesc" xml:space="preserve">
+    <value>Задержка перед обработкой событий изменения</value>
+  </data>
+  <data name="FolderEdit_IgnorePerms" xml:space="preserve">
+    <value>Игнорировать права доступа</value>
+  </data>
+  <data name="FolderEdit_IgnorePermsDesc" xml:space="preserve">
+    <value>Не синхронизировать права доступа к файлам</value>
+  </data>
+  <data name="FolderEdit_IgnoreDeleteDesc" xml:space="preserve">
+    <value>Не удалять файлы при удалении на других устройствах</value>
+  </data>
+  <data name="FolderEdit_Versioning" xml:space="preserve">
+    <value>Версионирование</value>
+  </data>
+  <data name="FolderEdit_VersioningTypeDesc" xml:space="preserve">
+    <value>Как сохранять старые версии файлов</value>
+  </data>
+  <data name="FolderEdit_Versioning_None" xml:space="preserve">
+    <value>Отключено</value>
+  </data>
+  <data name="FolderEdit_Versioning_Trashcan" xml:space="preserve">
+    <value>Корзина</value>
+  </data>
+  <data name="FolderEdit_Versioning_Simple" xml:space="preserve">
+    <value>Простое</value>
+  </data>
+  <data name="FolderEdit_Versioning_Staggered" xml:space="preserve">
+    <value>Ступенчатое</value>
+  </data>
+  <data name="FolderEdit_Versioning_External" xml:space="preserve">
+    <value>Внешнее</value>
+  </data>
+  <data name="FolderEdit_TrashcanDays" xml:space="preserve">
+    <value>Хранить версии (дней)</value>
+  </data>
+  <data name="FolderEdit_TrashcanDaysDesc" xml:space="preserve">
+    <value>Сколько дней хранить удалённые файлы (0 = бессрочно)</value>
+  </data>
+  <data name="FolderEdit_SimpleKeep" xml:space="preserve">
+    <value>Хранить версий</value>
+  </data>
+  <data name="FolderEdit_SimpleKeepDesc" xml:space="preserve">
+    <value>Сколько версий хранить для каждого файла</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAge" xml:space="preserve">
+    <value>Максимальный возраст (дней)</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAgeDesc" xml:space="preserve">
+    <value>Удалять версии старше этого срока</value>
+  </data>
+  <data name="FolderEdit_StaggeredPath" xml:space="preserve">
+    <value>Путь версий</value>
+  </data>
+  <data name="FolderEdit_StaggeredPathDesc" xml:space="preserve">
+    <value>Где хранить версии (пусто = .stversions)</value>
+  </data>
+  <data name="FolderEdit_ExternalCommand" xml:space="preserve">
+    <value>Команда</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandDesc" xml:space="preserve">
+    <value>Внешняя команда для версионирования</value>
+  </data>
+  <data name="FolderEdit_SharedDevices" xml:space="preserve">
+    <value>Общий доступ</value>
+  </data>
+  <data name="FolderEdit_SelectDevices" xml:space="preserve">
+    <value>Выберите устройства для общего доступа</value>
+  </data>
+  <data name="FolderEdit_NoDevices" xml:space="preserve">
+    <value>Нет доступных устройств</value>
+  </data>
+  <data name="FolderEdit_PullOrder" xml:space="preserve">
+    <value>Порядок загрузки</value>
+  </data>
+  <data name="FolderEdit_PullOrderDesc" xml:space="preserve">
+    <value>В каком порядке загружать файлы</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Random" xml:space="preserve">
+    <value>Случайный</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Alphabetic" xml:space="preserve">
+    <value>По алфавиту</value>
+  </data>
+  <data name="FolderEdit_PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Сначала маленькие</value>
+  </data>
+  <data name="FolderEdit_PullOrder_LargestFirst" xml:space="preserve">
+    <value>Сначала большие</value>
+  </data>
+  <data name="FolderEdit_PullOrder_NewestFirst" xml:space="preserve">
+    <value>Сначала новые</value>
+  </data>
+  <data name="FolderEdit_PullOrder_OldestFirst" xml:space="preserve">
+    <value>Сначала старые</value>
+  </data>
+  <data name="FolderEdit_Paused" xml:space="preserve">
+    <value>Приостановлена</value>
+  </data>
+  <data name="FolderEdit_PausedDesc" xml:space="preserve">
+    <value>Приостановить синхронизацию этой папки</value>
+  </data>
+  <data name="FolderEdit_Save" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="FolderEdit_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="FolderEdit_SaveSuccess" xml:space="preserve">
+    <value>Папка успешно сохранена</value>
+  </data>
+  <data name="FolderEdit_SaveError" xml:space="preserve">
+    <value>Ошибка сохранения папки: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadDevice" xml:space="preserve">
+    <value>Не удалось загрузить устройство: {0}</value>
+  </data>
+  <data name="Msg_FailedToUpdateDevice" xml:space="preserve">
+    <value>Не удалось обновить устройство: {0}</value>
+  </data>
+  <data name="Msg_NotImplemented" xml:space="preserve">
+    <value>Эта возможность ещё не реализована</value>
+  </data>
+  <data name="Common_Copy" xml:space="preserve">
+    <value>Копировать</value>
+  </data>
+  <data name="Msg_FailedToLoad" xml:space="preserve">
+    <value>Не удалось загрузить данные: {0}</value>
+  </data>
+  <data name="Msg_FailedToAcceptDevice" xml:space="preserve">
+    <value>Не удалось принять устройство: {0}</value>
+  </data>
+  <data name="Msg_ConfirmRejectDevice" xml:space="preserve">
+    <value>Отклонить устройство «{0}»?</value>
+  </data>
+  <data name="Msg_FailedToRejectDevice" xml:space="preserve">
+    <value>Не удалось отклонить устройство: {0}</value>
+  </data>
+  <data name="Msg_SettingsSaved" xml:space="preserve">
+    <value>Настройки сохранены</value>
+  </data>
+  <data name="Msg_FailedToSave" xml:space="preserve">
+    <value>Не удалось сохранить: {0}</value>
+  </data>
+  <data name="Msg_CopiedToClipboard" xml:space="preserve">
+    <value>Скопировано в буфер обмена</value>
+  </data>
+  <data name="Msg_FailedToCopy" xml:space="preserve">
+    <value>Не удалось скопировать в буфер обмена</value>
+  </data>
+  <data name="Profiling_CpuProfileRunning" xml:space="preserve">
+    <value>Профилирование...</value>
+  </data>
+  <data name="Profiling_CpuProfileStarted" xml:space="preserve">
+    <value>Профилирование ЦП запущено</value>
+  </data>
+  <data name="Profiling_CpuProfileDownloading" xml:space="preserve">
+    <value>Загрузка профиля ЦП...</value>
+  </data>
+  <data name="Profiling_CpuProfileFailed" xml:space="preserve">
+    <value>Не удалось собрать профиль ЦП: {0}</value>
+  </data>
+  <data name="Msg_SyncedPercent" xml:space="preserve">
+    <value>{0} синхронизировано</value>
+  </data>
+  <data name="Msg_FilesNeedSync" xml:space="preserve">
+    <value>Требуют синхронизации: {0} файлов ({1})</value>
+  </data>
+  <data name="Common_FileWatcher" xml:space="preserve">
+    <value>Наблюдатель за файлами</value>
+  </data>
+  <data name="Common_IgnorePermissions" xml:space="preserve">
+    <value>Игнорировать права доступа</value>
+  </data>
+  <data name="Msg_DeviceCount" xml:space="preserve">
+    <value>Устройств: {0}</value>
+  </data>
+  <data name="Common_Errors" xml:space="preserve">
+    <value>Ошибки</value>
+  </data>
+  <data name="Common_Folders" xml:space="preserve">
+    <value>Папки</value>
+  </data>
+  <data name="Msg_FailedToLoadFolder" xml:space="preserve">
+    <value>Не удалось загрузить папку: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartScan" xml:space="preserve">
+    <value>Не удалось запустить сканирование: {0}</value>
+  </data>
+  <data name="FolderEdit_NotFound" xml:space="preserve">
+    <value>Папка не найдена</value>
+  </data>
+  <data name="FolderEdit_AutoNormalize" xml:space="preserve">
+    <value>Автоматическая нормализация имён файлов</value>
+  </data>
+  <data name="FolderEdit_MaxConflictsDesc" xml:space="preserve">
+    <value>Максимум конфликтующих копий (-1 = без ограничений)</value>
+  </data>
+  <data name="FolderEdit_VersioningDesc" xml:space="preserve">
+    <value>Управление версиями сохраняет старые копии файлов, которые были заменены или удалены.</value>
+  </data>
+  <data name="FolderEdit_TrashcanInfo" xml:space="preserve">
+    <value>Корзина: заменённые и удалённые файлы перемещаются в .stversions и хранятся до очистки.</value>
+  </data>
+  <data name="FolderEdit_SimpleInfo" xml:space="preserve">
+    <value>Простое: для каждого файла хранится фиксированное количество старых версий.</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDays" xml:space="preserve">
+    <value>Очищать через (дней)</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDaysDesc" xml:space="preserve">
+    <value>Удалять версии старше указанного срока (0 = хранить всегда)</value>
+  </data>
+  <data name="FolderEdit_StaggeredInfo" xml:space="preserve">
+    <value>Ступенчатое: чем старше версии, тем реже они сохраняются.</value>
+  </data>
+  <data name="FolderEdit_ExternalInfo" xml:space="preserve">
+    <value>Внешнее: перед заменой файла выполняется указанная вами команда.</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandRequired" xml:space="preserve">
+    <value>Для внешнего управления версиями требуется команда</value>
+  </data>
+  <data name="FolderEdit_Resume" xml:space="preserve">
+    <value>Возобновить</value>
+  </data>
+  <data name="FolderEdit_LoadError" xml:space="preserve">
+    <value>Не удалось загрузить папку: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadErrors" xml:space="preserve">
+    <value>Не удалось загрузить ошибки: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartRescan" xml:space="preserve">
+    <value>Не удалось запустить повторное сканирование: {0}</value>
+  </data>
+  <data name="Msg_LoadSettingsFailed" xml:space="preserve">
+    <value>Не удалось загрузить настройки: {0}</value>
+  </data>
+  <data name="Msg_SaveSettingsFailed" xml:space="preserve">
+    <value>Не удалось сохранить настройки: {0}</value>
+  </data>
+  <data name="Common_Reset" xml:space="preserve">
+    <value>Сбросить</value>
+  </data>
+  <data name="Msg_ResetDatabaseFailed" xml:space="preserve">
+    <value>Не удалось сбросить базу данных: {0}</value>
+  </data>
+  <data name="Msg_FactoryResetFailed" xml:space="preserve">
+    <value>Не удалось выполнить сброс к заводским настройкам: {0}</value>
+  </data>
+  <data name="Msg_SettingsResetToDefaults" xml:space="preserve">
+    <value>Настройки сброшены к значениям по умолчанию</value>
+  </data>
+  <data name="SupportBundle_LogDays" xml:space="preserve">
+    <value>Дней</value>
   </data>
 </root>

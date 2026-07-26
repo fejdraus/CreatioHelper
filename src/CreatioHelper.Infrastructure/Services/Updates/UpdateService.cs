@@ -119,8 +119,9 @@ public class UpdateService : IUpdateService, IDisposable
         {
             await CheckCoreAsync(explicitly: false, channelOverride: null, CancellationToken.None).ConfigureAwait(false);
         }
-        catch
+        catch (Exception ex)
         {
+            _output.WriteLine($"[WARN] Background update check failed: {ex.Message}");
         }
     }
 

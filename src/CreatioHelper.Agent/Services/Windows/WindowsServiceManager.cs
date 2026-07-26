@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.Windows;

@@ -1,3 +1,5 @@
+using CreatioHelper.Domain.Serialization;
+
 namespace CreatioHelper.Agent.Services;
 
 public class ConfigurationService : IConfigurationService, IDisposable
@@ -89,10 +91,7 @@ public class ConfigurationService : IConfigurationService, IDisposable
     {
         try
         {
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(settings, JsonDefaults.Indented);
             await File.WriteAllTextAsync(_configPath, json).ConfigureAwait(false);
         }
         catch (Exception ex)

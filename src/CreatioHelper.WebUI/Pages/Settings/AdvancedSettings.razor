@@ -6,8 +6,9 @@
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
 
-<PageTitle>@L["Settings_Advanced_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_Advanced_Title"] - CreatioHelper Agent</PageTitle>
 
+<div class="settings-page">
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings_Advanced_Title"]</MudText>
 
 <MudAlert Severity="Severity.Warning" Class="mb-4">
@@ -20,180 +21,193 @@
 }
 else if (_config != null)
 {
+    <div class="settings-columns">
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_FileHandling"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudNumericField @bind-Value="_hashers"
-                                 Label="@L["Settings_Advanced_ConcurrentHashers"]"
-                                 Variant="Variant.Filled"
-                                 Min="1"
-                                 Max="64"
-                                 HelperText="@L["Settings_Advanced_ConcurrentHashers_Help"]" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudNumericField @bind-Value="_maxFolderConcurrency"
-                                 Label="@L["Settings_Advanced_MaxFolderConcurrency"]"
-                                 Variant="Variant.Filled"
-                                 Min="1"
-                                 Max="64"
-                                 HelperText="@L["Settings_Advanced_MaxFolderConcurrency_Help"]" />
-            </MudItem>
-        </MudGrid>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_hashers"
+                             Label="@L["Settings_Advanced_ConcurrentHashers"]"
+                             Variant="Variant.Filled"
+                             Min="1"
+                             Max="64"
+                             HelperText="@L["Settings_Advanced_ConcurrentHashers_Help"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxFolderConcurrency"
+                             Label="@L["Settings_Advanced_MaxFolderConcurrency"]"
+                             Variant="Variant.Filled"
+                             Min="1"
+                             Max="64"
+                             HelperText="@L["Settings_Advanced_MaxFolderConcurrency_Help"]" />
+            </div>
+        </div>
 
-        <MudDivider Class="my-4" />
+<MudDivider Class="my-4" />
 
-        <MudSwitch @bind-Value="_setLowPriority"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_LowPriority"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Advanced_LowPriority_Help"]
-        </MudText>
-
-        <MudSwitch @bind-Value="_progressUpdateIntervalReduced"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_ReduceProgressUpdates"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default">
-            @L["Settings_Advanced_ReduceProgressUpdates_Help"]
-        </MudText>
+<div class="settings-fields">
+    <div class="settings-field">
+    <MudSwitch @bind-Value="_setLowPriority"
+               Color="Color.Primary"
+               Label="@L["Settings_Advanced_LowPriority"]" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        @L["Settings_Advanced_LowPriority_Help"]
+    </MudText>
+    </div>
+    <div class="settings-field">
+    <MudSwitch @bind-Value="_progressUpdateIntervalReduced"
+               Color="Color.Primary"
+               Label="@L["Settings_Advanced_ReduceProgressUpdates"]" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        @L["Settings_Advanced_ReduceProgressUpdates_Help"]
+    </MudText>
+    </div>
+</div>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Database"]</MudText>
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Database"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudNumericField @bind-Value="_databaseTuning"
-                                 Label="@L["Settings_Advanced_DatabaseBlockSize"]"
-                                 Variant="Variant.Filled"
-                                 Min="4096"
-                                 Max="131072"
-                                 Step="4096" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect @bind-Value="_compressionLevel"
-                           Label="@L["Settings_Advanced_CompressionLevel"]"
-                           Variant="Variant.Filled">
-                    <MudSelectItem Value="@("none")">@L["Settings_Advanced_Compression_None"]</MudSelectItem>
-                    <MudSelectItem Value="@("lz4")">@L["Settings_Advanced_Compression_LZ4"]</MudSelectItem>
-                    <MudSelectItem Value="@("zstd")">@L["Settings_Advanced_Compression_Zstd"]</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-        </MudGrid>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Protocol"]</MudText>
-
-        <MudGrid>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_pingTimeout"
-                                 Label="@L["Settings_Advanced_PingTimeout"]"
-                                 Variant="Variant.Filled"
-                                 Min="10"
-                                 Max="300"
-                                 HelperText="@L["Settings_Advanced_PingTimeout_Help"]" />
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_reconnectionIntervalS"
-                                 Label="@L["Settings_Advanced_ReconnectionInterval"]"
-                                 Variant="Variant.Filled"
-                                 Min="10"
-                                 Max="600"
-                                 HelperText="@L["Settings_Advanced_ReconnectionInterval_Help"]" />
-            </MudItem>
-            <MudItem xs="12" md="4">
-                <MudNumericField @bind-Value="_maxPendingKiB"
-                                 Label="@L["Settings_Advanced_MaxPendingData"]"
-                                 Variant="Variant.Filled"
-                                 Min="1024"
-                                 Max="1048576"
-                                 HelperText="@L["Settings_Advanced_MaxPendingData_Help"]" />
-            </MudItem>
-        </MudGrid>
-
-        <MudDivider Class="my-4" />
-
-        <MudSwitch @bind-Value="_keepTemporaries"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_KeepTempFiles"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Advanced_KeepTempFiles_Help"]
-        </MudText>
-
-        <MudSwitch @bind-Value="_copyOwnershipFromParent"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_CopyOwnership"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default">
-            @L["Settings_Advanced_CopyOwnership_Help"]
-        </MudText>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_Startup"]</MudText>
-
-        <MudSwitch @bind-Value="_startBrowser"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_OpenBrowserOnStart"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_Advanced_OpenBrowserOnStart_Help"]
-        </MudText>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Debugging"]</MudText>
-
-        <MudSelect @bind-Value="_logLevel"
-                   Label="@L["Settings_Advanced_LogLevel"]"
-                   Variant="Variant.Filled">
-            <MudSelectItem Value="@("error")">@L["Settings_Advanced_LogLevel_Error"]</MudSelectItem>
-            <MudSelectItem Value="@("warning")">@L["Settings_Advanced_LogLevel_Warning"]</MudSelectItem>
-            <MudSelectItem Value="@("info")">@L["Settings_Advanced_LogLevel_Info"]</MudSelectItem>
-            <MudSelectItem Value="@("debug")">@L["Settings_Advanced_LogLevel_Debug"]</MudSelectItem>
-            <MudSelectItem Value="@("verbose")">@L["Settings_Advanced_LogLevel_Verbose"]</MudSelectItem>
-        </MudSelect>
-    </MudPaper>
-
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_DangerZone"]</MudText>
-
-        <MudAlert Severity="Severity.Error" Class="mb-4">
-            @L["Settings_Advanced_DangerZone_Warning"]
-        </MudAlert>
-
-        <div class="d-flex flex-wrap gap-3">
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Warning"
-                       StartIcon="@Icons.Material.Filled.Refresh"
-                       OnClick="ResetDatabase">
-                @L["Settings_Advanced_ResetDb"]
-            </MudButton>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Error"
-                       StartIcon="@Icons.Material.Filled.DeleteForever"
-                       OnClick="FactoryReset">
-                @L["Settings_Advanced_FactoryReset"]
-            </MudButton>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_databaseTuning"
+                             Label="@L["Settings_Advanced_DatabaseBlockSize"]"
+                             Variant="Variant.Filled"
+                             Min="4096"
+                             Max="131072"
+                             Step="4096" />
+            </div>
+            <div class="settings-field">
+            <MudSelect @bind-Value="_compressionLevel"
+                       Label="@L["Settings_Advanced_CompressionLevel"]"
+                       Variant="Variant.Filled">
+                <MudSelectItem Value="@("none")">@L["Settings_Advanced_Compression_None"]</MudSelectItem>
+                <MudSelectItem Value="@("lz4")">@L["Settings_Advanced_Compression_LZ4"]</MudSelectItem>
+                <MudSelectItem Value="@("zstd")">@L["Settings_Advanced_Compression_Zstd"]</MudSelectItem>
+            </MudSelect>
+            </div>
         </div>
     </MudPaper>
 
-    <div class="d-flex justify-end gap-2">
-        <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
-            @L["Common_ResetToDefaults"]
-        </MudButton>
-        <MudButton Variant="Variant.Filled"
-                   Color="Color.Primary"
-                   OnClick="SaveSettingsAsync"
-                   Disabled="@_isSaving">
-            @if (_isSaving)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            }
-            @L["Common_SaveChanges"]
-        </MudButton>
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Protocol"]</MudText>
+
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_pingTimeout"
+                             Label="@L["Settings_Advanced_PingTimeout"]"
+                             Variant="Variant.Filled"
+                             Min="10"
+                             Max="300"
+                             HelperText="@L["Settings_Advanced_PingTimeout_Help"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_reconnectionIntervalS"
+                             Label="@L["Settings_Advanced_ReconnectionInterval"]"
+                             Variant="Variant.Filled"
+                             Min="10"
+                             Max="600"
+                             HelperText="@L["Settings_Advanced_ReconnectionInterval_Help"]" />
+            </div>
+            <div class="settings-field">
+            <MudNumericField @bind-Value="_maxPendingKiB"
+                             Label="@L["Settings_Advanced_MaxPendingData"]"
+                             Variant="Variant.Filled"
+                             Min="1024"
+                             Max="1048576"
+                             HelperText="@L["Settings_Advanced_MaxPendingData_Help"]" />
+            </div>
+        </div>
+
+<MudDivider Class="my-4" />
+
+<div class="settings-fields">
+    <div class="settings-field">
+    <MudSwitch @bind-Value="_keepTemporaries"
+               Color="Color.Primary"
+               Label="@L["Settings_Advanced_KeepTempFiles"]" />
+    <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+        @L["Settings_Advanced_KeepTempFiles_Help"]
+    </MudText>
+    </div>
+    <div class="settings-field">
+    <MudSwitch @bind-Value="_copyOwnershipFromParent"
+               Color="Color.Primary"
+               Label="@L["Settings_Advanced_CopyOwnership"]" />
+    <MudText Typo="Typo.caption" Color="Color.Default">
+        @L["Settings_Advanced_CopyOwnership_Help"]
+    </MudText>
+    </div>
+</div>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_Startup"]</MudText>
+
+<MudSwitch @bind-Value="_startBrowser"
+           Color="Color.Primary"
+           Label="@L["Settings_Advanced_OpenBrowserOnStart"]" />
+<MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
+    @L["Settings_Advanced_OpenBrowserOnStart_Help"]
+</MudText>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_Debugging"]</MudText>
+
+<MudSelect @bind-Value="_logLevel"
+           Label="@L["Settings_Advanced_LogLevel"]"
+           Variant="Variant.Filled">
+    <MudSelectItem Value="@("error")">@L["Settings_Advanced_LogLevel_Error"]</MudSelectItem>
+    <MudSelectItem Value="@("warning")">@L["Settings_Advanced_LogLevel_Warning"]</MudSelectItem>
+    <MudSelectItem Value="@("info")">@L["Settings_Advanced_LogLevel_Info"]</MudSelectItem>
+    <MudSelectItem Value="@("debug")">@L["Settings_Advanced_LogLevel_Debug"]</MudSelectItem>
+    <MudSelectItem Value="@("verbose")">@L["Settings_Advanced_LogLevel_Verbose"]</MudSelectItem>
+</MudSelect>
+    </MudPaper>
+
+    <MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Advanced_DangerZone"]</MudText>
+
+<MudAlert Severity="Severity.Error" Class="mb-4">
+    @L["Settings_Advanced_DangerZone_Warning"]
+</MudAlert>
+
+<div class="d-flex flex-wrap gap-3">
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Warning"
+               StartIcon="@Icons.Material.Filled.Refresh"
+               OnClick="ResetDatabase">
+        @L["Settings_Advanced_ResetDb"]
+    </MudButton>
+    <MudButton Variant="Variant.Filled"
+               Color="Color.Error"
+               StartIcon="@Icons.Material.Filled.DeleteForever"
+               OnClick="FactoryReset">
+        @L["Settings_Advanced_FactoryReset"]
+    </MudButton>
+</div>
+    </MudPaper>
+    </div>
+
+    <div class="d-flex justify-end gap-2 settings-actions">
+<MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
+    @L["Common_ResetToDefaults"]
+</MudButton>
+<MudButton Variant="Variant.Filled"
+           Color="Color.Primary"
+           OnClick="SaveSettingsAsync"
+           Disabled="@_isSaving">
+    @if (_isSaving)
+    {
+        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+    }
+    @L["Common_SaveChanges"]
+</MudButton>
     </div>
 }
+</div>
 
 @code {
     private bool _isLoading;
@@ -225,74 +239,141 @@ else if (_config != null)
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadSettingsAsync();
+await LoadSettingsAsync();
     }
 
     private async Task LoadSettingsAsync()
     {
-        _isLoading = true;
-        StateHasChanged();
+_isLoading = true;
+StateHasChanged();
 
-        try
-        {
-            _config = await ApiClient.GetConfigAsync();
-            if (_config?.Options != null)
-            {
-                // File handling
-                _hashers = _config.Options.Hashers ?? 2;
-                _maxFolderConcurrency = _config.Options.MaxFolderConcurrency ?? 4;
-                _setLowPriority = _config.Options.SetLowPriority ?? false;
-                _progressUpdateIntervalReduced = _config.Options.ProgressUpdateIntervalS > 5;
+try
+{
+    _config = await ApiClient.GetConfigAsync();
+    if (_config?.Options != null)
+    {
+        // File handling
+        _hashers = _config.Options.Hashers ?? 2;
+        _maxFolderConcurrency = _config.Options.MaxFolderConcurrency ?? 4;
+        _setLowPriority = _config.Options.SetLowPriority ?? false;
+        _progressUpdateIntervalReduced = _config.Options.ProgressUpdateIntervalS > 5;
 
-                // Protocol
-                _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
+        // Protocol
+        _reconnectionIntervalS = _config.Options.ReconnectionIntervalS ?? 60;
 
-                // Startup
-                _startBrowser = _config.Options.StartBrowser ?? true;
-            }
-        }
-        catch (Exception ex)
-        {
-            if (ErrorHelper.IsAuthenticationError(ex))
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return;
-            }
-            Snackbar.Add(string.Format(L["Msg_LoadSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
-        }
+        // Startup
+        _startBrowser = _config.Options.StartBrowser ?? true;
+    }
+}
+catch (Exception ex)
+{
+    if (ErrorHelper.IsAuthenticationError(ex))
+    {
+        Navigation.NavigateTo("/login", forceLoad: true);
+        return;
+    }
+    Snackbar.Add(string.Format(L["Msg_LoadSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+}
+finally
+{
+    _isLoading = false;
+    StateHasChanged();
+}
     }
 
     private async Task SaveSettingsAsync()
     {
-        if (_config == null) return;
+if (_config == null) return;
 
-        _isSaving = true;
-        StateHasChanged();
+_isSaving = true;
+StateHasChanged();
 
+try
+{
+    if (_config.Options != null)
+    {
+        // File handling
+        _config.Options.Hashers = _hashers;
+        _config.Options.MaxFolderConcurrency = _maxFolderConcurrency;
+        _config.Options.SetLowPriority = _setLowPriority;
+        _config.Options.ProgressUpdateIntervalS = _progressUpdateIntervalReduced ? 10 : 2;
+
+        // Protocol
+        _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
+
+        // Startup
+        _config.Options.StartBrowser = _startBrowser;
+    }
+
+    await ApiClient.UpdateConfigAsync(_config);
+    Snackbar.Add(L["Msg_AdvancedSettingsSaved"], Severity.Success);
+}
+catch (Exception ex)
+{
+    if (ErrorHelper.IsAuthenticationError(ex))
+    {
+        Navigation.NavigateTo("/login", forceLoad: true);
+        return;
+    }
+    Snackbar.Add(string.Format(L["Msg_SaveSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+}
+finally
+{
+    _isSaving = false;
+    StateHasChanged();
+}
+    }
+
+    private async Task ResetDatabase()
+    {
+var confirmed = await DialogService.ShowMessageBoxAsync(
+    L["Settings_Advanced_ResetDb"],
+    L["Settings_Advanced_ResetDbConfirm"],
+    yesText: L["Common_Reset"],
+    cancelText: L["Common_Cancel"]);
+
+if (confirmed == true)
+{
+    try
+    {
+        await ApiClient.ResetDatabaseAsync();
+        Snackbar.Add(L["Msg_DatabaseResetInitiated"], Severity.Warning);
+    }
+    catch (Exception ex)
+    {
+        if (ErrorHelper.IsAuthenticationError(ex))
+        {
+            Navigation.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+        Snackbar.Add(string.Format(L["Msg_ResetDatabaseFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
+    }
+}
+    }
+
+    private async Task FactoryReset()
+    {
+var confirmed = await DialogService.ShowMessageBoxAsync(
+    L["Settings_Advanced_FactoryReset"],
+    L["Settings_Advanced_FactoryResetConfirm"],
+    yesText: L["Settings_Advanced_FactoryResetYes"],
+    cancelText: L["Common_Cancel"]);
+
+if (confirmed == true)
+{
+    // Double confirmation for destructive action
+    var doubleConfirmed = await DialogService.ShowMessageBoxAsync(
+        L["Settings_Advanced_FactoryResetConfirmTitle"],
+        L["Settings_Advanced_FactoryResetConfirmMessage"],
+        yesText: L["Common_Reset"],
+        cancelText: L["Common_Cancel"]);
+
+    if (doubleConfirmed == true)
+    {
         try
         {
-            if (_config.Options != null)
-            {
-                // File handling
-                _config.Options.Hashers = _hashers;
-                _config.Options.MaxFolderConcurrency = _maxFolderConcurrency;
-                _config.Options.SetLowPriority = _setLowPriority;
-                _config.Options.ProgressUpdateIntervalS = _progressUpdateIntervalReduced ? 10 : 2;
-
-                // Protocol
-                _config.Options.ReconnectionIntervalS = _reconnectionIntervalS;
-
-                // Startup
-                _config.Options.StartBrowser = _startBrowser;
-            }
-
-            await ApiClient.UpdateConfigAsync(_config);
-            Snackbar.Add(L["Msg_AdvancedSettingsSaved"], Severity.Success);
+            await ApiClient.FactoryResetAsync();
+            Snackbar.Add(L["Msg_FactoryResetComplete"], Severity.Warning);
         }
         catch (Exception ex)
         {
@@ -301,104 +382,37 @@ else if (_config != null)
                 Navigation.NavigateTo("/login", forceLoad: true);
                 return;
             }
-            Snackbar.Add(string.Format(L["Msg_SaveSettingsFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-        }
-        finally
-        {
-            _isSaving = false;
-            StateHasChanged();
+            Snackbar.Add(string.Format(L["Msg_FactoryResetFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
         }
     }
-
-    private async Task ResetDatabase()
-    {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            L["Settings_Advanced_ResetDb"],
-            L["Settings_Advanced_ResetDbConfirm"],
-            yesText: L["Common_Reset"],
-            cancelText: L["Common_Cancel"]);
-
-        if (confirmed == true)
-        {
-            try
-            {
-                await ApiClient.ResetDatabaseAsync();
-                Snackbar.Add(L["Msg_DatabaseResetInitiated"], Severity.Warning);
-            }
-            catch (Exception ex)
-            {
-                if (ErrorHelper.IsAuthenticationError(ex))
-                {
-                    Navigation.NavigateTo("/login", forceLoad: true);
-                    return;
-                }
-                Snackbar.Add(string.Format(L["Msg_ResetDatabaseFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-            }
-        }
-    }
-
-    private async Task FactoryReset()
-    {
-        var confirmed = await DialogService.ShowMessageBoxAsync(
-            L["Settings_Advanced_FactoryReset"],
-            L["Settings_Advanced_FactoryResetConfirm"],
-            yesText: L["Settings_Advanced_FactoryResetYes"],
-            cancelText: L["Common_Cancel"]);
-
-        if (confirmed == true)
-        {
-            // Double confirmation for destructive action
-            var doubleConfirmed = await DialogService.ShowMessageBoxAsync(
-                L["Settings_Advanced_FactoryResetConfirmTitle"],
-                L["Settings_Advanced_FactoryResetConfirmMessage"],
-                yesText: L["Common_Reset"],
-                cancelText: L["Common_Cancel"]);
-
-            if (doubleConfirmed == true)
-            {
-                try
-                {
-                    await ApiClient.FactoryResetAsync();
-                    Snackbar.Add(L["Msg_FactoryResetComplete"], Severity.Warning);
-                }
-                catch (Exception ex)
-                {
-                    if (ErrorHelper.IsAuthenticationError(ex))
-                    {
-                        Navigation.NavigateTo("/login", forceLoad: true);
-                        return;
-                    }
-                    Snackbar.Add(string.Format(L["Msg_FactoryResetFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-                }
-            }
-        }
+}
     }
 
     private void ResetToDefaults()
     {
-        // File handling
-        _hashers = 2;
-        _maxFolderConcurrency = 4;
-        _setLowPriority = false;
-        _progressUpdateIntervalReduced = false;
+// File handling
+_hashers = 2;
+_maxFolderConcurrency = 4;
+_setLowPriority = false;
+_progressUpdateIntervalReduced = false;
 
-        // Database
-        _databaseTuning = 16384;
-        _compressionLevel = "lz4";
+// Database
+_databaseTuning = 16384;
+_compressionLevel = "lz4";
 
-        // Protocol
-        _pingTimeout = 90;
-        _reconnectionIntervalS = 60;
-        _maxPendingKiB = 131072;
-        _keepTemporaries = false;
-        _copyOwnershipFromParent = false;
+// Protocol
+_pingTimeout = 90;
+_reconnectionIntervalS = 60;
+_maxPendingKiB = 131072;
+_keepTemporaries = false;
+_copyOwnershipFromParent = false;
 
-        // Startup
-        _startBrowser = true;
+// Startup
+_startBrowser = true;
 
-        // Debugging
-        _logLevel = "info";
+// Debugging
+_logLevel = "info";
 
-        Snackbar.Add(L["Msg_SettingsResetToDefaults"], Severity.Info);
+Snackbar.Add(L["Msg_SettingsResetToDefaults"], Severity.Info);
     }
 }

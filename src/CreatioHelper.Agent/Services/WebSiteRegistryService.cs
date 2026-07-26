@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Domain.Enums;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services;
@@ -654,10 +655,7 @@ public class WebSiteRegistryService : IDisposable
     {
         try
         {
-            var json = JsonSerializer.Serialize(_registry, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(_registry, JsonDefaults.Indented);
             await File.WriteAllTextAsync(_registryPath, json).ConfigureAwait(false);
             _logger.LogDebug("Saved website registry to {Path}", _registryPath);
         }

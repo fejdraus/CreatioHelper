@@ -6,9 +6,11 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
+@implements IDisposable
 
-<PageTitle>@L["Settings_General"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Settings_General"] - CreatioHelper Agent</PageTitle>
 
+<div class="settings-page">
 <MudText Typo="Typo.h4" Class="mb-4">@L["Settings_General"]</MudText>
 
 @if (_isLoading)
@@ -17,89 +19,89 @@
 }
 else if (_config != null)
 {
+    <div class="settings-columns">
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_DeviceInfo"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_deviceName"
-                              Label="@L["Settings_General_DeviceName"]"
-                              Variant="Variant.Filled"
-                              HelperText="@L["Settings_General_DeviceNameDesc"]" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudTextField Value="@State.SystemStatus?.MyId"
-                              Label="@L["Settings_General_DeviceId"]"
-                              Variant="Variant.Filled"
-                              ReadOnly="true"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@Icons.Material.Filled.ContentCopy"
-                              OnAdornmentClick="CopyDeviceId" />
-            </MudItem>
-        </MudGrid>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudTextField @bind-Value="_deviceName"
+                          Label="@L["Settings_General_DeviceName"]"
+                          Variant="Variant.Filled"
+                          HelperText="@L["Settings_General_DeviceNameDesc"]" />
+            </div>
+            <div class="settings-field">
+            <MudTextField Value="@State.SystemStatus?.MyId"
+                          Label="@L["Settings_General_DeviceId"]"
+                          Variant="Variant.Filled"
+                          ReadOnly="true"
+                          Adornment="Adornment.End"
+                          AdornmentIcon="@Icons.Material.Filled.ContentCopy"
+                          OnAdornmentClick="CopyDeviceId" />
+            </div>
+        </div>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_SyncDefaults"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_defaultFolderPath"
-                              Label="@L["Settings_General_DefaultFolderPath"]"
-                              Variant="Variant.Filled"
-                              HelperText="@L["Settings_General_DefaultFolderPathDesc"]" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudSelect @bind-Value="_folderType"
-                           Label="@L["FolderEdit_FolderType"]"
-                           Variant="Variant.Filled">
-                    <MudSelectItem Value="@FolderType.SendReceive">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.SendOnly">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.ReceiveOnly">@L["FolderEdit_Type_ReceiveOnly"]</MudSelectItem>
-                    <MudSelectItem Value="@FolderType.ReceiveEncrypted">@L["FolderEdit_Type_ReceiveEncrypted"]</MudSelectItem>
-                </MudSelect>
-            </MudItem>
-        </MudGrid>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudTextField @bind-Value="_defaultFolderPath"
+                          Label="@L["Settings_General_DefaultFolderPath"]"
+                          Variant="Variant.Filled"
+                          HelperText="@L["Settings_General_DefaultFolderPathDesc"]" />
+            </div>
+            <div class="settings-field">
+            <MudSelect @bind-Value="_folderType"
+                       Label="@L["FolderEdit_FolderType"]"
+                       Variant="Variant.Filled">
+                <MudSelectItem Value="@FolderType.SendReceive">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
+                <MudSelectItem Value="@FolderType.SendOnly">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
+                <MudSelectItem Value="@FolderType.ReceiveOnly">@L["FolderEdit_Type_ReceiveOnly"]</MudSelectItem>
+                <MudSelectItem Value="@FolderType.ReceiveEncrypted">@L["FolderEdit_Type_ReceiveEncrypted"]</MudSelectItem>
+            </MudSelect>
+            </div>
+        </div>
 
         <MudDivider Class="my-4" />
 
-        <MudSwitch @bind-Value="_ignorePerms"
-                   Color="Color.Primary"
-                   Label="@L["Settings_Advanced_IgnorePerms"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
-            @L["Settings_Advanced_IgnorePermsDesc"]
-        </MudText>
-
-        <MudSwitch @bind-Value="_autoNormalize"
-                   Color="Color.Primary"
-                   Label="@L["Folders_AutoNormalize"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default">
-            @L["Folders_AutoNormalizeDesc"]
-        </MudText>
+        <div class="settings-fields">
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_ignorePerms"
+                       Color="Color.Primary"
+                       Label="@L["Settings_Advanced_IgnorePerms"]" />
+            <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-2">
+                @L["Settings_Advanced_IgnorePermsDesc"]
+            </MudText>
+            </div>
+            <div class="settings-field">
+            <MudSwitch @bind-Value="_autoNormalize"
+                       Color="Color.Primary"
+                       Label="@L["Folders_AutoNormalize"]" />
+            <MudText Typo="Typo.caption" Color="Color.Default">
+                @L["Folders_AutoNormalizeDesc"]
+            </MudText>
+            </div>
+        </div>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_General_ApiSettings"]</MudText>
 
-        <MudGrid>
-            <MudItem xs="12" md="6">
-                <MudTextField @bind-Value="_apiKey"
-                              Label="@L["Settings_General_ApiKey"]"
-                              Variant="Variant.Filled"
-                              InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
-                              Adornment="Adornment.End"
-                              AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
-                              OnAdornmentClick="ToggleApiKeyVisibility" />
-            </MudItem>
-            <MudItem xs="12" md="6">
-                <MudButton Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           OnClick="GenerateNewApiKey"
-                           Class="mt-2">
-                    @L["Settings_General_GenerateKey"]
-                </MudButton>
-            </MudItem>
-        </MudGrid>
+        <MudTextField @bind-Value="_apiKey"
+                      Label="@L["Settings_General_ApiKey"]"
+                      Variant="Variant.Filled"
+                      InputType="@(_showApiKey ? InputType.Text : InputType.Password)"
+                      Adornment="Adornment.End"
+                      AdornmentIcon="@(_showApiKey ? Icons.Material.Filled.VisibilityOff : Icons.Material.Filled.Visibility)"
+                      OnAdornmentClick="ToggleApiKeyVisibility" />
+        <MudButton Variant="Variant.Filled"
+                   Color="Color.Primary"
+                   OnClick="GenerateNewApiKey"
+                   Class="mt-2">
+            @L["Settings_General_GenerateKey"]
+        </MudButton>
     </MudPaper>
 
     <MudPaper Elevation="2" Class="pa-4 mb-4">
@@ -112,8 +114,9 @@ else if (_config != null)
             @L["Settings_General_StartMinimizedDesc"]
         </MudText>
     </MudPaper>
+    </div>
 
-    <div class="d-flex justify-end gap-2">
+    <div class="d-flex justify-end gap-2 settings-actions">
         <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
             @L["Common_ResetDefaults"]
         </MudButton>
@@ -129,6 +132,7 @@ else if (_config != null)
         </MudButton>
     </div>
 }
+</div>
 
 @code {
     [Inject]
@@ -150,7 +154,33 @@ else if (_config != null)
 
     protected override async Task OnInitializedAsync()
     {
+        State.OnChange += OnStateChanged;
         await LoadSettingsAsync();
+    }
+
+    private void OnStateChanged()
+    {
+        ResolveDeviceNameFromState();
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void ResolveDeviceNameFromState()
+    {
+        if (!string.IsNullOrWhiteSpace(_deviceName) || _config == null)
+        {
+            return;
+        }
+
+        var localDevice = _config.Devices.FirstOrDefault(d => d.DeviceId == State.SystemStatus?.MyId);
+        if (localDevice != null && !string.IsNullOrWhiteSpace(localDevice.Name))
+        {
+            _deviceName = localDevice.Name;
+        }
+    }
+
+    public void Dispose()
+    {
+        State.OnChange -= OnStateChanged;
     }
 
     private async Task LoadSettingsAsync()
@@ -164,14 +194,7 @@ else if (_config != null)
             if (_config != null)
             {
                 _deviceName = _config.Options?.DeviceName ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(_deviceName))
-                {
-                    var localDevice = _config.Devices.FirstOrDefault(d => d.DeviceId == State.SystemStatus?.MyId);
-                    if (localDevice != null && !string.IsNullOrWhiteSpace(localDevice.Name))
-                    {
-                        _deviceName = localDevice.Name;
-                    }
-                }
+                ResolveDeviceNameFromState();
                 _defaultFolderPath = _config.Options?.DefaultFolderPath ?? string.Empty;
                 _ignorePerms = _config.Options?.IgnorePerms ?? false;
                 _autoNormalize = _config.Options?.AutoNormalizeFilenames ?? true;

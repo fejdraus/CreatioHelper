@@ -8,7 +8,7 @@
 @inject ISignalRService SignalR
 @implements IDisposable
 
-<PageTitle>@L["Connections_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Connections_Title"] - CreatioHelper Agent</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Connections_Title"]</MudText>
@@ -28,7 +28,7 @@ else
 {
     <MudGrid>
         <MudItem xs="12" md="4">
-            <MudPaper Elevation="2" Class="pa-4">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
                 <MudText Typo="Typo.h6" Class="mb-2">@L["Connections_Summary"]</MudText>
                 <MudSimpleTable Dense="true">
                     <tbody>
@@ -58,7 +58,7 @@ else
         </MudItem>
 
         <MudItem xs="12" md="8">
-            <MudPaper Elevation="2" Class="pa-4">
+            <MudPaper Elevation="2" Class="pa-4" Style="height: 100%;">
                 <MudText Typo="Typo.h6" Class="mb-2">@L["Connections_Bandwidth"]</MudText>
                 <MudGrid>
                     <MudItem xs="6">
@@ -99,7 +99,7 @@ else
                   FixedHeader="true">
             <HeaderContent>
                 <MudTh>@L["Connections_Device"]</MudTh>
-                <MudTh>@L["Connections_Details"]</MudTh>
+                <MudTh>@L["Connections_Status"]</MudTh>
                 <MudTh>@L["Connections_Type"]</MudTh>
                 <MudTh>@L["Connections_Address"]</MudTh>
                 <MudTh>@L["Connections_InRate"]</MudTh>
@@ -113,11 +113,11 @@ else
                 <MudTd DataLabel="Status">
                     @if (context.Connected)
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">Connected</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Filled">@L["Connections_Connected"]</MudChip>
                     }
                     else
                     {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">Disconnected</MudChip>
+                        <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">@L["Connections_Disconnected"]</MudChip>
                     }
                 </MudTd>
                 <MudTd DataLabel="Type">
@@ -235,6 +235,9 @@ else
 }
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     private bool _isLoading;
 
     // Summary
@@ -283,9 +286,9 @@ else
 
         try
         {
-            var connections = await ApiClient.GetConnectionsAsync();
-            var devices = await ApiClient.GetDevicesAsync();
-            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync();
+            var connections = await ApiClient.GetConnectionsAsync(_pageCts.Token);
+            var devices = await ApiClient.GetDevicesAsync(_pageCts.Token);
+            _discoveryStatus = await ApiClient.GetDiscoveryStatusAsync(_pageCts.Token);
 
             var myId = State.SystemStatus?.MyId;
             var remoteDevices = devices.Where(d => d.DeviceId != myId).ToList();
@@ -318,6 +321,10 @@ else
                     ConnectedAt = conn?.ConnectedAt
                 };
             }).ToList();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -353,6 +360,8 @@ else
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
         SignalR.OnConnectionChanged -= OnConnectionChanged;
     }

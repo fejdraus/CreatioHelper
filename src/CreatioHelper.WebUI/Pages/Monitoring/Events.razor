@@ -7,7 +7,7 @@
 @inject IErrorMessageHelper ErrorHelper
 @implements IDisposable
 
-<PageTitle>@L["Events_Title"] - CreatioHelper</PageTitle>
+<PageTitle>@L["Events_Title"] - CreatioHelper Agent</PageTitle>
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Events_Title"]</MudText>
@@ -101,8 +101,8 @@ else
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Time">
-                    <MudText Typo="Typo.body2">@context.Timestamp.ToString("HH:mm:ss")</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Default">@context.Timestamp.ToString("yyyy-MM-dd")</MudText>
+                    <MudText Typo="Typo.body2">@LocalTimeConverter.ToLocal(context.Timestamp).ToString("HH:mm:ss")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@LocalTimeConverter.ToLocal(context.Timestamp).ToString("yyyy-MM-dd")</MudText>
                 </MudTd>
                 <MudTd DataLabel="Type">
                     <MudChip T="string"
@@ -141,6 +141,9 @@ else
 }
 
 @code {
+    // Cancelled in Dispose so navigating away drops the requests this page started
+    private readonly CancellationTokenSource _pageCts = new();
+
     private bool _isLoading;
     private bool _isLoadingMore;
     private bool _liveUpdates = true;
@@ -169,12 +172,16 @@ else
 
         try
         {
-            _folders = await ApiClient.GetFoldersAsync();
-            _devices = await ApiClient.GetDevicesAsync();
-            var events = await ApiClient.GetEventsAsync(0, 100);
+            _folders = await ApiClient.GetFoldersAsync(_pageCts.Token);
+            _devices = await ApiClient.GetDevicesAsync(_pageCts.Token);
+            var events = await ApiClient.GetEventsAsync(0, 100, cancellationToken: _pageCts.Token);
             _events = events.ToList();
             _lastEventId = _events.LastOrDefault()?.Id ?? 0;
             FilterEvents();
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -248,7 +255,7 @@ else
 
         try
         {
-            var moreEvents = await ApiClient.GetEventsAsync(_lastEventId, 100);
+            var moreEvents = await ApiClient.GetEventsAsync(_lastEventId, 100, cancellationToken: _pageCts.Token);
             if (moreEvents.Length == 0)
             {
                 _hasMore = false;
@@ -259,6 +266,10 @@ else
                 _lastEventId = moreEvents.Last().Id;
                 FilterEvents();
             }
+        }
+        catch (OperationCanceledException)
+        {
+            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -293,31 +304,7 @@ else
 
     private string GetEventTypeDisplay(EventType type)
     {
-        return type switch
-        {
-            EventType.StateChanged => L["EventType_State"],
-            EventType.ItemStarted => L["EventType_Started"],
-            EventType.ItemFinished => L["EventType_Finished"],
-            EventType.FolderCompletion => L["EventType_Complete"],
-            EventType.DeviceConnected => L["EventType_Connected"],
-            EventType.DeviceDisconnected => L["EventType_Disconnected"],
-            EventType.FolderErrors => L["EventType_Error"],
-            EventType.Unknown => L["EventType_Unknown"],
-            EventType.Starting => L["EventType_Starting"],
-            EventType.StartupComplete => L["EventType_StartupComplete"],
-            EventType.FolderWatchStateChanged => L["EventType_WatchState"],
-            EventType.ConfigSaved => L["EventType_ConfigSaved"],
-            EventType.DevicePaused => L["EventType_Paused"],
-            EventType.DeviceResumed => L["EventType_Resumed"],
-            EventType.FolderPaused => L["EventType_Paused"],
-            EventType.FolderResumed => L["EventType_Resumed"],
-            EventType.LocalChangeDetected => L["EventType_LocalChange"],
-            EventType.RemoteChangeDetected => L["EventType_RemoteChange"],
-            EventType.DownloadProgress => L["EventType_Downloading"],
-            EventType.FolderScanProgress => L["EventType_Scanning"],
-            EventType.DiscoveryCompleted => L["EventType_DiscoveryCompleted"],
-            _ => type.ToString()
-        };
+        return EventTypeDisplay.Format(type, L);
     }
 
     private string GetEventDescription(SyncEvent evt)
@@ -398,6 +385,8 @@ else
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         SignalR.OnSyncEvent -= OnSyncEvent;
     }
 }

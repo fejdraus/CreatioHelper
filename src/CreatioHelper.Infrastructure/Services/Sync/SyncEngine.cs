@@ -39,6 +39,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly IScanProgressService? _scanProgressService;
     private readonly IVersionerFactory? _versionerFactory;
     private readonly FolderScanQueue? _scanQueue;
+    private readonly Transfer.IIgnoreDeletesHandler? _ignoreDeletesHandler;
     private readonly ConcurrentDictionary<string, IVersioner> _folderVersioners = new();
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
@@ -85,10 +86,12 @@ public class SyncEngine : ISyncEngine, IDisposable
         X509Certificate2? clientCertificate = null,
         IScanProgressService? scanProgressService = null,
         IVersionerFactory? versionerFactory = null,
-        FolderScanQueue? scanQueue = null)
+        FolderScanQueue? scanQueue = null,
+        Transfer.IIgnoreDeletesHandler? ignoreDeletesHandler = null)
     {
         _logger = logger;
         _scanQueue = scanQueue;
+        _ignoreDeletesHandler = ignoreDeletesHandler;
         _protocol = protocol;
         _discovery = discovery;
         _globalDiscovery = globalDiscovery;
@@ -318,48 +321,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             Directory.CreateDirectory(config.Path);
         }
 
-        var folder = new SyncFolder(
-            config.Id,
-            config.Label,
-            config.Path,
-            config.Type,
-            config.RescanIntervalS,
-            config.FsWatcherEnabled,
-            (int)config.FsWatcherDelayS,
-            config.IgnorePerms,
-            config.AutoNormalize,
-            config.MinDiskFree.ToString(),
-            config.CopyOwnershipFromParent,
-            config.ModTimeWindowS,
-            config.MaxConflicts,
-            config.DisableSparseFiles,
-            config.DisableTempIndexes,
-            config.Paused,
-            config.WeakHashThresholdPct,
-            config.MarkerName,
-            config.CopyRangeMethod,
-            config.CaseSensitiveFS,
-            config.JunctionsAsDirs,
-            config.SyncOwnership,
-            config.SendOwnership,
-            config.SyncXattrs,
-            config.SendXattrs);
-        if (config.Versioning?.IsEnabled == true)
-        {
-            folder.SetVersioning(new VersioningConfiguration
-            {
-                Type = config.Versioning.Type,
-                Params = config.Versioning.Params,
-                CleanupIntervalS = config.Versioning.CleanupIntervalS,
-                FSPath = config.Versioning.FsPath,
-                FSType = config.Versioning.FsType
-            });
-        }
-        if (!string.IsNullOrEmpty(config.Order))
-        {
-            folder.SetPullOrder(ParsePullOrder(config.Order));
-        }
-        folder.IgnoreDelete = config.IgnoreDelete;
+        var folder = SyncFolder.Create(config.ToSyncFolderSettings());
         _folders[config.Id] = folder;
         _folderStatuses[config.Id] = new SyncStatus
         {
@@ -377,10 +339,6 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogError(ex, "Failed to save folder {FolderId} to config", config.Id);
         }
         _blockRequestHandler.RegisterFolder(folder);
-        foreach (var device in config.Devices)
-        {
-            folder.AddDevice(device.DeviceId);
-        }
         if (!config.Paused)
         {
             _fileWatcher.WatchFolder(folder);
@@ -483,18 +441,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Updated folder {FolderId} ({Label}) configuration", config.Id, config.Label);
         return existingFolder;
     }
-    private static Domain.Enums.SyncPullOrder ParsePullOrder(string order)
-    {
-        return order.ToLowerInvariant() switch
-        {
-            "alphabetic" => Domain.Enums.SyncPullOrder.Alphabetic,
-            "smallestfirst" => Domain.Enums.SyncPullOrder.SmallestFirst,
-            "largestfirst" => Domain.Enums.SyncPullOrder.LargestFirst,
-            "oldestfirst" => Domain.Enums.SyncPullOrder.OldestFirst,
-            "newestfirst" => Domain.Enums.SyncPullOrder.NewestFirst,
-            _ => Domain.Enums.SyncPullOrder.Random
-        };
-    }
+    private static Domain.Enums.SyncPullOrder ParsePullOrder(string order) =>
+        Domain.Enums.SyncPullOrders.Parse(order);
     public async Task ShareFolderWithDeviceAsync(string folderId, string deviceId)
     {
         if (!_folders.TryGetValue(folderId, out var folder))
@@ -1057,7 +1005,7 @@ public class SyncEngine : ISyncEngine, IDisposable
                 _logger.LogInformation("Processing {Count} downloads for {FolderType} folder {FolderId}",
                     syncPlan.FilesToDownload.Count, folder.SyncType, folder.Id);
 
-                foreach (var downloadAction in syncPlan.FilesToDownload)
+                foreach (var downloadAction in Transfer.FilePullOrder.Apply(syncPlan.FilesToDownload, folder.PullOrder))
                 {
                     try
                     {
@@ -1111,6 +1059,14 @@ public class SyncEngine : ISyncEngine, IDisposable
             {
                 try
                 {
+                    if (_ignoreDeletesHandler != null &&
+                        !_ignoreDeletesHandler.ShouldApplyDelete(folder, deleteAction.FileName, syncPlan.DeviceId))
+                    {
+                        await _ignoreDeletesHandler.RecordIgnoredDeleteAsync(
+                            folder, deleteAction.FileName, syncPlan.DeviceId, _cancellationTokenSource.Token);
+                        continue;
+                    }
+
                     _logger.LogInformation("Deleting file: {FileName} ({Reason})",
                         deleteAction.FileName, deleteAction.Reason);
 
@@ -1245,6 +1201,16 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogWarning("Cannot download {FileName}: missing file info", downloadAction.FileName);
             return;
         }
+        var spaceCheck = Transfer.DiskSpaceGuard.Check(
+            folder.Path, folder.MinDiskFree, downloadAction.FileInfo.Size);
+        if (!spaceCheck.Allowed)
+        {
+            _logger.LogWarning(
+                "Skipping download of {FileName} in folder {FolderId}: {Reason} (free {FreeBytes}, minDiskFree {MinDiskFree})",
+                downloadAction.FileName, folder.Id, spaceCheck.Reason, spaceCheck.FreeBytes, folder.MinDiskFree);
+            return;
+        }
+
         var localFilePath = Path.Combine(folder.Path, downloadAction.FileName.Replace('/', Path.DirectorySeparatorChar));
         await ArchiveFileBeforeOverwriteAsync(folder, downloadAction.FileName, _cancellationTokenSource.Token);
         _logger.LogInformation("Downloading {FileName} to {LocalPath}", downloadAction.FileName, localFilePath);
@@ -1937,57 +1903,8 @@ public class SyncEngine : ISyncEngine, IDisposable
         device.UpdateAddresses(xmlDevice.Addresses);
     }
 
-        private SyncFolder CreateFolderFromXml(ConfigXmlFolder xmlFolder)
-    {
-        var folder = new SyncFolder(
-            xmlFolder.Id,
-            xmlFolder.Label,
-            xmlFolder.Path,
-            xmlFolder.Type,
-            xmlFolder.RescanIntervalS,
-            xmlFolder.FsWatcherEnabled,
-            xmlFolder.FsWatcherDelayS,
-            xmlFolder.IgnorePerms,
-            xmlFolder.AutoNormalize,
-            $"{xmlFolder.MinDiskFree.Value}{xmlFolder.MinDiskFree.Unit}",
-            xmlFolder.CopyOwnershipFromParent,
-            xmlFolder.ModTimeWindowS,
-            xmlFolder.MaxConflicts,
-            xmlFolder.DisableSparseFiles,
-            xmlFolder.DisableTempIndexes,
-            xmlFolder.Paused,
-            xmlFolder.WeakHashThresholdPct,
-            xmlFolder.MarkerName,
-            xmlFolder.CopyRangeMethod,
-            xmlFolder.CaseSensitiveFS,
-            xmlFolder.JunctionsAsDirs,
-            xmlFolder.SyncOwnership,
-            xmlFolder.SendOwnership,
-            xmlFolder.SyncXattrs,
-            xmlFolder.SendXattrs);
-        if (xmlFolder.Versioning != null && !string.IsNullOrEmpty(xmlFolder.Versioning.Type))
-        {
-            folder.SetVersioning(new VersioningConfiguration
-            {
-                Type = xmlFolder.Versioning.Type,
-                Params = xmlFolder.Versioning.Params.ToDictionary(p => p.Key, p => p.Val),
-                CleanupIntervalS = xmlFolder.Versioning.CleanupIntervalS,
-                FSPath = xmlFolder.Versioning.FsPath,
-                FSType = xmlFolder.Versioning.FsType
-            });
-        }
-        if (!string.IsNullOrEmpty(xmlFolder.Order))
-        {
-            folder.SetPullOrder(ParsePullOrder(xmlFolder.Order));
-        }
-
-        folder.IgnoreDelete = xmlFolder.IgnoreDelete;
-        foreach (var device in xmlFolder.Devices)
-        {
-            folder.AddDevice(device.Id);
-        }
-        return folder;
-    }
+        private static SyncFolder CreateFolderFromXml(ConfigXmlFolder xmlFolder) =>
+        SyncFolder.Create(xmlFolder.ToSyncFolderSettings());
         private bool UpdateFolderFromXml(SyncFolder folder, ConfigXmlFolder xmlFolder)
     {
         var needsWatcherRestart = folder.Path != xmlFolder.Path ||
@@ -2004,7 +1921,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         folder.FSWatcherDelayS = xmlFolder.FsWatcherDelayS;
         folder.IgnorePerms = xmlFolder.IgnorePerms;
         folder.AutoNormalize = xmlFolder.AutoNormalize;
-        folder.SetMinDiskFree($"{xmlFolder.MinDiskFree.Value}{xmlFolder.MinDiskFree.Unit}");
+        folder.SetMinDiskFree(xmlFolder.MinDiskFree.ToString());
         folder.MaxConflicts = xmlFolder.MaxConflicts;
         folder.DisableSparseFiles = xmlFolder.DisableSparseFiles;
         folder.DisableTempIndexes = xmlFolder.DisableTempIndexes;

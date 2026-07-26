@@ -3,6 +3,7 @@ using Microsoft.Extensions.Options;
 using System.Net.Http;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services;

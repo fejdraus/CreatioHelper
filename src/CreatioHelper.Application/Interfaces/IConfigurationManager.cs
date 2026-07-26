@@ -73,7 +73,7 @@ public interface IConfigurationManager
     /// <summary>
     /// Get folder runtime statistics
     /// </summary>
-    FolderStatistics? GetFolderStatistics(string folderId);
+    FolderRuntimeStatistics? GetFolderStatistics(string folderId);
 
     #endregion
 
@@ -117,7 +117,7 @@ public interface IConfigurationManager
     /// <summary>
     /// Get device runtime statistics
     /// </summary>
-    DeviceStatistics? GetDeviceStatistics(string deviceId);
+    DeviceRuntimeStatistics? GetDeviceStatistics(string deviceId);
 
     #endregion
 
@@ -185,7 +185,7 @@ public enum ConfigurationChangeType
 /// <summary>
 /// Runtime statistics for a folder (not persisted to config.xml)
 /// </summary>
-public class FolderStatistics
+public class FolderRuntimeStatistics
 {
     public string FolderId { get; init; } = string.Empty;
     public long FileCount { get; set; }
@@ -197,7 +197,7 @@ public class FolderStatistics
 /// <summary>
 /// Runtime statistics for a device (not persisted to config.xml)
 /// </summary>
-public class DeviceStatistics
+public class DeviceRuntimeStatistics
 {
     public string DeviceId { get; init; } = string.Empty;
     public long BytesReceived { get; set; }

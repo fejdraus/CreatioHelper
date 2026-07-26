@@ -334,6 +334,29 @@ public abstract class SyncFolderHandlerBase : ISyncFolderHandler
     }
 
     /// <summary>
+    /// Упорядочить входящие файлы согласно настройке &lt;order&gt; папки
+    /// </summary>
+    protected static IReadOnlyList<FileMetadata> OrderForPull(SyncFolder folder, IEnumerable<FileMetadata> remoteFiles)
+    {
+        return Transfer.FilePullOrder.Apply(remoteFiles, folder.PullOrder);
+    }
+
+    /// <summary>
+    /// Проверить настройку minDiskFree папки перед записью данных
+    /// </summary>
+    protected bool HasRoomToWrite(SyncFolder folder, long incomingBytes, string fileName)
+    {
+        var check = Transfer.DiskSpaceGuard.Check(folder.Path, folder.MinDiskFree, incomingBytes);
+        if (!check.Allowed)
+        {
+            _logger.LogWarning(
+                "Skipping {FileName} in folder {FolderId}: {Reason} (free {FreeBytes}, minDiskFree {MinDiskFree})",
+                fileName, folder.Id, check.Reason, check.FreeBytes, folder.MinDiskFree);
+        }
+        return check.Allowed;
+    }
+
+    /// <summary>
     /// Проверить, поддерживается ли указанный тип папки этим обработчиком
     /// </summary>
     public bool SupportsFolder(SyncFolder folder)

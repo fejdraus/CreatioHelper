@@ -77,6 +77,15 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 {
                     break;
                 }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (SocketException ex) when (ex.SocketErrorCode == SocketError.OperationAborted || ex.SocketErrorCode == SocketError.Interrupted)
+                {
+                    // Listener stopped underneath the pending accept during shutdown
+                    break;
+                }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error accepting BEP connection");

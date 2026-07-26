@@ -1,5 +1,6 @@
 using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Syncthing;
 using CreatioHelper.Application.DTOs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
@@ -48,19 +49,11 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<object>> GetConfig()
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
 
-            var config = await BuildSyncthingConfigAsync(devices, folders);
-            return Ok(config);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var config = await BuildSyncthingConfigAsync(devices, folders);
+        return Ok(config);
     }
 
     /// <summary>
@@ -71,74 +64,66 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
     {
-        try
-        {
-            _logger.LogInformation("Received full configuration update, applying changes");
+        _logger.LogInformation("Received full configuration update, applying changes");
 
-            // Apply folder changes
-            if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
+        // Apply folder changes
+        if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var folderJson in foldersElement.EnumerateArray())
             {
-                foreach (var folderJson in foldersElement.EnumerateArray())
+                try
                 {
-                    try
-                    {
-                        var folderConfig = ParseFolderConfiguration(folderJson);
-                        var existing = await _syncEngine.GetFolderAsync(folderConfig.Id);
-                        if (existing == null)
-                            await _syncEngine.AddFolderAsync(folderConfig);
-                        else
-                            await _syncEngine.UpdateFolderAsync(folderConfig);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error applying folder config from PUT /rest/config");
-                    }
+                    var folderConfig = ParseFolderConfiguration(folderJson);
+                    var existing = await _syncEngine.GetFolderAsync(folderConfig.Id);
+                    if (existing == null)
+                        await _syncEngine.AddFolderAsync(folderConfig);
+                    else
+                        await _syncEngine.UpdateFolderAsync(folderConfig);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error applying folder config from PUT /rest/config");
                 }
             }
+        }
 
-            // Apply device changes
-            if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+        // Apply device changes
+        if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var deviceJson in devicesElement.EnumerateArray())
             {
-                foreach (var deviceJson in devicesElement.EnumerateArray())
+                try
                 {
-                    try
-                    {
-                        var deviceId = deviceJson.GetProperty("deviceID").GetString();
-                        if (string.IsNullOrEmpty(deviceId)) continue;
+                    var deviceId = deviceJson.GetProperty("deviceID").GetString();
+                    if (string.IsNullOrEmpty(deviceId)) continue;
 
-                        var devices = await _syncEngine.GetDevicesAsync();
-                        if (!devices.Any(d => d.DeviceId == deviceId))
+                    var devices = await _syncEngine.GetDevicesAsync();
+                    if (!devices.Any(d => d.DeviceId == deviceId))
+                    {
+                        var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
+                        var addresses = new List<string> { "dynamic" };
+                        if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
                         {
-                            var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
-                            var addresses = new List<string> { "dynamic" };
-                            if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
-                            {
-                                addresses = addrProp.EnumerateArray()
-                                    .Select(a => a.GetString())
-                                    .Where(s => !string.IsNullOrEmpty(s))
-                                    .Cast<string>()
-                                    .ToList();
-                            }
-                            await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+                            addresses = addrProp.EnumerateArray()
+                                .Select(a => a.GetString())
+                                .Where(s => !string.IsNullOrEmpty(s))
+                                .Cast<string>()
+                                .ToList();
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning(ex, "Error applying device config from PUT /rest/config");
+                        await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error applying device config from PUT /rest/config");
+                }
             }
-
-            // Save configuration to config.xml for persistence
-            await SaveConfigurationToXmlAsync();
-
-            return Ok(new { success = true });
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+
+        // Save configuration to config.xml for persistence
+        await SaveConfigurationToXmlAsync();
+
+        return Ok(new { success = true });
     }
 
     /// <summary>
@@ -160,17 +145,9 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("folders")]
     public async Task<ActionResult<object>> GetFolders()
     {
-        try
-        {
-            var folders = await _syncEngine.GetFoldersAsync();
-            var folderConfigs = folders.Select(BuildFolderConfig).ToArray();
-            return Ok(folderConfigs);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting folders config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var folders = await _syncEngine.GetFoldersAsync();
+        var folderConfigs = folders.Select(BuildFolderConfig).ToArray();
+        return Ok(folderConfigs);
     }
 
     /// <summary>
@@ -210,19 +187,11 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("folders/{id}")]
     public async Task<ActionResult<object>> GetFolder(string id)
     {
-        try
-        {
-            var folder = await _syncEngine.GetFolderAsync(id);
-            if (folder == null)
-                return NotFound(new { error = $"Folder {id} not found" });
+        var folder = await _syncEngine.GetFolderAsync(id);
+        if (folder == null)
+            return NotFound(new { error = $"Folder {id} not found" });
 
-            return Ok(BuildFolderConfig(folder));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting folder {FolderId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(BuildFolderConfig(folder));
     }
 
     /// <summary>
@@ -276,27 +245,19 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> DeleteFolder(string id)
     {
-        try
-        {
-            var folder = await _syncEngine.GetFolderAsync(id);
-            if (folder == null)
-                return NotFound(new { error = $"Folder {id} not found" });
+        var folder = await _syncEngine.GetFolderAsync(id);
+        if (folder == null)
+            return NotFound(new { error = $"Folder {id} not found" });
 
-            await _syncEngine.RemoveFolderAsync(id);
+        await _syncEngine.RemoveFolderAsync(id);
 
-            // Save configuration to config.xml for persistence
-            await SaveConfigurationToXmlAsync();
+        // Save configuration to config.xml for persistence
+        await SaveConfigurationToXmlAsync();
 
-            await _webSiteRegistry.RemoveFolderFromAllSitesAsync(id);
+        await _webSiteRegistry.RemoveFolderFromAllSitesAsync(id);
 
-            _logger.LogInformation("Folder {FolderId} deleted via API", id);
-            return Ok(new { message = $"Folder {id} removed successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting folder {FolderId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Folder {FolderId} deleted via API", id);
+        return Ok(new { message = $"Folder {id} removed successfully" });
     }
 
     /// <summary>
@@ -348,17 +309,9 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("devices")]
     public async Task<ActionResult<object>> GetDevices()
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var deviceConfigs = devices.Select(BuildDeviceConfig).ToArray();
-            return Ok(deviceConfigs);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting devices config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var devices = await _syncEngine.GetDevicesAsync();
+        var deviceConfigs = devices.Select(BuildDeviceConfig).ToArray();
+        return Ok(deviceConfigs);
     }
 
     /// <summary>
@@ -369,29 +322,21 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> AddDevice([FromBody] JsonElement deviceConfig)
     {
-        try
-        {
-            var deviceId = deviceConfig.GetProperty("deviceID").GetString() ?? throw new ArgumentException("Device ID is required");
-            var name = deviceConfig.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
+        var deviceId = deviceConfig.GetProperty("deviceID").GetString() ?? throw new ArgumentException("Device ID is required");
+        var name = deviceConfig.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
 
-            var addresses = new List<string>();
-            if (deviceConfig.TryGetProperty("addresses", out var addressesProp) && addressesProp.ValueKind == JsonValueKind.Array)
-            {
-                addresses.AddRange(addressesProp.EnumerateArray().Select(a => a.GetString()!).Where(s => !string.IsNullOrEmpty(s)));
-            }
-            if (addresses.Count == 0)
-            {
-                addresses.Add("dynamic");
-            }
-
-            var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
-            return CreatedAtAction(nameof(GetDevice), new { id = device.DeviceId }, BuildDeviceConfig(device));
-        }
-        catch (Exception ex)
+        var addresses = new List<string>();
+        if (deviceConfig.TryGetProperty("addresses", out var addressesProp) && addressesProp.ValueKind == JsonValueKind.Array)
         {
-            _logger.LogError(ex, "Error adding device");
-            return StatusCode(500, new { error = "Internal server error" });
+            addresses.AddRange(addressesProp.EnumerateArray().Select(a => a.GetString()!).Where(s => !string.IsNullOrEmpty(s)));
         }
+        if (addresses.Count == 0)
+        {
+            addresses.Add("dynamic");
+        }
+
+        var device = await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+        return CreatedAtAction(nameof(GetDevice), new { id = device.DeviceId }, BuildDeviceConfig(device));
     }
 
     /// <summary>
@@ -401,20 +346,12 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("devices/{id}")]
     public async Task<ActionResult<object>> GetDevice(string id)
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var device = devices.FirstOrDefault(d => d.DeviceId == id);
-            if (device == null)
-                return NotFound(new { error = $"Device {id} not found" });
+        var devices = await _syncEngine.GetDevicesAsync();
+        var device = devices.FirstOrDefault(d => d.DeviceId == id);
+        if (device == null)
+            return NotFound(new { error = $"Device {id} not found" });
 
-            return Ok(BuildDeviceConfig(device));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting device {DeviceId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(BuildDeviceConfig(device));
     }
 
     /// <summary>
@@ -425,33 +362,25 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> UpdateDevice(string id, [FromBody] JsonElement deviceConfig)
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var device = devices.FirstOrDefault(d => d.DeviceId == id);
-            if (device == null)
-                return NotFound(new { error = $"Device {id} not found" });
+        var devices = await _syncEngine.GetDevicesAsync();
+        var device = devices.FirstOrDefault(d => d.DeviceId == id);
+        if (device == null)
+            return NotFound(new { error = $"Device {id} not found" });
 
-            // Update paused state if specified
-            if (deviceConfig.TryGetProperty("paused", out var pausedProp))
-            {
-                var isPaused = pausedProp.GetBoolean();
-                if (isPaused)
-                    await _syncEngine.PauseDeviceAsync(id);
-                else
-                    await _syncEngine.ResumeDeviceAsync(id);
-            }
-
-            // Refresh device data after update
-            devices = await _syncEngine.GetDevicesAsync();
-            device = devices.FirstOrDefault(d => d.DeviceId == id);
-            return Ok(BuildDeviceConfig(device!));
-        }
-        catch (Exception ex)
+        // Update paused state if specified
+        if (deviceConfig.TryGetProperty("paused", out var pausedProp))
         {
-            _logger.LogError(ex, "Error updating device {DeviceId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
+            var isPaused = pausedProp.GetBoolean();
+            if (isPaused)
+                await _syncEngine.PauseDeviceAsync(id);
+            else
+                await _syncEngine.ResumeDeviceAsync(id);
         }
+
+        // Refresh device data after update
+        devices = await _syncEngine.GetDevicesAsync();
+        device = devices.FirstOrDefault(d => d.DeviceId == id);
+        return Ok(BuildDeviceConfig(device!));
     }
 
     /// <summary>
@@ -462,20 +391,12 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> DeleteDevice(string id)
     {
-        try
-        {
-            var result = await _syncEngine.RemoveDeviceAsync(id);
-            if (!result)
-                return NotFound(new { error = $"Device {id} not found or cannot be removed" });
+        var result = await _syncEngine.RemoveDeviceAsync(id);
+        if (!result)
+            return NotFound(new { error = $"Device {id} not found or cannot be removed" });
 
-            _logger.LogInformation("Device {DeviceId} deleted via API", id);
-            return Ok(new { message = $"Device {id} removed successfully" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error deleting device {DeviceId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Device {DeviceId} deleted via API", id);
+        return Ok(new { message = $"Device {id} removed successfully" });
     }
 
     /// <summary>
@@ -487,57 +408,49 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> PatchDevice(string id, [FromBody] JsonElement devicePatch)
     {
-        try
+        var devices = await _syncEngine.GetDevicesAsync();
+        var device = devices.FirstOrDefault(d => d.DeviceId == id);
+        if (device == null)
+            return NotFound(new { error = $"Device {id} not found" });
+
+        // Apply patch - handle paused state changes
+        if (devicePatch.TryGetProperty("paused", out var pausedProp))
         {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var device = devices.FirstOrDefault(d => d.DeviceId == id);
-            if (device == null)
-                return NotFound(new { error = $"Device {id} not found" });
-
-            // Apply patch - handle paused state changes
-            if (devicePatch.TryGetProperty("paused", out var pausedProp))
-            {
-                var isPaused = pausedProp.GetBoolean();
-                if (isPaused)
-                    await _syncEngine.PauseDeviceAsync(id);
-                else
-                    await _syncEngine.ResumeDeviceAsync(id);
-            }
-
-            // Handle name updates
-            if (devicePatch.TryGetProperty("name", out var nameProp))
-            {
-                var newName = nameProp.GetString();
-                if (!string.IsNullOrEmpty(newName))
-                {
-                    // Name update would require additional ISyncEngine support
-                    _logger.LogDebug("Device name patch requested: {NewName}", newName);
-                }
-            }
-
-            // Handle address updates
-            if (devicePatch.TryGetProperty("addresses", out var addressesProp) && addressesProp.ValueKind == JsonValueKind.Array)
-            {
-                var addresses = addressesProp.EnumerateArray()
-                    .Select(a => a.GetString())
-                    .Where(s => !string.IsNullOrEmpty(s))
-                    .ToList()!;
-
-                // Address update would require additional ISyncEngine support
-                _logger.LogDebug("Device addresses patch requested: {Addresses}", string.Join(", ", addresses));
-            }
-
-            // Refresh device data after update
-            devices = await _syncEngine.GetDevicesAsync();
-            device = devices.FirstOrDefault(d => d.DeviceId == id);
-
-            return Ok(BuildDeviceConfig(device!));
+            var isPaused = pausedProp.GetBoolean();
+            if (isPaused)
+                await _syncEngine.PauseDeviceAsync(id);
+            else
+                await _syncEngine.ResumeDeviceAsync(id);
         }
-        catch (Exception ex)
+
+        // Handle name updates
+        if (devicePatch.TryGetProperty("name", out var nameProp))
         {
-            _logger.LogError(ex, "Error patching device {DeviceId}", id);
-            return StatusCode(500, new { error = "Internal server error" });
+            var newName = nameProp.GetString();
+            if (!string.IsNullOrEmpty(newName))
+            {
+                // Name update would require additional ISyncEngine support
+                _logger.LogDebug("Device name patch requested: {NewName}", newName);
+            }
         }
+
+        // Handle address updates
+        if (devicePatch.TryGetProperty("addresses", out var addressesProp) && addressesProp.ValueKind == JsonValueKind.Array)
+        {
+            var addresses = addressesProp.EnumerateArray()
+                .Select(a => a.GetString())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .ToList()!;
+
+            // Address update would require additional ISyncEngine support
+            _logger.LogDebug("Device addresses patch requested: {Addresses}", string.Join(", ", addresses));
+        }
+
+        // Refresh device data after update
+        devices = await _syncEngine.GetDevicesAsync();
+        device = devices.FirstOrDefault(d => d.DeviceId == id);
+
+        return Ok(BuildDeviceConfig(device!));
     }
 
     #endregion
@@ -551,15 +464,7 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("options")]
     public ActionResult<object> GetOptions()
     {
-        try
-        {
-            return Ok(BuildOptionsConfig());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting options config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(BuildOptionsConfig());
     }
 
     /// <summary>
@@ -570,20 +475,12 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> UpdateOptions([FromBody] JsonElement optionsConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received options configuration update, persisting");
+        _logger.LogInformation("Received options configuration update, persisting");
 
-            // Save configuration to config.xml for persistence
-            await SaveConfigurationToXmlAsync();
+        // Save configuration to config.xml for persistence
+        await SaveConfigurationToXmlAsync();
 
-            return Ok(BuildOptionsConfig());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating options config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(BuildOptionsConfig());
     }
 
     /// <summary>
@@ -594,18 +491,10 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult<object> PatchOptions([FromBody] JsonElement optionsConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received options configuration patch");
+        _logger.LogInformation("Received options configuration patch");
 
-            // Options patch would apply only the specified fields
-            return Ok(BuildOptionsConfig());
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error patching options config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        // Options patch would apply only the specified fields
+        return Ok(BuildOptionsConfig());
     }
 
     #endregion
@@ -619,16 +508,8 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("gui")]
     public async Task<ActionResult<object>> GetGuiConfig()
     {
-        try
-        {
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
-            return Ok(BuildGuiConfig(syncConfig));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting GUI config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
+        return Ok(BuildGuiConfig(syncConfig));
     }
 
     /// <summary>
@@ -639,17 +520,9 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> UpdateGuiConfig([FromBody] JsonElement guiConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received GUI configuration update");
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
-            return Ok(BuildGuiConfig(syncConfig));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating GUI config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Received GUI configuration update");
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
+        return Ok(BuildGuiConfig(syncConfig));
     }
 
     #endregion
@@ -663,47 +536,7 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("defaults/folder")]
     public ActionResult<object> GetDefaultFolderConfig()
     {
-        return Ok(new
-        {
-            id = "",
-            label = "",
-            filesystemType = "basic",
-            path = "",
-            type = "sendreceive",
-            devices = Array.Empty<object>(),
-            rescanIntervalS = 3600,
-            fsWatcherEnabled = true,
-            fsWatcherDelayS = 10,
-            ignorePerms = false,
-            autoNormalize = true,
-            minDiskFree = new { value = 1, unit = "%" },
-            versioning = new { type = "", @params = new { } },
-            copiers = 0,
-            pullerMaxPendingKiB = 0,
-            hashers = 0,
-            order = "random",
-            ignoreDelete = false,
-            scanProgressIntervalS = 0,
-            pullerPauseS = 0,
-            maxConflicts = 10,
-            disableSparseFiles = false,
-            disableTempIndexes = false,
-            paused = false,
-            weakHashThresholdPct = 25,
-            markerName = ".stfolder",
-            copyOwnershipFromParent = false,
-            modTimeWindowS = 0,
-            maxConcurrentWrites = 2,
-            disableFsync = false,
-            blockPullOrder = "standard",
-            copyRangeMethod = "standard",
-            caseSensitiveFS = false,
-            junctionsAsDirs = false,
-            syncOwnership = false,
-            sendOwnership = false,
-            syncXattrs = false,
-            sendXattrs = false
-        });
+        return Ok(SyncthingConfigContract.DefaultFolder());
     }
 
     /// <summary>
@@ -713,27 +546,7 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("defaults/device")]
     public ActionResult<object> GetDefaultDeviceConfig()
     {
-        return Ok(new
-        {
-            deviceID = "",
-            name = "",
-            addresses = new[] { "dynamic" },
-            compression = "metadata",
-            certName = "",
-            introducer = false,
-            skipIntroductionRemovals = false,
-            introducedBy = "",
-            paused = false,
-            allowedNetworks = Array.Empty<string>(),
-            autoAcceptFolders = false,
-            maxSendKbps = 0,
-            maxRecvKbps = 0,
-            ignoredFolders = Array.Empty<string>(),
-            pendingFolders = Array.Empty<string>(),
-            maxRequestKiB = 0,
-            untrusted = false,
-            remoteGUIPort = 0
-        });
+        return Ok(SyncthingConfigContract.DefaultDevice());
     }
 
     /// <summary>
@@ -757,18 +570,10 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult<object> UpdateDefaultFolderConfig([FromBody] JsonElement folderConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received default folder configuration update");
-            // Update in-memory defaults (would be persisted in full implementation)
-            // Return the updated defaults
-            return GetDefaultFolderConfig();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating default folder config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Received default folder configuration update");
+        // Update in-memory defaults (would be persisted in full implementation)
+        // Return the updated defaults
+        return GetDefaultFolderConfig();
     }
 
     /// <summary>
@@ -779,18 +584,10 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult<object> UpdateDefaultDeviceConfig([FromBody] JsonElement deviceConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received default device configuration update");
-            // Update in-memory defaults (would be persisted in full implementation)
-            // Return the updated defaults
-            return GetDefaultDeviceConfig();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating default device config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Received default device configuration update");
+        // Update in-memory defaults (would be persisted in full implementation)
+        // Return the updated defaults
+        return GetDefaultDeviceConfig();
     }
 
     /// <summary>
@@ -801,26 +598,18 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult<object> UpdateDefaultIgnoresConfig([FromBody] JsonElement ignoresConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received default ignores configuration update");
+        _logger.LogInformation("Received default ignores configuration update");
 
-            // Parse and store the new default ignore lines
-            if (ignoresConfig.TryGetProperty("lines", out var linesElement) && linesElement.ValueKind == JsonValueKind.Array)
-            {
-                _defaultIgnoreLines = linesElement.EnumerateArray()
-                    .Select(l => l.GetString() ?? string.Empty)
-                    .Where(l => !string.IsNullOrEmpty(l))
-                    .ToArray();
-            }
-
-            return GetDefaultIgnoresConfig();
-        }
-        catch (Exception ex)
+        // Parse and store the new default ignore lines
+        if (ignoresConfig.TryGetProperty("lines", out var linesElement) && linesElement.ValueKind == JsonValueKind.Array)
         {
-            _logger.LogError(ex, "Error updating default ignores config");
-            return StatusCode(500, new { error = "Internal server error" });
+            _defaultIgnoreLines = linesElement.EnumerateArray()
+                .Select(l => l.GetString() ?? string.Empty)
+                .Where(l => !string.IsNullOrEmpty(l))
+                .ToArray();
         }
+
+        return GetDefaultIgnoresConfig();
     }
 
     #endregion
@@ -834,16 +623,8 @@ public class SyncthingConfigController : ControllerBase
     [HttpGet("ldap")]
     public async Task<ActionResult<object>> GetLdapConfig()
     {
-        try
-        {
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
-            return Ok(BuildLdapConfig(syncConfig));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting LDAP config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
+        return Ok(BuildLdapConfig(syncConfig));
     }
 
     /// <summary>
@@ -854,34 +635,26 @@ public class SyncthingConfigController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> UpdateLdapConfig([FromBody] JsonElement ldapConfig)
     {
-        try
-        {
-            _logger.LogInformation("Received LDAP configuration update");
+        _logger.LogInformation("Received LDAP configuration update");
 
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
 
-            if (ldapConfig.TryGetProperty("address", out var address))
-                syncConfig.LdapAddress = address.GetString() ?? "";
-            if (ldapConfig.TryGetProperty("bindDN", out var bindDN))
-                syncConfig.LdapBindDN = bindDN.GetString() ?? "";
-            if (ldapConfig.TryGetProperty("transport", out var transport))
-                syncConfig.LdapTransport = transport.GetString() ?? "plain";
-            if (ldapConfig.TryGetProperty("insecureSkipVerify", out var insecureSkip))
-                syncConfig.LdapInsecureSkipVerify = insecureSkip.GetBoolean();
-            if (ldapConfig.TryGetProperty("searchBaseDN", out var searchBaseDN))
-                syncConfig.LdapSearchBaseDN = searchBaseDN.GetString() ?? "";
-            if (ldapConfig.TryGetProperty("searchFilter", out var searchFilter))
-                syncConfig.LdapSearchFilter = searchFilter.GetString() ?? "";
+        if (ldapConfig.TryGetProperty("address", out var address))
+            syncConfig.LdapAddress = address.GetString() ?? "";
+        if (ldapConfig.TryGetProperty("bindDN", out var bindDN))
+            syncConfig.LdapBindDN = bindDN.GetString() ?? "";
+        if (ldapConfig.TryGetProperty("transport", out var transport))
+            syncConfig.LdapTransport = transport.GetString() ?? "plain";
+        if (ldapConfig.TryGetProperty("insecureSkipVerify", out var insecureSkip))
+            syncConfig.LdapInsecureSkipVerify = insecureSkip.GetBoolean();
+        if (ldapConfig.TryGetProperty("searchBaseDN", out var searchBaseDN))
+            syncConfig.LdapSearchBaseDN = searchBaseDN.GetString() ?? "";
+        if (ldapConfig.TryGetProperty("searchFilter", out var searchFilter))
+            syncConfig.LdapSearchFilter = searchFilter.GetString() ?? "";
 
-            await SaveConfigurationToXmlAsync();
+        await SaveConfigurationToXmlAsync();
 
-            return Ok(BuildLdapConfig(syncConfig));
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating LDAP config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(BuildLdapConfig(syncConfig));
     }
 
     #endregion
@@ -896,17 +669,9 @@ public class SyncthingConfigController : ControllerBase
     [Obsolete("This endpoint is deprecated. Use /rest/config/restart-required instead.")]
     public ActionResult<object> GetConfigInSync()
     {
-        try
-        {
-            // Returns whether the running config matches the saved config
-            // Since we apply config immediately, this is always true
-            return Ok(new { configInSync = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error checking config sync status");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        // Returns whether the running config matches the saved config
+        // Since we apply config immediately, this is always true
+        return Ok(new { configInSync = true });
     }
 
     #endregion
@@ -921,38 +686,30 @@ public class SyncthingConfigController : ControllerBase
     [Produces("application/xml")]
     public async Task<IActionResult> GetConfigXml()
     {
-        try
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
+
+        var configXml = _configXmlService.FromSyncConfiguration(syncConfig, devices, folders);
+
+        // Serialize to XML
+        var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ConfigXml));
+        using var stringWriter = new StringWriter();
+        var settings = new System.Xml.XmlWriterSettings
         {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
-
-            var configXml = _configXmlService.FromSyncConfiguration(syncConfig, devices, folders);
-
-            // Serialize to XML
-            var serializer = new System.Xml.Serialization.XmlSerializer(typeof(ConfigXml));
-            using var stringWriter = new StringWriter();
-            var settings = new System.Xml.XmlWriterSettings
-            {
-                Indent = true,
-                IndentChars = "    ",
-                Encoding = System.Text.Encoding.UTF8,
-                OmitXmlDeclaration = false
-            };
-            using (var xmlWriter = System.Xml.XmlWriter.Create(stringWriter, settings))
-            {
-                var namespaces = new System.Xml.Serialization.XmlSerializerNamespaces();
-                namespaces.Add("", "");
-                serializer.Serialize(xmlWriter, configXml, namespaces);
-            }
-
-            return Content(stringWriter.ToString(), "application/xml", System.Text.Encoding.UTF8);
-        }
-        catch (Exception ex)
+            Indent = true,
+            IndentChars = "    ",
+            Encoding = System.Text.Encoding.UTF8,
+            OmitXmlDeclaration = false
+        };
+        using (var xmlWriter = System.Xml.XmlWriter.Create(stringWriter, settings))
         {
-            _logger.LogError(ex, "Error generating config.xml");
-            return StatusCode(500, new { error = "Internal server error" });
+            var namespaces = new System.Xml.Serialization.XmlSerializerNamespaces();
+            namespaces.Add("", "");
+            serializer.Serialize(xmlWriter, configXml, namespaces);
         }
+
+        return Content(stringWriter.ToString(), "application/xml", System.Text.Encoding.UTF8);
     }
 
     /// <summary>
@@ -1266,183 +1023,18 @@ public class SyncthingConfigController : ControllerBase
     private async Task<object> BuildSyncthingConfigAsync(List<SyncDevice> devices, List<SyncFolder> folders)
     {
         var syncConfig = await _syncEngine.GetConfigurationAsync();
-        return new
-        {
-            version = 37,
-            folders = folders.Select(BuildFolderConfig).ToArray(),
-            devices = devices.Select(BuildDeviceConfig).ToArray(),
-            gui = BuildGuiConfig(syncConfig),
-            ldap = BuildLdapConfig(syncConfig),
-            options = BuildOptionsConfig(),
-            ignoredDevices = Array.Empty<object>(),
-            pendingDevices = Array.Empty<object>(),
-            ignoredFolders = Array.Empty<object>()
-        };
+        return SyncthingConfigContract.Build(devices, folders, syncConfig);
     }
 
-    private object BuildFolderConfig(SyncFolder folder)
-    {
-        return new
-        {
-            id = folder.Id,
-            label = folder.Label,
-            filesystemType = "basic",
-            path = folder.Path,
-            type = folder.SyncType switch
-            {
-                SyncFolderType.SendOnly => "sendonly",
-                SyncFolderType.ReceiveOnly => "receiveonly",
-                SyncFolderType.Master => "receiveencrypted",
-                _ => "sendreceive"
-            },
-            devices = folder.Devices.Select(deviceId => new { deviceID = deviceId }).ToArray(),
-            rescanIntervalS = 3600,
-            fsWatcherEnabled = true,
-            fsWatcherDelayS = 10,
-            ignorePerms = false,
-            autoNormalize = true,
-            minDiskFree = new { value = 1, unit = "%" },
-            versioning = new { type = string.Empty, @params = new { } },
-            copiers = 0,
-            pullerMaxPendingKiB = 0,
-            hashers = 0,
-            order = "random",
-            ignoreDelete = false,
-            scanProgressIntervalS = 0,
-            pullerPauseS = 0,
-            maxConflicts = 10,
-            disableSparseFiles = false,
-            disableTempIndexes = false,
-            paused = folder.IsPaused,
-            weakHashThresholdPct = 25,
-            markerName = ".stfolder",
-            copyOwnershipFromParent = false,
-            modTimeWindowS = 0,
-            maxConcurrentWrites = 2,
-            disableFsync = false,
-            blockPullOrder = "standard",
-            copyRangeMethod = "standard",
-            caseSensitiveFS = false,
-            junctionsAsDirs = false,
-            syncOwnership = false,
-            sendOwnership = false,
-            syncXattrs = false,
-            sendXattrs = false
-        };
-    }
+    private static object BuildFolderConfig(SyncFolder folder) => SyncthingConfigContract.Folder(folder);
 
-    private object BuildDeviceConfig(SyncDevice device)
-    {
-        return new
-        {
-            deviceID = device.DeviceId,
-            name = device.DeviceName,
-            addresses = device.Addresses.ToArray(),
-            compression = "metadata",
-            certName = string.Empty,
-            introducer = false,
-            skipIntroductionRemovals = false,
-            introducedBy = string.Empty,
-            paused = device.IsPaused,
-            allowedNetworks = Array.Empty<string>(),
-            autoAcceptFolders = false,
-            maxSendKbps = 0,
-            maxRecvKbps = 0,
-            ignoredFolders = Array.Empty<string>(),
-            pendingFolders = Array.Empty<string>(),
-            maxRequestKiB = 0,
-            untrusted = false,
-            remoteGUIPort = 0
-        };
-    }
+    private static object BuildDeviceConfig(SyncDevice device) => SyncthingConfigContract.Device(device);
 
-    private object BuildOptionsConfig()
-    {
-        return new
-        {
-            listenAddresses = new[] { "default" },
-            globalAnnounceServers = new[] { "default" },
-            globalAnnounceEnabled = true,
-            localAnnounceEnabled = true,
-            localAnnouncePort = 21027,
-            localAnnounceMCAddr = "[ff12::8384]:21027",
-            maxSendKbps = 0,
-            maxRecvKbps = 0,
-            reconnectionIntervalS = 60,
-            relaysEnabled = true,
-            relayReconnectIntervalM = 10,
-            startBrowser = true,
-            natEnabled = true,
-            natLeaseMinutes = 60,
-            natRenewalMinutes = 30,
-            natTimeoutSeconds = 10,
-            urAccepted = -1,
-            urSeen = 3,
-            urUniqueId = string.Empty,
-            urURL = "",
-            urPostInsecurely = false,
-            urInitialDelayS = 1800,
-            autoUpgradeEnabled = false,
-            autoUpgradeIntervalH = 12,
-            upgradeToPreReleases = false,
-            keepTemporariesH = 24,
-            cacheIgnoredFiles = false,
-            progressUpdateIntervalS = 5,
-            limitBandwidthInLan = false,
-            minHomeDiskFree = new { value = 1, unit = "%" },
-            releasesURL = "https://api.github.com/repos/syncthing/syncthing/releases?per_page=30",
-            alwaysLocalNets = Array.Empty<string>(),
-            overwriteRemoteDeviceNamesOnConnect = false,
-            tempIndexMinBlocks = 10,
-            unackedNotificationIDs = Array.Empty<string>(),
-            trafficClass = 0,
-            defaultFolderPath = "~",
-            setLowPriority = true,
-            maxFolderConcurrency = 0,
-            crURL = "",
-            crashReportingEnabled = false,
-            stunKeepaliveStartS = 180,
-            stunKeepaliveMinS = 20,
-            stunServers = new[] { "default" },
-            databaseTuning = "auto",
-            maxCIRequestKiB = 0,
-            announceLANAddresses = true,
-            sendFullIndexOnUpgrade = false
-        };
-    }
+    private static object BuildOptionsConfig() => SyncthingConfigContract.Options();
 
-    private static object BuildGuiConfig(SyncConfiguration syncConfig)
-    {
-        return new
-        {
-            enabled = syncConfig.GuiEnabled,
-            address = syncConfig.GuiAddress,
-            unixSocketPermissions = "0700",
-            user = syncConfig.GuiUser,
-            password = syncConfig.GuiPassword,
-            authMode = syncConfig.AuthMode,
-            useTLS = syncConfig.GuiTls,
-            apiKey = syncConfig.GuiApiKey,
-            insecureAdminAccess = false,
-            theme = "default",
-            debugging = false,
-            insecureSkipHostcheck = false,
-            insecureAllowFrameLoading = false
-        };
-    }
+    private static object BuildGuiConfig(SyncConfiguration syncConfig) => SyncthingConfigContract.Gui(syncConfig);
 
-    private static object BuildLdapConfig(SyncConfiguration syncConfig)
-    {
-        return new
-        {
-            address = syncConfig.LdapAddress,
-            bindDN = syncConfig.LdapBindDN,
-            transport = syncConfig.LdapTransport,
-            insecureSkipVerify = syncConfig.LdapInsecureSkipVerify,
-            searchBaseDN = syncConfig.LdapSearchBaseDN,
-            searchFilter = syncConfig.LdapSearchFilter
-        };
-    }
+    private static object BuildLdapConfig(SyncConfiguration syncConfig) => SyncthingConfigContract.Ldap(syncConfig);
 
     /// <summary>
     /// Merge partial folder patch with existing folder configuration

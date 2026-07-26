@@ -35,6 +35,7 @@ public class AuthService : IAuthService
 
     private readonly HttpClient _httpClient;
     private readonly ILocalStorageService _localStorage;
+    private readonly ILogger<AuthService> _logger;
 
     private bool _isAuthenticated;
     private string? _username;
@@ -51,10 +52,11 @@ public class AuthService : IAuthService
 
     public event Action<bool>? OnAuthStateChanged;
 
-    public AuthService(HttpClient httpClient, ILocalStorageService localStorage)
+    public AuthService(HttpClient httpClient, ILocalStorageService localStorage, ILogger<AuthService> logger)
     {
         _httpClient = httpClient;
         _localStorage = localStorage;
+        _logger = logger;
     }
 
     public async Task InitializeAsync()
@@ -84,8 +86,9 @@ public class AuthService : IAuthService
             _isAuthenticated = true;
             SetAuthorizationHeader(token);
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogWarning(ex, "Failed to restore session from local storage; continuing unauthenticated");
         }
     }
 

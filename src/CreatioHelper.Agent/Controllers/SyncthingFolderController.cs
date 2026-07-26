@@ -188,46 +188,38 @@ public class SyncthingFolderController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<ActionResult<object>> GetErrors([FromQuery] string folder, [FromQuery] int page = 1, [FromQuery] int perpage = 100)
     {
-        try
+        if (string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "folder parameter required" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        // Get sync status which contains error information
+        var status = await _syncEngine.GetSyncStatusAsync(folder);
+
+        // Bounds checking for pagination
+        page = Math.Max(1, page);
+        perpage = Math.Clamp(perpage, 1, 1000);
+
+        // Convert errors to Syncthing-compatible format
+        var allErrors = status.Errors.Select((error, index) => new
         {
-            if (string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "folder parameter required" });
+            error = error,
+            path = string.Empty // In full implementation, this would contain the path that caused the error
+        }).ToList();
 
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
+        var totalErrors = allErrors.Count;
+        var pagedErrors = allErrors.Skip((page - 1) * perpage).Take(perpage).ToArray();
 
-            // Get sync status which contains error information
-            var status = await _syncEngine.GetSyncStatusAsync(folder);
-
-            // Bounds checking for pagination
-            page = Math.Max(1, page);
-            perpage = Math.Clamp(perpage, 1, 1000);
-
-            // Convert errors to Syncthing-compatible format
-            var allErrors = status.Errors.Select((error, index) => new
-            {
-                error = error,
-                path = string.Empty // In full implementation, this would contain the path that caused the error
-            }).ToList();
-
-            var totalErrors = allErrors.Count;
-            var pagedErrors = allErrors.Skip((page - 1) * perpage).Take(perpage).ToArray();
-
-            return Ok(new
-            {
-                folder = folder,
-                errors = pagedErrors,
-                page = page,
-                perpage = perpage,
-                total = totalErrors
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Error getting errors for folder {Folder}", folder);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            folder = folder,
+            errors = pagedErrors,
+            page = page,
+            perpage = perpage,
+            total = totalErrors
+        });
     }
 
     /// <summary>
@@ -238,41 +230,33 @@ public class SyncthingFolderController : ControllerBase
     [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetStatus([FromQuery] string folder)
     {
-        try
+        if (string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "folder parameter required" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        var status = await _syncEngine.GetSyncStatusAsync(folder);
+
+        return Ok(new
         {
-            if (string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "folder parameter required" });
-
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
-
-            var status = await _syncEngine.GetSyncStatusAsync(folder);
-
-            return Ok(new
-            {
-                folder = folder,
-                globalFiles = status.TotalFiles,
-                globalDirectories = status.TotalDirectories,
-                globalBytes = status.TotalBytes,
-                localFiles = status.LocalFiles,
-                localDirectories = status.LocalDirectories,
-                localBytes = status.LocalBytes,
-                needFiles = status.OutOfSyncFiles,
-                needBytes = status.OutOfSyncBytes,
-                state = status.State.ToString().ToLowerInvariant(),
-                stateChanged = status.LastSync.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                error = status.Errors.FirstOrDefault() ?? string.Empty,
-                pullErrors = status.Errors.Count,
-                version = status.Version,
-                sequence = status.Sequence
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting status for folder {Folder}", folder);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            folder = folder,
+            globalFiles = status.TotalFiles,
+            globalDirectories = status.TotalDirectories,
+            globalBytes = status.TotalBytes,
+            localFiles = status.LocalFiles,
+            localDirectories = status.LocalDirectories,
+            localBytes = status.LocalBytes,
+            needFiles = status.OutOfSyncFiles,
+            needBytes = status.OutOfSyncBytes,
+            state = status.State.ToString().ToLowerInvariant(),
+            stateChanged = status.LastSync.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            error = status.Errors.FirstOrDefault() ?? string.Empty,
+            pullErrors = status.Errors.Count,
+            version = status.Version,
+            sequence = status.Sequence
+        });
     }
 
     /// <summary>
@@ -286,38 +270,30 @@ public class SyncthingFolderController : ControllerBase
         [FromQuery] string? sub = null,
         [FromQuery] int? next = null)
     {
-        try
+        if (string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "folder parameter required" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        // Check if folder is paused
+        if (folderInfo.IsPaused)
         {
-            if (string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "folder parameter required" });
-
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
-
-            // Check if folder is paused
-            if (folderInfo.IsPaused)
-            {
-                return BadRequest(new { error = "folder is paused" });
-            }
-
-            _logger.LogInformation("Triggering scan for folder {Folder}, sub={Sub}, next={Next}", folder, sub, next);
-
-            // Queue the scan (bounded scheduler runs it off the request pipeline)
-            _syncEngine.QueueScan(folder, deep: true);
-
-            return Ok(new
-            {
-                folder = folder,
-                sub = sub ?? string.Empty,
-                status = "scanning"
-            });
+            return BadRequest(new { error = "folder is paused" });
         }
-        catch (Exception ex)
+
+        _logger.LogInformation("Triggering scan for folder {Folder}, sub={Sub}, next={Next}", folder, sub, next);
+
+        // Queue the scan (bounded scheduler runs it off the request pipeline)
+        _syncEngine.QueueScan(folder, deep: true);
+
+        return Ok(new
         {
-            _logger.LogError(ex, "Error scanning folder {Folder}", folder);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            folder = folder,
+            sub = sub ?? string.Empty,
+            status = "scanning"
+        });
     }
 
     /// <summary>
@@ -329,48 +305,40 @@ public class SyncthingFolderController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> OverrideFolder([FromQuery] string folder)
     {
-        try
+        if (string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "folder parameter required" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        // Check folder type - override is typically for send-only folders
+        if (folderInfo.SyncType != SyncFolderType.SendOnly)
         {
-            if (string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "folder parameter required" });
-
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
-
-            // Check folder type - override is typically for send-only folders
-            if (folderInfo.SyncType != SyncFolderType.SendOnly)
-            {
-                _logger.LogWarning("Override requested for non-send-only folder {Folder} (type: {Type})",
-                    folder, folderInfo.SyncType);
-            }
-
-            // Check if folder is paused
-            if (folderInfo.IsPaused)
-            {
-                return BadRequest(new { error = "folder is paused" });
-            }
-
-            _logger.LogInformation("Triggering override for folder {Folder}", folder);
-
-            var result = await _syncEngine.OverrideFolderAsync(folder);
-
-            if (!result)
-            {
-                return StatusCode(500, new { error = "Override operation failed" });
-            }
-
-            return Ok(new
-            {
-                folder = folder,
-                status = "override triggered"
-            });
+            _logger.LogWarning("Override requested for non-send-only folder {Folder} (type: {Type})",
+                folder, folderInfo.SyncType);
         }
-        catch (Exception ex)
+
+        // Check if folder is paused
+        if (folderInfo.IsPaused)
         {
-            _logger.LogError(ex, "Error overriding folder {Folder}", folder);
-            return StatusCode(500, new { error = "Internal server error" });
+            return BadRequest(new { error = "folder is paused" });
         }
+
+        _logger.LogInformation("Triggering override for folder {Folder}", folder);
+
+        var result = await _syncEngine.OverrideFolderAsync(folder);
+
+        if (!result)
+        {
+            return StatusCode(500, new { error = "Override operation failed" });
+        }
+
+        return Ok(new
+        {
+            folder = folder,
+            status = "override triggered"
+        });
     }
 
     /// <summary>
@@ -382,47 +350,39 @@ public class SyncthingFolderController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult<object>> RevertFolder([FromQuery] string folder)
     {
-        try
+        if (string.IsNullOrEmpty(folder))
+            return BadRequest(new { error = "folder parameter required" });
+
+        var folderInfo = await _syncEngine.GetFolderAsync(folder);
+        if (folderInfo == null)
+            return NotFound(new { error = "folder not found" });
+
+        // Check folder type - revert is typically for receive-only folders
+        if (folderInfo.SyncType != SyncFolderType.ReceiveOnly)
         {
-            if (string.IsNullOrEmpty(folder))
-                return BadRequest(new { error = "folder parameter required" });
-
-            var folderInfo = await _syncEngine.GetFolderAsync(folder);
-            if (folderInfo == null)
-                return NotFound(new { error = "folder not found" });
-
-            // Check folder type - revert is typically for receive-only folders
-            if (folderInfo.SyncType != SyncFolderType.ReceiveOnly)
-            {
-                _logger.LogWarning("Revert requested for non-receive-only folder {Folder} (type: {Type})",
-                    folder, folderInfo.SyncType);
-            }
-
-            // Check if folder is paused
-            if (folderInfo.IsPaused)
-            {
-                return BadRequest(new { error = "folder is paused" });
-            }
-
-            _logger.LogInformation("Triggering revert for folder {Folder}", folder);
-
-            var result = await _syncEngine.RevertFolderAsync(folder);
-
-            if (!result)
-            {
-                return StatusCode(500, new { error = "Revert operation failed" });
-            }
-
-            return Ok(new
-            {
-                folder = folder,
-                status = "revert triggered"
-            });
+            _logger.LogWarning("Revert requested for non-receive-only folder {Folder} (type: {Type})",
+                folder, folderInfo.SyncType);
         }
-        catch (Exception ex)
+
+        // Check if folder is paused
+        if (folderInfo.IsPaused)
         {
-            _logger.LogError(ex, "Error reverting folder {Folder}", folder);
-            return StatusCode(500, new { error = "Internal server error" });
+            return BadRequest(new { error = "folder is paused" });
         }
+
+        _logger.LogInformation("Triggering revert for folder {Folder}", folder);
+
+        var result = await _syncEngine.RevertFolderAsync(folder);
+
+        if (!result)
+        {
+            return StatusCode(500, new { error = "Revert operation failed" });
+        }
+
+        return Ok(new
+        {
+            folder = folder,
+            status = "revert triggered"
+        });
     }
 }

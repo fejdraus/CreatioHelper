@@ -2,8 +2,6 @@ using System.Collections.Concurrent;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
-using FolderStats = CreatioHelper.Application.Interfaces.FolderStatistics;
-using DeviceStats = CreatioHelper.Application.Interfaces.DeviceStatistics;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
 
@@ -26,8 +24,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
 
     // Runtime statistics (not persisted to config.xml)
-    private readonly ConcurrentDictionary<string, FolderStats> _folderStats = new();
-    private readonly ConcurrentDictionary<string, DeviceStats> _deviceStats = new();
+    private readonly ConcurrentDictionary<string, FolderRuntimeStatistics> _folderStats = new();
+    private readonly ConcurrentDictionary<string, DeviceRuntimeStatistics> _deviceStats = new();
 
     // Dirty flag for batched saves
     private volatile bool _isDirty;
@@ -276,14 +274,14 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     public void UpdateFolderStatistics(string folderId, long fileCount, long totalSize, DateTime? lastScan)
     {
-        var stats = _folderStats.GetOrAdd(folderId, id => new FolderStats { FolderId = id });
+        var stats = _folderStats.GetOrAdd(folderId, id => new FolderRuntimeStatistics { FolderId = id });
         stats.FileCount = fileCount;
         stats.TotalSize = totalSize;
         stats.LastScan = lastScan;
         stats.LastUpdated = DateTime.UtcNow;
     }
 
-    public FolderStats? GetFolderStatistics(string folderId)
+    public FolderRuntimeStatistics? GetFolderStatistics(string folderId)
     {
         _folderStats.TryGetValue(folderId, out var stats);
         return stats;
@@ -402,7 +400,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     public void UpdateDeviceLastSeen(string deviceId, DateTime lastSeen)
     {
-        var stats = _deviceStats.GetOrAdd(deviceId, id => new DeviceStats { DeviceId = id });
+        var stats = _deviceStats.GetOrAdd(deviceId, id => new DeviceRuntimeStatistics { DeviceId = id });
         stats.LastSeen = lastSeen;
         stats.LastUpdated = DateTime.UtcNow;
 
@@ -415,14 +413,14 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     public void UpdateDeviceStatistics(string deviceId, long bytesReceived, long bytesSent, DateTime lastActivity)
     {
-        var stats = _deviceStats.GetOrAdd(deviceId, id => new DeviceStats { DeviceId = id });
+        var stats = _deviceStats.GetOrAdd(deviceId, id => new DeviceRuntimeStatistics { DeviceId = id });
         stats.BytesReceived = bytesReceived;
         stats.BytesSent = bytesSent;
         stats.LastActivity = lastActivity;
         stats.LastUpdated = DateTime.UtcNow;
     }
 
-    public DeviceStats? GetDeviceStatistics(string deviceId)
+    public DeviceRuntimeStatistics? GetDeviceStatistics(string deviceId)
     {
         _deviceStats.TryGetValue(deviceId, out var stats);
         return stats;
@@ -539,56 +537,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     #region Conversion Methods
 
-    private static SyncFolder ConvertToSyncFolder(ConfigXmlFolder config)
-    {
-        var folder = new SyncFolder(
-            config.Id,
-            config.Label,
-            config.Path,
-            config.Type,
-            config.RescanIntervalS,
-            config.FsWatcherEnabled,
-            config.FsWatcherDelayS,
-            config.IgnorePerms,
-            config.AutoNormalize,
-            config.MinDiskFree?.ToString() ?? "1%",
-            config.CopyOwnershipFromParent,
-            config.ModTimeWindowS,
-            config.MaxConflicts,
-            config.DisableSparseFiles,
-            config.DisableTempIndexes,
-            config.Paused,
-            config.WeakHashThresholdPct,
-            config.MarkerName,
-            config.CopyRangeMethod,
-            config.CaseSensitiveFS,
-            config.JunctionsAsDirs,
-            config.SyncOwnership,
-            config.SendOwnership,
-            config.SyncXattrs,
-            config.SendXattrs);
-
-        // Add devices
-        foreach (var device in config.Devices)
-        {
-            folder.AddDevice(device.Id);
-        }
-
-        // Set versioning
-        if (config.Versioning != null)
-        {
-            folder.SetVersioning(new VersioningConfiguration
-            {
-                Type = config.Versioning.Type,
-                Params = config.Versioning.Params?.ToDictionary(p => p.Key, p => p.Val) ?? new Dictionary<string, string>(),
-                CleanupIntervalS = config.Versioning.CleanupIntervalS,
-                FSPath = config.Versioning.FsPath,
-                FSType = config.Versioning.FsType
-            });
-        }
-
-        return folder;
-    }
+    private static SyncFolder ConvertToSyncFolder(ConfigXmlFolder config) =>
+        SyncFolder.Create(config.ToSyncFolderSettings());
 
     private static ConfigXmlFolder ConvertToConfigXmlFolder(SyncFolder folder)
     {

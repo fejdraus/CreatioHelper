@@ -90,10 +90,10 @@
     private string FormatUptime(TimeSpan uptime)
     {
         if (uptime.TotalDays >= 1)
-            return $"{(int)uptime.TotalDays}{L["Time_Days"]} {uptime.Hours}{L["Time_Hours"]}";
+            return $"{(int)uptime.TotalDays} {L["Time_Days"]} {uptime.Hours} {L["Time_Hours"]}";
         if (uptime.TotalHours >= 1)
-            return $"{uptime.Hours}{L["Time_Hours"]} {uptime.Minutes}{L["Time_Minutes"]}";
-        return $"{uptime.Minutes}{L["Time_Minutes"]} {uptime.Seconds}{L["Time_Seconds"]}";
+            return $"{uptime.Hours} {L["Time_Hours"]} {uptime.Minutes} {L["Time_Minutes"]}";
+        return $"{uptime.Minutes} {L["Time_Minutes"]} {uptime.Seconds} {L["Time_Seconds"]}";
     }
 
     private string FormatBytes(long bytes)

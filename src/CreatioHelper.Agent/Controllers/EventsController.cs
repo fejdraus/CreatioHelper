@@ -70,20 +70,12 @@ public class EventsController : ControllerBase
         [FromQuery] EventType events = EventType.DefaultEventMask,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var maxLimit = Math.Max(1, Math.Min(limit, 10000));
-            
-            using var bufferedSubscription = _eventLogger.CreateBufferedSubscription(events, 10000);
-            var eventList = await bufferedSubscription.GetEventsSinceAsync(since, maxLimit, null, cancellationToken);
-            
-            return Ok(eventList);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting events from disk since {Since}: {Message}", since, ex.Message);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var maxLimit = Math.Max(1, Math.Min(limit, 10000));
+        
+        using var bufferedSubscription = _eventLogger.CreateBufferedSubscription(events, 10000);
+        var eventList = await bufferedSubscription.GetEventsSinceAsync(since, maxLimit, null, cancellationToken);
+        
+        return Ok(eventList);
     }
 
     /// <summary>
@@ -169,18 +161,10 @@ public class EventsController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> CleanupOldEvents([FromBody] CleanupRequest request, CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var maxAge = TimeSpan.FromHours(Math.Max(1, Math.Min(request.MaxAgeHours, 24 * 30))); // 1 час - 30 дней
-            await _eventLogger.CleanupOldEventsAsync(maxAge, cancellationToken);
-            
-            return Ok(new { success = true, message = $"Cleaned up events older than {maxAge.TotalHours} hours" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error cleaning up old events: {Message}", ex.Message);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var maxAge = TimeSpan.FromHours(Math.Max(1, Math.Min(request.MaxAgeHours, 24 * 30))); // 1 час - 30 дней
+        await _eventLogger.CleanupOldEventsAsync(maxAge, cancellationToken);
+        
+        return Ok(new { success = true, message = $"Cleaned up events older than {maxAge.TotalHours} hours" });
     }
 }
 

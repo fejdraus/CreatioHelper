@@ -41,7 +41,7 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
             return false;
         }
 
-        foreach (var remoteFile in remoteFiles)
+        foreach (var remoteFile in OrderForPull(folder, remoteFiles))
         {
             if (cancellationToken.IsCancellationRequested)
                 break;
@@ -49,6 +49,11 @@ public class ReceiveOnlyFolderHandler : SyncFolderHandlerBase
             if (!CanApplyFileChange(folder, remoteFile, isIncoming: true))
             {
                 _logger.LogDebug("Skipping remote file {FileName} - cannot apply change", remoteFile.FileName);
+                continue;
+            }
+
+            if (!HasRoomToWrite(folder, remoteFile.Size, remoteFile.FileName))
+            {
                 continue;
             }
 

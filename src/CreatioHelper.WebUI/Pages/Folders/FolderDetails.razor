@@ -9,7 +9,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 
-<PageTitle>@(_folder?.DisplayName ?? L["FolderDetails_Title"]) - CreatioHelper</PageTitle>
+<PageTitle>@(_folder?.DisplayName ?? L["FolderDetails_Title"]) - CreatioHelper Agent</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
     @if (_loading)
@@ -35,7 +35,7 @@
                         </div>
                         <div>
                             <MudChip T="string" Color="@GetStateColor(_status?.FolderState ?? FolderState.Unknown)" Size="Size.Small">
-                                @(_status?.State ?? "Unknown")
+                                @FolderDisplay.FormatState(_status?.State, L)
                             </MudChip>
                             <MudIconButton Icon="@Icons.Material.Filled.Edit" OnClick="@EditFolder" aria-label="@L["FolderDetails_Edit"]" />
                             <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="@ScanFolder" aria-label="@L["FolderDetails_Rescan"]" />
@@ -46,7 +46,7 @@
 
             <!-- Sync Progress -->
             <MudItem xs="12" md="8">
-                <MudPaper Class="pa-4">
+                <MudPaper Class="pa-4" Style="height: 100%;">
                     <MudText Typo="Typo.h6" Class="mb-3">@L["FolderDetails_SyncProgress"]</MudText>
 
                     <MudProgressLinear Color="Color.Primary" Value="@(_status?.SyncPercentage ?? 0)" Class="mb-2" />
@@ -99,14 +99,14 @@
 
             <!-- Folder Info -->
             <MudItem xs="12" md="4">
-                <MudPaper Class="pa-4">
+                <MudPaper Class="pa-4" Style="height: 100%;">
                     <MudText Typo="Typo.h6" Class="mb-3">@L["FolderDetails_Configuration"]</MudText>
 
                     <MudSimpleTable Dense="true" Hover="true">
                         <tbody>
                             <tr>
                                 <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["FolderDetails_FolderType"]</MudText></td>
-                                <td>@_folder.FolderType</td>
+                                <td>@FolderDisplay.FormatType(_folder.FolderType, L)</td>
                             </tr>
                             <tr>
                                 <td><MudText Typo="Typo.body2" Color="Color.Secondary">@L["FolderDetails_FolderId"]</MudText></td>
@@ -292,9 +292,9 @@
 
     private string FormatInterval(int seconds)
     {
-        if (seconds < 60) return $"{seconds}{L["Time_Seconds"]}";
-        if (seconds < 3600) return $"{seconds / 60}{L["Time_Minutes"]}";
-        return $"{seconds / 3600}{L["Time_Hours"]}";
+        if (seconds < 60) return $"{seconds} {L["Time_Seconds"]}";
+        if (seconds < 3600) return $"{seconds / 60} {L["Time_Minutes"]}";
+        return $"{seconds / 3600} {L["Time_Hours"]}";
     }
 
     private string GetDeviceName(string deviceId)

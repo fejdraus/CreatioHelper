@@ -202,6 +202,9 @@ public class ConfigXmlMinDiskFree
 
     [XmlText]
     public double Value { get; set; } = 1;
+
+    public override string ToString() =>
+        Value.ToString(System.Globalization.CultureInfo.InvariantCulture) + Unit;
 }
 
 /// <summary>
@@ -261,7 +264,7 @@ public class ConfigXmlDevice
     public string IntroducedBy { get; set; } = string.Empty;
 
     [XmlElement("address")]
-    public List<string> Addresses { get; set; } = new() { "dynamic" };
+    public List<string> Addresses { get; set; } = new();
 
     [XmlElement("paused")]
     public bool Paused { get; set; } = false;
@@ -344,6 +347,9 @@ public class ConfigXmlGui
     [XmlElement("theme")]
     public string Theme { get; set; } = "default";
 
+    [XmlElement("language")]
+    public string Language { get; set; } = string.Empty;
+
     [XmlElement("unackedNotificationID")]
     public List<string> UnackedNotificationIds { get; set; } = new();
 
@@ -386,11 +392,14 @@ public class ConfigXmlLdap
 /// </summary>
 public class ConfigXmlOptions
 {
+    // XmlSerializer appends to a collection instead of replacing it, so any value
+    // left by an initialiser is duplicated on every load/save cycle. Defaults for
+    // these lists are applied when a fresh config is created, not here.
     [XmlElement("listenAddress")]
-    public List<string> ListenAddresses { get; set; } = new() { "default" };
+    public List<string> ListenAddresses { get; set; } = new();
 
     [XmlElement("globalAnnounceServer")]
-    public List<string> GlobalAnnounceServers { get; set; } = new() { "default" };
+    public List<string> GlobalAnnounceServers { get; set; } = new();
 
     [XmlElement("globalAnnounceEnabled")]
     public bool GlobalAnnounceEnabled { get; set; } = true;
@@ -504,7 +513,7 @@ public class ConfigXmlOptions
     public int StunKeepaliveMinS { get; set; } = 20;
 
     [XmlElement("stunServer")]
-    public List<string> StunServers { get; set; } = new() { "default" };
+    public List<string> StunServers { get; set; } = new();
 
     [XmlElement("maxConcurrentIncomingRequestKiB")]
     public int MaxConcurrentIncomingRequestKiB { get; set; } = 0;

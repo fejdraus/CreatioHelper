@@ -1358,9 +1358,6 @@
   <data name="About_Version" xml:space="preserve">
     <value>Version</value>
   </data>
-  <data name="About_DeviceID" xml:space="preserve">
-    <value>Device ID</value>
-  </data>
   <data name="About_Uptime" xml:space="preserve">
     <value>Uptime</value>
   </data>
@@ -1693,9 +1690,6 @@
   <data name="Profiling_Title" xml:space="preserve">
     <value>Performance Profiling</value>
   </data>
-  <data name="Profiling_CPUUsage" xml:space="preserve">
-    <value>CPU Usage</value>
-  </data>
   <data name="Profiling_AppMemory" xml:space="preserve">
     <value>App Memory</value>
   </data>
@@ -1735,12 +1729,6 @@
   <data name="Profiling_StackInUse" xml:space="preserve">
     <value>Stack In Use</value>
   </data>
-  <data name="Profiling_GCCollections" xml:space="preserve">
-    <value>GC Collections</value>
-  </data>
-  <data name="Profiling_GCPauseTotal" xml:space="preserve">
-    <value>GC Pause Total</value>
-  </data>
   <data name="Profiling_IOStatistics" xml:space="preserve">
     <value>I/O Statistics</value>
   </data>
@@ -1764,9 +1752,6 @@
   </data>
   <data name="Profiling_DebugActions" xml:space="preserve">
     <value>Debug Actions</value>
-  </data>
-  <data name="Profiling_ForceGC" xml:space="preserve">
-    <value>Force GC</value>
   </data>
   <data name="Profiling_DownloadHeapDump" xml:space="preserve">
     <value>Download Heap Dump</value>
@@ -3952,5 +3937,593 @@
   </data>
   <data name="FolderBrowser_Empty" xml:space="preserve">
     <value>No subfolders</value>
+  </data>
+  <data name="PendingDevices_Title" xml:space="preserve">
+    <value>Pending Devices</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptConfig" xml:space="preserve">
+    <value>Auto-Accept Configuration</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabled" xml:space="preserve">
+    <value>Auto-accept enabled</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptEnabledDesc" xml:space="preserve">
+    <value>Automatically accept devices that match the criteria</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFolders" xml:space="preserve">
+    <value>Default folders</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptDefaultFoldersDesc" xml:space="preserve">
+    <value>Automatically share these folders with new devices</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowListDesc" xml:space="preserve">
+    <value>Accept only devices from this list</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptAllowList" xml:space="preserve">
+    <value>Allow list</value>
+  </data>
+  <data name="PendingDevices_NoPending" xml:space="preserve">
+    <value>No pending devices</value>
+  </data>
+  <data name="PendingDevices_NoHistory" xml:space="preserve">
+    <value>No history</value>
+  </data>
+  <data name="PendingDevices_PendingList" xml:space="preserve">
+    <value>Pending devices</value>
+  </data>
+  <data name="PendingDevices_Accept" xml:space="preserve">
+    <value>Accept</value>
+  </data>
+  <data name="PendingDevices_AcceptWithFolders" xml:space="preserve">
+    <value>Accept and select folders</value>
+  </data>
+  <data name="PendingDevices_SelectFolders" xml:space="preserve">
+    <value>Select folders to share</value>
+  </data>
+  <data name="PendingDevices_Reject" xml:space="preserve">
+    <value>Reject</value>
+  </data>
+  <data name="PendingDevices_DeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="PendingDevices_DeviceName" xml:space="preserve">
+    <value>Device name</value>
+  </data>
+  <data name="PendingDevices_Address" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="PendingDevices_FirstSeen" xml:space="preserve">
+    <value>First seen</value>
+  </data>
+  <data name="PendingDevices_AcceptDevice" xml:space="preserve">
+    <value>Accept device</value>
+  </data>
+  <data name="PendingDevices_Accepted" xml:space="preserve">
+    <value>Device accepted</value>
+  </data>
+  <data name="PendingDevices_AutoAcceptIntroduced" xml:space="preserve">
+    <value>Accept introduced devices</value>
+  </data>
+  <data name="PendingDevices_RecentlyAccepted" xml:space="preserve">
+    <value>Recently accepted</value>
+  </data>
+  <data name="Profiling_CpuUsage" xml:space="preserve">
+    <value>CPU usage</value>
+  </data>
+  <data name="Profiling_AllocatedMem" xml:space="preserve">
+    <value>Allocated memory</value>
+  </data>
+  <data name="Profiling_Threads" xml:space="preserve">
+    <value>Threads</value>
+  </data>
+  <data name="Profiling_GcCollections" xml:space="preserve">
+    <value>GC collections</value>
+  </data>
+  <data name="Profiling_GcPauseTotal" xml:space="preserve">
+    <value>Total GC pause</value>
+  </data>
+  <data name="Profiling_ForceGc" xml:space="preserve">
+    <value>Force garbage collection</value>
+  </data>
+  <data name="Profiling_DownloadCpuProfile" xml:space="preserve">
+    <value>Download CPU profile</value>
+  </data>
+  <data name="SupportBundle_Title" xml:space="preserve">
+    <value>Support Bundle</value>
+  </data>
+  <data name="SupportBundle_Description" xml:space="preserve">
+    <value>Create a diagnostic bundle for troubleshooting. The bundle contains system information, configuration and logs.</value>
+  </data>
+  <data name="SupportBundle_IncludeOptions" xml:space="preserve">
+    <value>What to include</value>
+  </data>
+  <data name="SupportBundle_Configuration" xml:space="preserve">
+    <value>Configuration</value>
+  </data>
+  <data name="SupportBundle_ConfigurationDesc" xml:space="preserve">
+    <value>Current settings (sensitive data removed)</value>
+  </data>
+  <data name="SupportBundle_Logs" xml:space="preserve">
+    <value>Logs</value>
+  </data>
+  <data name="SupportBundle_LogsDesc" xml:space="preserve">
+    <value>Log entries from the last {0} day(s)</value>
+  </data>
+  <data name="SupportBundle_SystemInfo" xml:space="preserve">
+    <value>System information</value>
+  </data>
+  <data name="SupportBundle_SystemInfoDesc" xml:space="preserve">
+    <value>OS, version, architecture, resources</value>
+  </data>
+  <data name="SupportBundle_DatabaseStats" xml:space="preserve">
+    <value>Database statistics</value>
+  </data>
+  <data name="SupportBundle_DatabaseStatsDesc" xml:space="preserve">
+    <value>Database statistics and metrics</value>
+  </data>
+  <data name="SupportBundle_NetworkDiag" xml:space="preserve">
+    <value>Network diagnostics</value>
+  </data>
+  <data name="SupportBundle_NetworkDiagDesc" xml:space="preserve">
+    <value>Connection state and discovery information</value>
+  </data>
+  <data name="SupportBundle_PrivacyNote" xml:space="preserve">
+    <value>Privacy note</value>
+  </data>
+  <data name="SupportBundle_PrivacyText" xml:space="preserve">
+    <value>Sensitive information (API keys, passwords, device IDs) is removed from the bundle automatically.</value>
+  </data>
+  <data name="SupportBundle_Generating" xml:space="preserve">
+    <value>Creating bundle...</value>
+  </data>
+  <data name="SupportBundle_Generate" xml:space="preserve">
+    <value>Create bundle</value>
+  </data>
+  <data name="SystemLog_Title" xml:space="preserve">
+    <value>System Log</value>
+  </data>
+  <data name="SystemLog_AutoScroll" xml:space="preserve">
+    <value>Auto-scroll</value>
+  </data>
+  <data name="SystemLog_TailMode" xml:space="preserve">
+    <value>Tail mode</value>
+  </data>
+  <data name="SystemLog_Level" xml:space="preserve">
+    <value>Level</value>
+  </data>
+  <data name="SystemLog_AllLevels" xml:space="preserve">
+    <value>All levels</value>
+  </data>
+  <data name="SystemLog_Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="SystemLog_SearchPlaceholder" xml:space="preserve">
+    <value>Search the log...</value>
+  </data>
+  <data name="SystemLog_Download" xml:space="preserve">
+    <value>Download</value>
+  </data>
+  <data name="SystemLog_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="SystemLog_Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="SystemLog_NoLogs" xml:space="preserve">
+    <value>No log entries</value>
+  </data>
+  <data name="FolderDetails_Title" xml:space="preserve">
+    <value>Folder Details</value>
+  </data>
+  <data name="FolderDetails_Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="FolderDetails_Rescan" xml:space="preserve">
+    <value>Rescan</value>
+  </data>
+  <data name="FolderDetails_GlobalState" xml:space="preserve">
+    <value>Global state</value>
+  </data>
+  <data name="FolderDetails_Files" xml:space="preserve">
+    <value>Files</value>
+  </data>
+  <data name="FolderDetails_Size" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="FolderDetails_LocalState" xml:space="preserve">
+    <value>Local state</value>
+  </data>
+  <data name="FolderDetails_FolderType" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="FolderDetails_ViewErrors" xml:space="preserve">
+    <value>View errors</value>
+  </data>
+  <data name="FolderDetails_NoSharedDevices" xml:space="preserve">
+    <value>Not shared with any device</value>
+  </data>
+  <data name="FolderEdit_FolderLabelDesc" xml:space="preserve">
+    <value>Display name of the folder</value>
+  </data>
+  <data name="FolderEdit_FolderPathDesc" xml:space="preserve">
+    <value>Local path to the folder</value>
+  </data>
+  <data name="FolderEdit_FolderTypeDesc" xml:space="preserve">
+    <value>How this folder interacts with remote devices</value>
+  </data>
+  <data name="FolderEdit_Type_SendReceive" xml:space="preserve">
+    <value>Send &amp; Receive</value>
+  </data>
+  <data name="FolderEdit_Type_SendOnly" xml:space="preserve">
+    <value>Send Only</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveOnly" xml:space="preserve">
+    <value>Receive Only</value>
+  </data>
+  <data name="FolderEdit_Type_ReceiveEncrypted" xml:space="preserve">
+    <value>Receive Encrypted</value>
+  </data>
+  <data name="FolderEdit_FileOptions" xml:space="preserve">
+    <value>File options</value>
+  </data>
+  <data name="FolderEdit_FsWatcher" xml:space="preserve">
+    <value>Filesystem watcher</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelay" xml:space="preserve">
+    <value>Watcher delay (s)</value>
+  </data>
+  <data name="FolderEdit_FsWatcherDelayDesc" xml:space="preserve">
+    <value>Delay before change events are processed</value>
+  </data>
+  <data name="FolderEdit_RescanInterval" xml:space="preserve">
+    <value>Rescan interval (s)</value>
+  </data>
+  <data name="FolderEdit_RescanIntervalDesc" xml:space="preserve">
+    <value>How often to scan the folder for changes</value>
+  </data>
+  <data name="FolderEdit_IgnorePerms" xml:space="preserve">
+    <value>Ignore permissions</value>
+  </data>
+  <data name="FolderEdit_PullOrder" xml:space="preserve">
+    <value>Pull order</value>
+  </data>
+  <data name="FolderEdit_PullOrderDesc" xml:space="preserve">
+    <value>The order in which files are downloaded</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Random" xml:space="preserve">
+    <value>Random</value>
+  </data>
+  <data name="FolderEdit_PullOrder_Alphabetic" xml:space="preserve">
+    <value>Alphabetic</value>
+  </data>
+  <data name="FolderEdit_PullOrder_SmallestFirst" xml:space="preserve">
+    <value>Smallest first</value>
+  </data>
+  <data name="FolderEdit_PullOrder_LargestFirst" xml:space="preserve">
+    <value>Largest first</value>
+  </data>
+  <data name="FolderEdit_PullOrder_OldestFirst" xml:space="preserve">
+    <value>Oldest first</value>
+  </data>
+  <data name="FolderEdit_PullOrder_NewestFirst" xml:space="preserve">
+    <value>Newest first</value>
+  </data>
+  <data name="FolderEdit_Versioning" xml:space="preserve">
+    <value>Versioning</value>
+  </data>
+  <data name="FolderEdit_VersioningTypeDesc" xml:space="preserve">
+    <value>How old file versions are retained</value>
+  </data>
+  <data name="FolderEdit_Versioning_None" xml:space="preserve">
+    <value>Disabled</value>
+  </data>
+  <data name="FolderEdit_Versioning_Trashcan" xml:space="preserve">
+    <value>Trash can</value>
+  </data>
+  <data name="FolderEdit_Versioning_Simple" xml:space="preserve">
+    <value>Simple</value>
+  </data>
+  <data name="FolderEdit_Versioning_Staggered" xml:space="preserve">
+    <value>Staggered</value>
+  </data>
+  <data name="FolderEdit_Versioning_External" xml:space="preserve">
+    <value>External</value>
+  </data>
+  <data name="FolderEdit_StaggeredPath" xml:space="preserve">
+    <value>Versions path</value>
+  </data>
+  <data name="FolderEdit_StaggeredPathDesc" xml:space="preserve">
+    <value>Where to keep versions (empty = .stversions)</value>
+  </data>
+  <data name="FolderEdit_TrashcanDays" xml:space="preserve">
+    <value>Keep versions (days)</value>
+  </data>
+  <data name="FolderEdit_TrashcanDaysDesc" xml:space="preserve">
+    <value>How many days to keep deleted files (0 = forever)</value>
+  </data>
+  <data name="FolderEdit_SimpleKeep" xml:space="preserve">
+    <value>Versions to keep</value>
+  </data>
+  <data name="FolderEdit_SimpleKeepDesc" xml:space="preserve">
+    <value>How many versions to keep for each file</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAge" xml:space="preserve">
+    <value>Maximum age (days)</value>
+  </data>
+  <data name="FolderEdit_StaggeredMaxAgeDesc" xml:space="preserve">
+    <value>Delete versions older than this</value>
+  </data>
+  <data name="FolderEdit_ExternalCommand" xml:space="preserve">
+    <value>Command</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandDesc" xml:space="preserve">
+    <value>External command used for versioning</value>
+  </data>
+  <data name="FolderEdit_Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="FolderEdit_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="FolderEdit_Paused" xml:space="preserve">
+    <value>Paused</value>
+  </data>
+  <data name="FolderEdit_SaveSuccess" xml:space="preserve">
+    <value>Folder saved successfully</value>
+  </data>
+  <data name="FolderEdit_SaveError" xml:space="preserve">
+    <value>Failed to save folder: {0}</value>
+  </data>
+  <data name="FolderErrors_TotalErrors" xml:space="preserve">
+    <value>Total errors: {0}</value>
+  </data>
+  <data name="FolderErrors_File" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="FolderErrors_Rescan" xml:space="preserve">
+    <value>Rescan folder</value>
+  </data>
+  <data name="Connections_ActiveConns" xml:space="preserve">
+    <value>Active connections</value>
+  </data>
+  <data name="Connections_DirectConns" xml:space="preserve">
+    <value>Direct connections</value>
+  </data>
+  <data name="Connections_RelayConns" xml:space="preserve">
+    <value>Relay connections</value>
+  </data>
+  <data name="Connections_InRate" xml:space="preserve">
+    <value>Download rate</value>
+  </data>
+  <data name="Connections_OutRate" xml:space="preserve">
+    <value>Upload rate</value>
+  </data>
+  <data name="Connections_TotalIn" xml:space="preserve">
+    <value>Total received</value>
+  </data>
+  <data name="Connections_TotalOut" xml:space="preserve">
+    <value>Total sent</value>
+  </data>
+  <data name="Connections_Details" xml:space="preserve">
+    <value>Connection details</value>
+  </data>
+  <data name="Connections_ConnectedAt" xml:space="preserve">
+    <value>Connected</value>
+  </data>
+  <data name="Connections_Discovery" xml:space="preserve">
+    <value>Discovery</value>
+  </data>
+  <data name="Connections_ExternalAddr" xml:space="preserve">
+    <value>External address</value>
+  </data>
+  <data name="Events_FilterByType" xml:space="preserve">
+    <value>Filter by type</value>
+  </data>
+  <data name="Events_AllTypes" xml:space="preserve">
+    <value>All types</value>
+  </data>
+  <data name="Events_WaitingForEvents" xml:space="preserve">
+    <value>Waiting for events...</value>
+  </data>
+  <data name="Events_Data" xml:space="preserve">
+    <value>Data</value>
+  </data>
+  <data name="Statistics_TotalData" xml:space="preserve">
+    <value>Total data</value>
+  </data>
+  <data name="Statistics_TransferStats" xml:space="preserve">
+    <value>Transfer statistics</value>
+  </data>
+  <data name="Statistics_SystemStats" xml:space="preserve">
+    <value>System statistics</value>
+  </data>
+  <data name="Statistics_State" xml:space="preserve">
+    <value>State</value>
+  </data>
+  <data name="Settings_General_DeviceInfo" xml:space="preserve">
+    <value>Device information</value>
+  </data>
+  <data name="Settings_General_DeviceName" xml:space="preserve">
+    <value>Device name</value>
+  </data>
+  <data name="Settings_General_DeviceNameDesc" xml:space="preserve">
+    <value>The name shown to other devices</value>
+  </data>
+  <data name="Settings_General_DeviceId" xml:space="preserve">
+    <value>Device ID</value>
+  </data>
+  <data name="Settings_General_SyncDefaults" xml:space="preserve">
+    <value>Sync defaults</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPath" xml:space="preserve">
+    <value>Default folder path</value>
+  </data>
+  <data name="Settings_General_DefaultFolderPathDesc" xml:space="preserve">
+    <value>Default directory for new shared folders</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePerms" xml:space="preserve">
+    <value>Ignore permissions</value>
+  </data>
+  <data name="Settings_Advanced_IgnorePermsDesc" xml:space="preserve">
+    <value>Do not synchronize file permissions</value>
+  </data>
+  <data name="Settings_General_ApiSettings" xml:space="preserve">
+    <value>API settings</value>
+  </data>
+  <data name="Settings_General_ApiKey" xml:space="preserve">
+    <value>API key</value>
+  </data>
+  <data name="Settings_General_GenerateKey" xml:space="preserve">
+    <value>Generate key</value>
+  </data>
+  <data name="Settings_General_StartMinimized" xml:space="preserve">
+    <value>Start minimized</value>
+  </data>
+  <data name="Settings_General_StartMinimizedDesc" xml:space="preserve">
+    <value>Start the application minimized</value>
+  </data>
+  <data name="Settings_General_IdCopied" xml:space="preserve">
+    <value>Device ID copied</value>
+  </data>
+  <data name="Msg_FailedToLoadDevice" xml:space="preserve">
+    <value>Failed to load device: {0}</value>
+  </data>
+  <data name="Msg_FailedToUpdateDevice" xml:space="preserve">
+    <value>Failed to update device: {0}</value>
+  </data>
+  <data name="Msg_NotImplemented" xml:space="preserve">
+    <value>This feature is not implemented yet</value>
+  </data>
+  <data name="Common_Copy" xml:space="preserve">
+    <value>Copy</value>
+  </data>
+  <data name="Msg_FailedToLoad" xml:space="preserve">
+    <value>Failed to load data: {0}</value>
+  </data>
+  <data name="Msg_FailedToAcceptDevice" xml:space="preserve">
+    <value>Failed to accept device: {0}</value>
+  </data>
+  <data name="Msg_ConfirmRejectDevice" xml:space="preserve">
+    <value>Reject device '{0}'?</value>
+  </data>
+  <data name="Msg_FailedToRejectDevice" xml:space="preserve">
+    <value>Failed to reject device: {0}</value>
+  </data>
+  <data name="Msg_SettingsSaved" xml:space="preserve">
+    <value>Settings saved</value>
+  </data>
+  <data name="Msg_FailedToSave" xml:space="preserve">
+    <value>Failed to save: {0}</value>
+  </data>
+  <data name="Msg_CopiedToClipboard" xml:space="preserve">
+    <value>Copied to clipboard</value>
+  </data>
+  <data name="Msg_FailedToCopy" xml:space="preserve">
+    <value>Failed to copy to clipboard</value>
+  </data>
+  <data name="Profiling_CpuProfileRunning" xml:space="preserve">
+    <value>Profiling...</value>
+  </data>
+  <data name="Profiling_CpuProfileStarted" xml:space="preserve">
+    <value>CPU profiling started</value>
+  </data>
+  <data name="Profiling_CpuProfileDownloading" xml:space="preserve">
+    <value>Downloading CPU profile...</value>
+  </data>
+  <data name="Profiling_CpuProfileFailed" xml:space="preserve">
+    <value>Failed to collect CPU profile: {0}</value>
+  </data>
+  <data name="Msg_SyncedPercent" xml:space="preserve">
+    <value>{0} synced</value>
+  </data>
+  <data name="Msg_FilesNeedSync" xml:space="preserve">
+    <value>{0} files ({1}) need syncing</value>
+  </data>
+  <data name="Common_FileWatcher" xml:space="preserve">
+    <value>File watcher</value>
+  </data>
+  <data name="Common_IgnorePermissions" xml:space="preserve">
+    <value>Ignore permissions</value>
+  </data>
+  <data name="Msg_DeviceCount" xml:space="preserve">
+    <value>{0} device(s)</value>
+  </data>
+  <data name="Common_Errors" xml:space="preserve">
+    <value>Errors</value>
+  </data>
+  <data name="Common_Folders" xml:space="preserve">
+    <value>Folders</value>
+  </data>
+  <data name="Msg_FailedToLoadFolder" xml:space="preserve">
+    <value>Failed to load folder: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartScan" xml:space="preserve">
+    <value>Failed to start scan: {0}</value>
+  </data>
+  <data name="FolderEdit_NotFound" xml:space="preserve">
+    <value>Folder not found</value>
+  </data>
+  <data name="FolderEdit_AutoNormalize" xml:space="preserve">
+    <value>Auto normalize filenames</value>
+  </data>
+  <data name="FolderEdit_MaxConflictsDesc" xml:space="preserve">
+    <value>Maximum conflicting copies to keep (-1 = unlimited)</value>
+  </data>
+  <data name="FolderEdit_VersioningDesc" xml:space="preserve">
+    <value>Versioning keeps old copies of files that are replaced or deleted.</value>
+  </data>
+  <data name="FolderEdit_TrashcanInfo" xml:space="preserve">
+    <value>Trash can: replaced and deleted files are moved to .stversions and kept until cleaned out.</value>
+  </data>
+  <data name="FolderEdit_SimpleInfo" xml:space="preserve">
+    <value>Simple: a fixed number of old versions is kept for each file.</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDays" xml:space="preserve">
+    <value>Clean out after (days)</value>
+  </data>
+  <data name="FolderEdit_SimpleCleanoutDaysDesc" xml:space="preserve">
+    <value>Delete versions older than this (0 = keep forever)</value>
+  </data>
+  <data name="FolderEdit_StaggeredInfo" xml:space="preserve">
+    <value>Staggered: versions are kept with decreasing frequency as they age.</value>
+  </data>
+  <data name="FolderEdit_ExternalInfo" xml:space="preserve">
+    <value>External: a command you provide is executed before a file is replaced.</value>
+  </data>
+  <data name="FolderEdit_ExternalCommandRequired" xml:space="preserve">
+    <value>A command is required for external versioning</value>
+  </data>
+  <data name="FolderEdit_Resume" xml:space="preserve">
+    <value>Resume</value>
+  </data>
+  <data name="FolderEdit_LoadError" xml:space="preserve">
+    <value>Failed to load folder: {0}</value>
+  </data>
+  <data name="Msg_FailedToLoadErrors" xml:space="preserve">
+    <value>Failed to load errors: {0}</value>
+  </data>
+  <data name="Msg_FailedToStartRescan" xml:space="preserve">
+    <value>Failed to start rescan: {0}</value>
+  </data>
+  <data name="Msg_LoadSettingsFailed" xml:space="preserve">
+    <value>Failed to load settings: {0}</value>
+  </data>
+  <data name="Msg_SaveSettingsFailed" xml:space="preserve">
+    <value>Failed to save settings: {0}</value>
+  </data>
+  <data name="Common_Reset" xml:space="preserve">
+    <value>Reset</value>
+  </data>
+  <data name="Msg_ResetDatabaseFailed" xml:space="preserve">
+    <value>Failed to reset the database: {0}</value>
+  </data>
+  <data name="Msg_FactoryResetFailed" xml:space="preserve">
+    <value>Factory reset failed: {0}</value>
+  </data>
+  <data name="Msg_SettingsResetToDefaults" xml:space="preserve">
+    <value>Settings reset to defaults</value>
+  </data>
+  <data name="SupportBundle_LogDays" xml:space="preserve">
+    <value>Days</value>
   </data>
 </root>

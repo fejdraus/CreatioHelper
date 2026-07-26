@@ -411,26 +411,35 @@ public class SyncthingGlobalDiscovery : IDisposable
             if (string.IsNullOrWhiteSpace(addr))
                 continue;
 
-            // Remove relay:// prefix if present and add it back in standardized form
-            var address = addr;
-            if (address.StartsWith("relay://"))
+            var address = addr.Trim();
+
+            // Only relay addresses get the relay:// scheme. Direct listen addresses
+            // already carry their own (tcp://, quic://) and prefixing them produced
+            // nonsense like "relay://tcp://0.0.0.0:22000".
+            if (address.StartsWith("relay://", StringComparison.OrdinalIgnoreCase))
             {
-                address = address[8..]; // Remove "relay://"
+                sanitized.Add(address);
+                continue;
             }
 
-            // Basic validation - should contain host and port
-            if (address.Contains(':'))
+            if (address.Contains("://"))
             {
-                sanitized.Add($"relay://{address}");
-            }
-            else
-            {
-                // Direct TCP addresses
+                // Wildcard listen addresses say nothing about how to reach this device,
+                // so announcing them only pollutes the record on the discovery server.
+                if (address.Contains("//0.0.0.0:") || address.Contains("//[::]:"))
+                {
+                    continue;
+                }
+
                 sanitized.Add(address);
+                continue;
             }
+
+            // Bare host:port entries are relay addresses in Syncthing's announcement format
+            sanitized.Add(address.Contains(':') ? $"relay://{address}" : address);
         }
 
-        return sanitized;
+        return sanitized.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>

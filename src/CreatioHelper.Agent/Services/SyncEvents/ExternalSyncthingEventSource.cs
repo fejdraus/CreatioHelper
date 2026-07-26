@@ -2,6 +2,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
+using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Shared.Utils;
 
 namespace CreatioHelper.Agent.Services.SyncEvents;
@@ -492,23 +493,7 @@ public class ExternalSyncthingEventSource : ISyncEventSource
         return await SyncthingFolderStatusClient.GetFolderStatusAsync(
             _httpClientFactory, _httpClientName, folderId, _logger, cancellationToken).ConfigureAwait(false);
     }
-    private static FolderSyncState MapStateToFolderState(string state)
-    {
-        return state?.ToLowerInvariant() switch
-        {
-            "idle" => FolderSyncState.Idle,
-            "scanning" => FolderSyncState.Scanning,
-            "scan-waiting" => FolderSyncState.ScanWaiting,
-            "syncing" => FolderSyncState.Syncing,
-            "sync-waiting" => FolderSyncState.SyncWaiting,
-            "sync-preparing" => FolderSyncState.SyncPreparing,
-            "cleaning" => FolderSyncState.Cleaning,
-            "clean-waiting" => FolderSyncState.CleanWaiting,
-            "error" => FolderSyncState.Error,
-            "paused" => FolderSyncState.Paused,
-            _ => FolderSyncState.Unknown
-        };
-    }
+    private static FolderSyncState MapStateToFolderState(string state) => FolderSyncStates.Parse(state);
     private static bool TryGetProperty(JsonElement element, string name, out string value)
     {
         value = string.Empty;

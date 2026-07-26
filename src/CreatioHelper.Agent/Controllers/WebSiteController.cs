@@ -51,69 +51,61 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetAllSites([FromQuery] bool liveState = true)
     {
-        try
+        var sites = await _registryService.GetAllSitesAsync();
+
+        var controlMap = liveState
+            ? await _registryService.GetIisControlMapAsync()
+            : new Dictionary<string, SiteControlInfo>();
+
+        var enriched = new List<object>();
+        foreach (var site in sites)
         {
-            var sites = await _registryService.GetAllSitesAsync();
+            controlMap.TryGetValue(site.ServiceName, out var control);
 
-            var controlMap = liveState
-                ? await _registryService.GetIisControlMapAsync()
-                : new Dictionary<string, SiteControlInfo>();
+            // A nested application has no site state of its own; its effective state is the pool state.
+            var effectiveState = control == null
+                ? string.Empty
+                : (control.IsNested ? control.PoolState : control.SiteState);
 
-            var enriched = new List<object>();
-            foreach (var site in sites)
+            string status;
+            if (!liveState)
             {
-                controlMap.TryGetValue(site.ServiceName, out var control);
-
-                // A nested application has no site state of its own; its effective state is the pool state.
-                var effectiveState = control == null
-                    ? string.Empty
-                    : (control.IsNested ? control.PoolState : control.SiteState);
-
-                string status;
-                if (!liveState)
-                {
-                    status = site.Status;
-                }
-                else if (!string.IsNullOrEmpty(effectiveState))
-                {
-                    status = effectiveState;
-                }
-                else
-                {
-                    status = await GetLiveStateAsync(site);
-                }
-
-                enriched.Add(new
-                {
-                    site.Name,
-                    site.Type,
-                    site.WebServerType,
-                    site.ServiceName,
-                    site.AutoDiscovered,
-                    site.FolderIds,
-                    Status = status,
-                    AppPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : (control?.AppPool ?? string.Empty),
-                    SiteState = control?.SiteState ?? string.Empty,
-                    PoolState = control?.PoolState ?? string.Empty,
-                    CanManage = control?.CanManage ?? true,
-                    PoolShared = control?.PoolShared ?? false,
-                    IsNested = control?.IsNested ?? false
-                });
+                status = site.Status;
+            }
+            else if (!string.IsNullOrEmpty(effectiveState))
+            {
+                status = effectiveState;
+            }
+            else
+            {
+                status = await GetLiveStateAsync(site);
             }
 
-            var response = new
+            enriched.Add(new
             {
-                TotalSites = sites.Count,
-                Sites = enriched
-            };
+                site.Name,
+                site.Type,
+                site.WebServerType,
+                site.ServiceName,
+                site.AutoDiscovered,
+                site.FolderIds,
+                Status = status,
+                AppPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : (control?.AppPool ?? string.Empty),
+                SiteState = control?.SiteState ?? string.Empty,
+                PoolState = control?.PoolState ?? string.Empty,
+                CanManage = control?.CanManage ?? true,
+                PoolShared = control?.PoolShared ?? false,
+                IsNested = control?.IsNested ?? false
+            });
+        }
 
-            return Ok(response);
-        }
-        catch (Exception ex)
+        var response = new
         {
-            _logger.LogError(ex, "Error getting all sites");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            TotalSites = sites.Count,
+            Sites = enriched
+        };
+
+        return Ok(response);
     }
     
     /// <summary>
@@ -128,34 +120,26 @@ public class WebSiteController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        try
+        // Check whether a site with the same name already exists
+        var existingSite = await _registryService.GetSiteInfoAsync(request.DisplayName);
+        if (existingSite != null && existingSite.AutoDiscovered)
         {
-            // Check whether a site with the same name already exists
-            var existingSite = await _registryService.GetSiteInfoAsync(request.DisplayName);
-            if (existingSite != null && existingSite.AutoDiscovered)
-            {
-                return Conflict($"Site '{request.DisplayName}' already exists and was auto-discovered. Cannot register manually.");
-            }
-            
-            await _registryService.RegisterWebSiteAsync(
-                request.DisplayName,
-                request.Type,
-                request.ServiceName,
-                request.FolderIds,
-                request.Properties,
-                request.AppPool);
+            return Conflict($"Site '{request.DisplayName}' already exists and was auto-discovered. Cannot register manually.");
+        }
+        
+        await _registryService.RegisterWebSiteAsync(
+            request.DisplayName,
+            request.Type,
+            request.ServiceName,
+            request.FolderIds,
+            request.Properties,
+            request.AppPool);
 
-            _logger.LogInformation("Successfully registered site: {DisplayName}", request.DisplayName);
-            return Ok(new { 
-                Message = $"Site '{request.DisplayName}' registered successfully",
-                Site = await _registryService.GetSiteInfoAsync(request.DisplayName)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error registering site {DisplayName}", request.DisplayName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Successfully registered site: {DisplayName}", request.DisplayName);
+        return Ok(new { 
+            Message = $"Site '{request.DisplayName}' registered successfully",
+            Site = await _registryService.GetSiteInfoAsync(request.DisplayName)
+        });
     }
     
     /// <summary>
@@ -170,37 +154,29 @@ public class WebSiteController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        try
+        var existingSite = await _registryService.GetSiteInfoAsync(siteName);
+        if (existingSite == null)
         {
-            var existingSite = await _registryService.GetSiteInfoAsync(siteName);
-            if (existingSite == null)
-            {
-                return NotFound($"Site '{siteName}' not found");
-            }
-            
-            if (existingSite.AutoDiscovered)
-            {
-                return BadRequest($"Cannot update auto-discovered site '{siteName}'. Only manually registered sites can be updated.");
-            }
-            
-            await _registryService.RegisterWebSiteAsync(
-                siteName,
-                request.Type,
-                request.ServiceName,
-                request.FolderIds,
-                request.Properties,
-                request.AppPool);
+            return NotFound($"Site '{siteName}' not found");
+        }
+        
+        if (existingSite.AutoDiscovered)
+        {
+            return BadRequest($"Cannot update auto-discovered site '{siteName}'. Only manually registered sites can be updated.");
+        }
+        
+        await _registryService.RegisterWebSiteAsync(
+            siteName,
+            request.Type,
+            request.ServiceName,
+            request.FolderIds,
+            request.Properties,
+            request.AppPool);
 
-            return Ok(new {
-                Message = $"Site '{siteName}' updated successfully",
-                Site = await _registryService.GetSiteInfoAsync(siteName)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(new {
+            Message = $"Site '{siteName}' updated successfully",
+            Site = await _registryService.GetSiteInfoAsync(siteName)
+        });
     }
     
     /// <summary>
@@ -215,20 +191,12 @@ public class WebSiteController : ControllerBase
             return BadRequest($"Invalid web server type '{request.Type}'. Allowed: Auto, Iis, Service.");
         }
 
-        try
+        await _registryService.SetWebServerTypeAsync(siteName, kind);
+        return Ok(new
         {
-            await _registryService.SetWebServerTypeAsync(siteName, kind);
-            return Ok(new
-            {
-                Message = $"Web server type for '{siteName}' set to {kind}",
-                Site = await _registryService.GetSiteInfoAsync(siteName)
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error setting web server type for site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            Message = $"Web server type for '{siteName}' set to {kind}",
+            Site = await _registryService.GetSiteInfoAsync(siteName)
+        });
     }
 
     /// <summary>
@@ -238,24 +206,16 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> DetectIisSite([FromQuery] string path)
     {
-        try
-        {
-            var siteName = await _registryService.DetectIisSiteByPathAsync(path);
+        var siteName = await _registryService.DetectIisSiteByPathAsync(path);
 
-            var appPool = string.Empty;
-            if (!string.IsNullOrEmpty(siteName))
-            {
-                var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(siteName);
-                appPool = control?.AppPool ?? string.Empty;
-            }
-
-            return Ok(new { SiteName = siteName, AppPool = appPool, RequiresElevation = _accessStatus.RequiresElevation });
-        }
-        catch (Exception ex)
+        var appPool = string.Empty;
+        if (!string.IsNullOrEmpty(siteName))
         {
-            _logger.LogError(ex, "Error detecting IIS site by path {Path}", path);
-            return StatusCode(500, new { error = "Internal server error" });
+            var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(siteName);
+            appPool = control?.AppPool ?? string.Empty;
         }
+
+        return Ok(new { SiteName = siteName, AppPool = appPool, RequiresElevation = _accessStatus.RequiresElevation });
     }
 
     /// <summary>
@@ -265,17 +225,9 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> DiscoverSites()
     {
-        try
-        {
-            var configured = (await _registryService.GetAllSitesAsync()).Select(s => s.ServiceName).ToList();
-            var sites = await _registryService.DiscoverCreatioSitesAsync(configured);
-            return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error discovering Creatio sites");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var configured = (await _registryService.GetAllSitesAsync()).Select(s => s.ServiceName).ToList();
+        var sites = await _registryService.DiscoverCreatioSitesAsync(configured);
+        return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
     }
 
     /// <summary>
@@ -285,16 +237,8 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> DetectIisSitesBatch([FromBody] string[] paths)
     {
-        try
-        {
-            var sites = await _registryService.DetectIisSitesByPathsAsync(paths ?? Array.Empty<string>());
-            return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error detecting IIS sites by paths");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var sites = await _registryService.DetectIisSitesByPathsAsync(paths ?? Array.Empty<string>());
+        return Ok(new { Sites = sites, RequiresElevation = _accessStatus.RequiresElevation });
     }
 
     [HttpPost("{siteName}/start")]
@@ -317,92 +261,84 @@ public class WebSiteController : ControllerBase
             return NotFound($"Site '{siteName}' not found");
         }
 
-        try
+        var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(site.ServiceName);
+
+        // IIS site/application: pool-aware, nesting-safe handling
+        if (control != null)
         {
-            var control = (await _registryService.GetIisControlMapAsync()).GetValueOrDefault(site.ServiceName);
-
-            // IIS site/application: pool-aware, nesting-safe handling
-            if (control != null)
+            if (!control.CanManage)
             {
-                if (!control.CanManage)
+                return BadRequest(new
                 {
-                    return BadRequest(new
-                    {
-                        Success = false,
-                        Message = $"'{site.ServiceName}' is a nested application on a shared app pool ('{control.AppPool}'). Stopping the pool would affect other sites, so start/stop is disabled."
-                    });
-                }
+                    Success = false,
+                    Message = $"'{site.ServiceName}' is a nested application on a shared app pool ('{control.AppPool}'). Stopping the pool would affect other sites, so start/stop is disabled."
+                });
+            }
 
-                var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
-                var steps = new List<(bool Ok, string Message)>();
+            var manager = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+            var steps = new List<(bool Ok, string Message)>();
 
-                // The app pool is only touched when it is dedicated; a shared pool is left alone
-                // so stopping one site cannot take down other sites/applications on the same pool.
-                var targetPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : control.AppPool;
-                var canControlPool = !string.IsNullOrEmpty(targetPool) && !control.PoolShared;
+            // The app pool is only touched when it is dedicated; a shared pool is left alone
+            // so stopping one site cannot take down other sites/applications on the same pool.
+            var targetPool = !string.IsNullOrEmpty(site.AppPool) ? site.AppPool : control.AppPool;
+            var canControlPool = !string.IsNullOrEmpty(targetPool) && !control.PoolShared;
 
-                async Task ApplyAsync(bool doStart)
+            async Task ApplyAsync(bool doStart)
+            {
+                if (doStart)
                 {
-                    if (doStart)
+                    if (canControlPool)
                     {
-                        if (canControlPool)
-                        {
-                            steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: true));
-                        }
-                        if (!control.IsNested)
-                        {
-                            var r = await manager.StartSiteAsync(site.ServiceName);
-                            steps.Add((r.Success, r.Message));
-                        }
+                        steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: true));
                     }
-                    else
+                    if (!control.IsNested)
                     {
-                        if (!control.IsNested)
-                        {
-                            var r = await manager.StopSiteAsync(site.ServiceName);
-                            steps.Add((r.Success, r.Message));
-                        }
-                        if (canControlPool)
-                        {
-                            steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: false));
-                        }
+                        var r = await manager.StartSiteAsync(site.ServiceName);
+                        steps.Add((r.Success, r.Message));
                     }
-                }
-
-                if (restart)
-                {
-                    await ApplyAsync(false);
-                    await ApplyAsync(true);
                 }
                 else
                 {
-                    await ApplyAsync(start);
+                    if (!control.IsNested)
+                    {
+                        var r = await manager.StopSiteAsync(site.ServiceName);
+                        steps.Add((r.Success, r.Message));
+                    }
+                    if (canControlPool)
+                    {
+                        steps.Add(await _registryService.SetAppPoolStateAsync(targetPool, start: false));
+                    }
                 }
-
-                var ok = steps.All(s => s.Ok);
-                var message = string.Join("; ", steps.Select(s => s.Message));
-                return ok ? Ok(new { Success = ok, Message = message }) : BadRequest(new { Success = ok, Message = message });
             }
 
-            // Non-IIS (service-managed) sites keep the original behavior
-            var mgr = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
             if (restart)
             {
-                await mgr.StopSiteAsync(site.ServiceName);
+                await ApplyAsync(false);
+                await ApplyAsync(true);
             }
-            var result = start
-                ? await mgr.StartSiteAsync(site.ServiceName)
-                : await mgr.StopSiteAsync(site.ServiceName);
+            else
+            {
+                await ApplyAsync(start);
+            }
 
-            return result.Success
-                ? Ok(new { result.Success, result.Message })
-                : BadRequest(new { result.Success, result.Message });
+            var ok = steps.All(s => s.Ok);
+            var message = string.Join("; ", steps.Select(s => s.Message));
+            return ok ? Ok(new { Success = ok, Message = message }) : BadRequest(new { Success = ok, Message = message });
         }
-        catch (Exception ex)
+
+        // Non-IIS (service-managed) sites keep the original behavior
+        var mgr = await _webServerFactory.CreateWebServerServiceForSiteAsync(site);
+        if (restart)
         {
-            _logger.LogError(ex, "Error changing state for site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
+            await mgr.StopSiteAsync(site.ServiceName);
         }
+        var result = start
+            ? await mgr.StartSiteAsync(site.ServiceName)
+            : await mgr.StopSiteAsync(site.ServiceName);
+
+        return result.Success
+            ? Ok(new { result.Success, result.Message })
+            : BadRequest(new { result.Success, result.Message });
     }
 
     /// <summary>
@@ -412,28 +348,20 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> UnregisterSite(string siteName)
     {
-        try
+        var existingSite = await _registryService.GetSiteInfoAsync(siteName);
+        if (existingSite == null)
         {
-            var existingSite = await _registryService.GetSiteInfoAsync(siteName);
-            if (existingSite == null)
-            {
-                return NotFound($"Site '{siteName}' not found");
-            }
-            
-            if (existingSite.AutoDiscovered)
-            {
-                return BadRequest($"Cannot unregister auto-discovered site '{siteName}'. Only manually registered sites can be unregistered.");
-            }
-            
-            await _registryService.UnregisterWebSiteAsync(siteName);
-            _logger.LogInformation("Successfully unregistered site: {SiteName}", siteName);
-            return Ok(new { Message = $"Site '{siteName}' unregistered successfully" });
+            return NotFound($"Site '{siteName}' not found");
         }
-        catch (Exception ex)
+        
+        if (existingSite.AutoDiscovered)
         {
-            _logger.LogError(ex, "Error unregistering site {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
+            return BadRequest($"Cannot unregister auto-discovered site '{siteName}'. Only manually registered sites can be unregistered.");
         }
+        
+        await _registryService.UnregisterWebSiteAsync(siteName);
+        _logger.LogInformation("Successfully unregistered site: {SiteName}", siteName);
+        return Ok(new { Message = $"Site '{siteName}' unregistered successfully" });
     }
 
     /// <summary>
@@ -443,21 +371,13 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSiteInfo(string siteName)
     {
-        try
+        var siteInfo = await _registryService.GetSiteInfoAsync(siteName);
+        if (siteInfo == null)
         {
-            var siteInfo = await _registryService.GetSiteInfoAsync(siteName);
-            if (siteInfo == null)
-            {
-                return NotFound($"Site '{siteName}' not found");
-            }
-            
-            return Ok(siteInfo);
+            return NotFound($"Site '{siteName}' not found");
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting site info for {SiteName}", siteName);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        
+        return Ok(siteInfo);
     }
     
     /// <summary>
@@ -486,23 +406,15 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSitesByType(string type)
     {
-        try
+        var allSites = await _registryService.GetAllSitesAsync();
+        var sitesByType = allSites.Where(s => s.Type.Equals(type, StringComparison.OrdinalIgnoreCase)).ToList();
+        
+        return Ok(new
         {
-            var allSites = await _registryService.GetAllSitesAsync();
-            var sitesByType = allSites.Where(s => s.Type.Equals(type, StringComparison.OrdinalIgnoreCase)).ToList();
-            
-            return Ok(new
-            {
-                Type = type,
-                sitesByType.Count,
-                Sites = sitesByType
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting sites by type {Type}", type);
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            Type = type,
+            sitesByType.Count,
+            Sites = sitesByType
+        });
     }
     
     /// <summary>
@@ -512,33 +424,25 @@ public class WebSiteController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSiteStats()
     {
-        try
+        var sites = await _registryService.GetAllSitesAsync();
+        
+        var stats = new
         {
-            var sites = await _registryService.GetAllSitesAsync();
-            
-            var stats = new
-            {
-                TotalSites = sites.Count,
-                AutoDiscovered = sites.Count(s => s.AutoDiscovered),
-                ManuallyRegistered = sites.Count(s => !s.AutoDiscovered),
-                ByType = sites.GroupBy(s => s.Type)
-                             .ToDictionary(g => g.Key, g => new
-                             {
-                                 Total = g.Count(),
-                                 AutoDiscovered = g.Count(s => s.AutoDiscovered),
-                                 ManuallyRegistered = g.Count(s => !s.AutoDiscovered)
-                             }),
-                ByStatus = sites.GroupBy(s => s.Status)
-                              .ToDictionary(g => g.Key, g => g.Count()),
-                LastUpdated = DateTime.UtcNow
-            };
-            
-            return Ok(stats);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting site stats");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            TotalSites = sites.Count,
+            AutoDiscovered = sites.Count(s => s.AutoDiscovered),
+            ManuallyRegistered = sites.Count(s => !s.AutoDiscovered),
+            ByType = sites.GroupBy(s => s.Type)
+                         .ToDictionary(g => g.Key, g => new
+                         {
+                             Total = g.Count(),
+                             AutoDiscovered = g.Count(s => s.AutoDiscovered),
+                             ManuallyRegistered = g.Count(s => !s.AutoDiscovered)
+                         }),
+            ByStatus = sites.GroupBy(s => s.Status)
+                          .ToDictionary(g => g.Key, g => g.Count()),
+            LastUpdated = DateTime.UtcNow
+        };
+        
+        return Ok(stats);
     }
 }

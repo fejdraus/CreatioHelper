@@ -10,8 +10,9 @@
     <Version>1.0.24</Version>
     <AssemblyVersion>1.0.24.0</AssemblyVersion>
     <FileVersion>1.0.24.0</FileVersion>
-    <Product>CreatioHelper</Product>
-    <Description>Syncthing-compatible file synchronization with Creatio management</Description>
+    <Product>CreatioHelper Agent</Product>
+    <AssemblyTitle>CreatioHelper Agent</AssemblyTitle>
+    <Description>CreatioHelper Agent - Syncthing-compatible file synchronization with Creatio management</Description>
 
     <!-- Define compilation symbols for different platforms -->
     <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>

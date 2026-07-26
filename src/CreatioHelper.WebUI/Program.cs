@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Globalization;
 using Blazored.LocalStorage;
 using CreatioHelper.WebUI;
@@ -69,6 +70,13 @@ static async Task SetCultureFromStorageAsync(IServiceProvider services)
         // Read language from localStorage using JS interop
         var savedLanguage = await jsRuntime.InvokeAsync<string?>("localStorage.getItem", new object[] { "gui_language" });
 
+        // Nothing stored in this browser yet - fall back to the language configured on the agent,
+        // so the login page shows up in the same language as the rest of the interface.
+        if (string.IsNullOrEmpty(savedLanguage))
+        {
+            savedLanguage = await GetAgentLanguageAsync(services);
+        }
+
         if (!string.IsNullOrEmpty(savedLanguage))
         {
             // Remove quotes if JSON serialized
@@ -78,6 +86,7 @@ static async Task SetCultureFromStorageAsync(IServiceProvider services)
             {
                 { "en", "en-US" },
                 { "ru", "ru-RU" },
+                { "uk", "uk-UA" },
                 { "de", "de-DE" },
                 { "fr", "fr-FR" },
                 { "es", "es-ES" }
@@ -95,4 +104,25 @@ static async Task SetCultureFromStorageAsync(IServiceProvider services)
     {
         // Use default culture if localStorage is not available
     }
+}
+
+// Ask the agent which language it is configured for; used when this browser has no stored preference
+static async Task<string?> GetAgentLanguageAsync(IServiceProvider services)
+{
+    try
+    {
+        var httpClient = services.GetRequiredService<HttpClient>();
+        var response = await httpClient.GetFromJsonAsync<AgentLanguage>("/rest/system/ui-language");
+        return response?.Language;
+    }
+    catch
+    {
+        return null;
+    }
+}
+
+sealed class AgentLanguage
+{
+    [System.Text.Json.Serialization.JsonPropertyName("language")]
+    public string? Language { get; set; }
 }

@@ -36,27 +36,19 @@ public class SecurityController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetSecurityConfiguration(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-            var statistics = await _securityAuditor.GetSecurityStatisticsAsync(cancellationToken);
+        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+        var statistics = await _securityAuditor.GetSecurityStatisticsAsync(cancellationToken);
 
-            var response = new
-            {
-                TrustedDevicesCount = trustedDevices.Count,
-                CertificatesRequiringRenewal = statistics.CertificatesRequiringRenewal,
-                SecurityEvents24h = statistics.EventsLast24Hours,
-                LastSecurityAudit = statistics.LastSecurityAudit,
-                IsSecurelyConfigured = statistics.TotalSecurityEvents == 0 || statistics.EventsBySeverity.GetValueOrDefault(SecuritySeverity.Critical) == 0
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
+        var response = new
         {
-            _logger.LogError(ex, "Error getting security configuration");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            TrustedDevicesCount = trustedDevices.Count,
+            CertificatesRequiringRenewal = statistics.CertificatesRequiringRenewal,
+            SecurityEvents24h = statistics.EventsLast24Hours,
+            LastSecurityAudit = statistics.LastSecurityAudit,
+            IsSecurelyConfigured = statistics.TotalSecurityEvents == 0 || statistics.EventsBySeverity.GetValueOrDefault(SecuritySeverity.Critical) == 0
+        };
+
+        return Ok(response);
     }
 
     /// <summary>
@@ -66,37 +58,29 @@ public class SecurityController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetCertificates(CancellationToken cancellationToken = default)
     {
-        try
+        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+        
+        var certificatesInfo = trustedDevices.Select(device => new
         {
-            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-            
-            var certificatesInfo = trustedDevices.Select(device => new
+            device.DeviceId,
+            Certificate = device.Certificate != null ? new
             {
-                device.DeviceId,
-                Certificate = device.Certificate != null ? new
-                {
-                    device.Certificate.Fingerprint,
-                    device.Certificate.Subject,
-                    device.Certificate.IssuedAt,
-                    device.Certificate.ExpiresAt,
-                    device.Certificate.SignatureAlgorithm,
-                    device.Certificate.KeySize,
-                    IsValid = device.Certificate.IsValidAt(DateTime.UtcNow),
-                    IsExpiringSoon = device.Certificate.IsExpiringSoon(30),
-                    DaysUntilExpiry = device.Certificate.DaysUntilExpiry()
-                } : null,
-                device.IsTrusted,
-                device.AllowAutoConnect,
-                device.RequireTls13
-            }).ToList();
+                device.Certificate.Fingerprint,
+                device.Certificate.Subject,
+                device.Certificate.IssuedAt,
+                device.Certificate.ExpiresAt,
+                device.Certificate.SignatureAlgorithm,
+                device.Certificate.KeySize,
+                IsValid = device.Certificate.IsValidAt(DateTime.UtcNow),
+                IsExpiringSoon = device.Certificate.IsExpiringSoon(30),
+                DaysUntilExpiry = device.Certificate.DaysUntilExpiry()
+            } : null,
+            device.IsTrusted,
+            device.AllowAutoConnect,
+            device.RequireTls13
+        }).ToList();
 
-            return Ok(certificatesInfo);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting certificates information");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(certificatesInfo);
     }
 
     /// <summary>
@@ -108,54 +92,46 @@ public class SecurityController : ControllerBase
         [FromBody] CreateCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var certificate = await _certificateManager.CreateDeviceCertificateAsync(
+            request.CommonName,
+            request.ValidityDays,
+            request.SignatureAlgorithm,
+            cancellationToken);
+
+        var deviceId = _certificateManager.ComputeDeviceId(certificate);
+        var certificateInfo = _certificateManager.GetCertificateInfo(certificate);
+
+        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
         {
-            var certificate = await _certificateManager.CreateDeviceCertificateAsync(
-                request.CommonName,
-                request.ValidityDays,
-                request.SignatureAlgorithm,
-                cancellationToken);
-
-            var deviceId = _certificateManager.ComputeDeviceId(certificate);
-            var certificateInfo = _certificateManager.GetCertificateInfo(certificate);
-
-            await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
+            EventType = SecurityEventType.CertificateCreated,
+            Severity = SecuritySeverity.Info,
+            Message = $"New certificate created for {request.CommonName}",
+            Details = new Dictionary<string, object>
             {
-                EventType = SecurityEventType.CertificateCreated,
-                Severity = SecuritySeverity.Info,
-                Message = $"New certificate created for {request.CommonName}",
-                Details = new Dictionary<string, object>
-                {
-                    ["DeviceId"] = deviceId,
-                    ["CommonName"] = request.CommonName,
-                    ["ValidityDays"] = request.ValidityDays,
-                    ["SignatureAlgorithm"] = request.SignatureAlgorithm.ToString()
-                }
-            }, cancellationToken);
+                ["DeviceId"] = deviceId,
+                ["CommonName"] = request.CommonName,
+                ["ValidityDays"] = request.ValidityDays,
+                ["SignatureAlgorithm"] = request.SignatureAlgorithm.ToString()
+            }
+        }, cancellationToken);
 
-            var response = new
-            {
-                DeviceId = deviceId,
-                Certificate = new
-                {
-                    certificateInfo.Fingerprint,
-                    certificateInfo.Subject,
-                    certificateInfo.IssuedAt,
-                    certificateInfo.ExpiresAt,
-                    certificateInfo.SignatureAlgorithm,
-                    certificateInfo.KeySize
-                },
-                CertificatePem = certificate.ExportCertificatePem(),
-                Message = "Certificate created successfully"
-            };
-
-            return Ok(response);
-        }
-        catch (Exception ex)
+        var response = new
         {
-            _logger.LogError(ex, "Error creating certificate");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            DeviceId = deviceId,
+            Certificate = new
+            {
+                certificateInfo.Fingerprint,
+                certificateInfo.Subject,
+                certificateInfo.IssuedAt,
+                certificateInfo.ExpiresAt,
+                certificateInfo.SignatureAlgorithm,
+                certificateInfo.KeySize
+            },
+            CertificatePem = certificate.ExportCertificatePem(),
+            Message = "Certificate created successfully"
+        };
+
+        return Ok(response);
     }
 
     /// <summary>
@@ -167,37 +143,29 @@ public class SecurityController : ControllerBase
         [FromBody] ValidateCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
+        byte[] certificateBytes;
+        X509Certificate2 certificate;
+
         try
         {
-            byte[] certificateBytes;
-            X509Certificate2 certificate;
-
-            try
-            {
-                certificateBytes = Convert.FromBase64String(request.CertificateBase64);
-                certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
-            }
-            catch (FormatException)
-            {
-                return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
-            }
-            catch (System.Security.Cryptography.CryptographicException)
-            {
-                return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
-            }
-
-            var validationResult = await _certificateManager.ValidateCertificateAsync(
-                certificate,
-                request.ExpectedFingerprint,
-                cancellationToken);
-
-            return Ok(validationResult);
+            certificateBytes = Convert.FromBase64String(request.CertificateBase64);
+            certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
         }
-        catch (Exception ex)
+        catch (FormatException)
         {
-            _logger.LogError(ex, "Error validating certificate");
-            return StatusCode(500, new { error = "Internal server error" });
+            return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
         }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
+        }
+
+        var validationResult = await _certificateManager.ValidateCertificateAsync(
+            certificate,
+            request.ExpectedFingerprint,
+            cancellationToken);
+
+        return Ok(validationResult);
     }
 
     /// <summary>
@@ -209,53 +177,45 @@ public class SecurityController : ControllerBase
         [FromBody] AddTrustedDeviceRequest request,
         CancellationToken cancellationToken = default)
     {
+        byte[] certificateBytes;
+        X509Certificate2 certificate;
+
         try
         {
-            byte[] certificateBytes;
-            X509Certificate2 certificate;
-
-            try
-            {
-                certificateBytes = Convert.FromBase64String(request.CertificateBase64);
-                certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
-            }
-            catch (FormatException)
-            {
-                return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
-            }
-            catch (System.Security.Cryptography.CryptographicException)
-            {
-                return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
-            }
-
-            var deviceId = _certificateManager.ComputeDeviceId(certificate);
-
-            await _certificateManager.AddTrustedDeviceAsync(deviceId, certificate, cancellationToken);
-
-            await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-            {
-                EventType = SecurityEventType.ConfigurationChanged,
-                DeviceId = deviceId,
-                Severity = SecuritySeverity.Info,
-                Message = $"Device {deviceId} added to trusted devices",
-                Details = new Dictionary<string, object>
-                {
-                    ["DeviceId"] = deviceId,
-                    ["DeviceName"] = request.DeviceName
-                }
-            }, cancellationToken);
-
-            return Ok(new { 
-                success = true, 
-                message = "Device added to trusted devices", 
-                deviceId = deviceId 
-            });
+            certificateBytes = Convert.FromBase64String(request.CertificateBase64);
+            certificate = X509CertificateLoader.LoadCertificate(certificateBytes);
         }
-        catch (Exception ex)
+        catch (FormatException)
         {
-            _logger.LogError(ex, "Error adding trusted device");
-            return StatusCode(500, new { error = "Internal server error" });
+            return BadRequest(new { error = "Invalid Base64 format", message = "The certificate data is not valid Base64" });
         }
+        catch (System.Security.Cryptography.CryptographicException)
+        {
+            return BadRequest(new { error = "Invalid certificate", message = "The certificate data is not valid" });
+        }
+
+        var deviceId = _certificateManager.ComputeDeviceId(certificate);
+
+        await _certificateManager.AddTrustedDeviceAsync(deviceId, certificate, cancellationToken);
+
+        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
+        {
+            EventType = SecurityEventType.ConfigurationChanged,
+            DeviceId = deviceId,
+            Severity = SecuritySeverity.Info,
+            Message = $"Device {deviceId} added to trusted devices",
+            Details = new Dictionary<string, object>
+            {
+                ["DeviceId"] = deviceId,
+                ["DeviceName"] = request.DeviceName
+            }
+        }, cancellationToken);
+
+        return Ok(new { 
+            success = true, 
+            message = "Device added to trusted devices", 
+            deviceId = deviceId 
+        });
     }
 
     /// <summary>
@@ -267,28 +227,20 @@ public class SecurityController : ControllerBase
         string deviceId,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            await _certificateManager.RemoveTrustedDeviceAsync(deviceId, cancellationToken);
+        await _certificateManager.RemoveTrustedDeviceAsync(deviceId, cancellationToken);
 
-            await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-            {
-                EventType = SecurityEventType.ConfigurationChanged,
-                DeviceId = deviceId,
-                Severity = SecuritySeverity.Warning,
-                Message = $"Device {deviceId} removed from trusted devices"
-            }, cancellationToken);
-
-            return Ok(new { 
-                success = true, 
-                message = "Device removed from trusted devices" 
-            });
-        }
-        catch (Exception ex)
+        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
         {
-            _logger.LogError(ex, "Error removing trusted device");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            EventType = SecurityEventType.ConfigurationChanged,
+            DeviceId = deviceId,
+            Severity = SecuritySeverity.Warning,
+            Message = $"Device {deviceId} removed from trusted devices"
+        }, cancellationToken);
+
+        return Ok(new { 
+            success = true, 
+            message = "Device removed from trusted devices" 
+        });
     }
 
     /// <summary>
@@ -298,16 +250,8 @@ public class SecurityController : ControllerBase
     [Authorize(Roles = Roles.ReadRoles)]
     public async Task<IActionResult> GetTrustedDevices(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-            return Ok(trustedDevices);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting trusted devices");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+        return Ok(trustedDevices);
     }
 
     /// <summary>
@@ -317,16 +261,8 @@ public class SecurityController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<IActionResult> PerformSecurityAudit(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var auditResult = await _securityAuditor.PerformSecurityAuditAsync(cancellationToken);
-            return Ok(auditResult);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error performing security audit");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var auditResult = await _securityAuditor.PerformSecurityAuditAsync(cancellationToken);
+        return Ok(auditResult);
     }
 
     /// <summary>
@@ -336,16 +272,8 @@ public class SecurityController : ControllerBase
     [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<IActionResult> GetSecurityStatistics(CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var statistics = await _securityAuditor.GetSecurityStatisticsAsync(cancellationToken);
-            return Ok(statistics);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting security statistics");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        var statistics = await _securityAuditor.GetSecurityStatisticsAsync(cancellationToken);
+        return Ok(statistics);
     }
 
     /// <summary>
@@ -360,19 +288,11 @@ public class SecurityController : ControllerBase
         [FromQuery] int limit = 100,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var maxLimit = Math.Min(limit, 1000);
-            var events = await _securityAuditor.GetSecurityEventsAsync(
-                since, eventType, deviceId, maxLimit, cancellationToken);
+        var maxLimit = Math.Min(limit, 1000);
+        var events = await _securityAuditor.GetSecurityEventsAsync(
+            since, eventType, deviceId, maxLimit, cancellationToken);
 
-            return Ok(events);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting security events");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(events);
     }
 
     /// <summary>
@@ -384,21 +304,13 @@ public class SecurityController : ControllerBase
         [FromBody] CleanupEventsRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            var maxAge = TimeSpan.FromDays(Math.Max(1, Math.Min(request.MaxAgeDays, 365)));
-            await _securityAuditor.CleanupOldEventsAsync(maxAge, cancellationToken);
+        var maxAge = TimeSpan.FromDays(Math.Max(1, Math.Min(request.MaxAgeDays, 365)));
+        await _securityAuditor.CleanupOldEventsAsync(maxAge, cancellationToken);
 
-            return Ok(new { 
-                success = true, 
-                message = $"Cleaned up events older than {maxAge.TotalDays} days" 
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error cleaning up security events");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(new { 
+            success = true, 
+            message = $"Cleaned up events older than {maxAge.TotalDays} days" 
+        });
     }
 
     /// <summary>
@@ -411,53 +323,45 @@ public class SecurityController : ControllerBase
         [FromBody] RenewCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+        var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+
+        if (device?.Certificate == null)
         {
-            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-            var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
-
-            if (device?.Certificate == null)
-            {
-                return NotFound(new { error = "Device not found or certificate missing" });
-            }
-
-            var currentCertificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
-            if (currentCertificate == null)
-            {
-                return StatusCode(500, new { error = "Could not load certificate from storage" });
-            }
-
-            var newCertificate = await _certificateManager.RenewCertificateIfNeededAsync(
-                currentCertificate,
-                request.CommonName,
-                request.ValidityDays,
-                request.RenewalThresholdDays,
-                cancellationToken);
-
-            var renewed = newCertificate?.Thumbprint != currentCertificate.Thumbprint;
-
-            await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-            {
-                EventType = SecurityEventType.CertificateRenewed,
-                DeviceId = deviceId,
-                Severity = SecuritySeverity.Info,
-                Message = renewed
-                    ? $"Certificate renewed for device {deviceId}"
-                    : $"Certificate renewal not needed for device {deviceId}"
-            }, cancellationToken);
-
-            return Ok(new {
-                success = true,
-                message = renewed ? "Certificate renewed successfully" : "Certificate renewal not needed",
-                renewed,
-                renewalRequired = device.RequiresCertificateRenewal(request.RenewalThresholdDays)
-            });
+            return NotFound(new { error = "Device not found or certificate missing" });
         }
-        catch (Exception ex)
+
+        var currentCertificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
+        if (currentCertificate == null)
         {
-            _logger.LogError(ex, "Error renewing certificate for device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = "Internal server error" });
+            return StatusCode(500, new { error = "Could not load certificate from storage" });
         }
+
+        var newCertificate = await _certificateManager.RenewCertificateIfNeededAsync(
+            currentCertificate,
+            request.CommonName,
+            request.ValidityDays,
+            request.RenewalThresholdDays,
+            cancellationToken);
+
+        var renewed = newCertificate?.Thumbprint != currentCertificate.Thumbprint;
+
+        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
+        {
+            EventType = SecurityEventType.CertificateRenewed,
+            DeviceId = deviceId,
+            Severity = SecuritySeverity.Info,
+            Message = renewed
+                ? $"Certificate renewed for device {deviceId}"
+                : $"Certificate renewal not needed for device {deviceId}"
+        }, cancellationToken);
+
+        return Ok(new {
+            success = true,
+            message = renewed ? "Certificate renewed successfully" : "Certificate renewal not needed",
+            renewed,
+            renewalRequired = device.RequiresCertificateRenewal(request.RenewalThresholdDays)
+        });
     }
 
     /// <summary>
@@ -470,45 +374,37 @@ public class SecurityController : ControllerBase
         [FromBody] ExportCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        try
+        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
+        var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+
+        if (device?.Certificate == null)
         {
-            var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-            var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
-
-            if (device?.Certificate == null)
-            {
-                return NotFound(new { error = "Device not found or certificate missing" });
-            }
-
-            var certificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
-            if (certificate == null)
-            {
-                return StatusCode(500, new { error = "Could not load certificate from storage" });
-            }
-
-            var exportedData = await _certificateManager.ExportCertificateAsync(
-                certificate, request.Format, request.Password, cancellationToken);
-
-            await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-            {
-                EventType = SecurityEventType.ConfigurationChanged,
-                DeviceId = deviceId,
-                Severity = SecuritySeverity.Info,
-                Message = $"Certificate exported for device {deviceId} in format {request.Format}"
-            }, cancellationToken);
-
-            return Ok(new {
-                success = true,
-                message = "Certificate exported successfully",
-                format = request.Format.ToString(),
-                certificateData = Convert.ToBase64String(exportedData)
-            });
+            return NotFound(new { error = "Device not found or certificate missing" });
         }
-        catch (Exception ex)
+
+        var certificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
+        if (certificate == null)
         {
-            _logger.LogError(ex, "Error exporting certificate for device {DeviceId}", deviceId);
-            return StatusCode(500, new { error = "Internal server error" });
+            return StatusCode(500, new { error = "Could not load certificate from storage" });
         }
+
+        var exportedData = await _certificateManager.ExportCertificateAsync(
+            certificate, request.Format, request.Password, cancellationToken);
+
+        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
+        {
+            EventType = SecurityEventType.ConfigurationChanged,
+            DeviceId = deviceId,
+            Severity = SecuritySeverity.Info,
+            Message = $"Certificate exported for device {deviceId} in format {request.Format}"
+        }, cancellationToken);
+
+        return Ok(new {
+            success = true,
+            message = "Certificate exported successfully",
+            format = request.Format.ToString(),
+            certificateData = Convert.ToBase64String(exportedData)
+        });
     }
 
     /// <summary>

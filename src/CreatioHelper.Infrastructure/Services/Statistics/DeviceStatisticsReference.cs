@@ -2,7 +2,6 @@ using System.Collections.Concurrent;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.Extensions.Logging;
-using OldDeviceStatistics = CreatioHelper.Domain.Entities.DeviceStatistics;
 using NewDeviceStatistics = CreatioHelper.Domain.Entities.Statistics.DeviceStatistics;
 
 namespace CreatioHelper.Infrastructure.Services.Statistics;
@@ -17,7 +16,7 @@ public class DeviceStatisticsReference : IDeviceStatisticsReference, IDisposable
     private readonly ILogger _logger;
     
     private readonly object _statisticsLock = new();
-    private OldDeviceStatistics _statistics;
+    private DeviceStatisticsSnapshot _statistics;
     private ConnectionStatistics _connectionStatistics;
     
     // Время-скользящие окна для вычисления скорости
@@ -33,7 +32,7 @@ public class DeviceStatisticsReference : IDeviceStatisticsReference, IDisposable
         _database = database;
         _logger = logger;
         
-        _statistics = new OldDeviceStatistics();
+        _statistics = new DeviceStatisticsSnapshot();
         _connectionStatistics = new ConnectionStatistics { StartedAt = DateTime.UtcNow };
         
         // Загружаем существующую статистику из базы данных
@@ -63,12 +62,6 @@ public class DeviceStatisticsReference : IDeviceStatisticsReference, IDisposable
         lock (_statisticsLock)
         {
             _statistics.LastSeen = now;
-            
-            if (_statistics.FirstSeen == DateTime.UnixEpoch)
-            {
-                _statistics.FirstSeen = now;
-            }
-            
             _connectionStartTime = now;
         }
         
@@ -208,10 +201,6 @@ public class DeviceStatisticsReference : IDeviceStatisticsReference, IDisposable
                 var currentDownloadSpeed = totalBytesIn / timeSpan.TotalSeconds;
                 var currentUploadSpeed = totalBytesOut / timeSpan.TotalSeconds;
                 
-                // Экспоненциальное сглаживание скорости
-                _statistics.AverageDownloadSpeed = (_statistics.AverageDownloadSpeed * 0.8) + (currentDownloadSpeed * 0.2);
-                _statistics.AverageUploadSpeed = (_statistics.AverageUploadSpeed * 0.8) + (currentUploadSpeed * 0.2);
-                
                 _connectionStatistics.InBytesPerSecond = currentDownloadSpeed;
                 _connectionStatistics.OutBytesPerSecond = currentUploadSpeed;
             }
@@ -270,7 +259,7 @@ public class DeviceStatisticsReference : IDeviceStatisticsReference, IDisposable
     {
         lock (_statisticsLock)
         {
-            _statistics = new OldDeviceStatistics();
+            _statistics = new DeviceStatisticsSnapshot();
             _connectionStatistics = new ConnectionStatistics { StartedAt = DateTime.UtcNow };
             _trafficSamples.Clear();
         }

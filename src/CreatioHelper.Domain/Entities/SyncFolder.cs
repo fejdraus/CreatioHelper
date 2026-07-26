@@ -87,8 +87,8 @@ public class SyncFolder : AggregateRoot
         LastScan = DateTime.UtcNow;
     }
 
-    // Public constructor for database mapping (25 parameters total)
-    public SyncFolder(string id, string label, string path, string type,
+    // Full-configuration constructor; reachable only through Create(SyncFolderSettings)
+    private SyncFolder(string id, string label, string path, string type,
         int rescanIntervalS, bool fsWatcherEnabled, int fsWatcherDelayS,
         bool ignorePerms, bool autoNormalizeUnicode, string minDiskFree,
         bool copyOwnershipFromParent, int modTimeWindowS, int maxConflicts,
@@ -125,6 +125,54 @@ public class SyncFolder : AggregateRoot
         SyncType = ParseSyncFolderType(type);
         ConflictPolicy = GetDefaultPolicyForType(SyncType);
         LastScan = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Single entry point for building a folder from any configuration source.
+    /// </summary>
+    public static SyncFolder Create(SyncFolderSettings settings)
+    {
+        var folder = new SyncFolder(
+            settings.Id,
+            settings.Label,
+            settings.Path,
+            settings.Type,
+            settings.RescanIntervalS,
+            settings.FsWatcherEnabled,
+            settings.FsWatcherDelayS,
+            settings.IgnorePerms,
+            settings.AutoNormalizeUnicode,
+            settings.MinDiskFree,
+            settings.CopyOwnershipFromParent,
+            settings.ModTimeWindowS,
+            settings.MaxConflicts,
+            settings.DisableSparseFiles,
+            settings.DisableTempIndexes,
+            settings.Paused,
+            settings.WeakHashThresholdPct,
+            settings.MarkerName,
+            settings.CopyRangeMethod,
+            settings.CaseSensitiveFS,
+            settings.JunctionedAsDirectory,
+            settings.SyncOwnership,
+            settings.SendOwnership,
+            settings.SyncXattrs,
+            settings.SendXattrs);
+
+        if (settings.Versioning != null)
+        {
+            folder.SetVersioning(settings.Versioning);
+        }
+
+        folder.SetPullOrder(SyncPullOrders.Parse(settings.PullOrder));
+        folder.IgnoreDelete = settings.IgnoreDelete;
+
+        foreach (var deviceId in settings.Devices)
+        {
+            folder.AddDevice(deviceId);
+        }
+
+        return folder;
     }
 
     public void AddDevice(string deviceId)

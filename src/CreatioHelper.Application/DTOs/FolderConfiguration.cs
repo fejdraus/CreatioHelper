@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace CreatioHelper.Application.DTOs;
 
 /// <summary>
@@ -82,7 +84,7 @@ public class FolderMinDiskFree
 
     public override string ToString()
     {
-        return $"{Value}{Unit}";
+        return Value.ToString(CultureInfo.InvariantCulture) + Unit;
     }
 
     public static FolderMinDiskFree Parse(string value)
@@ -96,36 +98,39 @@ public class FolderMinDiskFree
         if (value.EndsWith("%"))
         {
             result.Unit = "%";
-            if (double.TryParse(value[..^1], out var pct))
+            if (TryParseNumber(value[..^1], out var pct))
                 result.Value = pct;
         }
         else if (value.EndsWith("TB", StringComparison.OrdinalIgnoreCase))
         {
             result.Unit = "TB";
-            if (double.TryParse(value[..^2], out var tb))
+            if (TryParseNumber(value[..^2], out var tb))
                 result.Value = tb;
         }
         else if (value.EndsWith("GB", StringComparison.OrdinalIgnoreCase))
         {
             result.Unit = "GB";
-            if (double.TryParse(value[..^2], out var gb))
+            if (TryParseNumber(value[..^2], out var gb))
                 result.Value = gb;
         }
         else if (value.EndsWith("MB", StringComparison.OrdinalIgnoreCase))
         {
             result.Unit = "MB";
-            if (double.TryParse(value[..^2], out var mb))
+            if (TryParseNumber(value[..^2], out var mb))
                 result.Value = mb;
         }
         else if (value.EndsWith("kB", StringComparison.OrdinalIgnoreCase))
         {
             result.Unit = "kB";
-            if (double.TryParse(value[..^2], out var kb))
+            if (TryParseNumber(value[..^2], out var kb))
                 result.Value = kb;
         }
 
         return result;
     }
+
+    private static bool TryParseNumber(string text, out double value) =>
+        double.TryParse(text.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out value);
 }
 
 /// <summary>

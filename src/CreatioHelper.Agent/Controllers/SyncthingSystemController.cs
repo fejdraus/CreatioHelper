@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Syncthing;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -46,83 +47,75 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<ActionResult<object>> GetStatus()
     {
-        try
+        var statistics = await _syncEngine.GetStatisticsAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
+        var config = await _syncEngine.GetConfigurationAsync();
+
+        // Get memory statistics
+        var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
+        var gcMemoryInfo = GC.GetGCMemoryInfo();
+
+        // Application memory (working set of this process)
+        var appMemory = currentProcess.WorkingSet64;
+
+        // Total physical memory on machine
+        var totalPhysicalMemory = gcMemoryInfo.TotalAvailableMemoryBytes;
+
+        // Memory used by OS (total - available)
+        // MemoryLoadBytes represents the memory load at the time of last GC
+        var memoryLoad = gcMemoryInfo.MemoryLoadBytes;
+
+        // For Syncthing compatibility, keep alloc/sys but also add new fields
+        var allocatedMemory = GC.GetTotalMemory(false);
+
+        return Ok(new
         {
-            var statistics = await _syncEngine.GetStatisticsAsync();
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
-            var config = await _syncEngine.GetConfigurationAsync();
+            // Syncthing-compatible fields
+            alloc = allocatedMemory,
+            sys = appMemory,
 
-            // Get memory statistics
-            var currentProcess = System.Diagnostics.Process.GetCurrentProcess();
-            var gcMemoryInfo = GC.GetGCMemoryInfo();
+            // New extended memory info
+            appMemory = appMemory,                      // Memory used by this application
+            osMemoryUsed = memoryLoad,                  // Memory used by OS/all processes
+            totalPhysicalMemory = totalPhysicalMemory,  // Total RAM on machine
 
-            // Application memory (working set of this process)
-            var appMemory = currentProcess.WorkingSet64;
+            connectionServiceStatus = BuildConnectionServiceStatus(config),
+            cpuPercent = GetCpuUsage(currentProcess),
+            discoveryEnabled = config.LocalAnnounceEnabled || config.GlobalAnnounceEnabled,
+            discoveryErrors = new { },
+            discoveryMethods = (config.LocalAnnounceEnabled ? 1 : 0) + (config.GlobalAnnounceEnabled ? config.GlobalAnnounceServers.Count : 0),
+            goroutines = System.Threading.ThreadPool.ThreadCount,
+            guiAddressOverridden = false,
+            guiAddressUsed = "127.0.0.1:8384",
+            lastDialStatus = new { },
+            myID = _syncEngine.DeviceId,
+            pathSeparator = Path.DirectorySeparatorChar.ToString(),
+            startTime = statistics.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            tilde = "~",
+            uptime = (int)statistics.Uptime.TotalSeconds,
+            urVersionMax = 3,
+            version = "v1.27.0", // CreatioHelper version mimicking Syncthing
+            codename = "Copper Dragonfly",
 
-            // Total physical memory on machine
-            var totalPhysicalMemory = gcMemoryInfo.TotalAvailableMemoryBytes;
+            // GC statistics
+            gcGen0Collections = GC.CollectionCount(0),
+            gcGen1Collections = GC.CollectionCount(1),
+            gcGen2Collections = GC.CollectionCount(2),
+            gcTotalPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,
 
-            // Memory used by OS (total - available)
-            // MemoryLoadBytes represents the memory load at the time of last GC
-            var memoryLoad = gcMemoryInfo.MemoryLoadBytes;
+            // Heap statistics
+            heapSizeBytes = gcMemoryInfo.HeapSizeBytes,
+            heapFragmentedBytes = gcMemoryInfo.FragmentedBytes,
 
-            // For Syncthing compatibility, keep alloc/sys but also add new fields
-            var allocatedMemory = GC.GetTotalMemory(false);
+            // Process statistics
+            processHandleCount = currentProcess.HandleCount,
+            processThreadCount = currentProcess.Threads.Count,
 
-            return Ok(new
-            {
-                // Syncthing-compatible fields
-                alloc = allocatedMemory,
-                sys = appMemory,
-
-                // New extended memory info
-                appMemory = appMemory,                      // Memory used by this application
-                osMemoryUsed = memoryLoad,                  // Memory used by OS/all processes
-                totalPhysicalMemory = totalPhysicalMemory,  // Total RAM on machine
-
-                connectionServiceStatus = BuildConnectionServiceStatus(config),
-                cpuPercent = GetCpuUsage(currentProcess),
-                discoveryEnabled = config.LocalAnnounceEnabled || config.GlobalAnnounceEnabled,
-                discoveryErrors = new { },
-                discoveryMethods = (config.LocalAnnounceEnabled ? 1 : 0) + (config.GlobalAnnounceEnabled ? config.GlobalAnnounceServers.Count : 0),
-                goroutines = System.Threading.ThreadPool.ThreadCount,
-                guiAddressOverridden = false,
-                guiAddressUsed = "127.0.0.1:8384",
-                lastDialStatus = new { },
-                myID = _syncEngine.DeviceId,
-                pathSeparator = Path.DirectorySeparatorChar.ToString(),
-                startTime = statistics.StartTime.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                tilde = "~",
-                uptime = (int)statistics.Uptime.TotalSeconds,
-                urVersionMax = 3,
-                version = "v1.27.0", // CreatioHelper version mimicking Syncthing
-                codename = "Copper Dragonfly",
-
-                // GC statistics
-                gcGen0Collections = GC.CollectionCount(0),
-                gcGen1Collections = GC.CollectionCount(1),
-                gcGen2Collections = GC.CollectionCount(2),
-                gcTotalPauseMs = GC.GetTotalPauseDuration().TotalMilliseconds,
-
-                // Heap statistics
-                heapSizeBytes = gcMemoryInfo.HeapSizeBytes,
-                heapFragmentedBytes = gcMemoryInfo.FragmentedBytes,
-
-                // Process statistics
-                processHandleCount = currentProcess.HandleCount,
-                processThreadCount = currentProcess.Threads.Count,
-
-                // I/O statistics
-                totalBytesIn = statistics.TotalBytesIn,
-                totalBytesOut = statistics.TotalBytesOut
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting system status");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            // I/O statistics
+            totalBytesIn = statistics.TotalBytesIn,
+            totalBytesOut = statistics.TotalBytesOut
+        });
     }
 
     /// <summary>
@@ -155,6 +148,37 @@ public class SyncthingSystemController : ControllerBase
             result[addr] = new { error = (string?)null };
         }
         return result;
+    }
+
+    /// <summary>
+    /// Get the interface language configured for this agent.
+    /// Anonymous so the login page can render before the user signs in.
+    /// GET /rest/system/ui-language
+    /// </summary>
+    [HttpGet("ui-language")]
+    [AllowAnonymous]
+    public async Task<ActionResult<object>> GetUiLanguage(CancellationToken cancellationToken)
+    {
+        var config = await _configXmlService.LoadAsync(cancellationToken);
+        return Ok(new { language = config.Gui.Language });
+    }
+
+    /// <summary>
+    /// Persist the interface language so every browser opening this agent starts in the same language.
+    /// PUT /rest/system/ui-language
+    /// </summary>
+    [HttpPut("ui-language")]
+    public async Task<IActionResult> SetUiLanguage([FromBody] UiLanguageRequest request, CancellationToken cancellationToken)
+    {
+        var config = await _configXmlService.LoadAsync(cancellationToken);
+        config.Gui.Language = request.Language ?? string.Empty;
+        await _configXmlService.SaveAsync(config, cancellationToken);
+        return NoContent();
+    }
+
+    public class UiLanguageRequest
+    {
+        public string? Language { get; set; }
     }
 
     /// <summary>
@@ -196,191 +220,11 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("config")]
     public async Task<ActionResult<object>> GetConfig()
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var folders = await _syncEngine.GetFoldersAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var folders = await _syncEngine.GetFoldersAsync();
+        var syncConfig = await _syncEngine.GetConfigurationAsync();
 
-            var syncConfig = await _syncEngine.GetConfigurationAsync();
-
-            // Build Syncthing-compatible configuration
-            var config = new
-            {
-                version = 37,
-                folders = folders.Select(f => new
-                {
-                    id = f.Id,
-                    label = f.Label,
-                    filesystemType = "basic",
-                    path = f.Path,
-                    type = f.SyncType switch
-                    {
-                        SyncFolderType.SendOnly => "sendonly",
-                        SyncFolderType.ReceiveOnly => "receiveonly", 
-                        SyncFolderType.Master => "receiveencrypted",
-                        _ => "sendreceive"
-                    },
-                    devices = f.Devices.Select(deviceId => new { deviceID = deviceId }).ToArray(),
-                    rescanIntervalS = 3600,
-                    fsWatcherEnabled = true,
-                    fsWatcherDelayS = 10,
-                    ignorePerms = false,
-                    autoNormalize = true,
-                    minDiskFree = new
-                    {
-                        value = 1,
-                        unit = "%"
-                    },
-                    versioning = new
-                    {
-                        type = string.Empty,
-                        @params = new { }
-                    },
-                    copiers = 0,
-                    pullerMaxPendingKiB = 0,
-                    hashers = 0,
-                    order = "random",
-                    ignoreDelete = false,
-                    scanProgressIntervalS = 0,
-                    pullerPauseS = 0,
-                    maxConflicts = 10,
-                    disableSparseFiles = false,
-                    disableTempIndexes = false,
-                    paused = f.IsPaused,
-                    weakHashThresholdPct = 25,
-                    markerName = ".stfolder",
-                    copyOwnershipFromParent = false,
-                    modTimeWindowS = 0,
-                    maxConcurrentWrites = 2,
-                    disableFsync = false,
-                    blockPullOrder = "standard",
-                    copyRangeMethod = "standard",
-                    caseSensitiveFS = false,
-                    junctionsAsDirs = false,
-                    syncOwnership = false,
-                    sendOwnership = false,
-                    syncXattrs = false,
-                    sendXattrs = false
-                }).ToArray(),
-                devices = devices.Select(d => new
-                {
-                    deviceID = d.DeviceId,
-                    name = d.DeviceName,
-                    addresses = d.Addresses.ToArray(),
-                    compression = "metadata",
-                    certName = string.Empty,
-                    introducer = false,
-                    skipIntroductionRemovals = false,
-                    introducedBy = string.Empty,
-                    paused = false,
-                    allowedNetworks = new string[] { },
-                    autoAcceptFolders = false,
-                    maxSendKbps = 0,
-                    maxRecvKbps = 0,
-                    ignoredFolders = new string[] { },
-                    pendingFolders = new string[] { },
-                    maxRequestKiB = 0,
-                    untrusted = false,
-                    remoteGUIPort = 0
-                }).ToArray(),
-                gui = new
-                {
-                    enabled = syncConfig.GuiEnabled,
-                    address = syncConfig.GuiAddress,
-                    unixSocketPermissions = "0700",
-                    user = syncConfig.GuiUser,
-                    password = syncConfig.GuiPassword,
-                    authMode = syncConfig.AuthMode,
-                    useTLS = syncConfig.GuiTls,
-                    apiKey = syncConfig.GuiApiKey,
-                    insecureAdminAccess = false,
-                    theme = "default",
-                    debugging = false,
-                    insecureSkipHostcheck = false,
-                    insecureAllowFrameLoading = false
-                },
-                ldap = new
-                {
-                    address = syncConfig.LdapAddress,
-                    bindDN = syncConfig.LdapBindDN,
-                    transport = syncConfig.LdapTransport,
-                    insecureSkipVerify = syncConfig.LdapInsecureSkipVerify,
-                    searchBaseDN = syncConfig.LdapSearchBaseDN,
-                    searchFilter = syncConfig.LdapSearchFilter
-                },
-                options = new
-                {
-                    listenAddresses = new[] { "default" },
-                    globalAnnounceServers = new[]
-                    {
-                        "default"
-                    },
-                    globalAnnounceEnabled = true,
-                    localAnnounceEnabled = true,
-                    localAnnouncePort = 21027,
-                    localAnnounceMCAddr = "[ff12::8384]:21027",
-                    maxSendKbps = 0,
-                    maxRecvKbps = 0,
-                    reconnectionIntervalS = 60,
-                    relaysEnabled = true,
-                    relayReconnectIntervalM = 10,
-                    startBrowser = true,
-                    natEnabled = true,
-                    natLeaseMinutes = 60,
-                    natRenewalMinutes = 30,
-                    natTimeoutSeconds = 10,
-                    urAccepted = -1,
-                    urSeen = 3,
-                    urUniqueId = string.Empty,
-                    urURL = "",
-                    urPostInsecurely = false,
-                    urInitialDelayS = 1800,
-                    autoUpgradeEnabled = false,
-                    autoUpgradeIntervalH = 12,
-                    upgradeToPreReleases = false,
-                    keepTemporariesH = 24,
-                    cacheIgnoredFiles = false,
-                    progressUpdateIntervalS = 5,
-                    limitBandwidthInLan = false,
-                    minHomeDiskFree = new
-                    {
-                        value = 1,
-                        unit = "%"
-                    },
-                    releasesURL = "https://api.github.com/repos/syncthing/syncthing/releases?per_page=30",
-                    alwaysLocalNets = new string[] { },
-                    overwriteRemoteDeviceNamesOnConnect = false,
-                    tempIndexMinBlocks = 10,
-                    unackedNotificationIDs = new string[] { },
-                    trafficClass = 0,
-                    defaultFolderPath = "~",
-                    setLowPriority = true,
-                    maxFolderConcurrency = 0,
-                    crURL = "",
-                    crashReportingEnabled = false,
-                    stunKeepaliveStartS = 180,
-                    stunKeepaliveMinS = 20,
-                    stunServers = new[]
-                    {
-                        "default"
-                    },
-                    databaseTuning = "auto",
-                    maxCIRequestKiB = 0,
-                    announceLANAddresses = true,
-                    sendFullIndexOnUpgrade = false
-                },
-                ignoredDevices = new string[] { },
-                pendingDevices = new string[] { },
-                ignoredFolders = new string[] { }
-            };
-
-            return Ok(config);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting system config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(SyncthingConfigContract.Build(devices, folders, syncConfig));
     }
 
     /// <summary>
@@ -391,68 +235,60 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
     {
-        try
+        _logger.LogInformation("Received configuration update, applying changes");
+
+        // Apply folder changes
+        if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
         {
-            _logger.LogInformation("Received configuration update, applying changes");
-
-            // Apply folder changes
-            if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
+            foreach (var folderJson in foldersElement.EnumerateArray())
             {
-                foreach (var folderJson in foldersElement.EnumerateArray())
-                {
-                    if (!folderJson.TryGetProperty("id", out var idProp)) continue;
-                    var folderId = idProp.GetString();
-                    if (string.IsNullOrEmpty(folderId)) continue;
+                if (!folderJson.TryGetProperty("id", out var idProp)) continue;
+                var folderId = idProp.GetString();
+                if (string.IsNullOrEmpty(folderId)) continue;
 
-                    var existing = await _syncEngine.GetFolderAsync(folderId);
-                    if (existing == null)
+                var existing = await _syncEngine.GetFolderAsync(folderId);
+                if (existing == null)
+                {
+                    // Add new folder
+                    var path = folderJson.TryGetProperty("path", out var pathProp) ? pathProp.GetString() ?? "" : "";
+                    var label = folderJson.TryGetProperty("label", out var labelProp) ? labelProp.GetString() ?? folderId : folderId;
+                    var type = folderJson.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? "sendreceive" : "sendreceive";
+                    if (!string.IsNullOrEmpty(path))
                     {
-                        // Add new folder
-                        var path = folderJson.TryGetProperty("path", out var pathProp) ? pathProp.GetString() ?? "" : "";
-                        var label = folderJson.TryGetProperty("label", out var labelProp) ? labelProp.GetString() ?? folderId : folderId;
-                        var type = folderJson.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? "sendreceive" : "sendreceive";
-                        if (!string.IsNullOrEmpty(path))
-                        {
-                            await _syncEngine.AddFolderAsync(folderId, label, path, type);
-                        }
+                        await _syncEngine.AddFolderAsync(folderId, label, path, type);
                     }
                 }
             }
+        }
 
-            // Apply device changes
-            if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+        // Apply device changes
+        if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var deviceJson in devicesElement.EnumerateArray())
             {
-                foreach (var deviceJson in devicesElement.EnumerateArray())
-                {
-                    if (!deviceJson.TryGetProperty("deviceID", out var deviceIdProp)) continue;
-                    var deviceId = deviceIdProp.GetString();
-                    if (string.IsNullOrEmpty(deviceId)) continue;
+                if (!deviceJson.TryGetProperty("deviceID", out var deviceIdProp)) continue;
+                var deviceId = deviceIdProp.GetString();
+                if (string.IsNullOrEmpty(deviceId)) continue;
 
-                    var devices = await _syncEngine.GetDevicesAsync();
-                    if (!devices.Any(d => d.DeviceId == deviceId))
+                var devices = await _syncEngine.GetDevicesAsync();
+                if (!devices.Any(d => d.DeviceId == deviceId))
+                {
+                    var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
+                    var addresses = new List<string> { "dynamic" };
+                    if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
                     {
-                        var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
-                        var addresses = new List<string> { "dynamic" };
-                        if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
-                        {
-                            addresses = addrProp.EnumerateArray()
-                                .Select(a => a.GetString())
-                                .Where(s => !string.IsNullOrEmpty(s))
-                                .Cast<string>()
-                                .ToList();
-                        }
-                        await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
+                        addresses = addrProp.EnumerateArray()
+                            .Select(a => a.GetString())
+                            .Where(s => !string.IsNullOrEmpty(s))
+                            .Cast<string>()
+                            .ToList();
                     }
+                    await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
                 }
             }
+        }
 
-            return Ok(new { success = true });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error updating system config");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(new { success = true });
     }
 
     /// <summary>
@@ -463,16 +299,8 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult Restart()
     {
-        try
-        {
-            _logger.LogInformation("System restart requested");
-            return Ok(new { ok = "restarting" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error restarting system");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("System restart requested");
+        return Ok(new { ok = "restarting" });
     }
 
     /// <summary>
@@ -483,16 +311,8 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult Shutdown()
     {
-        try
-        {
-            _logger.LogInformation("System shutdown requested");
-            return Ok(new { ok = "shutting down" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error shutting down system");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("System shutdown requested");
+        return Ok(new { ok = "shutting down" });
     }
 
     /// <summary>
@@ -502,32 +322,24 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("log")]
     public ActionResult<object> GetLog([FromQuery] int last = 50)
     {
-        try
+        var entries = ReadLogEntries(Math.Min(last, 1000));
+        var messages = entries.Select(e => new
         {
-            var entries = ReadLogEntries(Math.Min(last, 1000));
-            var messages = entries.Select(e => new
+            when = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            message = e.Message,
+            level = e.Level switch
             {
-                when = e.Timestamp.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                message = e.Message,
-                level = e.Level switch
-                {
-                    "error" or "fatal" => 3,
-                    "warning" => 2,
-                    "debug" or "verbose" => 0,
-                    _ => 2 // INFO
-                }
-            }).ToArray();
+                "error" or "fatal" => 3,
+                "warning" => 2,
+                "debug" or "verbose" => 0,
+                _ => 2 // INFO
+            }
+        }).ToArray();
 
-            return Ok(new
-            {
-                messages = messages
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Error getting system log");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            messages = messages
+        });
     }
 
     /// <summary>
@@ -671,7 +483,7 @@ public class SyncthingSystemController : ControllerBase
 
                 return new LogEntry
                 {
-                    Timestamp = DateTime.Parse(match.Groups[1].Value),
+                    Timestamp = DateTime.SpecifyKind(DateTime.Parse(match.Groups[1].Value), DateTimeKind.Local).ToUniversalTime(),
                     Level = ParseLogLevel(match.Groups[2].Value),
                     Facility = ExtractFacility(match.Groups[3].Value),
                     Message = match.Groups[3].Value
@@ -680,7 +492,7 @@ public class SyncthingSystemController : ControllerBase
 
             return new LogEntry
             {
-                Timestamp = DateTime.Parse(match.Groups[1].Value),
+                Timestamp = DateTimeOffset.Parse($"{match.Groups[1].Value} {match.Groups[2].Value}").UtcDateTime,
                 Level = ParseLogLevel(match.Groups[3].Value),
                 Facility = ExtractFacility(match.Groups[4].Value),
                 Message = match.Groups[4].Value
@@ -791,33 +603,25 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("loglevels")]
     public ActionResult<object> GetLogLevels()
     {
-        try
+        return Ok(new
         {
-            return Ok(new
+            enabled = _enabledLogFacilities.ToArray(),
+            facilities = new Dictionary<string, string>
             {
-                enabled = _enabledLogFacilities.ToArray(),
-                facilities = new Dictionary<string, string>
-                {
-                    ["main"] = "Main package",
-                    ["model"] = "Model/sync engine",
-                    ["scanner"] = "File scanner",
-                    ["connections"] = "Connection handling",
-                    ["protocol"] = "BEP protocol",
-                    ["db"] = "Database operations",
-                    ["discover"] = "Device discovery",
-                    ["events"] = "Event system",
-                    ["upnp"] = "UPnP/NAT traversal",
-                    ["relay"] = "Relay connections",
-                    ["versioner"] = "File versioning",
-                    ["config"] = "Configuration"
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting log levels");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+                ["main"] = "Main package",
+                ["model"] = "Model/sync engine",
+                ["scanner"] = "File scanner",
+                ["connections"] = "Connection handling",
+                ["protocol"] = "BEP protocol",
+                ["db"] = "Database operations",
+                ["discover"] = "Device discovery",
+                ["events"] = "Event system",
+                ["upnp"] = "UPnP/NAT traversal",
+                ["relay"] = "Relay connections",
+                ["versioner"] = "File versioning",
+                ["config"] = "Configuration"
+            }
+        });
     }
 
     /// <summary>
@@ -828,58 +632,50 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult<object> SetLogLevels([FromQuery] string? enable, [FromQuery] string? disable)
     {
-        try
+        // Enable facilities
+        if (!string.IsNullOrEmpty(enable))
         {
-            // Enable facilities
-            if (!string.IsNullOrEmpty(enable))
+            var facilitiesToEnable = enable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var facility in facilitiesToEnable)
             {
-                var facilitiesToEnable = enable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var facility in facilitiesToEnable)
+                if (!_enabledLogFacilities.Contains(facility))
                 {
-                    if (!_enabledLogFacilities.Contains(facility))
-                    {
-                        _enabledLogFacilities.Add(facility);
-                    }
+                    _enabledLogFacilities.Add(facility);
                 }
-                _logger.LogInformation("Enabled log facilities: {Facilities}", enable);
             }
-
-            // Disable facilities
-            if (!string.IsNullOrEmpty(disable))
-            {
-                var facilitiesToDisable = disable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-                foreach (var facility in facilitiesToDisable)
-                {
-                    _enabledLogFacilities.Remove(facility);
-                }
-                _logger.LogInformation("Disabled log facilities: {Facilities}", disable);
-            }
-
-            return Ok(new
-            {
-                enabled = _enabledLogFacilities.ToArray(),
-                facilities = new Dictionary<string, string>
-                {
-                    ["main"] = "Main package",
-                    ["model"] = "Model/sync engine",
-                    ["scanner"] = "File scanner",
-                    ["connections"] = "Connection handling",
-                    ["protocol"] = "BEP protocol",
-                    ["db"] = "Database operations",
-                    ["discover"] = "Device discovery",
-                    ["events"] = "Event system",
-                    ["upnp"] = "UPnP/NAT traversal",
-                    ["relay"] = "Relay connections",
-                    ["versioner"] = "File versioning",
-                    ["config"] = "Configuration"
-                }
-            });
+            _logger.LogInformation("Enabled log facilities: {Facilities}", enable);
         }
-        catch (Exception ex)
+
+        // Disable facilities
+        if (!string.IsNullOrEmpty(disable))
         {
-            _logger.LogError(ex, "Error setting log levels");
-            return StatusCode(500, new { error = "Internal server error" });
+            var facilitiesToDisable = disable.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            foreach (var facility in facilitiesToDisable)
+            {
+                _enabledLogFacilities.Remove(facility);
+            }
+            _logger.LogInformation("Disabled log facilities: {Facilities}", disable);
         }
+
+        return Ok(new
+        {
+            enabled = _enabledLogFacilities.ToArray(),
+            facilities = new Dictionary<string, string>
+            {
+                ["main"] = "Main package",
+                ["model"] = "Model/sync engine",
+                ["scanner"] = "File scanner",
+                ["connections"] = "Connection handling",
+                ["protocol"] = "BEP protocol",
+                ["db"] = "Database operations",
+                ["discover"] = "Device discovery",
+                ["events"] = "Event system",
+                ["upnp"] = "UPnP/NAT traversal",
+                ["relay"] = "Relay connections",
+                ["versioner"] = "File versioning",
+                ["config"] = "Configuration"
+            }
+        });
     }
 
     /// <summary>
@@ -889,57 +685,49 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("browse")]
     public ActionResult<object> Browse([FromQuery] string? current)
     {
+        var path = string.IsNullOrEmpty(current)
+            ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            : current;
+
+        // Validate path to prevent directory traversal
+        if (path.Contains(".."))
+            return BadRequest(new { error = "Invalid path" });
+
+        if (!Directory.Exists(path))
+        {
+            // Return parent directory if path doesn't exist
+            var parent = Path.GetDirectoryName(path);
+            if (parent != null && Directory.Exists(parent))
+            {
+                path = parent;
+            }
+            else
+            {
+                path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            }
+        }
+
+        var entries = new List<string>();
+
         try
         {
-            var path = string.IsNullOrEmpty(current)
-                ? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
-                : current;
-
-            // Validate path to prevent directory traversal
-            if (path.Contains(".."))
-                return BadRequest(new { error = "Invalid path" });
-
-            if (!Directory.Exists(path))
+            // Add subdirectories
+            foreach (var dir in Directory.GetDirectories(path))
             {
-                // Return parent directory if path doesn't exist
-                var parent = Path.GetDirectoryName(path);
-                if (parent != null && Directory.Exists(parent))
+                var name = Path.GetFileName(dir);
+                if (!name.StartsWith(".")) // Skip hidden directories
                 {
-                    path = parent;
-                }
-                else
-                {
-                    path = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    entries.Add(dir + Path.DirectorySeparatorChar);
                 }
             }
-
-            var entries = new List<string>();
-
-            try
-            {
-                // Add subdirectories
-                foreach (var dir in Directory.GetDirectories(path))
-                {
-                    var name = Path.GetFileName(dir);
-                    if (!name.StartsWith(".")) // Skip hidden directories
-                    {
-                        entries.Add(dir + Path.DirectorySeparatorChar);
-                    }
-                }
-            }
-            catch (UnauthorizedAccessException)
-            {
-                // Access denied, return empty list
-            }
-
-            entries.Sort();
-            return Ok(entries.ToArray());
         }
-        catch (Exception ex)
+        catch (UnauthorizedAccessException)
         {
-            _logger.LogError(ex, "Error browsing path {Path}", current);
-            return StatusCode(500, new { error = "Internal server error" });
+            // Access denied, return empty list
         }
+
+        entries.Sort();
+        return Ok(entries.ToArray());
     }
 
     /// <summary>
@@ -949,48 +737,40 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("connections")]
     public async Task<ActionResult<object>> GetConnections()
     {
-        try
-        {
-            var devices = await _syncEngine.GetDevicesAsync();
-            var statistics = await _syncEngine.GetStatisticsAsync();
+        var devices = await _syncEngine.GetDevicesAsync();
+        var statistics = await _syncEngine.GetStatisticsAsync();
 
-            var connections = new Dictionary<string, object>();
-            var total = new
+        var connections = new Dictionary<string, object>();
+        var total = new
+        {
+            at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+            inBytesTotal = statistics.TotalBytesIn,
+            outBytesTotal = statistics.TotalBytesOut
+        };
+
+        foreach (var device in devices)
+        {
+            connections[device.DeviceId] = new
             {
-                at = DateTime.UtcNow.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                inBytesTotal = statistics.TotalBytesIn,
-                outBytesTotal = statistics.TotalBytesOut
+                at = device.LastSeen?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                inBytesTotal = 0L,
+                outBytesTotal = 0L,
+                startedAt = device.LastConnected?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                connected = device.IsConnected,
+                paused = device.IsPaused,
+                clientVersion = "v1.27.0",
+                address = device.LastAddress ?? (device.Addresses.FirstOrDefault() ?? string.Empty),
+                type = device.ConnectionType ?? "tcp-client",
+                isLocal = false,
+                crypto = "TLS1.3-AES256-GCM"
             };
-
-            foreach (var device in devices)
-            {
-                connections[device.DeviceId] = new
-                {
-                    at = device.LastSeen?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    inBytesTotal = 0L,
-                    outBytesTotal = 0L,
-                    startedAt = device.LastConnected?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    connected = device.IsConnected,
-                    paused = device.IsPaused,
-                    clientVersion = "v1.27.0",
-                    address = device.LastAddress ?? (device.Addresses.FirstOrDefault() ?? string.Empty),
-                    type = device.ConnectionType ?? "tcp-client",
-                    isLocal = false,
-                    crypto = "TLS1.3-AES256-GCM"
-                };
-            }
-
-            return Ok(new
-            {
-                connections = connections,
-                total = total
-            });
         }
-        catch (Exception ex)
+
+        return Ok(new
         {
-            _logger.LogError(ex, "Error getting connections");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            connections = connections,
+            total = total
+        });
     }
 
     /// <summary>
@@ -1000,40 +780,32 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("discovery")]
     public async Task<ActionResult<object>> GetDiscovery()
     {
-        try
-        {
-            var config = await _syncEngine.GetConfigurationAsync();
+        var config = await _syncEngine.GetConfigurationAsync();
 
-            // Build global discovery server statuses
-            var globalServers = new Dictionary<string, object>();
-            if (config.GlobalAnnounceEnabled)
+        // Build global discovery server statuses
+        var globalServers = new Dictionary<string, object>();
+        if (config.GlobalAnnounceEnabled)
+        {
+            foreach (var server in config.GlobalAnnounceServers)
             {
-                foreach (var server in config.GlobalAnnounceServers)
-                {
-                    globalServers[server] = new { status = "ok", lastSeen = DateTime.UtcNow };
-                }
+                globalServers[server] = new { status = "ok", lastSeen = DateTime.UtcNow };
             }
-
-            // Local discovery status
-            var localStatus = new
-            {
-                multicastStatus = config.LocalAnnounceEnabled ? "ok" : ""
-            };
-
-            return Ok(new
-            {
-                global = globalServers,
-                local = localStatus,
-                localAnnounceEnabled = config.LocalAnnounceEnabled,
-                globalAnnounceEnabled = config.GlobalAnnounceEnabled,
-                globalAnnounceServers = config.GlobalAnnounceServers.ToArray()
-            });
         }
-        catch (Exception ex)
+
+        // Local discovery status
+        var localStatus = new
         {
-            _logger.LogError(ex, "Error getting discovery status");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            multicastStatus = config.LocalAnnounceEnabled ? "ok" : ""
+        };
+
+        return Ok(new
+        {
+            global = globalServers,
+            local = localStatus,
+            localAnnounceEnabled = config.LocalAnnounceEnabled,
+            globalAnnounceEnabled = config.GlobalAnnounceEnabled,
+            globalAnnounceServers = config.GlobalAnnounceServers.ToArray()
+        });
     }
 
     // Store system errors in memory (in production, this would be in a service)
@@ -1047,24 +819,16 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("error")]
     public ActionResult<object> GetErrors()
     {
-        try
+        lock (_errorsLock)
         {
-            lock (_errorsLock)
+            var errors = _systemErrors.Select(e => new
             {
-                var errors = _systemErrors.Select(e => new
-                {
-                    when = e.When.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-                    message = e.Message,
-                    level = e.Level
-                }).ToArray();
+                when = e.When.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
+                message = e.Message,
+                level = e.Level
+            }).ToArray();
 
-                return Ok(new { errors = errors });
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting system errors");
-            return StatusCode(500, new { error = "Internal server error" });
+            return Ok(new { errors = errors });
         }
     }
 
@@ -1076,29 +840,21 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult PostError([FromBody] string message)
     {
-        try
-        {
-            if (string.IsNullOrEmpty(message))
-                return BadRequest(new { error = "message required" });
+        if (string.IsNullOrEmpty(message))
+            return BadRequest(new { error = "message required" });
 
-            lock (_errorsLock)
+        lock (_errorsLock)
+        {
+            _systemErrors.Add(new SystemError
             {
-                _systemErrors.Add(new SystemError
-                {
-                    When = DateTime.UtcNow,
-                    Message = message,
-                    Level = 3 // ERROR level
-                });
-            }
+                When = DateTime.UtcNow,
+                Message = message,
+                Level = 3 // ERROR level
+            });
+        }
 
-            _logger.LogError("System error posted: {Message}", message);
-            return Ok(new { ok = "error logged" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error posting system error");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogError("System error posted: {Message}", message);
+        return Ok(new { ok = "error logged" });
     }
 
     /// <summary>
@@ -1109,21 +865,13 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult ClearErrors()
     {
-        try
+        lock (_errorsLock)
         {
-            lock (_errorsLock)
-            {
-                _systemErrors.Clear();
-            }
+            _systemErrors.Clear();
+        }
 
-            _logger.LogInformation("System errors cleared");
-            return Ok(new { ok = "errors cleared" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error clearing system errors");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("System errors cleared");
+        return Ok(new { ok = "errors cleared" });
     }
 
     /// <summary>
@@ -1133,32 +881,24 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("paths")]
     public ActionResult<object> GetPaths()
     {
-        try
-        {
-            var configDir = _configXmlService.GetConfigDirectory();
+        var configDir = _configXmlService.GetConfigDirectory();
 
-            return Ok(new
-            {
-                auditLog = Path.Combine(configDir, "audit.log"),
-                baseDir = configDir,
-                certFile = Path.Combine(configDir, "cert.pem"),
-                config = _configXmlService.ConfigPath,
-                csrfTokens = Path.Combine(configDir, ".csrf-tokens"),
-                database = Path.Combine(configDir, "index-v0.14.0.db"),
-                defFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-                guiAssets = Path.Combine(configDir, "gui"),
-                httpsCertFile = Path.Combine(configDir, "https-cert.pem"),
-                httpsKeyFile = Path.Combine(configDir, "https-key.pem"),
-                keyFile = Path.Combine(configDir, "key.pem"),
-                logFile = Path.Combine(configDir, "syncthing.log"),
-                panicLog = Path.Combine(configDir, "panic.log")
-            });
-        }
-        catch (Exception ex)
+        return Ok(new
         {
-            _logger.LogError(ex, "Error getting system paths");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            auditLog = Path.Combine(configDir, "audit.log"),
+            baseDir = configDir,
+            certFile = Path.Combine(configDir, "cert.pem"),
+            config = _configXmlService.ConfigPath,
+            csrfTokens = Path.Combine(configDir, ".csrf-tokens"),
+            database = Path.Combine(configDir, "index-v0.14.0.db"),
+            defFolder = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+            guiAssets = Path.Combine(configDir, "gui"),
+            httpsCertFile = Path.Combine(configDir, "https-cert.pem"),
+            httpsKeyFile = Path.Combine(configDir, "https-key.pem"),
+            keyFile = Path.Combine(configDir, "key.pem"),
+            logFile = Path.Combine(configDir, "syncthing.log"),
+            panicLog = Path.Combine(configDir, "panic.log")
+        });
     }
 
     /// <summary>
@@ -1168,21 +908,13 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("upgrade")]
     public ActionResult<object> GetUpgrade()
     {
-        try
+        return Ok(new
         {
-            return Ok(new
-            {
-                latest = "v1.27.0",
-                majorNewer = false,
-                newer = false,
-                running = "v1.27.0"
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting upgrade info");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+            latest = "v1.27.0",
+            majorNewer = false,
+            newer = false,
+            running = "v1.27.0"
+        });
     }
 
     /// <summary>
@@ -1193,16 +925,8 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult DoUpgrade()
     {
-        try
-        {
-            _logger.LogInformation("System upgrade requested");
-            return Ok(new { ok = "upgrade initiated" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error initiating upgrade");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("System upgrade requested");
+        return Ok(new { ok = "upgrade initiated" });
     }
 
     /// <summary>
@@ -1224,30 +948,22 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> Pause([FromQuery] string? device)
     {
-        try
+        if (!string.IsNullOrEmpty(device))
         {
-            if (!string.IsNullOrEmpty(device))
+            await _syncEngine.PauseDeviceAsync(device);
+            _logger.LogInformation("Paused device {DeviceId}", device);
+        }
+        else
+        {
+            var devices = await _syncEngine.GetDevicesAsync();
+            foreach (var d in devices)
             {
-                await _syncEngine.PauseDeviceAsync(device);
-                _logger.LogInformation("Paused device {DeviceId}", device);
+                await _syncEngine.PauseDeviceAsync(d.DeviceId);
             }
-            else
-            {
-                var devices = await _syncEngine.GetDevicesAsync();
-                foreach (var d in devices)
-                {
-                    await _syncEngine.PauseDeviceAsync(d.DeviceId);
-                }
-                _logger.LogInformation("Paused all devices");
-            }
+            _logger.LogInformation("Paused all devices");
+        }
 
-            return Ok(new { ok = "paused" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error pausing device(s)");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(new { ok = "paused" });
     }
 
     /// <summary>
@@ -1258,30 +974,22 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> Resume([FromQuery] string? device)
     {
-        try
+        if (!string.IsNullOrEmpty(device))
         {
-            if (!string.IsNullOrEmpty(device))
+            await _syncEngine.ResumeDeviceAsync(device);
+            _logger.LogInformation("Resumed device {DeviceId}", device);
+        }
+        else
+        {
+            var devices = await _syncEngine.GetDevicesAsync();
+            foreach (var d in devices)
             {
-                await _syncEngine.ResumeDeviceAsync(device);
-                _logger.LogInformation("Resumed device {DeviceId}", device);
+                await _syncEngine.ResumeDeviceAsync(d.DeviceId);
             }
-            else
-            {
-                var devices = await _syncEngine.GetDevicesAsync();
-                foreach (var d in devices)
-                {
-                    await _syncEngine.ResumeDeviceAsync(d.DeviceId);
-                }
-                _logger.LogInformation("Resumed all devices");
-            }
+            _logger.LogInformation("Resumed all devices");
+        }
 
-            return Ok(new { ok = "resumed" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error resuming device(s)");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        return Ok(new { ok = "resumed" });
     }
 
     /// <summary>
@@ -1292,36 +1000,28 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public async Task<ActionResult> Reset([FromQuery] string? folder)
     {
-        try
+        if (!string.IsNullOrEmpty(folder))
         {
-            if (!string.IsNullOrEmpty(folder))
-            {
-                // Reset specific folder — deep rescan
-                _logger.LogInformation("Reset requested for folder {FolderId}", folder);
-                var folderInfo = await _syncEngine.GetFolderAsync(folder);
-                if (folderInfo == null)
-                    return NotFound(new { error = $"Folder {folder} not found" });
+            // Reset specific folder — deep rescan
+            _logger.LogInformation("Reset requested for folder {FolderId}", folder);
+            var folderInfo = await _syncEngine.GetFolderAsync(folder);
+            if (folderInfo == null)
+                return NotFound(new { error = $"Folder {folder} not found" });
 
-                _syncEngine.QueueScan(folder, deep: true);
-            }
-            else
-            {
-                // Reset all folders — deep rescan each
-                _logger.LogInformation("Full database reset requested — rescanning all folders");
-                var folders = await _syncEngine.GetFoldersAsync();
-                foreach (var f in folders)
-                {
-                    _syncEngine.QueueScan(f.Id, deep: true);
-                }
-            }
-
-            return Ok(new { ok = "reset initiated" });
+            _syncEngine.QueueScan(folder, deep: true);
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Error resetting database");
-            return StatusCode(500, new { error = "Internal server error" });
+            // Reset all folders — deep rescan each
+            _logger.LogInformation("Full database reset requested — rescanning all folders");
+            var folders = await _syncEngine.GetFoldersAsync();
+            foreach (var f in folders)
+            {
+                _syncEngine.QueueScan(f.Id, deep: true);
+            }
         }
+
+        return Ok(new { ok = "reset initiated" });
     }
 
     /// <summary>
@@ -1331,25 +1031,17 @@ public class SyncthingSystemController : ControllerBase
     [HttpGet("debug")]
     public ActionResult<object> GetDebug()
     {
-        try
+        return Ok(new
         {
-            return Ok(new
+            enabled = new string[] { },
+            facilities = new Dictionary<string, string>
             {
-                enabled = new string[] { },
-                facilities = new Dictionary<string, string>
-                {
-                    ["main"] = "Main package",
-                    ["model"] = "Model package",
-                    ["scanner"] = "File scanner",
-                    ["connections"] = "Connection handling"
-                }
-            });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error getting debug info");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+                ["main"] = "Main package",
+                ["model"] = "Model package",
+                ["scanner"] = "File scanner",
+                ["connections"] = "Connection handling"
+            }
+        });
     }
 
     /// <summary>
@@ -1360,17 +1052,9 @@ public class SyncthingSystemController : ControllerBase
     [Authorize(Roles = Roles.WriteRoles)]
     public ActionResult SetDebug([FromBody] DebugRequest? request)
     {
-        try
-        {
-            _logger.LogInformation("Debug settings updated: enable={Enable}, disable={Disable}",
-                request?.Enable, request?.Disable);
-            return Ok(new { ok = "debug settings updated" });
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error setting debug facilities");
-            return StatusCode(500, new { error = "Internal server error" });
-        }
+        _logger.LogInformation("Debug settings updated: enable={Enable}, disable={Disable}",
+            request?.Enable, request?.Disable);
+        return Ok(new { ok = "debug settings updated" });
     }
 }
 
