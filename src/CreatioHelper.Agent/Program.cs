@@ -1,4 +1,5 @@
 ﻿using CreatioHelper.Agent.Services;
+using CreatioHelper.Agent.Authentication;
 using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Domain.Entities;
@@ -110,7 +111,24 @@ builder.Services.Configure<JwtSettings>(opts =>
     opts.ExpirationHours = jwtSettings.ExpirationHours;
 });
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+const string CombinedAuthScheme = "JwtOrApiKey";
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = CombinedAuthScheme;
+        options.DefaultChallengeScheme = CombinedAuthScheme;
+    })
+    // A request carrying X-API-Key is a Syncthing-compatible client; everything
+    // else is the web interface with its bearer token.
+    .AddPolicyScheme(CombinedAuthScheme, CombinedAuthScheme, options =>
+    {
+        options.ForwardDefaultSelector = context =>
+            context.Request.Headers.ContainsKey(ApiKeyAuthenticationHandler.HeaderName)
+                ? ApiKeyAuthenticationHandler.SchemeName
+                : JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddScheme<Microsoft.AspNetCore.Authentication.AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+        ApiKeyAuthenticationHandler.SchemeName, null)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
