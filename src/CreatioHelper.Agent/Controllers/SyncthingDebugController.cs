@@ -344,12 +344,8 @@ public class SyncthingDebugController : ControllerBase
         if (folderInfo == null)
             return NotFound(new { error = "folder not found" });
 
-        var filePath = Path.Combine(folderInfo.Path, file);
-        var fullPath = Path.GetFullPath(filePath);
-        var folderFullPath = Path.GetFullPath(folderInfo.Path);
-
-        // Ensure path is within folder
-        if (!fullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
+        var fullPath = CreatioHelper.Infrastructure.Services.Sync.FileSystem.PathContainment.Resolve(folderInfo.Path, file);
+        if (fullPath == null)
             return BadRequest(new { error = "Invalid file path" });
 
         if (!System.IO.File.Exists(fullPath))

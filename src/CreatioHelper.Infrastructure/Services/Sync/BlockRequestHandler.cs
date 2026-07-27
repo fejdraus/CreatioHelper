@@ -119,17 +119,17 @@ public class BlockRequestHandler
                 return;
             }
 
-            // Build file path
-            var filePath = Path.Combine(folder.Path, request.Name.Replace('/', Path.DirectorySeparatorChar));
-            filePath = Path.GetFullPath(filePath);
+            // The name comes from a remote device, so it is resolved and checked
+            // rather than trusted
+            var filePath = FileSystem.PathContainment.Resolve(
+                folder.Path,
+                request.Name.Replace('/', Path.DirectorySeparatorChar));
 
-            // Security check - ensure file is within folder
-            var folderPath = Path.GetFullPath(folder.Path);
-            if (!filePath.StartsWith(folderPath))
+            if (filePath == null)
             {
                 response.Code = BepErrorCode.Generic;
-                _logger.LogWarning("Security violation: block request {RequestId} trying to access file outside folder: {FilePath}", 
-                    request.Id, filePath);
+                _logger.LogWarning("Security violation: block request {RequestId} from device {DeviceId} names a path outside folder {FolderId}: {Name}",
+                    request.Id, deviceId, request.Folder, request.Name);
                 await _protocol.SendBlockResponseAsync(deviceId, response);
                 return;
             }

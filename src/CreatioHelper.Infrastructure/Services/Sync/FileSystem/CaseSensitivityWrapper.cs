@@ -151,7 +151,7 @@ public class CaseSensitiveFileSystem : ICaseSensitiveFileSystem
         {
             var fullPath = Path.GetFullPath(Path.Combine(_basePath, path));
 
-            if (!fullPath.StartsWith(_basePath, StringComparison.OrdinalIgnoreCase))
+            if (!PathContainment.IsInside(_basePath, fullPath))
             {
                 _logger.LogWarning("Path escapes base directory: {Path}", path);
                 return null;
