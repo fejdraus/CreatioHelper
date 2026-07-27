@@ -123,6 +123,27 @@ public class ApiKeyAuthenticationHandlerTests
         Assert.True(result.Succeeded);
     }
 
+    [Fact]
+    public void ConfigurationWithoutAFileDoesNotFallBackToTheKeyFromTheSource()
+    {
+        var first = new SyncConfiguration("DEVICE", "device");
+        var second = new SyncConfiguration("DEVICE", "device");
+
+        Assert.NotEqual(ApiKeyAuthenticationHandler.WellKnownDefaultKey, first.GuiApiKey);
+        Assert.NotEqual(first.GuiApiKey, second.GuiApiKey);
+        Assert.True(first.GuiApiKey.Length >= 32);
+    }
+
+    [Fact]
+    public void SetGuiConfigurationWithoutAKeyGeneratesOne()
+    {
+        var configuration = new SyncConfiguration("DEVICE", "device");
+        configuration.SetGuiConfiguration();
+
+        Assert.NotEqual(ApiKeyAuthenticationHandler.WellKnownDefaultKey, configuration.GuiApiKey);
+        Assert.False(string.IsNullOrWhiteSpace(configuration.GuiApiKey));
+    }
+
     private class OptionsMonitorStub : IOptionsMonitor<AuthenticationSchemeOptions>
     {
         private readonly AuthenticationSchemeOptions _options = new();

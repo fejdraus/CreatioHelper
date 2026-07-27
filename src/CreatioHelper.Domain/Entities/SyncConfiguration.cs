@@ -109,11 +109,24 @@ public class SyncConfiguration : AggregateRoot
     public bool GuiEnabled { get; set; } = true;
     public string GuiAddress { get; set; } = "127.0.0.1:8384";
     public bool GuiTls { get; set; } = false;
-    public string GuiApiKey { get; set; } = "syncthing-compatible-key";
+    /// <summary>
+    /// Generated per instance rather than a fixed literal: this default is what an
+    /// agent runs with when config.xml is missing or unreadable, and the API key
+    /// authenticates read access. A value baked into the source would be public
+    /// knowledge. A real installation gets its key from config.xml.
+    /// </summary>
+    public string GuiApiKey { get; set; } = GenerateApiKey();
     public string GuiUser { get; set; } = string.Empty;
     public string GuiPassword { get; set; } = string.Empty;
     
     // Extended timing properties - these are already defined above, removed duplicates
+
+    private static string GenerateApiKey()
+    {
+        var bytes = new byte[32];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(bytes);
+        return Convert.ToHexString(bytes).ToLowerInvariant();
+    }
 
     public SyncConfiguration() { } // For EF Core and configuration binding
 
@@ -210,12 +223,12 @@ public class SyncConfiguration : AggregateRoot
         NatTraversal.PmpEnabled = pmpEnabled;
     }
     
-    public void SetGuiConfiguration(bool enabled = true, string address = "127.0.0.1:8384", bool tls = false, string apiKey = "syncthing-compatible-key", string user = "", string password = "")
+    public void SetGuiConfiguration(bool enabled = true, string address = "127.0.0.1:8384", bool tls = false, string? apiKey = null, string user = "", string password = "")
     {
         GuiEnabled = enabled;
         GuiAddress = address;
         GuiTls = tls;
-        GuiApiKey = apiKey;
+        GuiApiKey = string.IsNullOrEmpty(apiKey) ? GenerateApiKey() : apiKey;
         GuiUser = user;
         GuiPassword = password;
     }
