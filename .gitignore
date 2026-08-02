@@ -55,3 +55,4 @@ website-registry.json
 
 # Test run artifacts
 TestResults/
+/docs

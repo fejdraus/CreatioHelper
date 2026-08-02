@@ -131,18 +131,22 @@ public partial class ConnectionStringsViewModel : ObservableObject
     private string? _lastSitePath;
     private bool _isPopulating;
 
-    private static readonly HashSet<string> _editableProperties = new()
-    {
-        nameof(DbServer), nameof(DbPort), nameof(DbCatalog), nameof(DbUserId), nameof(DbPassword), nameof(DbExtraParams),
-        nameof(RedisHost), nameof(RedisPort), nameof(RedisDb), nameof(RedisPassword), nameof(RedisClusterHosts), nameof(RedisExtraParams),
-        nameof(SentinelHosts), nameof(SentinelMasterName), nameof(SentinelScanForOther), nameof(SentinelDb), nameof(SentinelExtraParams),
+    private static readonly HashSet<string> EditableProperties =
+    [
+        nameof(DbServer), nameof(DbPort), nameof(DbCatalog), nameof(DbUserId), nameof(DbPassword),
+        nameof(DbExtraParams),
+        nameof(RedisHost), nameof(RedisPort), nameof(RedisDb), nameof(RedisPassword), nameof(RedisClusterHosts),
+        nameof(RedisExtraParams),
+        nameof(SentinelHosts), nameof(SentinelMasterName), nameof(SentinelScanForOther), nameof(SentinelDb),
+        nameof(SentinelExtraParams),
         nameof(SelectedRedisMode), nameof(UseRetryRedisOperation),
         nameof(MqUser), nameof(MqPassword), nameof(MqHost), nameof(MqPort), nameof(MqVirtualHost),
         nameof(ElasticUser), nameof(ElasticPassword),
         nameof(InfluxUrl), nameof(InfluxUser), nameof(InfluxPassword), nameof(InfluxBatchIntervalMs),
-        nameof(S3ServiceUrl), nameof(S3AccessKey), nameof(S3SecretKey), nameof(S3ObjectBucketName), nameof(S3RecycleBucketName),
-        nameof(DefPackagesWorkingCopyPath), nameof(TempDirectoryPath), nameof(SourceControlAuthPath),
-    };
+        nameof(S3ServiceUrl), nameof(S3AccessKey), nameof(S3SecretKey), nameof(S3ObjectBucketName),
+        nameof(S3RecycleBucketName),
+        nameof(DefPackagesWorkingCopyPath), nameof(TempDirectoryPath), nameof(SourceControlAuthPath)
+    ];
 
     [ObservableProperty] private bool _isConfigLoaded;
 
@@ -644,7 +648,7 @@ public partial class ConnectionStringsViewModel : ObservableObject
     {
         base.OnPropertyChanged(e);
         if (_loadedData is not null && !_isPopulating && e.PropertyName is not null
-            && _editableProperties.Contains(e.PropertyName))
+            && EditableProperties.Contains(e.PropertyName))
         {
             SaveConfig();
         }
