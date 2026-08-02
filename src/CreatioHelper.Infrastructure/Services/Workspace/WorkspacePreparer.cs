@@ -419,6 +419,18 @@ public class WorkspacePreparer : IWorkspacePreparer
 
     public int Compile(string sitePath)
     {
+        if (SupportsFastCompile(sitePath))
+        {
+            int buildCode = RunBuildOperation(sitePath);
+            if (buildCode != 0)
+            {
+                return buildCode;
+            }
+            return BuildConfiguration(sitePath, force: false);
+        }
+
+        _output.WriteLine($"[INFO] Creatio below {Constants.MinimumVersionForFastCompile} has no Build operation; compiling through RegenerateSchemaSources.");
+
         int code = RegenerateSchemaSources(sitePath);
         if (code != 0)
         {
@@ -518,7 +530,7 @@ public class WorkspacePreparer : IWorkspacePreparer
         _output.WriteLine($"Path to log file: {logPath}");
         string webAppPath = GetWebAppPath(sitePath);
         string configPath = GetConfigurationPath(sitePath);
-        string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{string.Join(",", packageList.Split(new[] {'\n', '\r'}, StringSplitOptions.RemoveEmptyEntries))}\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        string arguments = $"-operation=\"DeletePackages\" -workspaceName=\"Default\" -packagesToDelete=\"{string.Join(",", packageList.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries))}\" -continueIfError=\"true\" -webApplicationPath=\"{SafePath(sitePath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
         _output.WriteLine($"Deleting packages: {packageList}");
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
@@ -737,13 +749,13 @@ public class WorkspacePreparer : IWorkspacePreparer
 
         bool isUnc = OperatingSystem.IsWindows() &&
                      (exePath.StartsWith(@"\\", StringComparison.Ordinal) ||
-                      exePath.StartsWith("//",  StringComparison.Ordinal));
+                      exePath.StartsWith("//", StringComparison.Ordinal));
 
         if (IsDotNetFramework(sitePath))
         {
             if (isUnc)
             {
-                var dir  = Path.GetDirectoryName(exePath)!;
+                var dir = Path.GetDirectoryName(exePath)!;
                 var name = Path.GetFileName(exePath);
                 return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && \"{name}\" {arguments}", _output, null);
             }
@@ -752,7 +764,7 @@ public class WorkspacePreparer : IWorkspacePreparer
 
         if (isUnc)
         {
-            var dir  = Path.GetDirectoryName(exePath)!;
+            var dir = Path.GetDirectoryName(exePath)!;
             var name = Path.GetFileName(exePath);
             return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && dotnet \"{name}\" {arguments}", _output, null);
         }
