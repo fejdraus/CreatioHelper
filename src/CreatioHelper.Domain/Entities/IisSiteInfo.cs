@@ -17,6 +17,8 @@ public class IisSiteInfo
 
     public string HostName { get; set; } = "";
 
+    public string IpAddress { get; set; } = "";
+
     public string Protocol { get; set; } = "http";
 
     public string Path { get; set; } = "";

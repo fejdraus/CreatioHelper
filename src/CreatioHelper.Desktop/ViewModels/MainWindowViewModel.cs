@@ -1225,11 +1225,27 @@ public partial class MainWindowViewModel : ObservableObject
         }
     }
 
+    private static string ResolveHost(IisSiteInfo site)
+    {
+        if (!string.IsNullOrWhiteSpace(site.HostName))
+        {
+            return site.HostName;
+        }
+
+        var ip = site.IpAddress?.Trim() ?? string.Empty;
+        if (ip.Length == 0 || ip == "*" || ip == "0.0.0.0" || ip == "::")
+        {
+            return "localhost";
+        }
+
+        return ip.Contains(':') ? $"[{ip}]" : ip;
+    }
+
     private static string BuildIisAppUrl(IisSiteInfo site)
     {
         var port = int.TryParse(site.Port, out var parsed) && parsed > 0 ? parsed : 80;
         var scheme = string.IsNullOrWhiteSpace(site.Protocol) ? "http" : site.Protocol;
-        var host = string.IsNullOrWhiteSpace(site.HostName) ? "localhost" : site.HostName;
+        var host = ResolveHost(site);
         var appPath = site.IsVirtualApp ? "/" + string.Join('/', site.Name.Split('/').Skip(1)) : "";
         return $"{scheme}://{host}:{port}{appPath}";
     }

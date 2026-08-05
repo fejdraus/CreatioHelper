@@ -101,6 +101,7 @@ public class IisService
                     var binding = site.Bindings.FirstOrDefault(b => b.Protocol == "http")
                         ?? site.Bindings.FirstOrDefault(b => b.Protocol == "https");
                     var bindingParts = (binding?.BindingInformation ?? "").Split(':');
+                    var bindingIp = bindingParts.Length > 0 ? bindingParts[0] : "";
                     var bindingPort = bindingParts.Length > 1 ? bindingParts[1] : "";
                     var bindingHost = bindingParts.Length > 2 ? bindingParts[2] : "";
                     var bindingProtocol = binding?.Protocol ?? "http";
@@ -127,6 +128,7 @@ public class IisService
                             Version = AppVersionHelper.GetAppVersion(sitePath),
                             Port = bindingPort,
                             HostName = bindingHost,
+                            IpAddress = bindingIp,
                             Protocol = bindingProtocol
                         });
                     }
@@ -147,6 +149,7 @@ public class IisService
                             Version = AppVersionHelper.GetAppVersion(virtualPath),
                             Port = bindingPort,
                             HostName = bindingHost,
+                            IpAddress = bindingIp,
                             Protocol = bindingProtocol
                         });
                     }

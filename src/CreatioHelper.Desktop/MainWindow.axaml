@@ -10,8 +10,8 @@
         x:Class="CreatioHelper.MainWindow"
         x:Name="MainRoot"
         x:DataType="vm:MainWindowViewModel"
-        Width="1145" Height="670"
-        MinWidth="1145" MinHeight="630"
+        Width="1227" Height="670"
+        MinWidth="1227" MinHeight="630"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Resources>
