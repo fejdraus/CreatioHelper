@@ -53,6 +53,8 @@ internal static class CliEntryPoint
 
         AppSettings settings = LoadSettings(cli, output);
 
+        await NotifyOnNewerVersionAsync(provider, settings, cli, quiet);
+
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
         {
@@ -80,6 +82,46 @@ internal static class CliEntryPoint
         {
             output.WriteLine($"[ERROR] {ex.Message}");
             return 1;
+        }
+    }
+
+    internal static bool ShouldCheckForUpdates(AppSettings settings, CliArgs cli, bool quiet)
+    {
+        if (quiet || cli.HasFlag("no-update-check"))
+        {
+            return false;
+        }
+
+        return settings.UpdateCheckEnabled;
+    }
+
+    private static async Task NotifyOnNewerVersionAsync(IServiceProvider provider, AppSettings settings, CliArgs cli, bool quiet)
+    {
+        if (!ShouldCheckForUpdates(settings, cli, quiet))
+        {
+            return;
+        }
+
+        try
+        {
+            var check = provider.GetService<ICliUpdateCheck>();
+            if (check is null)
+            {
+                return;
+            }
+
+            var newer = await check.GetNewerVersionAsync(settings.UpdateChannel);
+            if (newer is null)
+            {
+                return;
+            }
+
+            Console.WriteLine($"A newer version is available: {newer} (current {check.CurrentVersion})");
+            Console.WriteLine("https://github.com/fejdraus/CreatioHelper/releases/latest");
+            Console.WriteLine();
+        }
+        catch (Exception)
+        {
         }
     }
 
@@ -651,6 +693,7 @@ internal static class CliEntryPoint
         Console.WriteLine("  --no-package-data            Do not reinstall package data");
         Console.WriteLine("  --ignore-sql-compatibility   Skip the SQL script backward compatibility check");
         Console.WriteLine("  --quiet                      Only print [ERROR] lines");
+        Console.WriteLine("  --no-update-check            Do not check whether a newer release exists");
         Console.WriteLine();
         Console.WriteLine("lic load options:");
         Console.WriteLine("  --lic-file <path>            Path to the license response file (.lic)");

@@ -81,6 +81,9 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient(nameof(UpdateService))
             .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(10));
         services.AddSingleton<IUpdateService, UpdateService>();
+        services.AddHttpClient(nameof(CliUpdateCheck))
+            .ConfigureHttpClient(c => c.Timeout = TimeSpan.FromSeconds(3));
+        services.AddSingleton<ICliUpdateCheck, CliUpdateCheck>();
         if (configuration != null)
         {
             services.AddSyncDatabase(configuration);

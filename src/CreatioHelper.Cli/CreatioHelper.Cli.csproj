@@ -23,4 +23,7 @@
         <ProjectReference Include="..\CreatioHelper.Shared\CreatioHelper.Shared.csproj" />
         <ProjectReference Include="..\CreatioHelper.Contracts\CreatioHelper.Contracts.csproj" />
     </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="CreatioHelper.Tests" />
+  </ItemGroup>
 </Project>
