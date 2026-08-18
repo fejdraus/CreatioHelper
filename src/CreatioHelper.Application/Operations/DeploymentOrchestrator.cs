@@ -74,7 +74,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 string packagesPath = options.PackagesPath ?? "";
                 string packagesBefore = options.PackagesToDeleteBefore?.Trim() ?? "";
                 string packagesAfter = options.PackagesToDeleteAfter?.Trim() ?? "";
-                var serverList = options.Servers.ToArray();
+                var serverList = options.HasRemoteServers ? options.Servers.ToArray() : Array.Empty<ServerInfo>();
                 var preparer = _workspacePreparer;
 
                 bool hasPackageOps = !string.IsNullOrWhiteSpace(packagesPath) ||
@@ -125,6 +125,21 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 bool schemaRebuildPerformed = false;
                 bool serversAlreadyStopped = false;
 
+                async Task StopServersForChangeAsync(string what)
+                {
+                    if (serverList.Length > 0)
+                    {
+                        _output.WriteLine($"Stopping ALL servers (local + remote) before {what}...");
+                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                        serversAlreadyStopped = true;
+                    }
+                    else
+                    {
+                        _output.WriteLine($"Stopping local server before {what}...");
+                        await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, options.IsIisMode, options.ServiceName, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                    }
+                }
+
                 bool willDeletePackagesBefore = !string.IsNullOrWhiteSpace(packagesBefore) && appVersion >= Constants.MinimumVersionForDeletePackages;
                 bool willInstallPackages = !string.IsNullOrWhiteSpace(packagesPath) && Directory.Exists(packagesPath);
                 bool willDeletePackagesAfter = !string.IsNullOrWhiteSpace(packagesAfter) && appVersion >= Constants.MinimumVersionForDeletePackages;
@@ -158,8 +173,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 {
                     if (!willInstallPackages)
                     {
-                        _output.WriteLine("Stopping local server before deleting packages...");
-                        await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, options.IsIisMode, options.ServiceName, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                        await StopServersForChangeAsync("deleting packages");
                     }
 
                     _output.WriteLine("Deleting packages BEFORE installation...");
@@ -202,6 +216,11 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                             return;
                         }
                         _output.WriteLine("[OK] Pre-validation passed.");
+                    }
+
+                    if (options.SkipServerRestart)
+                    {
+                        _output.WriteLine("[INFO] Skip IIS Restart does not apply to package installation - files are locked while the site runs. Restarting anyway.");
                     }
 
                     _output.WriteLine("Stopping ALL servers before package installation...");
@@ -249,8 +268,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     bool wasStoppedEarlier = willDeletePackagesBefore || willInstallPackages;
                     if (!wasStoppedEarlier)
                     {
-                        _output.WriteLine("Stopping local server before deleting packages...");
-                        await PerformIisOperationsAsync(manager, localServerInfo, nestedPath, options.IsIisMode, options.ServiceName, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                        await StopServersForChangeAsync("deleting packages");
                     }
 
                     _output.WriteLine("Deleting packages AFTER installation...");
@@ -364,7 +382,10 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                 bool usedSyncthingOrchestration = false;
                 bool usedManagePoolsOnly = false;
 
-                if (!schemaRebuildPerformed && serverList.Length > 0 && options.HasRemoteServers)
+                bool skipServerStart = options.SkipServerRestart && !hasPackageOps;
+                bool contentChanged = hasPackageOps || options.Compile != CompileMode.None;
+
+                if (contentChanged && !skipServerStart && serverList.Length > 0 && options.HasRemoteServers)
                 {
                     ui.OnStopButtonEnabledChanged(false);
                     if (!cancellationToken.IsCancellationRequested)
@@ -405,8 +426,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                 if (!usedSyncthingOrchestration && !usedManagePoolsOnly)
                 {
-                    bool skipStart = options.SkipServerRestart && !hasPackageOps;
-                    if (!skipStart)
+                    if (!skipServerStart)
                     {
                         bool hasRemoteServers = options.HasRemoteServers && serverList.Length > 0;
 
@@ -503,7 +523,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         {
             await Task.Run(async () =>
             {
-                var serverList = options.Servers.ToArray();
+                var serverList = options.HasRemoteServers ? options.Servers.ToArray() : Array.Empty<ServerInfo>();
                 var preparer = _workspacePreparer;
 
                 _output.WriteLine($"Restoring configuration from {backup.Path}");
