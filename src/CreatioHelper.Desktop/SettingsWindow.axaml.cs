@@ -50,7 +50,7 @@ public partial class SettingsWindow : Window
         if (e.PropertyName == nameof(SettingsWindowViewModel.UpdateChannel))
         {
             _viewModel.ActionButtonText = "Check for updates now";
-            _viewModel.IsActionButtonEnabled = _viewModel.UpdateCheckEnabled;
+            _viewModel.IsActionButtonEnabled = true;
             _viewModel.IsDownloadProgressVisible = false;
             _viewModel.DownloadProgressPercent = 0;
             _viewModel.LatestVersion = null;
