@@ -231,10 +231,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         _localStatusTimer = DispatcherTimer.Run(() =>
         {
-            if (!_operationsService.IsBusy)
-            {
-                _ = RefreshLocalStatusAsync(fromTimer: true);
-            }
+            _ = RefreshLocalStatusAsync(fromTimer: true);
             return true;
         }, TimeSpan.FromSeconds(10));
     }
@@ -1012,6 +1009,8 @@ public partial class MainWindowViewModel : ObservableObject
         _ = RefreshLocalStatusAsync();
     }
 
+    internal const string AppHealthDuringOperation = "Paused during operation";
+
     public Task RefreshLocalStatusAsync() => RefreshLocalStatusAsync(fromTimer: false);
 
     private async Task RefreshLocalStatusAsync(bool fromTimer)
@@ -1033,6 +1032,7 @@ public partial class MainWindowViewModel : ObservableObject
             var site = SelectedIisSite;
             var sitePath = SitePath;
             var serviceName = ServiceName;
+            var probeApp = !_operationsService.IsBusy;
 
             if (isIis && site is not null)
             {
@@ -1043,25 +1043,34 @@ public partial class MainWindowViewModel : ObservableObject
                     LocalVersionText = FormatVersion(site.Version);
                     LocalPoolStatus = KeepOrChecking(LocalPoolStatus);
                     LocalSiteStatus = KeepOrChecking(LocalSiteStatus);
-                    LocalAppHealth = KeepOrChecking(LocalAppHealth);
+                    LocalAppHealth = probeApp ? KeepOrChecking(LocalAppHealth) : AppHealthDuringOperation;
                 });
 
                 var siteName = site.IsVirtualApp ? site.Name.Split('/')[0] : site.Name;
                 bool StillCurrent() => IsIisMode && ReferenceEquals(SelectedIisSite, site);
 
-                await Task.WhenAll(
+                var iisPending = new List<Task>
+                {
                     ApplyWhenReady(Task.Run(() => _iisService.GetLocalStatus(siteName, site.PoolName)), StillCurrent, status =>
                     {
                         LocalPoolStatus = status.PoolStatus;
                         LocalSiteStatus = status.SiteStatus;
                     }, cancellationToken),
-                    ApplyWhenReady(Task.Run(() => ReadDataStores(site.Path)), StillCurrent, stores =>
+                };
+
+                if (probeApp)
+                {
+                    iisPending.Add(ApplyWhenReady(Task.Run(() => ReadDataStores(site.Path)), StillCurrent, stores =>
                     {
                         LocalDbName = stores.DbName;
                         LocalRedisDb = stores.RedisDb;
-                    }, cancellationToken),
-                    ApplyWhenReady(CheckAppHealthAsync(BuildIisAppUrl(site), cancellationToken), StillCurrent,
+                    }, cancellationToken));
+
+                    iisPending.Add(ApplyWhenReady(CheckAppHealthAsync(BuildIisAppUrl(site), cancellationToken), StillCurrent,
                         health => LocalAppHealth = health, cancellationToken));
+                }
+
+                await Task.WhenAll(iisPending);
             }
             else if (!isIis && !string.IsNullOrWhiteSpace(sitePath))
             {
@@ -1085,7 +1094,7 @@ public partial class MainWindowViewModel : ObservableObject
                     LocalDbName = folder.Stores.DbName;
                     LocalRedisDb = folder.Stores.RedisDb;
                     LocalServiceStatus = string.IsNullOrWhiteSpace(serviceName) ? "" : KeepOrChecking(LocalServiceStatus);
-                    LocalAppHealth = folder.AppUrl is null ? "" : KeepOrChecking(LocalAppHealth);
+                    LocalAppHealth = folder.AppUrl is null ? "" : probeApp ? KeepOrChecking(LocalAppHealth) : AppHealthDuringOperation;
                 });
 
                 bool StillCurrent() => !IsIisMode
@@ -1098,7 +1107,7 @@ public partial class MainWindowViewModel : ObservableObject
                     pending.Add(ApplyWhenReady(_systemServiceManager.GetServiceStateAsync(serviceName), StillCurrent,
                         state => LocalServiceStatus = string.IsNullOrWhiteSpace(state) ? "Unknown" : state, cancellationToken));
                 }
-                if (folder.AppUrl is not null)
+                if (folder.AppUrl is not null && probeApp)
                 {
                     pending.Add(ApplyWhenReady(CheckAppHealthAsync(folder.AppUrl, cancellationToken), StillCurrent,
                         health => LocalAppHealth = health, cancellationToken));
