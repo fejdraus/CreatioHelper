@@ -59,5 +59,4 @@ public class DtoAppSettings
     [JsonConverter(typeof(JsonStringEnumConverter))]
     public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Beta;
 
-    public string? SkipUpdateVersion { get; set; }
 }

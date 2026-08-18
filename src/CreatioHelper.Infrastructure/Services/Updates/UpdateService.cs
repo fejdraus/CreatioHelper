@@ -88,19 +88,6 @@ public class UpdateService : IUpdateService, IDisposable
         }
     }
 
-    public void SkipCurrentAvailable()
-    {
-        if (_state is not UpdateState.Available available)
-        {
-            return;
-        }
-
-        var settings = _settingsManager.Load();
-        settings.SkipUpdateVersion = available.Version;
-        _settingsManager.Save(settings);
-        SetState(new UpdateState.Idle());
-    }
-
     public void Dispose()
     {
         _timer.Dispose();
@@ -164,12 +151,6 @@ public class UpdateService : IUpdateService, IDisposable
             if (release.Version <= current)
             {
                 SetState(new UpdateState.Idle(NotAvailable: explicitly));
-                return;
-            }
-
-            if (!explicitly && string.Equals(settings.SkipUpdateVersion, release.Version.ToString(), StringComparison.Ordinal))
-            {
-                SetState(new UpdateState.Idle());
                 return;
             }
 

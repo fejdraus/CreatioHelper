@@ -57,5 +57,4 @@ public class AppSettings
 
     public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;
 
-    public string? SkipUpdateVersion { get; set; }
 }

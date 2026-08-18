@@ -20,6 +20,4 @@ public interface IUpdateService
     Task DownloadAndInstallAsync(CancellationToken cancellationToken = default);
 
     void QuitAndApply();
-
-    void SkipCurrentAvailable();
 }
