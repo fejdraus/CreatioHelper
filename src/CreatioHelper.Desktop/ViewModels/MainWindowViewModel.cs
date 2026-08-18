@@ -40,6 +40,7 @@ public partial class MainWindowViewModel : ObservableObject
     private readonly IIisManager _iisManager;
     private readonly IisService _iisService;
     private readonly IMediator _mediator;
+    private readonly IAppSettingsManager _appSettingsManager;
     private readonly IOperationsService _operationsService;
     private readonly IDialogService _dialogService;
     private readonly IConfigurationBackupService _configurationBackupService;
@@ -96,7 +97,8 @@ public partial class MainWindowViewModel : ObservableObject
         IModuleCleanupService moduleCleanup,
         IWindowsFeaturesService windowsFeatures,
         ITerrasoftSvnCleanupService svnCleanup,
-        IUIDispatcher uiDispatcher)
+        IUIDispatcher uiDispatcher,
+        IAppSettingsManager appSettingsManager)
     {
         _output = output;
         _uiDispatcher = uiDispatcher;
@@ -107,6 +109,7 @@ public partial class MainWindowViewModel : ObservableObject
         ConnStrVm.ConfigSaved += (_, _) => RefreshDataStores();
         _metricsService = metricsService;
         _mediator = mediator;
+        _appSettingsManager = appSettingsManager;
         _operationsService = operationsService;
         _operationsService.PropertyChanged += (_, args) =>
         {
@@ -1513,35 +1516,34 @@ public partial class MainWindowViewModel : ObservableObject
     {
         if (_isInitializing) return;
 
-        var settings = new AppSettings
+        var settings = _appSettingsManager.Load();
+
+        settings.SitePath = IsFolderMode ? SitePath : null;
+        settings.ServiceName = IsFolderMode ? ServiceName : null;
+        settings.SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null;
+        settings.SelectedIisSitePath = IsIisMode ? SelectedIisSite?.Path : null;
+        settings.PackagesPath = PackagesPath;
+        settings.PrevalidateBeforeInstall = PrevalidateBeforeInstall;
+        settings.ResetUnlockedPackageFlags = ResetUnlockedPackageFlags;
+        settings.SkipRedisClear = SkipRedisClear;
+        settings.SkipServerRestart = SkipServerRestart;
+        settings.PackagesToDeleteBefore = PackagesToDeleteBefore;
+        settings.PackagesToDeleteAfter = PackagesToDeleteAfter;
+        settings.ServerList = new ObservableCollection<ServerInfo>(ServerList.Select(s => new ServerInfo
         {
-            SitePath = IsFolderMode ? SitePath : null,
-            ServiceName = IsFolderMode ? ServiceName : null,
-            SelectedIisSiteName = IsIisMode ? SelectedIisSite?.Name : null,
-            SelectedIisSitePath = IsIisMode ? SelectedIisSite?.Path : null,
-            PackagesPath = PackagesPath,
-            PrevalidateBeforeInstall = PrevalidateBeforeInstall,
-            ResetUnlockedPackageFlags = ResetUnlockedPackageFlags,
-            SkipRedisClear = SkipRedisClear,
-            SkipServerRestart = SkipServerRestart,
-            PackagesToDeleteBefore = PackagesToDeleteBefore,
-            PackagesToDeleteAfter = PackagesToDeleteAfter,
-            ServerList = new ObservableCollection<ServerInfo>(ServerList.Select(s => new ServerInfo
-            {
-                Name = s.Name,
-                NetworkPath = s.NetworkPath,
-                PoolName = s.PoolName,
-                SiteName = s.SiteName,
-                SyncthingFolderIds = new List<string>(s.SyncthingFolderIds),
-                SyncthingDeviceId = s.SyncthingDeviceId
-            })),
-            IsIisMode = IsIisMode,
-            IsServerPanelVisible = IsServerPanelVisible,
-            EnableFileCopySynchronization = EnableFileCopySynchronization,
-            UseSyncthingForSync = UseSyncthingForSync,
-            SyncthingApiUrl = SyncthingApiUrl,
-            SyncthingApiKey = SyncthingApiKey
-        };
+            Name = s.Name,
+            NetworkPath = s.NetworkPath,
+            PoolName = s.PoolName,
+            SiteName = s.SiteName,
+            SyncthingFolderIds = new List<string>(s.SyncthingFolderIds),
+            SyncthingDeviceId = s.SyncthingDeviceId
+        }));
+        settings.IsIisMode = IsIisMode;
+        settings.IsServerPanelVisible = IsServerPanelVisible;
+        settings.EnableFileCopySynchronization = EnableFileCopySynchronization;
+        settings.UseSyncthingForSync = UseSyncthingForSync;
+        settings.SyncthingApiUrl = SyncthingApiUrl;
+        settings.SyncthingApiKey = SyncthingApiKey;
 
         _mediator.Send(new SaveSettingsCommand(settings));
     }
