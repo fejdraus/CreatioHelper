@@ -11,14 +11,14 @@
 
   <ItemGroup>
     <!-- Blazor WebAssembly -->
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.10" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.11" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="10.0.11" />
 
     <!-- SignalR for real-time updates -->
-    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.10" />
+    <PackageReference Include="Microsoft.AspNetCore.SignalR.Client" Version="10.0.11" />
 
     <!-- MudBlazor UI Components -->
-    <PackageReference Include="MudBlazor" Version="9.7.0" />
+    <PackageReference Include="MudBlazor" Version="9.8.0" />
 
     <!-- Local Storage for settings persistence -->
     <PackageReference Include="Blazored.LocalStorage" Version="4.5.0" />
