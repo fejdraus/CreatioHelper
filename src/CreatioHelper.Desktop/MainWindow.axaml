@@ -213,6 +213,7 @@
                         Grid.Column="2"
                         Content="Restore"
                         Command="{Binding RestoreConfigurationCommand}"
+                        IsVisible="False"
                         IsEnabled="{Binding AreControlsEnabled}"
                         HorizontalAlignment="Left"
                         Width="140"
@@ -885,6 +886,30 @@
                                 Margin="2.5,0,0,0"
                                 Command="{Binding StopAllIisCommand}"
                                 ToolTip.Tip="Stop all IIS sites and application pools" />
+                    </Grid>
+
+                    <Grid ColumnDefinitions="Auto,*"
+                          IsVisible="{Binding CanUseIisBulkOperations}">
+                        <NumericUpDown Grid.Column="0"
+                                       Value="{Binding RollingRestartBatchSize}"
+                                       Minimum="1"
+                                       Maximum="99"
+                                       Increment="1"
+                                       FormatString="0"
+                                       ParsingNumberStyle="Integer"
+                                       ShowButtonSpinner="False"
+                                       HorizontalContentAlignment="Center"
+                                       Width="56"
+                                       Height="32"
+                                       Margin="0,0,5,0"
+                                       ToolTip.Tip="How many servers are restarted at the same time" />
+                        <Button Grid.Column="1"
+                                Content="🔁 Rolling Restart"
+                                HorizontalAlignment="Stretch"
+                                HorizontalContentAlignment="Center"
+                                Height="32"
+                                Command="{Binding RollingRestartCommand}"
+                                ToolTip.Tip="Restart pools and sites in batches, so the remaining servers keep serving traffic" />
                     </Grid>
 
                     <TextBlock Text="Target servers:"

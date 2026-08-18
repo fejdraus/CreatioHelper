@@ -144,6 +144,7 @@ public partial class MainWindowViewModel : ObservableObject
         // Initialize IIS bulk commands
         StartAllIisCommand = new AsyncRelayCommand(StartAllIis);
         StopAllIisCommand = new AsyncRelayCommand(StopAllIis);
+        RollingRestartCommand = new AsyncRelayCommand(RollingRestartAsync);
 
         // Subscribe to invalid sync data events for diagnostics
         ServerInfo.OnInvalidSyncDataReceived += (serverName, folderId, needBytes, needItems, completion) =>
@@ -1804,6 +1805,7 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     public IAsyncRelayCommand StartAllIisCommand { get; }
     public IAsyncRelayCommand StopAllIisCommand { get; }
+    public IAsyncRelayCommand RollingRestartCommand { get; }
 
     /// <summary>
     /// Property to control visibility of IIS bulk operation buttons
@@ -1817,6 +1819,60 @@ public partial class MainWindowViewModel : ObservableObject
     /// <summary>
     /// Start all IIS sites and application pools for servers in the list
     /// </summary>
+    [ObservableProperty] private int _rollingRestartBatchSize = 2;
+
+    partial void OnRollingRestartBatchSizeChanged(int value)
+    {
+        if (value < 1)
+        {
+            RollingRestartBatchSize = 1;
+        }
+    }
+
+    private async Task RollingRestartAsync()
+    {
+        if (!IsWindows)
+        {
+            _output.WriteLine("[INFO] IIS is only available on Windows");
+            return;
+        }
+
+        if (!IsIisMode)
+        {
+            _output.WriteLine("[INFO] IIS mode is not enabled");
+            return;
+        }
+
+        var serversWithIis = ServerList
+            .Where(s => !string.IsNullOrEmpty(s.PoolName) || !string.IsNullOrEmpty(s.SiteName))
+            .ToList();
+
+        if (serversWithIis.Count == 0)
+        {
+            _output.WriteLine("[INFO] No servers have IIS sites or pools configured");
+            return;
+        }
+
+        var batchSize = Math.Clamp(RollingRestartBatchSize, 1, serversWithIis.Count);
+        var batchCount = (serversWithIis.Count + batchSize - 1) / batchSize;
+
+        _output.WriteLine($"Rolling restart of {serversWithIis.Count} servers, {batchSize} at a time ({batchCount} batches).");
+
+        for (var index = 0; index < serversWithIis.Count; index += batchSize)
+        {
+            var batch = serversWithIis.Skip(index).Take(batchSize).ToList();
+            var names = string.Join(", ", batch.Select(s => s.Name));
+            var batchNumber = (index / batchSize) + 1;
+
+            _output.WriteLine($"[INFO] Batch {batchNumber}/{batchCount}: {names}");
+
+            await _operationsService.StopAllIisAsync(batch);
+            await _operationsService.StartAllIisAsync(batch);
+        }
+
+        _output.WriteLine("[OK] Rolling restart completed.");
+    }
+
     private async Task StartAllIis()
     {
         if (!IsWindows)
