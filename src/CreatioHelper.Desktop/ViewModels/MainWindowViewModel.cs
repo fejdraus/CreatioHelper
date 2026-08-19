@@ -228,6 +228,7 @@ public partial class MainWindowViewModel : ObservableObject
                 // Notify when ServerList changes (items added/removed)
                 OnPropertyChanged(nameof(CanUseSyncthingBulkOperations));
                 OnPropertyChanged(nameof(CanUseIisBulkOperations));
+                OnPropertyChanged(nameof(CanRefreshServerStatuses));
             }
         };
 
@@ -1813,6 +1814,8 @@ public partial class MainWindowViewModel : ObservableObject
     /// Property to control visibility of IIS bulk operation buttons
     /// Only visible on Windows when IIS mode is enabled and there are servers with IIS configured
     /// </summary>
+    public bool CanRefreshServerStatuses => IsWindows && ServerList.Count > 0;
+
     public bool CanUseIisBulkOperations =>
         IsWindows &&
         IsIisMode &&

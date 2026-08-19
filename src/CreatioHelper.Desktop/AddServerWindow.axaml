@@ -21,17 +21,17 @@
         <TextBlock Text="Server name:" />
         <TextBox Text="{Binding ServerName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter server name (e.g., PROD-SERVER-01)" />
+                 PlaceholderText="Enter server name (e.g., PROD-SERVER-01)" />
 
         <TextBlock Text="Site name:" />
         <TextBox Text="{Binding SiteName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter IIS site name (e.g., Default Web Site)" />
+                 PlaceholderText="Enter IIS site name (e.g., Default Web Site)" />
 
         <TextBlock Text="Pool name:" />
         <TextBox Text="{Binding PoolName, Mode=TwoWay}"
                  MaxWidth="770"
-                 Watermark="Enter IIS application pool name (e.g., DefaultAppPool)" />
+                 PlaceholderText="Enter IIS application pool name (e.g., DefaultAppPool)" />
 
         <!-- File Copy Sync Fields -->
         <Border IsVisible="{Binding IsFileCopyFieldsVisible}"
@@ -50,11 +50,11 @@
                     <Run Text="Remote site path " /><Run Text="*" Foreground="Red" FontWeight="Bold" />
                 </TextBlock>
                 <TextBox Text="{Binding NetworkPath, Mode=TwoWay}"
-                         Watermark="Windows: \\server\share\site   Linux: /var/www/creatio" />
+                         PlaceholderText="Windows: \\server\share\site   Linux: /var/www/creatio" />
 
                 <TextBlock Text="Service name (stop/start during sync):" Margin="0,6,0,0" />
                 <TextBox Text="{Binding ServiceName, Mode=TwoWay}"
-                         Watermark="e.g., creatio  (leave empty to skip)" />
+                         PlaceholderText="e.g., creatio  (leave empty to skip)" />
 
                 <TextBlock FontWeight="SemiBold" Margin="0,10,0,2">
                     <Run Text="SSH / SFTP" />
@@ -66,12 +66,12 @@
                             <Run Text="SSH host " /><Run Text="*" Foreground="Red" FontWeight="Bold" />
                         </TextBlock>
                         <TextBox Text="{Binding SshHost, Mode=TwoWay}"
-                                 Watermark="IP address or hostname" />
+                                 PlaceholderText="IP address or hostname" />
                     </StackPanel>
                     <StackPanel Grid.Column="1" Spacing="4">
                         <TextBlock Text="Port:" />
                         <TextBox Text="{Binding SshPort, Mode=TwoWay}"
-                                 Watermark="22" />
+                                 PlaceholderText="22" />
                     </StackPanel>
                 </Grid>
 
@@ -79,14 +79,14 @@
                     <Run Text="SSH username " /><Run Text="*" Foreground="Red" FontWeight="Bold" />
                 </TextBlock>
                 <TextBox Text="{Binding SshUser, Mode=TwoWay}"
-                         Watermark="e.g., deploy or root" />
+                         PlaceholderText="e.g., deploy or root" />
 
                 <TextBlock Text="SSH auth — fill in one:" />
                 <TextBox Text="{Binding SshPassword, Mode=TwoWay}"
                          PasswordChar="●"
-                         Watermark="SSH auth: enter passphrase here" />
+                         PlaceholderText="SSH auth: enter passphrase here" />
                 <TextBox Text="{Binding SshKeyPath, Mode=TwoWay}"
-                         Watermark="or path to private key: /home/user/.ssh/id_rsa" />
+                         PlaceholderText="or path to private key: /home/user/.ssh/id_rsa" />
 
                 <CheckBox IsChecked="{Binding SshSudoEnabled, Mode=TwoWay}"
                           Content="Use sudo (upload to /tmp, then sudo mv — for Linux targets where PermitRootLogin is disabled)" />
@@ -94,12 +94,12 @@
                            IsVisible="{Binding SshSudoEnabled}" />
                 <TextBox Text="{Binding SshSudoPassword, Mode=TwoWay}"
                          PasswordChar="●"
-                         Watermark="sudo password or leave empty for NOPASSWD"
+                         PlaceholderText="sudo password or leave empty for NOPASSWD"
                          IsVisible="{Binding SshSudoEnabled}" />
                 <TextBlock Text="Owner after sudo mv (user:group, default: root:root):"
                            IsVisible="{Binding SshSudoEnabled}" />
                 <TextBox Text="{Binding SshSudoOwner, Mode=TwoWay}"
-                         Watermark="root:root"
+                         PlaceholderText="root:root"
                          IsVisible="{Binding SshSudoEnabled}" />
 
                 <TextBlock Text="Folders to sync (relative to site root):" Margin="0,10,0,0" />
@@ -109,7 +109,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
                     <TextBox Grid.Column="0"
                              Text="{Binding NewFolderPath, Mode=TwoWay}"
-                             Watermark="e.g., Terrasoft.Configuration"
+                             PlaceholderText="e.g., Terrasoft.Configuration"
                              Margin="0,0,8,0"/>
                     <Button Grid.Column="1"
                             Content="Add"
@@ -161,7 +161,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
                     <TextBox Grid.Column="0"
                              Text="{Binding NewExcludePattern, Mode=TwoWay}"
-                             Watermark="e.g., logs  or  *.log  or  Terrasoft.WebApp/Web.config"
+                             PlaceholderText="e.g., logs  or  *.log  or  Terrasoft.WebApp/Web.config"
                              Margin="0,0,8,0"/>
                     <Button Grid.Column="1"
                             Content="Add"
@@ -223,7 +223,7 @@
 
                 <TextBlock Text="Syncthing Device ID:" />
                 <TextBox Text="{Binding SyncthingDeviceId, Mode=TwoWay}"
-                         Watermark="Device ID (63 characters, 7 groups separated by hyphens)"/>
+                         PlaceholderText="Device ID (63 characters, 7 groups separated by hyphens)"/>
 
                 <TextBlock Text="Syncthing Folder IDs:" Margin="0,8,0,0"/>
 
@@ -231,7 +231,7 @@
                 <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,4">
                     <TextBox Grid.Column="0"
                              Text="{Binding NewFolderId, Mode=TwoWay}"
-                             Watermark="Enter folder ID (e.g., default, bin-folder)"
+                             PlaceholderText="Enter folder ID (e.g., default, bin-folder)"
                              Margin="0,0,8,0"/>
                     <Button Grid.Column="1"
                             Content="Add"

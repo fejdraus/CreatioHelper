@@ -88,13 +88,13 @@
                 <TextBlock Text="Site Path:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}"
-                             Watermark="Enter path to Creatio application folder"
+                             PlaceholderText="Enter path to Creatio application folder"
                              Margin="0,0,5,0"/>
                     <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
                 </Grid>
                 <TextBlock Text="Service Name (for service management):" Margin="0,5,0,0" />
                 <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}"
-                         Watermark="Enter service name for Linux/Windows service management" />
+                         PlaceholderText="Enter service name for Linux/Windows service management" />
             </StackPanel>
 
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
@@ -135,7 +135,7 @@
                 </Grid>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="PackagesPathTextBox" Text="{Binding PackagesPath, Mode=TwoWay}"
-                             Watermark="Enter path to packages folder for installation"
+                             PlaceholderText="Enter path to packages folder for installation"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
                             Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
@@ -157,13 +157,13 @@
                 <TextBox Grid.Row="1" Grid.Column="0"
                          x:Name="PackagesToDeleteBeforeTextBox"
                          Text="{Binding PackagesToDeleteBefore, Mode=TwoWay}"
-                         Watermark="Package names to delete before installation (comma-separated or one per line)"
+                         PlaceholderText="Package names to delete before installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
 
                 <TextBox Grid.Row="1" Grid.Column="2"
                          x:Name="PackagesToDeleteAfterTextBox"
                          Text="{Binding PackagesToDeleteAfter, Mode=TwoWay}"
-                         Watermark="Package names to delete after installation (comma-separated or one per line)"
+                         PlaceholderText="Package names to delete after installation (comma-separated or one per line)"
                          AcceptsReturn="True" TextWrapping="Wrap" Height="65" />
             </Grid>
 
@@ -490,7 +490,7 @@
                                 <CheckBox IsChecked="{Binding EnableProxy}"/>
                                 <TextBox Text="{Binding ProxyAddress}"
                                          Width="280" Height="32"
-                                         Watermark="http://proxy:port"
+                                         PlaceholderText="http://proxy:port"
                                          IsVisible="{Binding EnableProxy}"/>
                             </StackPanel>
 
@@ -515,7 +515,7 @@
                         </StackPanel>
                         <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto,Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Server:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding DbServer}" Height="32" Margin="0,0,8,8" Watermark="hostname or IP"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding DbServer}" Height="32" Margin="0,0,8,8" PlaceholderText="hostname or IP"/>
                             <TextBlock Grid.Row="0" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,8"/>
                             <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding DbPort}" Minimum="0" Maximum="65535" Increment="1" Height="32" Margin="0,0,0,8" FormatString="0"/>
 
@@ -529,7 +529,7 @@
 
                             <TextBlock Grid.Row="3" Grid.Column="0" Text="Other parameters:" VerticalAlignment="Center" Margin="0,0,12,0"/>
                             <TextBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding DbExtraParams}" Height="32"
-                                     Watermark="Pooling=true; Max Pool Size=100; Async=true"
+                                     PlaceholderText="Pooling=true; Max Pool Size=100; Async=true"
                                      ToolTip.Tip="Driver-specific parameters as key=value pairs separated by ';'. MSSQL: Pooling, Max Pool Size, Async, MultipleActiveResultSets. PostgreSQL: Timeout, CommandTimeout, MaxPoolSize. Oracle: Statement Cache Size."/>
                         </Grid>
 
@@ -547,7 +547,7 @@
 
                         <Grid ColumnDefinitions="160,*,80,*" RowDefinitions="Auto,Auto,Auto,Auto" IsVisible="{Binding HasRedis}">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Host:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RedisHost}" Height="32" Margin="0,0,8,8" Watermark="hostname or IP"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding RedisHost}" Height="32" Margin="0,0,8,8" PlaceholderText="hostname or IP"/>
                             <TextBlock Grid.Row="0" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,8"/>
                             <NumericUpDown Grid.Row="0" Grid.Column="3" Value="{Binding RedisPort}" Minimum="0" Maximum="65535" Increment="1" Height="32" Margin="0,0,0,8" FormatString="0"/>
 
@@ -558,7 +558,7 @@
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Other parameters:" VerticalAlignment="Center" Margin="0,0,12,0"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding RedisExtraParams}" Height="32"
-                                     Watermark="maxReadPoolSize=10; maxWritePoolSize=500"/>
+                                     PlaceholderText="maxReadPoolSize=10; maxWritePoolSize=500"/>
 
                             <CheckBox Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Margin="0,8,0,0"
                                       IsChecked="{Binding UseRetryRedisOperation}"
@@ -619,10 +619,10 @@
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto" IsVisible="{Binding HasRedisSentinel}">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Sentinel hosts:" VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding SentinelHosts}" Height="32" Margin="0,0,0,8"
-                                     Watermark="host1:26380,host2:26381,host3:26382"/>
+                                     PlaceholderText="host1:26380,host2:26381,host3:26382"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Master name:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SentinelMasterName}" Height="32" Margin="0,0,0,8" Watermark="mymaster"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding SentinelMasterName}" Height="32" Margin="0,0,0,8" PlaceholderText="mymaster"/>
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Scan for sentinels:" VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <CheckBox Grid.Row="2" Grid.Column="1" IsChecked="{Binding SentinelScanForOther}" Margin="0,0,0,8"
@@ -633,7 +633,7 @@
 
                             <TextBlock Grid.Row="4" Grid.Column="0" Text="Other parameters:" VerticalAlignment="Center" Margin="0,0,12,0"/>
                             <TextBox Grid.Row="4" Grid.Column="1" Text="{Binding SentinelExtraParams}" Height="32"
-                                     Watermark="maxReadPoolSize=10; maxWritePoolSize=500"/>
+                                     PlaceholderText="maxReadPoolSize=10; maxWritePoolSize=500"/>
                         </Grid>
 
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto" IsVisible="{Binding HasRedisCluster}">
@@ -644,7 +644,7 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate x:DataType="vm:RedisClusterNodeViewModel">
                                             <Grid ColumnDefinitions="*,80,*" Margin="0,0,0,4">
-                                                <TextBox Grid.Column="0" Text="{Binding Host}" Height="32" Margin="0,0,8,0" Watermark="hostname or IP"/>
+                                                <TextBox Grid.Column="0" Text="{Binding Host}" Height="32" Margin="0,0,8,0" PlaceholderText="hostname or IP"/>
                                                 <TextBlock Grid.Column="1" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                                                 <Grid Grid.Column="2" ColumnDefinitions="*,Auto">
                                                     <NumericUpDown Grid.Column="0" Value="{Binding Port}" Minimum="0" Maximum="65535" Increment="1" Height="32" Margin="0,0,8,0" FormatString="0"/>
@@ -666,7 +666,7 @@
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Other parameters:" VerticalAlignment="Center" Margin="0,0,12,0"/>
                             <TextBox Grid.Row="2" Grid.Column="1" Text="{Binding RedisExtraParams}" Height="32"
-                                     Watermark="useTls=true; certificatePath=...; certificatePassword=..."/>
+                                     PlaceholderText="useTls=true; certificatePath=...; certificatePassword=..."/>
                         </Grid>
 
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
@@ -681,12 +681,12 @@
                             <TextBox Grid.Row="0" Grid.Column="3" Text="{Binding MqPassword}" Height="32" PasswordChar="*" Margin="0,0,0,8"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Host:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MqHost}" Height="32" Margin="0,0,8,8" Watermark="hostname or IP"/>
+                            <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding MqHost}" Height="32" Margin="0,0,8,8" PlaceholderText="hostname or IP"/>
                             <TextBlock Grid.Row="1" Grid.Column="2" Text="Port:" VerticalAlignment="Center" Margin="0,0,8,8"/>
                             <NumericUpDown Grid.Row="1" Grid.Column="3" Value="{Binding MqPort}" Minimum="0" Maximum="65535" Increment="1" Height="32" Margin="0,0,0,8" FormatString="0" ToolTip.Tip="0 = default (5672)"/>
 
                             <TextBlock Grid.Row="2" Grid.Column="0" Text="Virtual Host:" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding MqVirtualHost}" Height="32" Watermark="e.g. BPMonlineSolution"/>
+                            <TextBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="3" Text="{Binding MqVirtualHost}" Height="32" PlaceholderText="e.g. BPMonlineSolution"/>
                         </Grid>
 
                         <Rectangle Height="1" Fill="{DynamicResource SystemControlForegroundBaseMediumLowBrush}" Opacity="0.3" Margin="0,4"/>
@@ -708,7 +708,7 @@
                         <TextBlock Text="InfluxDB (Metrics)" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="URL:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InfluxUrl}" Height="32" Margin="0,0,0,8" Watermark="http://host:port"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding InfluxUrl}" Height="32" Margin="0,0,0,8" PlaceholderText="http://host:port"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="User:" VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding InfluxUser}" Height="32" Margin="0,0,0,8"/>
@@ -727,7 +727,7 @@
                         <TextBlock Text="S3 / Object Storage (MinIO)" FontWeight="SemiBold" FontSize="13"/>
                         <Grid ColumnDefinitions="160,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
                             <TextBlock Grid.Row="0" Grid.Column="0" Text="Service URL:" VerticalAlignment="Center" Margin="0,0,12,8"/>
-                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding S3ServiceUrl}" Height="32" Margin="0,0,0,8" Watermark="http://host:port"/>
+                            <TextBox Grid.Row="0" Grid.Column="1" Text="{Binding S3ServiceUrl}" Height="32" Margin="0,0,0,8" PlaceholderText="http://host:port"/>
 
                             <TextBlock Grid.Row="1" Grid.Column="0" Text="Access Key:" VerticalAlignment="Center" Margin="0,0,12,8"/>
                             <TextBox Grid.Row="1" Grid.Column="1" Text="{Binding S3AccessKey}" Height="32" Margin="0,0,0,8"/>
@@ -829,7 +829,7 @@
                             HorizontalContentAlignment="Center"
                             Command="{Binding RefreshAllServersStatusCommand}"
                             Height="32"
-                            IsVisible="{Binding IsWindows}" />
+                            IsVisible="{Binding CanRefreshServerStatuses}" />
 
                     <Grid ColumnDefinitions="*,Auto" >
                         <Button Grid.Column="0"
