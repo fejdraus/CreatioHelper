@@ -26,6 +26,14 @@ public class AppSettings
 
     public bool IsServerPanelVisible { get; set; }
 
+    private int _rollingRestartBatchSize = 2;
+
+    public int RollingRestartBatchSize
+    {
+        get => _rollingRestartBatchSize;
+        set => _rollingRestartBatchSize = value < 1 ? 1 : value;
+    }
+
     public bool EnableFileCopySynchronization { get; set; } = true;
 
     /// <summary>

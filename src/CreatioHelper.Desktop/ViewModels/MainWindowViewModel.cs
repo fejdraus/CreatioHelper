@@ -1465,6 +1465,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         IsFolderMode = !settings.IsIisMode;
         IsServerPanelVisible = settings.IsServerPanelVisible;
+        RollingRestartBatchSize = settings.RollingRestartBatchSize;
         EnableFileCopySynchronization = settings.EnableFileCopySynchronization;
         UseSyncthingForSync = settings.UseSyncthingForSync;
         SyncthingApiUrl = settings.SyncthingApiUrl;
@@ -1554,6 +1555,7 @@ public partial class MainWindowViewModel : ObservableObject
         }));
         settings.IsIisMode = IsIisMode;
         settings.IsServerPanelVisible = IsServerPanelVisible;
+        settings.RollingRestartBatchSize = RollingRestartBatchSize;
         settings.EnableFileCopySynchronization = EnableFileCopySynchronization;
         settings.UseSyncthingForSync = UseSyncthingForSync;
         settings.SyncthingApiUrl = SyncthingApiUrl;
@@ -1844,7 +1846,10 @@ public partial class MainWindowViewModel : ObservableObject
         if (value < 1)
         {
             RollingRestartBatchSize = 1;
+            return;
         }
+
+        SaveServerSettings();
     }
 
     private async Task RollingRestartAsync()

@@ -68,6 +68,58 @@ public class SettingsPreservationTests : IDisposable
         Assert.Equal(UpdateChannel.Beta, AppSettingsService.Load().UpdateChannel);
     }
 
+    [Fact]
+    public void RollingRestartBatchSizeRoundTrips()
+    {
+        AppSettingsService.Save(new AppSettings { RollingRestartBatchSize = 5 });
+
+        Assert.Equal(5, AppSettingsService.Load().RollingRestartBatchSize);
+    }
+
+    [Fact]
+    public void RollingRestartBatchSizeSurvivesAnUnrelatedSave()
+    {
+        AppSettingsService.Save(new AppSettings { RollingRestartBatchSize = 7 });
+
+        var reloaded = AppSettingsService.Load();
+        reloaded.PackagesPath = @"C:\packages";
+        AppSettingsService.Save(reloaded);
+
+        Assert.Equal(7, AppSettingsService.Load().RollingRestartBatchSize);
+    }
+
+    [Fact]
+    public void RollingRestartBatchSizeDefaultsToTwoWhenAbsent()
+    {
+        AppSettingsService.Save(new AppSettings { PackagesPath = @"C:\packages" });
+
+        Assert.Equal(2, AppSettingsService.Load().RollingRestartBatchSize);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    [InlineData(int.MinValue)]
+    public void RollingRestartBatchSizeRejectsValuesBelowOne(int value)
+    {
+        var settings = new AppSettings { RollingRestartBatchSize = value };
+
+        Assert.Equal(1, settings.RollingRestartBatchSize);
+    }
+
+    [Theory]
+    [InlineData("0")]
+    [InlineData("-3")]
+    public void AHandEditedSettingsFileCannotProduceABatchSizeBelowOne(string stored)
+    {
+        AppSettingsService.Save(new AppSettings { RollingRestartBatchSize = 4 });
+        var path = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.json")[0];
+        var json = File.ReadAllText(path);
+        File.WriteAllText(path, json.Replace("\"RollingRestartBatchSize\": 4", "\"RollingRestartBatchSize\": " + stored));
+
+        Assert.Equal(1, AppSettingsService.Load().RollingRestartBatchSize);
+    }
+
     public void Dispose()
     {
         Directory.SetCurrentDirectory(_originalDirectory);
