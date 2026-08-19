@@ -440,10 +440,23 @@ public partial class MainWindowViewModel : ObservableObject
     }
 
     [RelayCommand]
-    private void RemoveServer(ServerInfo server)
+    private async Task RemoveServerAsync(ServerInfo server)
     {
-        if (ServerList.Contains(server))
-            ServerList.Remove(server);
+        if (!ServerList.Contains(server))
+        {
+            return;
+        }
+
+        var confirmed = await _dialogService.ConfirmAsync(
+            "Remove server",
+            $"Remove \"{server.Name}\" from the server list?\n\nThe server itself is not affected - only this list entry is removed.");
+
+        if (!confirmed)
+        {
+            return;
+        }
+
+        ServerList.Remove(server);
     }
     
     [RelayCommand]
