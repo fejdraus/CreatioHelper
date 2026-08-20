@@ -29,6 +29,7 @@ namespace CreatioHelper
         private readonly MainWindowViewModel? _viewModel;
         private readonly IUpdateService? _updateService;
         private readonly IAppSettingsManager? _appSettingsManager;
+        private readonly IOperationsService? _operationsService;
         private const string LogFilePath = "log.txt";
 
         public MainWindow()
@@ -100,6 +101,7 @@ namespace CreatioHelper
 
             // SyncthingMonitorService will be created dynamically when needed
             var operationsService = new OperationsService(writer, orchestrator, workspacePreparer);
+            _operationsService = operationsService;
             var iisService = new IisService();
             _viewModel = new MainWindowViewModel(writer, mediator, operationsService, dialogService, configurationBackupService, statusService, iisManager, iisService, systemServiceManager, redisFactory, workspacePreparer, packageCleaner, metricsService, webConfigEditor, connStringsEditor, moduleCleanup, windowsFeatures, svnCleanup, uiDispatcher, provider.GetRequiredService<IAppSettingsManager>());
 
@@ -184,7 +186,8 @@ namespace CreatioHelper
             var dialog = new SettingsWindow(
                 settings.UpdateCheckEnabled,
                 settings.UpdateChannel,
-                _updateService);
+                _updateService,
+                _operationsService);
             var result = await dialog.ShowDialog<SettingsResult?>(this);
             if (result is null)
             {

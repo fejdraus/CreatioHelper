@@ -14,6 +14,7 @@ public partial class SettingsWindow : Window
 {
     private readonly SettingsWindowViewModel _viewModel;
     private readonly IUpdateService? _updateService;
+    private readonly Services.IOperationsService? _operationsService;
 
     public SettingsWindow()
     {
@@ -22,10 +23,11 @@ public partial class SettingsWindow : Window
         DataContext = _viewModel;
     }
 
-    public SettingsWindow(bool updateCheckEnabled, UpdateChannel updateChannel, IUpdateService updateService)
+    public SettingsWindow(bool updateCheckEnabled, UpdateChannel updateChannel, IUpdateService updateService, Services.IOperationsService? operationsService = null)
     {
         InitializeComponent();
         _updateService = updateService;
+        _operationsService = operationsService;
         _viewModel = new SettingsWindowViewModel
         {
             UpdateCheckEnabled = updateCheckEnabled,
@@ -38,10 +40,20 @@ public partial class SettingsWindow : Window
         ApplyUpdateState(updateService.State);
         updateService.StateChanged += OnUpdateServiceStateChanged;
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+
+        if (_operationsService is not null)
+        {
+            _operationsService.PropertyChanged += OnOperationsServicePropertyChanged;
+        }
+
         Closed += (_, _) =>
         {
             updateService.StateChanged -= OnUpdateServiceStateChanged;
             _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            if (_operationsService is not null)
+            {
+                _operationsService.PropertyChanged -= OnOperationsServicePropertyChanged;
+            }
         };
     }
 
@@ -63,6 +75,24 @@ public partial class SettingsWindow : Window
         Dispatcher.UIThread.Post(() => ApplyUpdateState(state));
     }
 
+    private bool IsOperationRunning => _operationsService?.IsBusy == true;
+
+    private void OnOperationsServicePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(Services.IOperationsService.IsBusy))
+        {
+            return;
+        }
+
+        var state = _updateService?.State;
+        if (state is null)
+        {
+            return;
+        }
+
+        Dispatcher.UIThread.Post(() => ApplyUpdateState(state));
+    }
+
     private void ApplyUpdateState(UpdateState state)
     {
         switch (state)
@@ -79,9 +109,11 @@ public partial class SettingsWindow : Window
             case UpdateState.Available available:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = available.Version;
-                _viewModel.CheckStatus = "Update available";
+                _viewModel.CheckStatus = IsOperationRunning
+                    ? "Update available - finish the running operation before installing"
+                    : "Update available";
                 _viewModel.ActionButtonText = "Install update now";
-                _viewModel.IsActionButtonEnabled = true;
+                _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
                 _viewModel.IsDownloadIndeterminate = false;
                 _viewModel.DownloadProgressPercent = 0;
@@ -102,9 +134,11 @@ public partial class SettingsWindow : Window
             case UpdateState.Ready ready:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = ready.Version;
-                _viewModel.CheckStatus = "Update downloaded — pending restart";
+                _viewModel.CheckStatus = IsOperationRunning
+                    ? "Update downloaded - finish the running operation before restarting"
+                    : "Update downloaded — pending restart";
                 _viewModel.ActionButtonText = "Restart and apply update";
-                _viewModel.IsActionButtonEnabled = true;
+                _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
                 _viewModel.IsDownloadIndeterminate = false;
                 _viewModel.DownloadProgressPercent = 100;
@@ -166,6 +200,11 @@ public partial class SettingsWindow : Window
     private async void ActionButton_Click(object? sender, RoutedEventArgs e)
     {
         if (_updateService is null)
+        {
+            return;
+        }
+
+        if (IsOperationRunning && _updateService.State is UpdateState.Available or UpdateState.Ready)
         {
             return;
         }
