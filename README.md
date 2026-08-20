@@ -22,6 +22,34 @@
 
 **CreatioHelper** is a comprehensive cross-platform tool for managing Terrasoft Creatio installations. It streamlines development workflows through automation of routine operations and provides both GUI and API interfaces.
 
+## Installation
+
+### winget (Windows)
+
+```powershell
+winget install fejdraus.CreatioHelper
+```
+
+This installs the desktop application. The package is portable: winget unpacks it and registers a `creatio-helper` command, but creates no Start menu or desktop shortcut.
+
+### Manual download
+
+Download `CreatioHelper-Desktop-win-x64-<version>.zip` (or `-linux-x64-` on Linux) from the [latest release](https://github.com/fejdraus/CreatioHelper/releases/latest), unpack it anywhere and run `CreatioHelper.exe` from the unpacked folder.
+
+The CLI ships as its own download (`creatio-helper-cli-win-x64-<version>.zip`) under its own `cli-v*` releases.
+
+## Running after installation
+
+Open a **new** terminal - the command is registered on `PATH` during installation and sessions started earlier will not see it yet - then run:
+
+```powershell
+creatio-helper
+```
+
+CreatioHelper manages IIS sites, application pools and Windows services, so it requires administrator rights and Windows shows an elevation prompt on every start.
+
+Settings are kept in memory unless you create an empty `settings.json` next to the executable - see [Configuration](#configuration).
+
 ## Key Features
 
 ### Desktop Application
