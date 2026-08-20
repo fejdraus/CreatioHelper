@@ -109,7 +109,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             return;
         }
 
-        _output.Clear();
+        _output.WriteSeparator(operationName);
         _cancellationTokenSource = new CancellationTokenSource();
         IsBusy = true;
         StartButtonText = "In process...";
@@ -159,6 +159,8 @@ public partial class OperationsService : ObservableObject, IOperationsService
 
     public void StopOperation()
     {
+        _output.WriteSeparator("Stop and kill WSC");
+
         if (_cancellationTokenSource != null && !_cancellationTokenSource.IsCancellationRequested)
         {
             _cancellationTokenSource.Cancel();

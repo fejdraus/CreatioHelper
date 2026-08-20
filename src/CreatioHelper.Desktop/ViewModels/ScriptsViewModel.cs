@@ -34,7 +34,7 @@ public partial class ScriptsViewModel : ObservableObject
     [RelayCommand]
     private async Task RunWindowsFeaturesAsync()
     {
-        _output.Clear();
+        _output.WriteSeparator("Windows features");
         NavigateToLog?.Invoke(this, EventArgs.Empty);
         await _windowsFeatures.EnableCreatioFeaturesAsync();
     }
@@ -49,7 +49,7 @@ public partial class ScriptsViewModel : ObservableObject
             return;
         }
 
-        _output.Clear();
+        _output.WriteSeparator("Module cleanup");
         NavigateToLog?.Invoke(this, EventArgs.Empty);
         _output.WriteLine("[INFO] Removing redundant module records...");
         await _moduleCleanup.CleanupAsync(sitePath);
@@ -65,7 +65,7 @@ public partial class ScriptsViewModel : ObservableObject
             return;
         }
 
-        _output.Clear();
+        _output.WriteSeparator("SVN settings cleanup");
         NavigateToLog?.Invoke(this, EventArgs.Empty);
         _output.WriteLine("[INFO] Removing Terrasoft SVN settings from Crt* packages...");
         await Task.Run(() => _svnCleanup.CleanupAsync(sitePath));

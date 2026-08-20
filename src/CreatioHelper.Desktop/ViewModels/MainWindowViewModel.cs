@@ -538,6 +538,7 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
+            _output.WriteSeparator($"Stop pool - {server.Name ?? "Unknown"}");
             _output.WriteLine($"[INFO] Stopping application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
             var result = await _iisManager.StopAppPoolAsync(server.Name ?? Environment.MachineName, server.PoolName, CancellationToken.None);
             if (result.IsSuccess)
@@ -576,6 +577,7 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
+            _output.WriteSeparator($"Start pool - {server.Name ?? "Unknown"}");
             _output.WriteLine($"[INFO] Starting application pool '{server.PoolName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _iisManager.StartAppPoolAsync(server.Name ?? Environment.MachineName, server.PoolName, CancellationToken.None);
@@ -615,6 +617,7 @@ public partial class MainWindowViewModel : ObservableObject
         
         try
         {
+            _output.WriteSeparator($"Stop site - {server.Name ?? "Unknown"}");
             _output.WriteLine($"[INFO] Stopping website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
             
             var result = await _iisManager.StopWebsiteAsync(server.Name ?? Environment.MachineName, server.SiteName, CancellationToken.None);
@@ -654,6 +657,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            _output.WriteSeparator($"Start site - {server.Name ?? "Unknown"}");
             _output.WriteLine($"[INFO] Starting website '{server.SiteName}' on server '{server.Name ?? "Unknown"}'...");
 
             var result = await _iisManager.StartWebsiteAsync(server.Name ?? Environment.MachineName, server.SiteName, CancellationToken.None);
@@ -781,7 +785,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _output.Clear();
+        _output.WriteSeparator("Restart IIS pool and site");
         var local = new ServerInfo
         {
             Name = new ServerName(Environment.MachineName),
@@ -885,8 +889,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
-        _output.Clear();
-        _output.WriteLine("Running package cleaning & validation...");
+        _output.WriteSeparator("Package cleaning & validation");
         _isValidating = true;
         OnPropertyChanged(nameof(AreControlsEnabled));
 
@@ -1573,6 +1576,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.WriteSeparator($"Start service - {server.Name ?? "Unknown"}");
         var result = await _iisManager.StartServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
@@ -1593,6 +1597,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.WriteSeparator($"Stop service - {server.Name ?? "Unknown"}");
         var result = await _iisManager.StopServiceAsync(server.Name ?? Environment.MachineName, server.ServiceName, CancellationToken.None);
         if (result.IsSuccess)
         {
@@ -1615,6 +1620,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            _output.WriteSeparator($"Start service - {ServiceName}");
             var result = await _systemServiceManager.StartServiceAsync(ServiceName);
             
             if (result)
@@ -1643,6 +1649,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         try
         {
+            _output.WriteSeparator($"Stop service - {ServiceName}");
             var result = await _systemServiceManager.StopServiceAsync(ServiceName);
 
             if (result)
@@ -1669,6 +1676,8 @@ public partial class MainWindowViewModel : ObservableObject
             _output.WriteLine("[ERROR] Could not initialize Redis manager.");
             return;
         }
+
+        _output.WriteSeparator("Clear Redis");
         manager.Clear();
     }
 
@@ -1681,6 +1690,8 @@ public partial class MainWindowViewModel : ObservableObject
             _output.WriteLine("[ERROR] Could not initialize Redis manager.");
             return;
         }
+
+        _output.WriteSeparator("Redis status");
         manager.CheckStatus();
     }
 
@@ -1738,6 +1749,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         // Count total folders across all servers
         var totalFolders = serversWithSyncthing.Sum(s => s.SyncthingFolderIds.Count);
+        _output.WriteSeparator("Resume sync");
         _output.WriteLine($"[INFO] ▶️ Resuming synchronization for {totalFolders} Syncthing folders across {serversWithSyncthing.Count} servers...");
 
         var monitor = _operationsService.GetSyncthingMonitor();
@@ -1787,6 +1799,7 @@ public partial class MainWindowViewModel : ObservableObject
 
         // Count total folders across all servers
         var totalFolders = serversWithSyncthing.Sum(s => s.SyncthingFolderIds.Count);
+        _output.WriteSeparator("Pause sync");
         _output.WriteLine($"[INFO] ⏸️ Pausing synchronization for {totalFolders} Syncthing folders across {serversWithSyncthing.Count} servers...");
 
         var monitor = _operationsService.GetSyncthingMonitor();
@@ -1876,6 +1889,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.WriteSeparator("Rolling restart");
         var batchSize = Math.Clamp(RollingRestartBatchSize, 1, serversWithIis.Count);
         var batchCount = (serversWithIis.Count + batchSize - 1) / batchSize;
 
@@ -1920,6 +1934,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.WriteSeparator("Start all IIS");
         await _operationsService.StartAllIisAsync(serversWithIis);
         // UI is automatically updated inside StartAllIisAsync for each server
     }
@@ -1951,6 +1966,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.WriteSeparator("Stop all IIS");
         await _operationsService.StopAllIisAsync(serversWithIis);
         // UI is automatically updated inside StopAllIisAsync for each server
     }
