@@ -51,6 +51,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
     {
         ui ??= NullDeploymentUiCallbacks.Instance;
         ui.OnStopButtonEnabledChanged(false);
+        _output.Clear();
         _output.WriteSeparator("Deployment");
 
         if (string.IsNullOrWhiteSpace(options.SitePath))
@@ -483,6 +484,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
     {
         ui ??= NullDeploymentUiCallbacks.Instance;
         ui.OnStopButtonEnabledChanged(false);
+        _output.Clear();
         _output.WriteSeparator("Configuration rollback");
 
         if (string.IsNullOrWhiteSpace(options.SitePath))

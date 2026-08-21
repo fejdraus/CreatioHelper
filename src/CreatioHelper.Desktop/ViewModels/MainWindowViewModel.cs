@@ -785,6 +785,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.Clear();
         _output.WriteSeparator("Restart IIS pool and site");
         var local = new ServerInfo
         {
@@ -889,6 +890,7 @@ public partial class MainWindowViewModel : ObservableObject
             return;
         }
 
+        _output.Clear();
         _output.WriteSeparator("Package cleaning & validation");
         _isValidating = true;
         OnPropertyChanged(nameof(AreControlsEnabled));

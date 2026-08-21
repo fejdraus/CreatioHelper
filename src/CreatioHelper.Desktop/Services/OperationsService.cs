@@ -109,6 +109,7 @@ public partial class OperationsService : ObservableObject, IOperationsService
             return;
         }
 
+        _output.Clear();
         _output.WriteSeparator(operationName);
         _cancellationTokenSource = new CancellationTokenSource();
         IsBusy = true;
