@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.RegularExpressions;
 using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Domain.Serialization;
 using CreatioHelper.Agent.Models;
@@ -7,7 +8,7 @@ using Microsoft.Extensions.Options;
 
 namespace CreatioHelper.Agent.Services;
 
-public class JsonFileUserStore : IUserStore
+public partial class JsonFileUserStore : IUserStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -23,6 +24,7 @@ public class JsonFileUserStore : IUserStore
     private readonly ILogger<JsonFileUserStore> _logger;
     private readonly AuthenticationSettings _authSettings;
     private List<StoredUser>? _cache;
+    private (DateTime WriteTimeUtc, long Length)? _cacheStamp;
 
     public JsonFileUserStore(
         ILogger<JsonFileUserStore> logger,
@@ -49,8 +51,7 @@ public class JsonFileUserStore : IUserStore
     public async Task<StoredUser?> GetUserAsync(string username)
     {
         var users = await LoadUsersAsync();
-        return users.FirstOrDefault(u =>
-            string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+        return FindUser(users, username);
     }
 
     public async Task<bool> ValidatePasswordAsync(string username, string password)
@@ -58,7 +59,7 @@ public class JsonFileUserStore : IUserStore
         var user = await GetUserAsync(username);
         if (user == null) return false;
 
-        if (!user.PasswordHash.StartsWith("$2"))
+        if (!IsBcryptHash(user.PasswordHash))
         {
             if (user.PasswordHash == password)
             {
@@ -81,17 +82,19 @@ public class JsonFileUserStore : IUserStore
         if (!ValidRoles.Contains(role, StringComparer.OrdinalIgnoreCase))
             throw new ArgumentException($"Invalid role. Valid roles: {string.Join(", ", ValidRoles)}", nameof(role));
 
+        var normalizedUsername = NormalizeUsername(username);
+
         await _lock.WaitAsync();
         try
         {
             var users = await LoadUsersInternalAsync();
 
-            if (users.Any(u => string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)))
-                throw new InvalidOperationException($"User '{username}' already exists.");
+            if (users.Any(u => string.Equals(u.Username, normalizedUsername, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidOperationException($"User '{normalizedUsername}' already exists.");
 
             var user = new StoredUser
             {
-                Username = username,
+                Username = normalizedUsername,
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(password, BcryptWorkFactor),
                 Role = role.ToLowerInvariant(),
                 CreatedAt = DateTime.UtcNow
@@ -100,7 +103,7 @@ public class JsonFileUserStore : IUserStore
             users.Add(user);
             await SaveUsersInternalAsync(users);
 
-            _logger.LogInformation("Created user: {Username} with role: {Role}", username, role);
+            _logger.LogInformation("Created user: {Username} with role: {Role}", normalizedUsername, role);
             return user;
         }
         finally
@@ -118,8 +121,7 @@ public class JsonFileUserStore : IUserStore
         try
         {
             var users = await LoadUsersInternalAsync();
-            var user = users.FirstOrDefault(u =>
-                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+            var user = FindUser(users, username);
 
             if (user == null)
                 throw new KeyNotFoundException($"User '{username}' not found.");
@@ -148,8 +150,7 @@ public class JsonFileUserStore : IUserStore
         try
         {
             var users = await LoadUsersInternalAsync();
-            var user = users.FirstOrDefault(u =>
-                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+            var user = FindUser(users, username);
 
             if (user == null) return false;
 
@@ -182,8 +183,7 @@ public class JsonFileUserStore : IUserStore
         try
         {
             var users = await LoadUsersInternalAsync();
-            var user = users.FirstOrDefault(u =>
-                string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase));
+            var user = FindUser(users, username);
 
             if (user == null)
                 throw new KeyNotFoundException($"User '{username}' not found.");
@@ -212,7 +212,7 @@ public class JsonFileUserStore : IUserStore
 
                 foreach (var user in users)
                 {
-                    if (!user.PasswordHash.StartsWith("$2"))
+                    if (!IsBcryptHash(user.PasswordHash))
                     {
                         _logger.LogInformation("Rehashing legacy plaintext password for user: {Username}", user.Username);
                         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(user.PasswordHash, BcryptWorkFactor);
@@ -235,9 +235,25 @@ public class JsonFileUserStore : IUserStore
 
                 foreach (var configUser in _authSettings.Users)
                 {
+                    var username = NormalizeUsername(configUser.Username);
+
+                    if (string.IsNullOrEmpty(username))
+                    {
+                        _logger.LogWarning("Skipping a configured user without a name.");
+                        continue;
+                    }
+
+                    if (users2.Any(u => string.Equals(u.Username, username, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        _logger.LogWarning(
+                            "Skipping duplicate configured user '{Username}'; only the first entry is migrated.",
+                            username);
+                        continue;
+                    }
+
                     users2.Add(new StoredUser
                     {
-                        Username = configUser.Username,
+                        Username = username,
                         PasswordHash = BCrypt.Net.BCrypt.HashPassword(configUser.Password, BcryptWorkFactor),
                         Role = configUser.Role?.ToLowerInvariant() ?? "user",
                         CreatedAt = DateTime.UtcNow
@@ -337,13 +353,63 @@ public class JsonFileUserStore : IUserStore
     }
         private async Task<List<StoredUser>> LoadUsersInternalAsync()
     {
-        if (_cache != null) return _cache;
         if (!File.Exists(_filePath))
+        {
+            _cacheStamp = null;
             return _cache = new List<StoredUser>();
+        }
+
+        var stamp = ReadFileStamp();
+        if (_cache != null && _cacheStamp == stamp) return _cache;
+
+        _cacheStamp = stamp;
         var json = await File.ReadAllTextAsync(_filePath);
-        _cache = JsonSerializer.Deserialize<List<StoredUser>>(json, JsonOptions) ?? new List<StoredUser>();
-        return _cache;
+        var users = JsonSerializer.Deserialize<List<StoredUser>>(json, JsonOptions) ?? new List<StoredUser>();
+        return _cache = RemoveDuplicates(users);
     }
+
+    private List<StoredUser> RemoveDuplicates(List<StoredUser> users)
+    {
+        var unique = new List<StoredUser>(users.Count);
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var user in users)
+        {
+            user.Username = NormalizeUsername(user.Username);
+
+            if (string.IsNullOrEmpty(user.Username))
+            {
+                _logger.LogWarning("Ignoring a user without a name in {FilePath}.", _filePath);
+                continue;
+            }
+
+            if (!seen.Add(user.Username))
+            {
+                _logger.LogWarning(
+                    "Ignoring duplicate user '{Username}' in {FilePath}; only the first entry is kept.",
+                    user.Username, _filePath);
+                continue;
+            }
+
+            unique.Add(user);
+        }
+
+        return unique;
+    }
+
+    private static StoredUser? FindUser(List<StoredUser> users, string username)
+    {
+        var normalized = NormalizeUsername(username);
+        return users.FirstOrDefault(u =>
+            string.Equals(u.Username, normalized, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeUsername(string? username) => username?.Trim() ?? string.Empty;
+
+    private static bool IsBcryptHash(string value) => BcryptHashPattern().IsMatch(value);
+
+    [GeneratedRegex(@"^\$2[abxy]?\$\d{2}\$[./A-Za-z0-9]{53}$")]
+    private static partial Regex BcryptHashPattern();
 
         private async Task SaveUsersInternalAsync(List<StoredUser> users)
     {
@@ -352,5 +418,20 @@ public class JsonFileUserStore : IUserStore
         await File.WriteAllTextAsync(tempPath, json);
         File.Move(tempPath, _filePath, overwrite: true);
         _cache = users;
+        _cacheStamp = ReadFileStamp();
+    }
+
+    private (DateTime WriteTimeUtc, long Length)? ReadFileStamp()
+    {
+        try
+        {
+            var info = new FileInfo(_filePath);
+            if (!info.Exists) return null;
+            return (info.LastWriteTimeUtc, info.Length);
+        }
+        catch (IOException)
+        {
+            return null;
+        }
     }
 }

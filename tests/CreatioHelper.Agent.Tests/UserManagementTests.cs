@@ -335,6 +335,153 @@ public class UserManagementTests : IDisposable
         }
     }
 
+    #endregion
+
+    #region Username Uniqueness
+
+    [Fact]
+    public async Task CreateUser_TrimsTheUsername()
+    {
+        var user = await _userStore.CreateUserAsync("  spaced  ", "pass", "user");
+
+        Assert.Equal("spaced", user.Username);
+        Assert.NotNull(await _userStore.GetUserAsync("spaced"));
+    }
+
+    [Fact]
+    public async Task CreateUser_ThrowsOnDuplicate_ThatDiffersOnlyBySurroundingSpaces()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _userStore.CreateUserAsync(" admin ", "pass", "user"));
+    }
+
+    [Fact]
+    public async Task Migration_SkipsDuplicateConfiguredUsers()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"usermgmt_cfgdup_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var store = CreateStore(tempDir, new AuthenticationSettings
+            {
+                Users =
+                [
+                    new UserCredentials { Username = "admin", Password = "first", Role = "admin" },
+                    new UserCredentials { Username = " ADMIN ", Password = "second", Role = "user" }
+                ]
+            });
+
+            var users = await store.GetAllUsersAsync();
+
+            Assert.Single(users);
+            Assert.Equal("admin", users[0].Username);
+            Assert.Equal("admin", users[0].Role);
+            Assert.True(await store.ValidatePasswordAsync("admin", "first"));
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task Load_KeepsOnlyTheFirstOfDuplicateEntriesInTheFile()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"usermgmt_filedup_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var usersJson = """
+            [
+                { "username": "admin", "passwordHash": "first", "role": "admin", "createdAt": "2025-01-01T00:00:00Z" },
+                { "username": " Admin ", "passwordHash": "second", "role": "user", "createdAt": "2025-01-02T00:00:00Z" }
+            ]
+            """;
+            File.WriteAllText(Path.Combine(tempDir, "users.json"), usersJson);
+
+            var store = CreateStore(tempDir, new AuthenticationSettings());
+            var users = await store.GetAllUsersAsync();
+
+            Assert.Single(users);
+            Assert.Equal("admin", users[0].Username);
+            Assert.Equal("admin", users[0].Role);
+            Assert.True(await store.ValidatePasswordAsync("admin", "first"));
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    #endregion
+
+    #region Password Reset Through The File
+
+    [Fact]
+    public async Task PlaintextWrittenIntoTheFile_IsAcceptedByARunningStore_AndReplacedWithAHash()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"usermgmt_reset_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var store = CreateStore(tempDir, new AuthenticationSettings
+            {
+                Users = [new UserCredentials { Username = "admin", Password = "old", Role = "admin" }]
+            });
+
+            Assert.True(await store.ValidatePasswordAsync("admin", "old"));
+
+            var usersFile = Path.Combine(tempDir, "users.json");
+            var usersJson = """
+            [
+                { "username": "admin", "passwordHash": "brandnew", "role": "admin", "createdAt": "2025-01-01T00:00:00Z" }
+            ]
+            """;
+            await File.WriteAllTextAsync(usersFile, usersJson);
+
+            Assert.True(await store.ValidatePasswordAsync("admin", "brandnew"));
+            Assert.False(await store.ValidatePasswordAsync("admin", "old"));
+
+            var onDisk = await File.ReadAllTextAsync(usersFile);
+            Assert.DoesNotContain("brandnew", onDisk);
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task APasswordThatLooksLikeAHashPrefix_IsStillTreatedAsAPassword()
+    {
+        var tempDir = Path.Combine(Path.GetTempPath(), $"usermgmt_prefix_{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+
+        try
+        {
+            var usersJson = """
+            [
+                { "username": "admin", "passwordHash": "$2yolo-pass", "role": "admin", "createdAt": "2025-01-01T00:00:00Z" }
+            ]
+            """;
+            File.WriteAllText(Path.Combine(tempDir, "users.json"), usersJson);
+
+            var store = CreateStore(tempDir, new AuthenticationSettings());
+            var user = await store.GetUserAsync("admin");
+
+            Assert.NotNull(user);
+            Assert.StartsWith("$2", user!.PasswordHash);
+            Assert.True(await store.ValidatePasswordAsync("admin", "$2yolo-pass"));
+        }
+        finally
+        {
+            try { Directory.Delete(tempDir, true); } catch { }
+        }
+    }
+
     private static JsonFileUserStore CreateStore(string userStorePath, AuthenticationSettings settings)
     {
         var config = new ConfigurationBuilder()
