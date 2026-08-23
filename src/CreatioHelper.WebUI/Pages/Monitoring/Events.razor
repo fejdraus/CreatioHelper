@@ -10,9 +10,103 @@
 
 <PageTitle>@L["Events_Title"] - CreatioHelper Agent</PageTitle>
 
+<style>
+    .events-fill {
+        display: flex;
+        flex-direction: column;
+        height: calc(100dvh - var(--mud-appbar-height, 64px) - 32px);
+        overflow: hidden;
+    }
+
+    .event-viewer-container {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
+    }
+
+    .event-grid-header {
+        display: grid;
+        gap: 8px;
+        align-items: center;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--mud-palette-divider);
+        background: var(--mud-palette-surface);
+        font-weight: 600;
+        font-size: 0.8125rem;
+    }
+
+    .event-grid-header .col-sortable {
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .event-grid-header .col-sortable:hover {
+        color: var(--mud-palette-primary);
+    }
+
+    .event-viewer {
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    .event-row {
+        display: grid;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 12px;
+        border-bottom: 1px solid var(--mud-palette-lines-default);
+    }
+
+    .event-row:hover {
+        background: var(--mud-palette-action-default-hover);
+    }
+
+    .event-details {
+        overflow-wrap: anywhere;
+    }
+
+    .event-loadmore {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+        border-top: 1px solid var(--mud-palette-divider);
+    }
+
+    .event-empty-overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        pointer-events: none;
+    }
+</style>
+
+<div class="events-fill">
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Events_Title"]</MudText>
-    <div class="gradient-controls">
+    <div class="d-flex align-center gap-2 gradient-controls">
+        <MudMenu Icon="@Icons.Material.Filled.ViewColumn" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Label="@L["Common_Columns"]">
+            @foreach (var col in _columns)
+            {
+                <MudMenuItem OnClick="@(() => ToggleColumn(col.Key))">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Size="Size.Small"
+                                 Icon="@(col.Visible ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)" />
+                        <span>@col.Label</span>
+                    </div>
+                </MudMenuItem>
+            }
+        </MudMenu>
         <MudSwitch @bind-Value="_liveUpdates"
                    Color="Color.Primary"
                    Label="@L["Events_LiveUpdates"]" />
@@ -69,122 +163,158 @@
     </MudGrid>
 </MudPaper>
 
-@if (_isLoading)
-{
-    <MudProgressLinear Color="Color.Primary" Indeterminate="true" />
-}
-else if (_filteredEvents.Count == 0)
-{
-    <MudPaper Elevation="2" Class="pa-8 text-center">
-        <MudIcon Icon="@Icons.Material.Filled.EventNote"
-                 Size="Size.Large"
-                 Color="Color.Default"
-                 Class="mb-4" />
-        <MudText Typo="Typo.h6" Class="mb-2">@L["Events_NoEvents"]</MudText>
-        <MudText Color="Color.Default">
-            @L["Events_WaitingForEvents"]
-        </MudText>
-    </MudPaper>
-}
-else
-{
-    <div @ref="_tableWrapper">
-    <MudPaper Elevation="2">
-        <MudTable Items="@_filteredEvents"
-                  Dense="true"
-                  Hover="true"
-                  FixedHeader="true"
-                  Height="calc(100vh - 350px)">
-            <HeaderContent>
-                <MudTh Style="width: 160px;">@L["Events_Time"]</MudTh>
-                <MudTh Style="width: 140px;">@L["Events_EventType"]</MudTh>
-                <MudTh>@L["Events_Data"]</MudTh>
-                <MudTh Style="width: 50px;"></MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Time">
-                    <MudText Typo="Typo.body2">@LocalTimeConverter.ToLocal(context.Timestamp).ToString("HH:mm:ss")</MudText>
-                    <MudText Typo="Typo.caption" Color="Color.Default">@LocalTimeConverter.ToLocal(context.Timestamp).ToString("yyyy-MM-dd")</MudText>
-                </MudTd>
-                <MudTd DataLabel="Type">
-                    <MudChip T="string"
-                             Size="Size.Small"
-                             Color="@GetEventColor(context)"
-                             Variant="Variant.Outlined">
-                        @GetEventTypeDisplay(context.Type)
-                    </MudChip>
-                </MudTd>
-                <MudTd DataLabel="Details">
-                    @GetEventDescription(context)
-                </MudTd>
-                <MudTd>
-                    @if (CanNavigate(context))
+<MudPaper Elevation="2" Class="event-viewer-container">
+    <div class="event-grid-header" style="grid-template-columns:@GridTemplate();">
+        @foreach (var col in VisibleColumns)
+        {
+            if (col.Sortable)
+            {
+                <div class="col-sortable" @onclick="@(() => SortBy(col.Key))">
+                    <span>@col.Label</span>
+                    @if (_sortColumn == col.Key)
+                    {
+                        <MudIcon Size="Size.Small"
+                                 Icon="@(_sortDir == "asc" ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward)" />
+                    }
+                </div>
+            }
+            else
+            {
+                <div>@col.Label</div>
+            }
+        }
+        <div></div>
+    </div>
+
+    <div class="event-viewer" @ref="_scrollContainer">
+        <Virtualize Items="_events" Context="evt" ItemSize="44">
+            <div class="event-row" style="grid-template-columns:@GridTemplate();">
+                @foreach (var col in VisibleColumns)
+                {
+                    <div class="@(col.Key == "data" ? "event-details" : "")">
+                        @switch (col.Key)
+                        {
+                            case "time":
+                                <MudText Typo="Typo.body2">@LocalTimeConverter.ToLocal(evt.Timestamp).ToString("HH:mm:ss")</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Default">@LocalTimeConverter.ToLocal(evt.Timestamp).ToString("yyyy-MM-dd")</MudText>
+                                break;
+                            case "type":
+                                <MudChip T="string" Size="Size.Small" Color="@GetEventColor(evt)" Variant="Variant.Outlined">
+                                    @GetEventTypeDisplay(evt.Type)
+                                </MudChip>
+                                break;
+                            case "data":
+                                @GetEventDescription(evt)
+                                break;
+                        }
+                    </div>
+                }
+                <div>
+                    @if (CanNavigate(evt))
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
                                        Size="Size.Small"
-                                       OnClick="@(() => NavigateToRelated(context))" />
+                                       OnClick="@(() => NavigateToRelated(evt))" />
                     }
-                </MudTd>
-            </RowTemplate>
-        </MudTable>
-    </MudPaper>
+                </div>
+            </div>
+        </Virtualize>
     </div>
 
-    <div class="d-flex justify-center align-center mt-4" style="min-height: 36px;">
-        @if (_isLoadingMore)
-        {
-            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-            <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_Loading"]</MudText>
-        }
-        else if (!_hasMore)
-        {
-            <MudText Typo="Typo.body2" Color="Color.Default">@L["Events_AllLoaded"]</MudText>
-        }
-    </div>
-}
+    @if (_loadingMore || (!_hasMore && _events.Count > 0))
+    {
+        <div class="event-loadmore">
+            @if (_loadingMore)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_Loading"]</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">@L["Events_AllLoaded"]</MudText>
+            }
+        </div>
+    }
+
+    @if (_initialLoaded && _events.Count == 0)
+    {
+        <div class="event-empty-overlay">
+            <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Class="mb-4" />
+            <MudText Typo="Typo.h6" Class="mb-2">@L["Events_NoEvents"]</MudText>
+            <MudText Color="Color.Default">@L["Events_WaitingForEvents"]</MudText>
+        </div>
+    }
+</MudPaper>
+</div>
 
 @code {
-    // Cancelled in Dispose so navigating away drops the requests this page started
+    private const int BatchSize = 60;
+
+    private sealed class Column
+    {
+        public string Key { get; init; } = "";
+        public string Label { get; init; } = "";
+        public bool Sortable { get; init; }
+        public string Width { get; init; } = "1fr";
+        public bool Visible { get; set; } = true;
+    }
+
     private readonly CancellationTokenSource _pageCts = new();
 
-    private bool _isLoading;
-    private bool _isLoadingMore;
     private bool _liveUpdates = true;
+    private bool _initialLoaded;
+    private bool _loadingMore;
     private bool _hasMore = true;
-    private int _lastEventId;
 
     private string _selectedEventType = "all";
     private string _selectedFolder = "all";
     private string _selectedDevice = "all";
 
-    private List<SyncEvent> _events = new();
-    private List<SyncEvent> _filteredEvents = new();
+    private string _sortColumn = "time";
+    private string _sortDir = "desc";
+
+    private List<Column> _columns = new();
+
     private FolderConfig[] _folders = [];
     private DeviceConfig[] _devices = [];
 
-    protected override async Task OnInitializedAsync()
+    private readonly List<SyncEvent> _events = new();
+    private int _totalEvents;
+
+    private volatile bool _liveDirty;
+    private System.Threading.Timer? _liveTimer;
+
+    private ElementReference _scrollContainer;
+    private DotNetObjectReference<Events>? _selfRef;
+    private int _scrollHandle;
+
+    private IEnumerable<Column> VisibleColumns => _columns.Where(c => c.Visible);
+
+    private string GridTemplate()
     {
-        SignalR.OnSyncEvent += OnSyncEvent;
-        await LoadInitialData();
+        var widths = string.Join(" ", VisibleColumns.Select(c => c.Width));
+        return string.IsNullOrEmpty(widths) ? "48px" : widths + " 48px";
     }
 
-    private async Task LoadInitialData()
+    protected override async Task OnInitializedAsync()
     {
-        _isLoading = true;
-        StateHasChanged();
+        _columns = new()
+        {
+            new Column { Key = "time", Label = L["Events_Time"], Sortable = true, Width = "160px" },
+            new Column { Key = "type", Label = L["Events_EventType"], Sortable = true, Width = "140px" },
+            new Column { Key = "data", Label = L["Events_Data"], Sortable = false, Width = "minmax(0,1fr)" },
+        };
+
+        SignalR.OnSyncEvent += OnSyncEvent;
+        _liveTimer = new System.Threading.Timer(_ => LiveTick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
 
         try
         {
             _folders = await ApiClient.GetFoldersAsync(_pageCts.Token);
             _devices = await ApiClient.GetDevicesAsync(_pageCts.Token);
-            var events = await ApiClient.GetEventsAsync(0, 100, cancellationToken: _pageCts.Token);
-            _events = events.ToList();
-            _lastEventId = _events.LastOrDefault()?.Id ?? 0;
-            FilterEvents();
         }
         catch (OperationCanceledException)
         {
-            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
@@ -193,100 +323,212 @@ else
                 Navigation.NavigateTo("/login", forceLoad: true);
                 return;
             }
-            Snackbar.Add(L["Msg_FailedToLoadEvents", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
-        finally
+
+        await LoadInitial();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollHandle != 0 || string.IsNullOrEmpty(_scrollContainer.Id))
         {
-            _isLoading = false;
+            return;
+        }
+
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            _scrollHandle = await JS.InvokeAsync<int>(
+                "creatioInfiniteScroll.attach",
+                _scrollContainer,
+                _selfRef,
+                nameof(OnScrolledNearBottom),
+                1.5);
+        }
+        catch (JSException)
+        {
+        }
+    }
+
+    private async Task LoadInitial()
+    {
+        try
+        {
+            var (total, items) = await ApiClient.GetEventsPageAsync(
+                0, BatchSize, _selectedEventType, _selectedFolder, _selectedDevice, _sortColumn, _sortDir, _pageCts.Token);
+
+            _events.Clear();
+            _events.AddRange(items);
+            _totalEvents = total;
+            _hasMore = _events.Count < total;
+            _initialLoaded = true;
             StateHasChanged();
         }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
+        }
     }
 
-    private void OnSyncEvent(SyncEvent evt)
+    [JSInvokable]
+    public async Task<bool> OnScrolledNearBottom()
     {
-        if (!_liveUpdates) return;
-
-        _events.Insert(0, evt);
-        if (_events.Count > 1000)
+        if (!_hasMore || _loadingMore)
         {
-            _events.RemoveRange(1000, _events.Count - 1000);
+            return false;
         }
 
-        FilterEvents();
-        InvokeAsync(StateHasChanged);
-    }
-
-    private void FilterEvents()
-    {
-        _filteredEvents = _events.Where(e =>
-        {
-            if (_selectedEventType != "all" && e.Type.ToString() != _selectedEventType)
-                return false;
-
-            if (_selectedFolder != "all" && e.FolderId != _selectedFolder)
-                return false;
-
-            if (_selectedDevice != "all" && e.DeviceId != _selectedDevice)
-                return false;
-
-            return true;
-        }).ToList();
-    }
-
-    private void OnEventTypeChanged(string value)
-    {
-        _selectedEventType = value;
-        FilterEvents();
-    }
-
-    private void OnFolderChanged(string value)
-    {
-        _selectedFolder = value;
-        FilterEvents();
-    }
-
-    private void OnDeviceChanged(string value)
-    {
-        _selectedDevice = value;
-        FilterEvents();
-    }
-
-    private async Task LoadMoreEvents()
-    {
-        _isLoadingMore = true;
+        _loadingMore = true;
         StateHasChanged();
 
         try
         {
-            var moreEvents = await ApiClient.GetEventsAsync(_lastEventId, 100, cancellationToken: _pageCts.Token);
-            if (moreEvents.Length == 0)
+            var (total, items) = await ApiClient.GetEventsPageAsync(
+                _events.Count, BatchSize, _selectedEventType, _selectedFolder, _selectedDevice, _sortColumn, _sortDir, _pageCts.Token);
+
+            if (items.Length == 0)
             {
                 _hasMore = false;
             }
             else
             {
-                _events.AddRange(moreEvents);
-                _lastEventId = moreEvents.Last().Id;
-                FilterEvents();
+                _events.AddRange(items);
+                _totalEvents = total;
+                _hasMore = _events.Count < total;
             }
         }
         catch (OperationCanceledException)
         {
-            // The page was left while the request was in flight
         }
         catch (Exception ex)
         {
             if (ErrorHelper.IsAuthenticationError(ex))
             {
                 Navigation.NavigateTo("/login", forceLoad: true);
-                return;
+                return false;
             }
-            Snackbar.Add(L["Msg_FailedToLoadMoreEvents", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
         }
         finally
         {
-            _isLoadingMore = false;
+            _loadingMore = false;
             StateHasChanged();
+        }
+
+        return _hasMore;
+    }
+
+    private void OnSyncEvent(SyncEvent evt)
+    {
+        if (_liveUpdates)
+        {
+            _liveDirty = true;
+        }
+    }
+
+    private void LiveTick()
+    {
+        if (!_liveDirty || !_liveUpdates)
+        {
+            return;
+        }
+
+        InvokeAsync(async () =>
+        {
+            if (!await IsScrolledToTop())
+            {
+                return;
+            }
+
+            _liveDirty = false;
+            await LoadInitial();
+        });
+    }
+
+    private async Task<bool> IsScrolledToTop()
+    {
+        try
+        {
+            return await JS.InvokeAsync<bool>("eval", "(document.querySelector('.event-viewer')?.scrollTop ?? 999) < 40");
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private async Task SortBy(string column)
+    {
+        if (_sortColumn == column)
+        {
+            _sortDir = _sortDir == "asc" ? "desc" : "asc";
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortDir = "desc";
+        }
+
+        _hasMore = true;
+        await LoadInitial();
+        await ScrollToTop();
+    }
+
+    private void ToggleColumn(string key)
+    {
+        var col = _columns.FirstOrDefault(c => c.Key == key);
+        if (col is null)
+        {
+            return;
+        }
+
+        if (col.Visible && _columns.Count(c => c.Visible) <= 1)
+        {
+            return;
+        }
+
+        col.Visible = !col.Visible;
+        StateHasChanged();
+    }
+
+    private async Task OnEventTypeChanged(string value)
+    {
+        _selectedEventType = value;
+        await ReloadFromFilter();
+    }
+
+    private async Task OnFolderChanged(string value)
+    {
+        _selectedFolder = value;
+        await ReloadFromFilter();
+    }
+
+    private async Task OnDeviceChanged(string value)
+    {
+        _selectedDevice = value;
+        await ReloadFromFilter();
+    }
+
+    private async Task ReloadFromFilter()
+    {
+        _hasMore = true;
+        await LoadInitial();
+        await ScrollToTop();
+    }
+
+    private async Task ScrollToTop()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("eval", "document.querySelector('.event-viewer')?.scrollTo(0, 0)");
+        }
+        catch
+        {
         }
     }
 
@@ -315,9 +557,8 @@ else
         var folder = _folders.FirstOrDefault(f => f.Id == evt.FolderId)?.DisplayName ?? evt.FolderId ?? "";
         var device = _devices.FirstOrDefault(d => d.DeviceId == evt.DeviceId)?.DisplayName ?? evt.DeviceId ?? "";
 
-        // Debug: if device/folder is empty but we expect data, show available keys
-        var deviceDisplay = !string.IsNullOrEmpty(device) ? device : $"[keys: {evt.DataKeys}]";
-        var folderDisplay = !string.IsNullOrEmpty(folder) ? folder : $"[keys: {evt.DataKeys}]";
+        var deviceDisplay = device;
+        var folderDisplay = folder;
 
         return evt.Type switch
         {
@@ -339,20 +580,18 @@ else
             EventType.RemoteChangeDetected => L["EventDesc_RemoteChange", evt.FileName ?? "", deviceDisplay],
             EventType.ConfigSaved => L["EventDesc_ConfigSaved"],
             EventType.DiscoveryCompleted => GetDiscoveryCompletedDescription(evt, folderDisplay),
-            EventType.Unknown => $"{L["EventDesc_UnknownEvent"]}: {evt.RawType} [keys: {evt.DataKeys}]",
-            _ => evt.Message ?? $"{evt.RawType} [keys: {evt.DataKeys}]"
+            EventType.Unknown => !string.IsNullOrEmpty(evt.Message) ? evt.Message : $"{L["EventDesc_UnknownEvent"]}: {evt.RawType}",
+            _ => !string.IsNullOrEmpty(evt.Message) ? evt.Message : evt.RawType
         };
     }
 
     private string GetDiscoveryCompletedDescription(SyncEvent evt, string folderDisplay)
     {
-        // If we have a folder, show folder-specific message
         if (!string.IsNullOrEmpty(evt.FolderId))
         {
             return L["EventDesc_DiscoveryCompleted", folderDisplay];
         }
 
-        // Global discovery - show statistics
         var totalFiles = evt.GetDataValue("totalFiles");
         var totalSize = evt.GetDataValue("totalSize");
 
@@ -386,49 +625,12 @@ else
         }
     }
 
-    private ElementReference _tableWrapper;
-    private DotNetObjectReference<Events>? _selfRef;
-    private int _scrollHandle;
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_scrollHandle != 0 || string.IsNullOrEmpty(_tableWrapper.Id))
-        {
-            return;
-        }
-
-        try
-        {
-            _selfRef ??= DotNetObjectReference.Create(this);
-            _scrollHandle = await JS.InvokeAsync<int>(
-                "creatioInfiniteScroll.attach",
-                _tableWrapper,
-                _selfRef,
-                nameof(OnScrolledNearBottom),
-                1.5);
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    [JSInvokable]
-    public async Task<bool> OnScrolledNearBottom()
-    {
-        if (!_hasMore || _isLoadingMore)
-        {
-            return false;
-        }
-
-        await LoadMoreEvents();
-        return _hasMore;
-    }
-
     public void Dispose()
     {
         _pageCts.Cancel();
         _pageCts.Dispose();
         SignalR.OnSyncEvent -= OnSyncEvent;
+        _liveTimer?.Dispose();
 
         if (_scrollHandle != 0)
         {

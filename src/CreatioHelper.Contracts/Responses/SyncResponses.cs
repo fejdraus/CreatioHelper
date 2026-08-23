@@ -144,6 +144,9 @@ public class FolderStatusDto
     [JsonPropertyName("state")]
     public string State { get; set; } = string.Empty;
 
+    [JsonPropertyName("stateChanged")]
+    public DateTime StateChanged { get; set; }
+
     [JsonPropertyName("globalFiles")]
     public long GlobalFiles { get; set; }
 

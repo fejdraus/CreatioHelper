@@ -98,6 +98,184 @@ public class SqliteSyncEventStore : ISyncEventStore
         return events;
     }
 
+    private static string ResolveSortColumn(string? sort) => sort switch
+    {
+        "type" => "event_type",
+        "folder" => "folder_id",
+        "device" => "device_id",
+        _ => "id"
+    };
+
+    public async Task<(int Total, List<SyncEvent> Items)> LoadPageAsync(
+        int offset,
+        int limit,
+        string? eventType,
+        string? folderId,
+        string? deviceId,
+        string? sort = null,
+        string? dir = null,
+        CancellationToken cancellationToken = default)
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        var conditions = new List<string>();
+        if (!string.IsNullOrWhiteSpace(eventType) && eventType != "all")
+        {
+            conditions.Add("event_type = @type");
+        }
+        if (!string.IsNullOrWhiteSpace(folderId) && folderId != "all")
+        {
+            conditions.Add("folder_id = @folder");
+        }
+        if (!string.IsNullOrWhiteSpace(deviceId) && deviceId != "all")
+        {
+            conditions.Add("device_id = @device");
+        }
+
+        var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : string.Empty;
+
+        void Bind(SqliteCommand command)
+        {
+            if (!string.IsNullOrWhiteSpace(eventType) && eventType != "all")
+            {
+                command.Parameters.AddWithValue("@type", eventType);
+            }
+            if (!string.IsNullOrWhiteSpace(folderId) && folderId != "all")
+            {
+                command.Parameters.AddWithValue("@folder", folderId);
+            }
+            if (!string.IsNullOrWhiteSpace(deviceId) && deviceId != "all")
+            {
+                command.Parameters.AddWithValue("@device", deviceId);
+            }
+        }
+
+        int total;
+        using (var countCommand = connection.CreateCommand())
+        {
+            countCommand.CommandText = $"SELECT COUNT(*) FROM sync_events {whereClause}";
+            Bind(countCommand);
+            total = Convert.ToInt32(await countCommand.ExecuteScalarAsync(cancellationToken));
+        }
+
+        var items = new List<SyncEvent>();
+        using (var command = connection.CreateCommand())
+        {
+            var sortColumn = ResolveSortColumn(sort);
+            var sortDirection = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase) ? "ASC" : "DESC";
+
+            command.CommandText = $@"
+                SELECT id, event_type, folder_id, device_id, file_name, event_data, timestamp
+                FROM sync_events
+                {whereClause}
+                ORDER BY {sortColumn} {sortDirection}, id {sortDirection}
+                LIMIT @limit OFFSET @offset";
+            Bind(command);
+            command.Parameters.AddWithValue("@limit", limit);
+            command.Parameters.AddWithValue("@offset", offset);
+
+            using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                var folder = reader.IsDBNull(2) ? null : reader.GetString(2);
+                var device = reader.IsDBNull(3) ? null : reader.GetString(3);
+                var file = reader.IsDBNull(4) ? null : reader.GetString(4);
+                var json = reader.IsDBNull(5) ? null : reader.GetString(5);
+
+                var syncEvent = new SyncEvent
+                {
+                    GlobalId = reader.GetInt32(0),
+                    FolderId = folder,
+                    DeviceId = device,
+                    FilePath = file
+                };
+
+                if (Enum.TryParse<SyncEventType>(reader.GetString(1), out var eventTypeValue))
+                {
+                    syncEvent.Type = eventTypeValue;
+                }
+
+                if (DateTime.TryParse(reader.GetString(6), null, System.Globalization.DateTimeStyles.RoundtripKind, out var timestamp))
+                {
+                    syncEvent.Time = timestamp;
+                }
+
+                syncEvent.Data = BuildDataDictionary(json, folder, device, file, out var message);
+                syncEvent.Message = message;
+
+                items.Add(syncEvent);
+            }
+        }
+
+        return (total, items);
+    }
+
+    private static Dictionary<string, object?> BuildDataDictionary(string? json, string? folderId, string? deviceId, string? fileName, out string? message)
+    {
+        var data = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        message = null;
+
+        if (!string.IsNullOrEmpty(folderId))
+        {
+            data["folder"] = folderId;
+        }
+        if (!string.IsNullOrEmpty(deviceId))
+        {
+            data["device"] = deviceId;
+        }
+        if (!string.IsNullOrEmpty(fileName))
+        {
+            data["item"] = fileName;
+        }
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return data;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+
+            if (root.TryGetProperty("Message", out var messageElement) && messageElement.ValueKind == JsonValueKind.String)
+            {
+                message = messageElement.GetString();
+                if (!string.IsNullOrEmpty(message))
+                {
+                    data["message"] = message;
+                }
+            }
+
+            if (root.TryGetProperty("Data", out var inner) && inner.ValueKind == JsonValueKind.Object)
+            {
+                foreach (var property in inner.EnumerateObject())
+                {
+                    data[property.Name] = ReadJsonValue(property.Value);
+                }
+            }
+        }
+        catch (JsonException)
+        {
+        }
+
+        return data;
+    }
+
+    private static object? ReadJsonValue(JsonElement element)
+    {
+        return element.ValueKind switch
+        {
+            JsonValueKind.String => element.GetString(),
+            JsonValueKind.Number => element.TryGetInt64(out var l) ? l : element.GetDouble(),
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            JsonValueKind.Null => null,
+            _ => element.GetRawText()
+        };
+    }
+
     private string Serialize(SyncEvent syncEvent)
     {
         try

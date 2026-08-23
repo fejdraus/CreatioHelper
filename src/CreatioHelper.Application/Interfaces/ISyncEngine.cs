@@ -81,6 +81,25 @@ public interface ISyncEngine
     event EventHandler<FolderSyncedEventArgs> FolderSynced;
     event EventHandler<ConflictDetectedEventArgs> ConflictDetected;
     event EventHandler<SyncErrorEventArgs> SyncError;
+    event EventHandler<DeviceConnectionChangedEventArgs> DeviceConnectionChanged;
+}
+
+public class DeviceConnectionChangedEventArgs : EventArgs
+{
+    public string DeviceId { get; }
+    public string DeviceName { get; }
+    public bool Connected { get; }
+    public string? Address { get; }
+    public string? ConnectionType { get; }
+
+    public DeviceConnectionChangedEventArgs(string deviceId, string deviceName, bool connected, string? address = null, string? connectionType = null)
+    {
+        DeviceId = deviceId;
+        DeviceName = deviceName;
+        Connected = connected;
+        Address = address;
+        ConnectionType = connectionType;
+    }
 }
 
 public class SyncStatus

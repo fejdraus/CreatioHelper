@@ -208,6 +208,66 @@ Run the sync engine tests:
 dotnet test CreatioHelper.Tests --filter "Category=Sync"
 ```
 
+## Cluster Group Key
+
+Instead of registering every server on every agent by hand, agents that share one
+cluster key recognise each other automatically. A new agent needs the key and the
+address of any single agent already in the cluster; it learns the rest of the
+network from that agent's roster.
+
+### How it works
+
+1. The joining agent asks a seed agent for a challenge nonce
+   (`POST /rest/cluster/key/challenge`).
+2. It answers with `HMAC-SHA256(clusterKey, nonce + localDeviceId + remoteDeviceId)`
+   (`POST /rest/cluster/key/verify`). The raw key never leaves either process.
+3. The seed agent accepts the joining agent as a device and answers with its own
+   identity plus the cluster roster.
+4. The joining agent adds every roster member and repeats the handshake with each
+   of them, so the whole cluster learns about the newcomer in one pass.
+
+Pairing is symmetric: both sides add each other. Members are re-checked every
+`RosterSyncIntervalMinutes`, so agents added later are picked up automatically.
+Agents on the same LAN also pair through local discovery, without a seed address.
+
+### Configuration
+
+```json
+"ClusterKey": {
+  "Enabled": true,
+  "Key": "shared-secret-for-this-cluster",
+  "SeedAddresses": [ "http://agent-01.example.com:5275" ],
+  "ShareRoster": true,
+  "RosterSyncIntervalMinutes": 15,
+  "InitialJoinDelaySeconds": 15,
+  "MaxJoinTargets": 256,
+  "AdvertisedApiAddress": "http://agent-07.example.com:5275",
+  "ChallengeTimeoutSeconds": 30,
+  "MaxChallengesPerMinute": 10
+}
+```
+
+- `SeedAddresses` — REST endpoints of agents already in the cluster. One is enough.
+- `ShareRoster` — when `false`, the agent still pairs but answers with its own
+  identity only.
+- `RosterSyncIntervalMinutes` — `0` runs a single pass at startup and stops.
+- `AdvertisedApiAddress` — the address other agents should call back. Set it when
+  the machine name is not resolvable from the rest of the cluster.
+- `MaxJoinTargets` — safety limit on how many agents one join pass contacts.
+
+The key is a shared secret: anyone holding it can join the cluster. Distribute it
+through environment variables or user secrets rather than committing it.
+
+### Endpoints
+
+```
+POST /rest/cluster/key/challenge   anonymous, returns a nonce
+POST /rest/cluster/key/verify      anonymous, HMAC proof, returns identity + roster
+POST /rest/cluster/key/join        admin, runs a roster synchronization pass now
+GET  /rest/cluster/key/roster      monitor, roster shared with verified peers
+GET  /rest/cluster/key/status      monitor, whether the cluster key is configured
+```
+
 ## License Compliance
 
 This implementation is inspired by Syncthing's algorithms and concepts. Syncthing is licensed under MPLv2. This C# implementation:

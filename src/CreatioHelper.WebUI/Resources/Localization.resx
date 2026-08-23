@@ -4532,4 +4532,13 @@
   <data name="SupportBundle_LogDays" xml:space="preserve">
     <value>Days</value>
   </data>
+  <data name="SystemLog_Timestamp" xml:space="preserve">
+    <value>Time</value>
+  </data>
+  <data name="SystemLog_Message" xml:space="preserve">
+    <value>Message</value>
+  </data>
+  <data name="Common_Columns" xml:space="preserve">
+    <value>Columns</value>
+  </data>
 </root>

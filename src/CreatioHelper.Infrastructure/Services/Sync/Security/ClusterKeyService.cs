@@ -104,7 +104,14 @@ public class ClusterKeyService : IClusterKeyService
 
         // Constant-time comparison
         var expectedBytes = Convert.FromBase64String(expectedProof);
-        var actualBytes = Convert.FromBase64String(hmacProof);
+        var actualBytes = new byte[expectedBytes.Length];
+
+        if (!Convert.TryFromBase64String(hmacProof, actualBytes, out var actualLength) ||
+            actualLength != expectedBytes.Length)
+        {
+            _logger.LogWarning("Malformed cluster key proof from device {DeviceId}", remoteDeviceId);
+            return false;
+        }
 
         var isValid = CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
 

@@ -4822,4 +4822,7 @@
   <data name="SupportBundle_LogDays" xml:space="preserve">
     <value>Дней</value>
   </data>
+  <data name="Common_Columns" xml:space="preserve">
+    <value>Столбцы</value>
+  </data>
 </root>

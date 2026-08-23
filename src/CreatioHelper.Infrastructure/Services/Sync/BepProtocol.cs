@@ -32,6 +32,8 @@ public class BepProtocol : ISyncProtocol, IDisposable
     private const string DeviceName = "CreatioHelper";
     private const string ClientName = "CreatioHelper";
     private const string ClientVersion = "1.0.0";
+    private static readonly System.Net.Security.SslApplicationProtocol BepApplicationProtocol =
+        new(System.Text.Encoding.ASCII.GetBytes("bep/1.0"));
     private const int CompressionThreshold = 128;         // compressionThreshold
     private const int MaxMessageSize = 500 * 1000 * 1000; // MaxMessageLen (500MB)
     private const int MinBlockSize = 128 * 1024;          // MinBlockSize (128 KB)
@@ -120,7 +122,12 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 var connection = await EstablishConnectionAsync(address, device, cancellationToken);
                 if (connection != null)
                 {
-                    _connections[device.DeviceId] = connection;
+                    if (!TryRegisterConnection(device.DeviceId, connection))
+                    {
+                        await connection.DisconnectAsync();
+                        return true;
+                    }
+
                     device.UpdateConnection(true, address);
                     DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(device));
                     return true;
@@ -133,6 +140,42 @@ public class BepProtocol : ISyncProtocol, IDisposable
         }
 
         return false;
+    }
+
+    private bool TryRegisterConnection(string deviceId, BepConnection newConnection)
+    {
+        var keepOutgoing = string.CompareOrdinal(DeviceId, deviceId) > 0;
+        var newWins = newConnection.IsOutgoing ? keepOutgoing : !keepOutgoing;
+
+        newConnection.StateChanged += OnConnectionStateChanged;
+
+        while (true)
+        {
+            if (_connections.TryGetValue(deviceId, out var existing))
+            {
+                if (existing.IsConnected && existing.IsOutgoing != newConnection.IsOutgoing && !newWins)
+                {
+                    _logger.LogDebug("Keeping existing {Direction} connection for device {DeviceId}, rejecting duplicate",
+                        existing.IsOutgoing ? "outgoing" : "incoming", deviceId);
+                    return false;
+                }
+
+                if (_connections.TryUpdate(deviceId, newConnection, existing))
+                {
+                    _logger.LogDebug("Replaced connection for device {DeviceId} with {Direction} connection",
+                        deviceId, newConnection.IsOutgoing ? "outgoing" : "incoming");
+                    _ = existing.DisconnectAsync();
+                    return true;
+                }
+
+                continue;
+            }
+
+            if (_connections.TryAdd(deviceId, newConnection))
+            {
+                return true;
+            }
+        }
     }
 
     /// <summary>
@@ -201,6 +244,25 @@ public class BepProtocol : ISyncProtocol, IDisposable
             _connections.TryRemove(deviceId, out _);
             await connection.DisconnectAsync();
             DeviceDisconnected?.Invoke(this, new DeviceDisconnectedEventArgs(deviceId));
+        }
+    }
+
+    private void OnConnectionStateChanged(object? sender, ConnectionStateEventArgs e)
+    {
+        if (e.NewState != ConnectionState.Disconnected && e.NewState != ConnectionState.Failed)
+        {
+            return;
+        }
+
+        if (sender is not BepConnection connection)
+        {
+            return;
+        }
+
+        if (_connections.TryGetValue(connection.DeviceId, out var current) && ReferenceEquals(current, connection))
+        {
+            _connections.TryRemove(connection.DeviceId, out _);
+            DeviceDisconnected?.Invoke(this, new DeviceDisconnectedEventArgs(connection.DeviceId));
         }
     }
 
@@ -577,6 +639,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
             TargetHost = uri.Host,
             ClientCertificates = new X509CertificateCollection { _certificate },
             EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+            ApplicationProtocols = new List<System.Net.Security.SslApplicationProtocol> { BepApplicationProtocol },
             CertificateRevocationCheckMode = X509RevocationMode.NoCheck // Self-signed certs don't have revocation
         };
 
@@ -614,6 +677,7 @@ public class BepProtocol : ISyncProtocol, IDisposable
                 ServerCertificate = _certificate,
                 ClientCertificateRequired = true,
                 EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12 | System.Security.Authentication.SslProtocols.Tls13,
+                ApplicationProtocols = new List<System.Net.Security.SslApplicationProtocol> { BepApplicationProtocol },
                 CertificateRevocationCheckMode = X509RevocationMode.NoCheck,
                 RemoteCertificateValidationCallback = (sender, cert, chain, errors) => cert != null // Accept any client cert, validate by device ID
             };
@@ -638,11 +702,19 @@ public class BepProtocol : ISyncProtocol, IDisposable
             connection.MessageReceived += OnConnectionMessageReceived;
             connection.DeviceIdUpdated += OnConnectionDeviceIdUpdated;
 
-            _connections[deviceId] = connection;
+            if (!TryRegisterConnection(deviceId, connection))
+            {
+                await connection.DisconnectAsync();
+                return;
+            }
 
             await connection.StartAsync();
 
+            await connection.SendHelloAsync(DeviceId, DeviceName, ClientName, ClientVersion);
+
             _logger.LogInformation("BEP device {DeviceId} connected via TLS", deviceId);
+
+            DeviceConnected?.Invoke(this, new DeviceConnectedEventArgs(new SyncDevice(deviceId, deviceId)));
         }
         catch (Exception ex)
         {
@@ -697,11 +769,8 @@ public class BepProtocol : ISyncProtocol, IDisposable
     private string ExtractDeviceIdFromCertificate(X509Certificate? certificate)
     {
         if (certificate == null) return string.Empty;
-        
-        // Syncthing uses SHA-256 hash of certificate bytes as device ID
-        using var sha256 = SHA256.Create();
-        var hash = sha256.ComputeHash(certificate.GetRawCertData());
-        return Convert.ToHexString(hash).ToLower();
+
+        return DeviceIdGenerator.GenerateFromRawBytes(certificate.GetRawCertData());
     }
 
     private byte[] StringToDeviceId(string deviceIdHex)

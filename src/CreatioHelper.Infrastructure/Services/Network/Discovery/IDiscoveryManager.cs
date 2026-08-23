@@ -46,6 +46,11 @@ public interface IDiscoveryManager : IDisposable
     CacheStatistics GetCacheStatistics();
 
     /// <summary>
+    /// Enumerate devices currently known to the discovery layer with their addresses.
+    /// </summary>
+    IReadOnlyList<DiscoveredDeviceInfo> GetDiscoveredDevices();
+
+    /// <summary>
     /// Event raised when a device is discovered
     /// </summary>
     event EventHandler<DeviceDiscoveredArgs>? DeviceDiscovered;
@@ -59,6 +64,15 @@ public interface IDiscoveryManager : IDisposable
     /// Is global discovery enabled
     /// </summary>
     bool GlobalDiscoveryEnabled { get; }
+}
+
+/// <summary>
+/// A device known to the discovery layer with its last known addresses.
+/// </summary>
+public class DiscoveredDeviceInfo
+{
+    public string DeviceId { get; set; } = string.Empty;
+    public List<string> Addresses { get; set; } = new();
 }
 
 /// <summary>

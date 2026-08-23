@@ -55,6 +55,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     public event EventHandler<FolderSyncedEventArgs>? FolderSynced;
     public event EventHandler<ConflictDetectedEventArgs>? ConflictDetected;
     public event EventHandler<SyncErrorEventArgs>? SyncError;
+    public event EventHandler<DeviceConnectionChangedEventArgs>? DeviceConnectionChanged;
 
     public string DeviceId => _configuration.DeviceId;
         private BepVectorClock NewLocalVersion()
@@ -455,6 +456,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             throw new ArgumentException($"Device {deviceId} not found");
         }
         folder.AddDevice(deviceId);
+        await _configManager.UpsertFolderAsync(folder);
         _logger.LogInformation("Shared folder {FolderId} with device {DeviceId}", folderId, deviceId);
 
         if (await _protocol.IsConnectedAsync(deviceId))
@@ -469,6 +471,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             throw new ArgumentException($"Folder {folderId} not found");
         }
         folder.RemoveDevice(deviceId);
+        await _configManager.UpsertFolderAsync(folder);
         _logger.LogInformation("Unshared folder {FolderId} from device {DeviceId}", folderId, deviceId);
         if (await _protocol.IsConnectedAsync(deviceId))
         {
@@ -615,14 +618,20 @@ public class SyncEngine : ISyncEngine, IDisposable
 
             var connectionChecks = await Task.WhenAll(folder.Devices.Select(async device =>
                 (DeviceId: device, IsConnected: await _protocol.IsConnectedAsync(device))));
+            var indexSent = false;
             foreach (var (deviceId, _) in connectionChecks.Where(check => check.IsConnected))
             {
                 await _protocol.SendIndexAsync(deviceId, folderId, files);
+                indexSent = true;
             }
             if (status != null)
             {
                 SetFolderState(folderId, status, SyncState.Idle);
                 status.LastScan = DateTime.UtcNow;
+                if (indexSent)
+                {
+                    status.LastSync = DateTime.UtcNow;
+                }
                 var fileCount = files.Count(f => !f.IsDirectory);
                 var dirCount = files.Count(f => f.IsDirectory);
                 status.LocalFiles = fileCount;
@@ -867,6 +876,22 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         _logger.LogInformation("Device {DeviceId} connected", e.Device.DeviceId);
 
+        DeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs(
+            e.Device.DeviceId, e.Device.DeviceName, true, e.Device.LastAddress, e.Device.ConnectionType));
+
+        if (_devices.TryGetValue(e.Device.DeviceId, out var connectedDevice) && !connectedDevice.IsConnected)
+        {
+            connectedDevice.UpdateConnection(true, e.Device.LastAddress, e.Device.ConnectionType);
+            try
+            {
+                _configManager.UpdateDeviceLastSeen(e.Device.DeviceId, DateTime.UtcNow);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to update last seen for device {DeviceId}", e.Device.DeviceId);
+            }
+        }
+
         ConnectionMetrics.RecordConnectionEstablished(e.Device.DeviceId, e.Device.ConnectionType ?? "TCP");
         ConnectionMetrics.SetTotalConnections(_devices.Count(d => d.Value.IsConnected));
 
@@ -899,6 +924,10 @@ public class SyncEngine : ISyncEngine, IDisposable
     private void OnDeviceDisconnected(object? sender, DeviceDisconnectedEventArgs e)
     {
         _logger.LogInformation("Device {DeviceId} disconnected", e.DeviceId);
+
+        var disconnectedName = _devices.TryGetValue(e.DeviceId, out var knownDevice) ? knownDevice.DeviceName : e.DeviceId;
+        DeviceConnectionChanged?.Invoke(this, new DeviceConnectionChangedEventArgs(e.DeviceId, disconnectedName, false));
+
         ConnectionMetrics.RecordConnectionClosed(e.DeviceId, "disconnect");
         ConnectionMetrics.SetTotalConnections(_devices.Count(d => d.Value.IsConnected) - 1);
 

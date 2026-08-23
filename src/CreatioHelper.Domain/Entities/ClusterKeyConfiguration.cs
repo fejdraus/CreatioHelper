@@ -11,4 +11,10 @@ public class ClusterKeyConfiguration
     public string Key { get; set; } = "";
     public int ChallengeTimeoutSeconds { get; set; } = 30;
     public int MaxChallengesPerMinute { get; set; } = 10;
+    public List<string> SeedAddresses { get; set; } = new();
+    public bool ShareRoster { get; set; } = true;
+    public int RosterSyncIntervalMinutes { get; set; } = 15;
+    public int MaxJoinTargets { get; set; } = 256;
+    public int InitialJoinDelaySeconds { get; set; } = 15;
+    public string AdvertisedApiAddress { get; set; } = "";
 }

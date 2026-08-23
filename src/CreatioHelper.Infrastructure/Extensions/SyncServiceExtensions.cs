@@ -84,9 +84,16 @@ public static class SyncServiceExtensions
             GenerateDeviceId(certificate),
             Environment.MachineName);
 
-        if (string.IsNullOrEmpty(syncConfig.DeviceId) || !DeviceIdGenerator.IsValidDeviceId(syncConfig.DeviceId))
+        var certificateDeviceId = GenerateDeviceId(certificate);
+
+        if (syncConfig.DeviceId != certificateDeviceId)
         {
-            syncConfig.DeviceId = GenerateDeviceId(certificate);
+            if (!string.IsNullOrEmpty(syncConfig.DeviceId))
+            {
+                Console.WriteLine($"DEBUG: config.xml reports device {syncConfig.DeviceId}, using {certificateDeviceId} from the device certificate instead");
+            }
+
+            syncConfig.DeviceId = certificateDeviceId;
         }
 
         var port = syncConfig.Port;
@@ -484,8 +491,26 @@ public static class SyncServiceExtensions
 
     private static X509Certificate2 GenerateDeviceCertificate()
     {
-        // In a real implementation, this should load from storage or generate a new one
-        // For now, create a simple self-signed certificate
+        var configDirectory = Services.Sync.Configuration.ConfigXmlService.GetDefaultConfigDirectory();
+        var certificatePath = Path.Combine(configDirectory, "cert.pem");
+        var keyPath = Path.Combine(configDirectory, "key.pem");
+
+        if (File.Exists(certificatePath) && File.Exists(keyPath))
+        {
+            try
+            {
+                using var stored = X509Certificate2.CreateFromPem(
+                    File.ReadAllText(certificatePath),
+                    File.ReadAllText(keyPath));
+
+                return MakeUsableForTls(stored);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WARN: could not load {certificatePath}, generating a new device certificate: {ex.Message}");
+            }
+        }
+
         using var rsa = System.Security.Cryptography.RSA.Create(2048);
         var request = new CertificateRequest(
             new X500DistinguishedName($"CN={Environment.MachineName}"),
@@ -501,11 +526,35 @@ public static class SyncServiceExtensions
                 X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment,
                 false));
 
-        var certificate = request.CreateSelfSigned(
+        using var certificate = request.CreateSelfSigned(
             DateTimeOffset.UtcNow.AddDays(-1),
             DateTimeOffset.UtcNow.AddYears(10));
 
-        return certificate;
+        try
+        {
+            Directory.CreateDirectory(configDirectory);
+            File.WriteAllText(certificatePath, certificate.ExportCertificatePem());
+            File.WriteAllText(keyPath, rsa.ExportPkcs8PrivateKeyPem());
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"WARN: could not persist the device certificate to {certificatePath}: {ex.Message}");
+        }
+
+        return MakeUsableForTls(certificate);
+    }
+
+    private static X509Certificate2 MakeUsableForTls(X509Certificate2 certificate)
+    {
+        if (!certificate.HasPrivateKey)
+        {
+            return certificate;
+        }
+
+        return X509CertificateLoader.LoadPkcs12(
+            certificate.Export(X509ContentType.Pkcs12),
+            null,
+            X509KeyStorageFlags.Exportable);
     }
 
     private static string GenerateDeviceId(X509Certificate2 certificate)
@@ -568,6 +617,18 @@ public class SyncEngineHostedService : BackgroundService
             _syncEngine.SyncError += async (sender, e) =>
             {
                 await _eventBroadcaster.BroadcastSyncErrorAsync(e.FolderId, e.Error, e.DeviceId);
+            };
+
+            _syncEngine.DeviceConnectionChanged += async (sender, e) =>
+            {
+                if (e.Connected)
+                {
+                    await _eventBroadcaster.BroadcastDeviceConnectedAsync(e.DeviceId, e.DeviceName, e.Address, e.ConnectionType);
+                }
+                else
+                {
+                    await _eventBroadcaster.BroadcastDeviceDisconnectedAsync(e.DeviceId);
+                }
             };
 
             // Start the sync engine

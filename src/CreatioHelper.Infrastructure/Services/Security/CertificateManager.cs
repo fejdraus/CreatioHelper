@@ -199,9 +199,11 @@ public class CertificateManager : ICertificateManager
                     throw new InvalidOperationException($"Cannot read private key file due to access restrictions: {privateKeyPath}");
                 }
 
-                certificate = X509Certificate2.CreateFromPem(
+                using var fromPem = X509Certificate2.CreateFromPem(
                     Encoding.UTF8.GetString(certBytes),
                     Encoding.UTF8.GetString(keyBytes));
+
+                certificate = MakeUsableForTls(fromPem);
             }
 
             _logger.LogInformation("Successfully loaded certificate with subject {Subject}",
@@ -214,6 +216,19 @@ public class CertificateManager : ICertificateManager
             _logger.LogError(ex, "Failed to load certificate from {Path}", certificatePath);
             throw;
         }
+    }
+
+    private static X509Certificate2 MakeUsableForTls(X509Certificate2 certificate)
+    {
+        if (!certificate.HasPrivateKey)
+        {
+            return certificate;
+        }
+
+        return X509CertificateLoader.LoadPkcs12(
+            certificate.Export(X509ContentType.Pkcs12),
+            null,
+            X509KeyStorageFlags.Exportable);
     }
 
     public async Task SaveCertificateAsync(

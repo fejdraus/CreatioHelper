@@ -88,6 +88,7 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     public string DeviceId => _deviceId;
     public bool IsConnected => _isConnected && _tcpClient.Connected;
+    public bool IsOutgoing => _isOutgoing;
     public BepSerializationMode SerializationMode => _serializationMode;
 
     /// <summary>
@@ -320,7 +321,8 @@ public class BepConnection : IDisposable, IConnectionLifecycle
             DeviceId = deviceId,
             DeviceName = deviceName,
             ClientName = clientName,
-            ClientVersion = clientVersion
+            ClientVersion = clientVersion,
+            Timestamp = (DateTime.UtcNow - DateTime.UnixEpoch).Ticks * 100
         };
 
         await SendMessageAsync(BepMessageType.Hello, hello);
@@ -583,33 +585,16 @@ public class BepConnection : IDisposable, IConnectionLifecycle
 
     private async Task ReceiveLoopProtobufAsync(CancellationToken cancellationToken)
     {
-        // For incoming connections (server), read Hello with magic first
-        if (!_isOutgoing)
+        try
         {
-            try
-            {
-                var hello = await _protobufSerializer.ReadHelloAsync(_stream, cancellationToken);
-                var bepHello = BepMessageConverter.FromProto(hello);
-
-                // Update device ID from Hello message
-                if (!string.IsNullOrEmpty(hello.DeviceName) && _deviceId == "unknown-device")
-                {
-                    var oldDeviceId = _deviceId;
-                    // In Protobuf mode, device ID comes from TLS certificate, not Hello
-                    _logger.LogInformation("Received BEP Hello (Protobuf) from {DeviceName} ({ClientName} {ClientVersion})",
-                        hello.DeviceName, hello.ClientName, hello.ClientVersion);
-                }
-                else
-                {
-                    _logger.LogInformation("Received BEP Hello (Protobuf) from device {DeviceId}: {DeviceName} ({ClientName} {ClientVersion})",
-                        _deviceId, hello.DeviceName, hello.ClientName, hello.ClientVersion);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to read Hello message from device {DeviceId}", _deviceId);
-                return;
-            }
+            var hello = await _protobufSerializer.ReadHelloAsync(_stream, cancellationToken);
+            _logger.LogInformation("Received BEP Hello (Protobuf) from device {DeviceId}: {DeviceName} ({ClientName} {ClientVersion}), timestamp={Timestamp}",
+                _deviceId, hello.DeviceName, hello.ClientName, hello.ClientVersion, hello.Timestamp);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to read Hello message from device {DeviceId}", _deviceId);
+            return;
         }
 
         while (!cancellationToken.IsCancellationRequested && IsConnected)
@@ -634,6 +619,11 @@ public class BepConnection : IDisposable, IConnectionLifecycle
                 IncrementErrorCount();
                 break;
             }
+        }
+
+        if (State != ConnectionState.Disconnected && State != ConnectionState.Failed)
+        {
+            await DisconnectAsync();
         }
     }
 

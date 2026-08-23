@@ -31,7 +31,9 @@ builder.Host.UseSerilog((context, configuration) =>
     configuration
         .ReadFrom.Configuration(context.Configuration)
         .Enrich.FromLogContext()
-        .Enrich.With(new CreatioHelper.Agent.Logging.SensitiveQueryStringEnricher());
+        .Enrich.With(new CreatioHelper.Agent.Logging.SensitiveQueryStringEnricher())
+        .WriteTo.Sink(new CreatioHelper.Agent.Logging.SqliteLogSink(
+            CreatioHelper.Agent.Logging.SystemLogStore.DatabasePath));
 });
 
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]

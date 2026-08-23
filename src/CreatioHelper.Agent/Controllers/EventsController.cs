@@ -20,12 +20,55 @@ namespace CreatioHelper.Agent.Controllers;
 public class EventsController : ControllerBase
 {
     private readonly IEventLogger _eventLogger;
+    private readonly ISyncEventStore _eventStore;
     private readonly ILogger<EventsController> _logger;
 
-    public EventsController(IEventLogger eventLogger, ILogger<EventsController> logger)
+    public EventsController(IEventLogger eventLogger, ISyncEventStore eventStore, ILogger<EventsController> logger)
     {
         _eventLogger = eventLogger;
+        _eventStore = eventStore;
         _logger = logger;
+    }
+
+    [HttpGet("page")]
+    [Authorize(Roles = Roles.MonitorRoles)]
+    public async Task<IActionResult> GetEventsPage(
+        [FromQuery] int offset = 0,
+        [FromQuery] int limit = 100,
+        [FromQuery] string? type = null,
+        [FromQuery] string? folder = null,
+        [FromQuery] string? device = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var safeOffset = Math.Max(0, offset);
+            var safeLimit = Math.Max(1, Math.Min(limit, 500));
+
+            var (total, items) = await _eventStore.LoadPageAsync(safeOffset, safeLimit, type, folder, device, sort, dir, cancellationToken);
+
+            var mapped = items.Select(e => new
+            {
+                id = e.GlobalId,
+                globalID = e.GlobalId,
+                time = e.Time,
+                type = e.Type.ToString(),
+                data = e.Data
+            });
+
+            return Ok(new { total, items = mapped });
+        }
+        catch (OperationCanceledException)
+        {
+            return Ok(new { total = 0, items = Array.Empty<object>() });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting events page: {Message}", ex.Message);
+            return StatusCode(500, new { error = "Internal server error" });
+        }
     }
 
     /// <summary>

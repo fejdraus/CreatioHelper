@@ -103,8 +103,13 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<ILdapAuthService, LdapAuthService>();
         if (configuration != null)
         {
-            services.Configure<ClusterKeyConfiguration>(
-                configuration.GetSection("ClusterKey"));
+            var clusterKeyConfig = new ClusterKeyConfiguration();
+            configuration.GetSection("ClusterKey").Bind(clusterKeyConfig);
+            services.AddSingleton(clusterKeyConfig);
+            services.AddSingleton<IOptions<ClusterKeyConfiguration>>(
+                new OptionsWrapper<ClusterKeyConfiguration>(clusterKeyConfig));
+            services.AddSingleton<IClusterMembershipService, ClusterMembershipService>();
+            services.AddHostedService<ClusterJoinHostedService>();
         }
         services.AddSingleton<IClusterKeyService, ClusterKeyService>();
         services.AddSingleton<ClusterKeyAutoAcceptHandler>();

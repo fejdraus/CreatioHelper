@@ -17,6 +17,10 @@ public class SyncBroadcastService : BackgroundService
     private readonly ILogger<SyncBroadcastService> _logger;
     private SyncEventSubscription? _eventSubscription;
 
+    private string? _lastSystemStatusSignature;
+    private DateTime _lastSystemStatusBroadcast = DateTime.MinValue;
+    private static readonly TimeSpan SystemStatusHeartbeat = TimeSpan.FromSeconds(60);
+
     public SyncBroadcastService(
         IHubContext<SyncHub> hubContext,
         IServiceProvider serviceProvider,
@@ -136,6 +140,7 @@ public class SyncBroadcastService : BackgroundService
             {
                 Folder = folderId,
                 State = status.State.ToString().ToLowerInvariant(),
+                StateChanged = status.LastSync > status.LastScan ? status.LastSync : status.LastScan,
                 GlobalFiles = globalFiles,
                 GlobalDirectories = status.LocalDirectories,
                 GlobalBytes = globalBytes,
@@ -151,7 +156,8 @@ public class SyncBroadcastService : BackgroundService
             };
 
             await _hubContext.Clients.All.SendAsync("FolderStatus", folderStatus);
-            _logger.LogDebug("Broadcasted FolderStatus for {FolderId}: {State}", folderId, status.State);
+            _logger.LogInformation("Broadcasted FolderStatus (event) for {FolderId}: state={State} stateChanged={StateChanged:O} files={Files}",
+                folderId, status.State, folderStatus.StateChanged, folderStatus.LocalFiles);
         }
         catch (Exception ex)
         {
@@ -205,9 +211,7 @@ public class SyncBroadcastService : BackgroundService
             try
             {
                 await BroadcastSystemStatusAsync();
-                await BroadcastAllFolderStatusesAsync();
-                await BroadcastAllConnectionStatusesAsync();
-                await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
+                await Task.Delay(TimeSpan.FromSeconds(10), stoppingToken);
             }
             catch (OperationCanceledException)
             {
@@ -352,14 +356,39 @@ public class SyncBroadcastService : BackgroundService
                 TotalBytesOut = statistics.TotalBytesOut
             };
 
+            var signature = BuildSystemStatusSignature(systemStatus);
+            if (signature == _lastSystemStatusSignature &&
+                DateTime.UtcNow - _lastSystemStatusBroadcast < SystemStatusHeartbeat)
+            {
+                return;
+            }
+
+            _lastSystemStatusSignature = signature;
+            _lastSystemStatusBroadcast = DateTime.UtcNow;
+
             await _hubContext.Clients.All.SendAsync("SystemStatus", systemStatus);
-            _logger.LogTrace("Broadcasted SystemStatus: Uptime={Uptime}, Memory={Memory}",
-                statistics.Uptime, process.WorkingSet64);
+            _logger.LogInformation("Broadcasted SystemStatus (changed or heartbeat): Cpu={Cpu:F1}% Mem={Memory}",
+                systemStatus.CpuPercent, process.WorkingSet64);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system statistics");
         }
+    }
+
+    private static string BuildSystemStatusSignature(SystemStatusDto status)
+    {
+        const long memoryBucket = 16 * 1024 * 1024;
+        return string.Join('|',
+            status.MyId,
+            Math.Round(status.CpuPercent, MidpointRounding.AwayFromZero),
+            status.Sys / memoryBucket,
+            status.OsMemoryUsed / memoryBucket,
+            status.TotalIn,
+            status.TotalOut,
+            status.InBytesPerSec,
+            status.OutBytesPerSec,
+            status.DbSize);
     }
 
     public override void Dispose()

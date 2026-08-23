@@ -348,108 +348,118 @@ public class SyncthingSystemController : ControllerBase
     /// Custom endpoint for WebUI - reads real logs from log files
     /// </summary>
     [HttpGet("log/entries")]
-    public ActionResult<LogEntry[]> GetLogEntries([FromQuery] int limit = 100)
+    public ActionResult<object> GetLogEntries(
+        [FromQuery] int offset = 0,
+        [FromQuery] int limit = 100,
+        [FromQuery] string? level = null,
+        [FromQuery] string? facility = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? dir = null)
     {
         try
         {
-            var entries = new List<LogEntry>();
-            var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
-
-            if (!Directory.Exists(logsDirectory))
-            {
-                _logger.LogWarning("Logs directory not found: {LogsDirectory}", logsDirectory);
-                return Ok(Array.Empty<LogEntry>());
-            }
-
-            // Find log files sorted by modification time (most recent first)
-            var logFiles = Directory.GetFiles(logsDirectory, "agent-*.log")
-                .OrderByDescending(f => System.IO.File.GetLastWriteTimeUtc(f))
-                .ToList();
-
-            if (logFiles.Count == 0)
-            {
-                return Ok(Array.Empty<LogEntry>());
-            }
-
-            // Read lines from log files until we have enough entries
-            var maxLimit = Math.Min(limit, 1000);
-            foreach (var logFile in logFiles)
-            {
-                if (entries.Count >= maxLimit) break;
-
-                try
-                {
-                    // Read file with shared access (log file may be in use)
-                    using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var reader = new StreamReader(fileStream);
-
-                    var lines = new List<string>();
-                    string? line;
-                    while ((line = reader.ReadLine()) != null)
-                    {
-                        lines.Add(line);
-                    }
-
-                    // Process lines in reverse order (newest first)
-                    for (int i = lines.Count - 1; i >= 0 && entries.Count < maxLimit; i--)
-                    {
-                        var entry = ParseLogLine(lines[i]);
-                        if (entry != null)
-                        {
-                            entries.Add(entry);
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error reading log file: {LogFile}", logFile);
-                }
-            }
-
-            return Ok(entries.ToArray());
+            var items = ReadLogPage(Math.Max(0, offset), Math.Clamp(limit, 1, 500), level, facility, search, sort, dir, out var total);
+            return Ok(new { total, items });
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error getting system log entries");
-            return StatusCode(500, Array.Empty<LogEntry>());
+            return StatusCode(500, new { total = 0, items = Array.Empty<LogEntry>() });
         }
     }
 
     /// <summary>
-    /// Read real log entries from log files (shared between GetLog, GetLogText, GetLogEntries)
+    /// Read the newest N entries (shared with the plain-text log endpoints).
     /// </summary>
     private List<LogEntry> ReadLogEntries(int limit)
+        => ReadLogPage(0, limit, null, null, null, null, null, out _);
+
+    private static string ResolveLogSortColumn(string? sort) => sort switch
+    {
+        "level" => "level",
+        "facility" => "facility",
+        "message" => "message",
+        _ => "id"
+    };
+
+    /// <summary>
+    /// Read a page of log entries from the database with optional level/facility/search filters.
+    /// </summary>
+    private List<LogEntry> ReadLogPage(int offset, int limit, string? level, string? facility, string? search, string? sort, string? dir, out int total)
     {
         var entries = new List<LogEntry>();
-        var logsDirectory = Path.Combine(Directory.GetCurrentDirectory(), "logs");
+        total = 0;
 
-        if (!Directory.Exists(logsDirectory))
-            return entries;
-
-        var logFiles = Directory.GetFiles(logsDirectory, "agent-*.log")
-            .OrderByDescending(f => System.IO.File.GetLastWriteTimeUtc(f))
-            .ToList();
-
-        foreach (var logFile in logFiles)
+        try
         {
-            if (entries.Count >= limit) break;
-            try
-            {
-                using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(fileStream);
-                var lines = new List<string>();
-                string? line;
-                while ((line = reader.ReadLine()) != null)
-                    lines.Add(line);
+            using var connection = new Microsoft.Data.Sqlite.SqliteConnection(
+                $"Data Source={CreatioHelper.Agent.Logging.SystemLogStore.DatabasePath};Mode=ReadOnly");
+            connection.Open();
 
-                for (int i = lines.Count - 1; i >= 0 && entries.Count < limit; i--)
+            var levelAbbreviation = string.IsNullOrWhiteSpace(level) || level == "all"
+                ? null
+                : CreatioHelper.Agent.Logging.SystemLogFormat.LevelToAbbreviation(level);
+            var hasFacility = !string.IsNullOrWhiteSpace(facility) && facility != "all";
+            var hasSearch = !string.IsNullOrWhiteSpace(search);
+
+            var conditions = new List<string>();
+            if (!string.IsNullOrEmpty(levelAbbreviation)) conditions.Add("level = $level");
+            if (hasFacility) conditions.Add("facility = $facility");
+            if (hasSearch) conditions.Add("message LIKE $search");
+            var whereClause = conditions.Count > 0 ? " WHERE " + string.Join(" AND ", conditions) : "";
+
+            void Bind(Microsoft.Data.Sqlite.SqliteCommand cmd)
+            {
+                if (!string.IsNullOrEmpty(levelAbbreviation))
                 {
-                    var entry = ParseLogLine(lines[i]);
-                    if (entry != null)
-                        entries.Add(entry);
+                    var p = cmd.CreateParameter(); p.ParameterName = "$level"; p.Value = levelAbbreviation; cmd.Parameters.Add(p);
+                }
+                if (hasFacility)
+                {
+                    var p = cmd.CreateParameter(); p.ParameterName = "$facility"; p.Value = facility!; cmd.Parameters.Add(p);
+                }
+                if (hasSearch)
+                {
+                    var p = cmd.CreateParameter(); p.ParameterName = "$search"; p.Value = "%" + search + "%"; cmd.Parameters.Add(p);
                 }
             }
-            catch { /* skip unreadable files */ }
+
+            using (var countCommand = connection.CreateCommand())
+            {
+                countCommand.CommandText = "SELECT COUNT(*) FROM system_log" + whereClause + ";";
+                Bind(countCommand);
+                total = Convert.ToInt32(countCommand.ExecuteScalar());
+            }
+
+            var sortColumn = ResolveLogSortColumn(sort);
+            var sortDirection = string.Equals(dir, "asc", StringComparison.OrdinalIgnoreCase) ? "ASC" : "DESC";
+
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT timestamp, level, facility, message FROM system_log" + whereClause +
+                                  $" ORDER BY {sortColumn} {sortDirection}, id {sortDirection} LIMIT $limit OFFSET $offset;";
+            Bind(command);
+            var pl = command.CreateParameter(); pl.ParameterName = "$limit"; pl.Value = limit; command.Parameters.Add(pl);
+            var po = command.CreateParameter(); po.ParameterName = "$offset"; po.Value = offset; command.Parameters.Add(po);
+
+            using var reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                entries.Add(new LogEntry
+                {
+                    Timestamp = DateTime.TryParse(reader.GetString(0), null,
+                        System.Globalization.DateTimeStyles.RoundtripKind, out var ts)
+                        ? ts.ToUniversalTime()
+                        : DateTime.UtcNow,
+                    Level = ParseLogLevel(reader.GetString(1)),
+                    Facility = reader.GetString(2),
+                    Message = reader.GetString(3)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error reading system log from database");
         }
 
         return entries;

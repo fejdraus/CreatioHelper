@@ -495,8 +495,16 @@ public class ConfigXmlService : IConfigXmlService
         return result;
     }
 
-    private static string GetDefaultConfigDirectory()
+    public static string ConfigDirectoryEnvironmentVariable => "CREATIOHELPER_CONFIG_DIR";
+
+    public static string GetDefaultConfigDirectory()
     {
+        var overridden = Environment.GetEnvironmentVariable(ConfigDirectoryEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(overridden))
+        {
+            return overridden.Trim();
+        }
+
         // Follow Syncthing's convention: ~/.config/syncthing on Linux, %LOCALAPPDATA%\Syncthing on Windows
         if (OperatingSystem.IsWindows())
         {

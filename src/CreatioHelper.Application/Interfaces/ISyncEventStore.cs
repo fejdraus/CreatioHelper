@@ -11,4 +11,14 @@ public interface ISyncEventStore
     Task AppendAsync(IReadOnlyList<SyncEvent> events, CancellationToken cancellationToken = default);
 
     Task<List<SyncEvent>> LoadRecentAsync(int limit, CancellationToken cancellationToken = default);
+
+    Task<(int Total, List<SyncEvent> Items)> LoadPageAsync(
+        int offset,
+        int limit,
+        string? eventType,
+        string? folderId,
+        string? deviceId,
+        string? sort = null,
+        string? dir = null,
+        CancellationToken cancellationToken = default);
 }

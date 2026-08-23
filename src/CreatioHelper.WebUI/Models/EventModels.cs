@@ -97,8 +97,16 @@ public class SyncEvent
 
     public string GetDataValue(string key)
     {
-        if (Data == null || !Data.TryGetValue(key, out var value))
+        if (Data == null)
             return string.Empty;
+
+        if (!Data.TryGetValue(key, out var value))
+        {
+            var match = Data.FirstOrDefault(kv => string.Equals(kv.Key, key, StringComparison.OrdinalIgnoreCase));
+            if (match.Key == null)
+                return string.Empty;
+            value = match.Value;
+        }
 
         // Handle JsonElement from System.Text.Json deserialization
         if (value is System.Text.Json.JsonElement jsonElement)

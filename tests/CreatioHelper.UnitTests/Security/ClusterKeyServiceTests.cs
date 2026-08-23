@@ -203,4 +203,17 @@ public class ClusterKeyServiceTests
         var result = service.VerifyChallenge(challenge.Nonce, "device-C", proof);
         Assert.False(result);
     }
+
+    [Theory]
+    [InlineData("not-base64!!")]
+    [InlineData("")]
+    [InlineData("YWJj")]
+    public void MalformedProof_VerificationFailsWithoutThrowing(string proof)
+    {
+        var service = CreateService(localDeviceId: "device-A");
+        var challenge = service.GenerateChallenge("device-B");
+        Assert.NotNull(challenge);
+
+        Assert.False(service.VerifyChallenge(challenge.Nonce, "device-B", proof));
+    }
 }

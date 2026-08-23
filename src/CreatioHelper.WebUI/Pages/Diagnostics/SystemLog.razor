@@ -9,6 +9,7 @@
 
 <PageTitle>@L["SystemLog_Title"] - CreatioHelper Agent</PageTitle>
 
+<div class="logs-fill">
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["SystemLog_Title"]</MudText>
     <div class="d-flex gap-2 gradient-controls">
@@ -25,6 +26,7 @@
     <MudGrid>
         <MudItem xs="12" md="4">
             <MudSelect @bind-Value="_selectedLogLevel"
+                       @bind-Value:after="OnFilterChanged"
                        Label="@L["SystemLog_Level"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
@@ -37,6 +39,7 @@
         </MudItem>
         <MudItem xs="12" md="4">
             <MudSelect @bind-Value="_selectedFacility"
+                       @bind-Value:after="OnFilterChanged"
                        Label="@L["SystemLog_Facility"]"
                        Variant="Variant.Outlined"
                        Margin="Margin.Dense">
@@ -51,6 +54,7 @@
         </MudItem>
         <MudItem xs="12" md="4">
             <MudTextField @bind-Value="_searchText"
+                          @bind-Value:after="OnFilterChanged"
                           Label="@L["SystemLog_Search"]"
                           Placeholder="@L["SystemLog_SearchPlaceholder"]"
                           Variant="Variant.Outlined"
@@ -66,9 +70,23 @@
 <MudPaper Elevation="2" Class="log-viewer-container">
     <div class="log-viewer-toolbar pa-2 d-flex align-center">
         <MudText Typo="Typo.caption" Color="Color.Default">
-            @string.Format(L["SystemLog_EntriesCount"], _filteredLogs.Count, _logs.Count)
+            @string.Format(L["SystemLog_EntriesCount"], _logs.Count, _totalLogs)
         </MudText>
         <MudSpacer />
+        <MudMenu Icon="@Icons.Material.Filled.ViewColumn" Size="Size.Small" Dense="true"
+                 AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight"
+                 aria-label="@L["Common_Columns"]">
+            @foreach (var col in _columns)
+            {
+                <MudMenuItem OnClick="@(() => ToggleColumn(col.Key))">
+                    <div class="d-flex align-center gap-2">
+                        <MudIcon Size="Size.Small"
+                                 Icon="@(col.Visible ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)" />
+                        <span>@col.Label</span>
+                    </div>
+                </MudMenuItem>
+            }
+        </MudMenu>
         <MudIconButton Icon="@Icons.Material.Filled.Download"
                        Size="Size.Small"
                        OnClick="DownloadLogs"
@@ -83,40 +101,75 @@
                        aria-label="@L["SystemLog_Refresh"]" />
     </div>
 
-    <div class="log-viewer @(_autoScroll ? "auto-scroll" : "")" @ref="_logContainer">
-        @if (_isLoading)
+    <div class="log-grid-header" style="grid-template-columns:@GridTemplate();">
+        @foreach (var col in VisibleColumns)
         {
-            <div class="pa-4 text-center">
-                <MudProgressCircular Color="Color.Primary" Indeterminate="true" />
+            <div class="col-sortable" @onclick="@(() => SortBy(col.Key))">
+                <span>@col.Label</span>
+                @if (_sortColumn == col.Key)
+                {
+                    <MudIcon Size="Size.Small"
+                             Icon="@(_sortDir == "asc" ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward)" />
+                }
             </div>
-        }
-        else if (_filteredLogs.Count == 0)
-        {
-            <div class="pa-4 text-center">
-                <MudText Color="Color.Default">@L["SystemLog_NoLogs"]</MudText>
-            </div>
-        }
-        else
-        {
-            @foreach (var log in _filteredLogs)
-            {
-                <div class="log-entry @GetLogLevelClass(log.Level)">
-                    <span class="log-timestamp">@LocalTimeConverter.ToLocal(log.Timestamp).ToString("HH:mm:ss.fff")</span>
-                    <span class="log-level">@log.Level.ToUpper()</span>
-                    <span class="log-facility">[@log.Facility]</span>
-                    <span class="log-message">@log.Message</span>
-                </div>
-            }
         }
     </div>
+
+    <div class="log-viewer @(_autoScroll ? "auto-scroll" : "")" @ref="_scrollContainer">
+        <Virtualize Items="_logs" Context="log" ItemSize="28">
+            <div class="log-entry @GetLogLevelClass(log.Level)" style="grid-template-columns:@GridTemplate();">
+                @foreach (var col in VisibleColumns)
+                {
+                    @switch (col.Key)
+                    {
+                        case "time":
+                            <span class="log-timestamp">@LocalTimeConverter.ToLocal(log.Timestamp).ToString("HH:mm:ss.fff")</span>
+                            break;
+                        case "level":
+                            <span class="log-level">@log.Level.ToUpper()</span>
+                            break;
+                        case "facility":
+                            <span class="log-facility">[@log.Facility]</span>
+                            break;
+                        case "message":
+                            <span class="log-message">@log.Message</span>
+                            break;
+                    }
+                }
+            </div>
+        </Virtualize>
+    </div>
+
+    @if (_loadingMore || (!_hasMore && _logs.Count > 0))
+    {
+        <div class="log-loadmore pa-2 d-flex align-center justify-center">
+            @if (_loadingMore)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_Loading"]</MudText>
+            }
+            else
+            {
+                <MudText Typo="Typo.body2" Color="Color.Default">@L["Events_AllLoaded"]</MudText>
+            }
+        </div>
+    }
 </MudPaper>
+</div>
 
 <style>
+    .logs-fill {
+        display: flex;
+        flex-direction: column;
+        height: calc(100dvh - var(--mud-appbar-height, 64px) - 32px);
+        overflow: hidden;
+    }
+
     .log-viewer-container {
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 300px);
-        min-height: 400px;
+        flex: 1 1 auto;
+        min-height: 0;
     }
 
     .log-viewer-toolbar {
@@ -139,7 +192,33 @@
         scroll-behavior: smooth;
     }
 
+    .log-grid-header {
+        display: grid;
+        gap: 8px;
+        align-items: center;
+        padding: 6px 8px;
+        border-bottom: 1px solid var(--mud-palette-divider);
+        background: var(--mud-palette-surface);
+        font-weight: 600;
+        font-size: 12px;
+    }
+
+    .log-grid-header .col-sortable {
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .log-grid-header .col-sortable:hover {
+        color: var(--mud-palette-primary);
+    }
+
     .log-entry {
+        display: grid;
+        gap: 8px;
+        align-items: start;
         padding: 2px 8px;
         border-bottom: 1px solid var(--mud-palette-lines-default);
         /* Long file paths would otherwise stretch the list far past the viewport,
@@ -154,19 +233,14 @@
 
     .log-timestamp {
         color: var(--mud-palette-text-secondary);
-        margin-right: 8px;
     }
 
     .log-level {
         font-weight: bold;
-        margin-right: 8px;
-        min-width: 60px;
-        display: inline-block;
     }
 
     .log-facility {
         color: var(--mud-palette-primary);
-        margin-right: 8px;
     }
 
     .log-entry.error .log-level { color: var(--mud-palette-error); }
@@ -179,90 +253,238 @@
     [Inject]
     private IJSRuntime JSRuntime { get; set; } = null!;
 
-    private ElementReference _logContainer;
-    private bool _isLoading;
+    private const int BatchSize = 100;
+
+    private sealed class Column
+    {
+        public string Key { get; init; } = "";
+        public string Label { get; init; } = "";
+        public string Width { get; init; } = "1fr";
+        public bool Visible { get; set; } = true;
+    }
+
+    private readonly CancellationTokenSource _pageCts = new();
+
     private bool _autoScroll = true;
     private bool _liveTail = true;
     private string _selectedLogLevel = "all";
     private string _selectedFacility = "all";
     private string _searchText = string.Empty;
 
-    private List<LogEntry> _logs = new();
-    private List<LogEntry> _filteredLogs = new();
+    private string _sortColumn = "time";
+    private string _sortDir = "desc";
+    private List<Column> _columns = new();
+
+    private readonly List<LogEntry> _logs = new();
+    private int _totalLogs;
+    private bool _loadingMore;
+    private bool _hasMore = true;
+
+    private volatile bool _liveDirty;
+    private System.Threading.Timer? _liveTimer;
+
+    private ElementReference _scrollContainer;
+    private DotNetObjectReference<SystemLog>? _selfRef;
+    private int _scrollHandle;
+
+    private IEnumerable<Column> VisibleColumns => _columns.Where(c => c.Visible);
+
+    private string GridTemplate() => string.Join(" ", VisibleColumns.Select(c => c.Width));
 
     protected override async Task OnInitializedAsync()
     {
+        _columns = new()
+        {
+            new Column { Key = "time", Label = L["SystemLog_Timestamp"], Width = "130px" },
+            new Column { Key = "level", Label = L["SystemLog_Level"], Width = "70px" },
+            new Column { Key = "facility", Label = L["SystemLog_Facility"], Width = "120px" },
+            new Column { Key = "message", Label = L["SystemLog_Message"], Width = "minmax(0,1fr)" },
+        };
+
         SignalR.OnLogEntry += OnLogEntry;
-        await RefreshLogs();
+        _liveTimer = new System.Threading.Timer(_ => LiveTick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        await LoadInitial();
+    }
+
+    private async Task SortBy(string column)
+    {
+        if (_sortColumn == column)
+        {
+            _sortDir = _sortDir == "asc" ? "desc" : "asc";
+        }
+        else
+        {
+            _sortColumn = column;
+            _sortDir = "desc";
+        }
+
+        _hasMore = true;
+        await LoadInitial();
+        await ScrollToTop();
+    }
+
+    private void ToggleColumn(string key)
+    {
+        var col = _columns.FirstOrDefault(c => c.Key == key);
+        if (col is null)
+        {
+            return;
+        }
+
+        if (col.Visible && _columns.Count(c => c.Visible) <= 1)
+        {
+            return;
+        }
+
+        col.Visible = !col.Visible;
+        StateHasChanged();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (_scrollHandle != 0 || string.IsNullOrEmpty(_scrollContainer.Id))
+        {
+            return;
+        }
+
+        try
+        {
+            _selfRef ??= DotNetObjectReference.Create(this);
+            _scrollHandle = await JSRuntime.InvokeAsync<int>(
+                "creatioInfiniteScroll.attach",
+                _scrollContainer,
+                _selfRef,
+                nameof(OnScrolledNearBottom),
+                1.5);
+        }
+        catch (JSException)
+        {
+        }
     }
 
     private void OnLogEntry(LogEntry entry)
     {
-        _logs.Add(entry);
-        if (_logs.Count > 10000)
+        if (_liveTail)
         {
-            _logs.RemoveRange(0, 1000);
-        }
-
-        UpdateFilteredLogs();
-
-        if (_liveTail && _autoScroll)
-        {
-            InvokeAsync(async () =>
-            {
-                StateHasChanged();
-                await ScrollToBottom();
-            });
-        }
-        else
-        {
-            InvokeAsync(StateHasChanged);
+            _liveDirty = true;
         }
     }
 
-    private async Task RefreshLogs()
+    private void LiveTick()
     {
-        _isLoading = true;
-        StateHasChanged();
+        if (!_liveDirty || !_liveTail)
+        {
+            return;
+        }
 
+        InvokeAsync(async () =>
+        {
+            if (!await IsScrolledToTop())
+            {
+                return;
+            }
+
+            _liveDirty = false;
+            await LoadInitial();
+        });
+    }
+
+    private async Task<bool> IsScrolledToTop()
+    {
         try
         {
-            var logs = await ApiClient.GetSystemLogsAsync(1000);
-            _logs = logs.ToList();
-            UpdateFilteredLogs();
+            return await JSRuntime.InvokeAsync<bool>("eval", "(document.querySelector('.log-viewer')?.scrollTop ?? 999) < 40");
+        }
+        catch
+        {
+            return true;
+        }
+    }
+
+    private async Task LoadInitial()
+    {
+        try
+        {
+            var (total, items) = await ApiClient.GetSystemLogPageAsync(
+                0, BatchSize, _selectedLogLevel, _selectedFacility, _searchText, _sortColumn, _sortDir, _pageCts.Token);
+
+            _logs.Clear();
+            _logs.AddRange(items);
+            _totalLogs = total;
+            _hasMore = _logs.Count < total;
+            StateHasChanged();
+        }
+        catch (OperationCanceledException)
+        {
         }
         catch (Exception ex)
         {
             if (ErrorHelper.IsAuthenticationError(ex))
             {
                 Navigation.NavigateTo("/login", forceLoad: true);
-                return;
             }
-            Snackbar.Add(L["Msg_FailedToLoadLogs", ErrorHelper.GetUserFriendlyMessage(ex)], Severity.Error);
-        }
-        finally
-        {
-            _isLoading = false;
-            StateHasChanged();
         }
     }
 
-    private void UpdateFilteredLogs()
+    [JSInvokable]
+    public async Task<bool> OnScrolledNearBottom()
     {
-        _filteredLogs = _logs.Where(log =>
+        if (!_hasMore || _loadingMore)
         {
-            if (_selectedLogLevel != "all" && log.Level.ToLower() != _selectedLogLevel)
-                return false;
+            return false;
+        }
 
-            if (_selectedFacility != "all" && !log.Facility.Contains(_selectedFacility, StringComparison.OrdinalIgnoreCase))
-                return false;
+        _loadingMore = true;
+        StateHasChanged();
 
-            if (!string.IsNullOrWhiteSpace(_searchText) &&
-                !log.Message.Contains(_searchText, StringComparison.OrdinalIgnoreCase))
-                return false;
+        try
+        {
+            var (total, items) = await ApiClient.GetSystemLogPageAsync(
+                _logs.Count, BatchSize, _selectedLogLevel, _selectedFacility, _searchText, _sortColumn, _sortDir, _pageCts.Token);
 
-            return true;
-        }).ToList();
+            if (items.Length == 0)
+            {
+                _hasMore = false;
+            }
+            else
+            {
+                _logs.AddRange(items);
+                _totalLogs = total;
+                _hasMore = _logs.Count < total;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception ex)
+        {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+                return false;
+            }
+        }
+        finally
+        {
+            _loadingMore = false;
+            StateHasChanged();
+        }
+
+        return _hasMore;
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _hasMore = true;
+        await LoadInitial();
+        await ScrollToTop();
+    }
+
+    private async Task RefreshLogs()
+    {
+        _hasMore = true;
+        await LoadInitial();
+        await ScrollToTop();
     }
 
     private string GetLogLevelClass(string level)
@@ -277,28 +499,29 @@
         };
     }
 
-    private async Task ScrollToBottom()
+    private async Task ScrollToTop()
     {
         try
         {
             await JSRuntime.InvokeVoidAsync("eval",
-                $"document.querySelector('.log-viewer')?.scrollTo(0, document.querySelector('.log-viewer')?.scrollHeight)");
+                "document.querySelector('.log-viewer')?.scrollTo(0, 0)");
         }
         catch { }
     }
 
-    private void ClearLogs()
+    private async Task ClearLogs()
     {
-        _logs.Clear();
-        _filteredLogs.Clear();
-        StateHasChanged();
+        await RefreshLogs();
     }
 
     private async Task DownloadLogs()
     {
         try
         {
-            var content = string.Join("\n", _filteredLogs.Select(l =>
+            var (_, items) = await ApiClient.GetSystemLogPageAsync(
+                0, 5000, _selectedLogLevel, _selectedFacility, _searchText);
+
+            var content = string.Join("\n", items.Select(l =>
                 $"{l.Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{l.Level}] [{l.Facility}] {l.Message}"));
 
             var bytes = System.Text.Encoding.UTF8.GetBytes(content);
@@ -326,6 +549,16 @@
 
     public void Dispose()
     {
+        _pageCts.Cancel();
+        _pageCts.Dispose();
         SignalR.OnLogEntry -= OnLogEntry;
+        _liveTimer?.Dispose();
+
+        if (_scrollHandle != 0)
+        {
+            _ = JSRuntime.InvokeVoidAsync("creatioInfiniteScroll.detach", _scrollHandle);
+        }
+
+        _selfRef?.Dispose();
     }
 }

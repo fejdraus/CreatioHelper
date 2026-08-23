@@ -4424,4 +4424,13 @@
   <data name="SupportBundle_LogDays" xml:space="preserve">
     <value>Днів</value>
   </data>
+  <data name="SystemLog_Timestamp" xml:space="preserve">
+    <value>Час</value>
+  </data>
+  <data name="SystemLog_Message" xml:space="preserve">
+    <value>Повідомлення</value>
+  </data>
+  <data name="Common_Columns" xml:space="preserve">
+    <value>Стовпці</value>
+  </data>
 </root>

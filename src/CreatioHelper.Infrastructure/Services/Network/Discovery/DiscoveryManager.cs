@@ -491,6 +491,41 @@ public class DiscoveryManager : IDiscoveryManager
         return _cache.GetStatistics();
     }
 
+    public IReadOnlyList<DiscoveredDeviceInfo> GetDiscoveredDevices()
+    {
+        var devices = new List<DiscoveredDeviceInfo>();
+
+        foreach (var entry in _cache.GetAll())
+        {
+            if (entry.Addresses.Count == 0)
+            {
+                continue;
+            }
+
+            devices.Add(new DiscoveredDeviceInfo
+            {
+                DeviceId = entry.DeviceId,
+                Addresses = entry.Addresses.ToList()
+            });
+        }
+
+        foreach (var kvp in _staticAddresses)
+        {
+            if (devices.Any(d => string.Equals(d.DeviceId, kvp.Key, StringComparison.OrdinalIgnoreCase)))
+            {
+                continue;
+            }
+
+            devices.Add(new DiscoveredDeviceInfo
+            {
+                DeviceId = kvp.Key,
+                Addresses = kvp.Value.ToList()
+            });
+        }
+
+        return devices;
+    }
+
     private List<string> GetStaticAddresses(string deviceId)
     {
         return _staticAddresses.TryGetValue(deviceId, out var addresses) ? addresses : new List<string>();

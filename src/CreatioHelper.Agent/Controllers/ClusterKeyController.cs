@@ -1,6 +1,7 @@
 using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Application.Interfaces;
+using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -17,17 +18,77 @@ namespace CreatioHelper.Agent.Controllers;
 public class ClusterKeyController : ControllerBase
 {
     private readonly IClusterKeyService _clusterKeyService;
+    private readonly IClusterMembershipService _membership;
+    private readonly ClusterKeyConfiguration _config;
     private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<ClusterKeyController> _logger;
 
     public ClusterKeyController(
         IClusterKeyService clusterKeyService,
+        IClusterMembershipService membership,
+        ClusterKeyConfiguration config,
         IHubContext<SyncHub> hubContext,
         ILogger<ClusterKeyController> logger)
     {
         _clusterKeyService = clusterKeyService;
+        _membership = membership;
+        _config = config;
         _hubContext = hubContext;
         _logger = logger;
+    }
+
+    [HttpGet("config")]
+    [Authorize(Roles = Roles.Admin)]
+    public IActionResult GetConfig()
+    {
+        return Ok(new
+        {
+            enabled = _config.Enabled,
+            hasKey = !string.IsNullOrWhiteSpace(_config.Key),
+            seedAddresses = _config.SeedAddresses,
+            shareRoster = _config.ShareRoster,
+            rosterSyncIntervalMinutes = _config.RosterSyncIntervalMinutes
+        });
+    }
+
+    [HttpPut("config")]
+    [Authorize(Roles = Roles.Admin)]
+    public IActionResult SetConfig([FromBody] ClusterKeyConfigRequest request)
+    {
+        if (request.Enabled == true && string.IsNullOrWhiteSpace(request.Key) && string.IsNullOrWhiteSpace(_config.Key))
+        {
+            return BadRequest(new { error = "A key is required to enable cluster pairing" });
+        }
+
+        if (request.Key != null)
+        {
+            _config.Key = request.Key;
+        }
+
+        if (request.Enabled.HasValue)
+        {
+            _config.Enabled = request.Enabled.Value;
+        }
+
+        if (request.SeedAddresses != null)
+        {
+            _config.SeedAddresses = request.SeedAddresses;
+        }
+
+        _logger.LogInformation("Cluster key configuration updated at runtime (enabled={Enabled}, hasKey={HasKey}, seeds={Seeds})",
+            _config.Enabled, !string.IsNullOrWhiteSpace(_config.Key), _config.SeedAddresses.Count);
+
+        if (_membership.IsEnabled)
+        {
+            _ = Task.Run(() => _membership.JoinClusterAsync());
+        }
+
+        return Ok(new
+        {
+            enabled = _config.Enabled,
+            hasKey = !string.IsNullOrWhiteSpace(_config.Key),
+            seedAddresses = _config.SeedAddresses
+        });
     }
 
     /// <summary>
@@ -54,7 +115,7 @@ public class ClusterKeyController : ControllerBase
     /// </summary>
     [HttpPost("verify")]
     [AllowAnonymous]
-    public IActionResult Verify([FromBody] VerifyRequest request)
+    public async Task<IActionResult> Verify([FromBody] VerifyRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Nonce) ||
             string.IsNullOrWhiteSpace(request.DeviceId) ||
@@ -70,14 +131,42 @@ public class ClusterKeyController : ControllerBase
 
         _logger.LogInformation("Cluster key verified for device {DeviceId}, auto-accepting", request.DeviceId);
 
+        var ack = await _membership.AcceptPairedDeviceAsync(new ClusterMember
+        {
+            DeviceId = request.DeviceId,
+            DeviceName = request.DeviceName ?? request.DeviceId,
+            Addresses = request.Addresses ?? new List<string>(),
+            ApiAddress = request.ApiAddress ?? ""
+        }, cancellationToken);
+
         // Notify connected UI clients via SignalR
         _ = _hubContext.Clients.Group("sync-events").SendAsync("ClusterKeyPairingCompleted", new
         {
             deviceId = request.DeviceId,
             timestamp = DateTime.UtcNow
-        });
+        }, cancellationToken);
 
-        return Ok(new { success = true, message = "Cluster key verified, device accepted" });
+        return Ok(ack);
+    }
+
+    [HttpPost("join")]
+    [Authorize(Roles = Roles.Admin)]
+    public async Task<IActionResult> Join(CancellationToken cancellationToken)
+    {
+        if (!_membership.IsEnabled)
+        {
+            return BadRequest(new { error = "Cluster key is not enabled" });
+        }
+
+        var report = await _membership.JoinClusterAsync(cancellationToken);
+        return Ok(report);
+    }
+
+    [HttpGet("roster")]
+    [Authorize(Roles = Roles.MonitorRoles)]
+    public async Task<IActionResult> Roster(CancellationToken cancellationToken)
+    {
+        return Ok(await _membership.BuildRosterAsync(cancellationToken));
     }
 
     /// <summary>
@@ -89,6 +178,15 @@ public class ClusterKeyController : ControllerBase
     {
         return Ok(new { enabled = _clusterKeyService.IsEnabled });
     }
+}
+
+public class ClusterKeyConfigRequest
+{
+    public bool? Enabled { get; set; }
+
+    public string? Key { get; set; }
+
+    public List<string>? SeedAddresses { get; set; }
 }
 
 public class ChallengeRequest
@@ -107,4 +205,10 @@ public class VerifyRequest
 
     [Required]
     public string HmacProof { get; set; } = "";
+
+    public string? DeviceName { get; set; }
+
+    public List<string>? Addresses { get; set; }
+
+    public string? ApiAddress { get; set; }
 }

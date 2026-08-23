@@ -48,8 +48,8 @@ else
                         <UptimeDisplay StartTime="@State.SystemStatus?.StartTime" />
                     </MudText>
                 }
-                <MudIconButton Icon="@(_thisDeviceExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                               Size="Size.Small" />
+                <MudIcon Icon="@(_thisDeviceExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                         Size="Size.Small" />
             </div>
 
             @* Expandable details *@
@@ -203,8 +203,8 @@ else
                             <span class="rate-up">@FormatRate(connection.OutBytesPerSec)</span>
                         </span>
                     }
-                    <MudIconButton Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
-                                   Size="Size.Small" />
+                    <MudIcon Icon="@(isExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                             Size="Size.Small" />
                 </div>
 
                 @* Expandable details *@

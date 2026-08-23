@@ -51,6 +51,7 @@ public interface IApiClient
 
     // Events
     Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null, CancellationToken cancellationToken = default);
+    Task<(int Total, SyncEvent[] Items)> GetEventsPageAsync(int offset, int limit, string? type, string? folder, string? device, string? sort = null, string? dir = null, CancellationToken cancellationToken = default);
 
     // Discovery & Listeners
     Task<DiscoveryStatus?> GetDiscoveryStatusAsync(CancellationToken cancellationToken = default);
@@ -83,6 +84,7 @@ public interface IApiClient
 
     // System logs
     Task<LogEntry[]> GetSystemLogsAsync(int limit = 100);
+    Task<(int Total, LogEntry[] Items)> GetSystemLogPageAsync(int offset, int limit, string? level, string? facility, string? search, string? sort = null, string? dir = null, CancellationToken cancellationToken = default);
 
     // Profiling/Debug actions
     Task TriggerGCAsync();
@@ -239,7 +241,16 @@ public class ApiClient : IApiClient
     public async Task<ConnectionInfo[]> GetConnectionsAsync(CancellationToken cancellationToken = default)
     {
         var result = await _httpClient.GetFromJsonAsync<ConnectionsResponse>("/rest/system/connections", cancellationToken);
-        return result?.Connections?.Values.ToArray() ?? [];
+        return result?.Connections?
+            .Select(kvp =>
+            {
+                if (string.IsNullOrEmpty(kvp.Value.DeviceId))
+                {
+                    kvp.Value.DeviceId = kvp.Key;
+                }
+                return kvp.Value;
+            })
+            .ToArray() ?? [];
     }
 
     public async Task UpdateDeviceAsync(DeviceConfig device)
@@ -295,6 +306,33 @@ public class ApiClient : IApiClient
             url += $"&events={Uri.EscapeDataString(filter)}";
         }
         return await _httpClient.GetFromJsonAsync<SyncEvent[]>(url) ?? [];
+    }
+
+    public async Task<(int Total, SyncEvent[] Items)> GetEventsPageAsync(
+        int offset, int limit, string? type, string? folder, string? device,
+        string? sort = null, string? dir = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = $"/api/events/page?offset={offset}&limit={limit}";
+        if (!string.IsNullOrWhiteSpace(type) && type != "all")
+            url += $"&type={Uri.EscapeDataString(type)}";
+        if (!string.IsNullOrWhiteSpace(folder) && folder != "all")
+            url += $"&folder={Uri.EscapeDataString(folder)}";
+        if (!string.IsNullOrWhiteSpace(device) && device != "all")
+            url += $"&device={Uri.EscapeDataString(device)}";
+        if (!string.IsNullOrWhiteSpace(sort))
+            url += $"&sort={Uri.EscapeDataString(sort)}";
+        if (!string.IsNullOrWhiteSpace(dir))
+            url += $"&dir={Uri.EscapeDataString(dir)}";
+
+        var response = await _httpClient.GetFromJsonAsync<EventPageResponse>(url, cancellationToken);
+        return (response?.Total ?? 0, response?.Items ?? []);
+    }
+
+    private sealed class EventPageResponse
+    {
+        public int Total { get; set; }
+        public SyncEvent[] Items { get; set; } = [];
     }
 
     #endregion
@@ -466,7 +504,35 @@ public class ApiClient : IApiClient
 
     public async Task<LogEntry[]> GetSystemLogsAsync(int limit = 100)
     {
-        return await _httpClient.GetFromJsonAsync<LogEntry[]>($"/rest/system/log/entries?limit={limit}") ?? [];
+        var page = await GetSystemLogPageAsync(0, limit, null, null, null);
+        return page.Items;
+    }
+
+    public async Task<(int Total, LogEntry[] Items)> GetSystemLogPageAsync(
+        int offset, int limit, string? level, string? facility, string? search,
+        string? sort = null, string? dir = null,
+        CancellationToken cancellationToken = default)
+    {
+        var url = $"/rest/system/log/entries?offset={offset}&limit={limit}";
+        if (!string.IsNullOrWhiteSpace(level) && level != "all")
+            url += $"&level={Uri.EscapeDataString(level)}";
+        if (!string.IsNullOrWhiteSpace(facility) && facility != "all")
+            url += $"&facility={Uri.EscapeDataString(facility)}";
+        if (!string.IsNullOrWhiteSpace(search))
+            url += $"&search={Uri.EscapeDataString(search)}";
+        if (!string.IsNullOrWhiteSpace(sort))
+            url += $"&sort={Uri.EscapeDataString(sort)}";
+        if (!string.IsNullOrWhiteSpace(dir))
+            url += $"&dir={Uri.EscapeDataString(dir)}";
+
+        var response = await _httpClient.GetFromJsonAsync<LogPageResponse>(url, cancellationToken);
+        return (response?.Total ?? 0, response?.Items ?? []);
+    }
+
+    private sealed class LogPageResponse
+    {
+        public int Total { get; set; }
+        public LogEntry[] Items { get; set; } = [];
     }
 
     #endregion
