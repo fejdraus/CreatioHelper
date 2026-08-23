@@ -214,6 +214,10 @@ public class AuthController : ControllerBase
         {
             return NotFound(new { message = $"User '{username}' not found." });
         }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
         catch (ArgumentException ex)
         {
             return BadRequest(new { message = ex.Message });

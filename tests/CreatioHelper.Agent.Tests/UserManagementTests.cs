@@ -2,6 +2,8 @@ using CreatioHelper.Agent.Configuration;
 using CreatioHelper.Agent.Controllers;
 using CreatioHelper.Agent.Models;
 using CreatioHelper.Agent.Services;
+using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Sync.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -337,6 +339,50 @@ public class UserManagementTests : IDisposable
 
     #endregion
 
+    #region Last Admin Protection
+
+    [Fact]
+    public async Task UpdateUser_ThrowsWhenTakingTheRoleFromTheLastAdmin()
+    {
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => _userStore.UpdateUserAsync("admin", "user", null));
+
+        var admin = await _userStore.GetUserAsync("admin");
+        Assert.Equal("admin", admin!.Role);
+    }
+
+    [Fact]
+    public async Task UpdateUser_AllowsTakingTheAdminRole_WhenAnotherAdminExists()
+    {
+        await _userStore.CreateUserAsync("admin2", "pass", "admin");
+
+        var updated = await _userStore.UpdateUserAsync("admin", "user", null);
+
+        Assert.Equal("user", updated.Role);
+    }
+
+    [Fact]
+    public async Task UpdateUserEndpoint_AnswersBadRequest_WhenTheLastAdminWouldLoseTheRole()
+    {
+        var controller = CreateAuthController(_userStore);
+
+        var result = await controller.UpdateUser("admin", new UpdateUserRequest { Role = "user" });
+
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+        Assert.Contains("last admin", badRequest.Value!.ToString(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task UpdateUser_AllowsChangingThePasswordOfTheLastAdmin()
+    {
+        var updated = await _userStore.UpdateUserAsync("admin", "admin", "newpass");
+
+        Assert.Equal("admin", updated.Role);
+        Assert.True(await _userStore.ValidatePasswordAsync("admin", "newpass"));
+    }
+
+    #endregion
+
     #region Username Uniqueness
 
     [Fact]
@@ -480,6 +526,31 @@ public class UserManagementTests : IDisposable
         {
             try { Directory.Delete(tempDir, true); } catch { }
         }
+    }
+
+    private static AuthController CreateAuthController(IUserStore userStore)
+    {
+        var jwtSettings = Options.Create(new JwtSettings
+        {
+            Secret = "unit-test-secret-key-that-is-long-enough-0123456789",
+            Issuer = "test",
+            Audience = "test"
+        });
+
+        var rateLimiter = new LoginRateLimiter(
+            new Mock<ILogger<LoginRateLimiter>>().Object,
+            new ConfigurationBuilder().Build());
+
+        var syncConfig = new Mock<IOptionsMonitor<SyncConfiguration>>();
+        syncConfig.Setup(m => m.CurrentValue).Returns(new SyncConfiguration());
+
+        return new AuthController(
+            jwtSettings,
+            new Mock<ILogger<AuthController>>().Object,
+            rateLimiter,
+            syncConfig.Object,
+            new Mock<ILdapAuthService>().Object,
+            userStore);
     }
 
     private static JsonFileUserStore CreateStore(string userStorePath, AuthenticationSettings settings)

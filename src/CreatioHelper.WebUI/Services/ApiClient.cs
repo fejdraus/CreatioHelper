@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using System.Text.Json;
 using CreatioHelper.WebUI.Models;
 
 namespace CreatioHelper.WebUI.Services;
@@ -543,15 +544,47 @@ public class ApiClient : IApiClient
     public async Task<UserInfo?> CreateUserAsync(CreateUserModel model)
     {
         var response = await _httpClient.PostAsJsonAsync("/api/auth/users", model);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<UserInfo>();
     }
 
     public async Task<UserInfo?> UpdateUserAsync(string username, UpdateUserModel model)
     {
         var response = await _httpClient.PutAsJsonAsync($"/api/auth/users/{Uri.EscapeDataString(username)}", model);
-        response.EnsureSuccessStatusCode();
+        await EnsureSuccessAsync(response);
         return await response.Content.ReadFromJsonAsync<UserInfo>();
+    }
+
+    private static async Task EnsureSuccessAsync(HttpResponseMessage response)
+    {
+        if (response.IsSuccessStatusCode) return;
+
+        var message = await ReadErrorMessageAsync(response);
+        throw new HttpRequestException(message ?? $"Request failed with status {(int)response.StatusCode}.");
+    }
+
+    private static async Task<string?> ReadErrorMessageAsync(HttpResponseMessage response)
+    {
+        try
+        {
+            using var document = await response.Content.ReadFromJsonAsync<JsonDocument>();
+            if (document == null) return null;
+
+            foreach (var name in new[] { "message", "detail", "title" })
+            {
+                if (document.RootElement.TryGetProperty(name, out var value)
+                    && value.ValueKind == JsonValueKind.String)
+                {
+                    return value.GetString();
+                }
+            }
+
+            return null;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
     }
 
     public async Task<bool> DeleteUserAsync(string username)

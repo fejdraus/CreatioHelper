@@ -41,6 +41,8 @@
             <MudSelect @bind-Value="_role"
                        Label="@L["Users_Role"]"
                        Required="true"
+                       Disabled="@IsLastAdminAccount"
+                       HelperText="@(IsLastAdminAccount ? L["Users_LastAdminRoleLocked"].Value : null)"
                        Class="mb-4">
                 <MudSelectItem Value="@("admin")">Admin</MudSelectItem>
                 <MudSelectItem Value="@("user")">User</MudSelectItem>
@@ -70,6 +72,7 @@
     [Parameter] public bool IsEditMode { get; set; }
     [Parameter] public string? EditUsername { get; set; }
     [Parameter] public string? EditRole { get; set; }
+    [Parameter] public bool IsLastAdminAccount { get; set; }
 
     private MudForm _form = null!;
     private bool _isValid;

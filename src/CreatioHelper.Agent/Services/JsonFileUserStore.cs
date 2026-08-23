@@ -16,7 +16,9 @@ public partial class JsonFileUserStore : IUserStore
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    private static readonly string[] ValidRoles = ["admin", "user", "readonly", "monitor"];
+    private const string AdminRole = "admin";
+
+    private static readonly string[] ValidRoles = [AdminRole, "user", "readonly", "monitor"];
     private const int BcryptWorkFactor = 12;
 
     private readonly string _filePath;
@@ -127,7 +129,14 @@ public partial class JsonFileUserStore : IUserStore
                 throw new KeyNotFoundException($"User '{username}' not found.");
 
             if (newRole != null)
-                user.Role = newRole.ToLowerInvariant();
+            {
+                var role = newRole.ToLowerInvariant();
+
+                if (IsAdmin(user) && !string.Equals(role, AdminRole, StringComparison.Ordinal) && CountAdmins(users) <= 1)
+                    throw new InvalidOperationException("Cannot remove the admin role from the last admin user.");
+
+                user.Role = role;
+            }
 
             if (!string.IsNullOrWhiteSpace(newPassword))
                 user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword, BcryptWorkFactor);
@@ -154,13 +163,8 @@ public partial class JsonFileUserStore : IUserStore
 
             if (user == null) return false;
 
-            if (string.Equals(user.Role, "admin", StringComparison.OrdinalIgnoreCase))
-            {
-                var adminCount = users.Count(u =>
-                    string.Equals(u.Role, "admin", StringComparison.OrdinalIgnoreCase));
-                if (adminCount <= 1)
-                    throw new InvalidOperationException("Cannot delete the last admin user.");
-            }
+            if (IsAdmin(user) && CountAdmins(users) <= 1)
+                throw new InvalidOperationException("Cannot delete the last admin user.");
 
             users.Remove(user);
             await SaveUsersInternalAsync(users);
@@ -405,6 +409,11 @@ public partial class JsonFileUserStore : IUserStore
     }
 
     private static string NormalizeUsername(string? username) => username?.Trim() ?? string.Empty;
+
+    private static bool IsAdmin(StoredUser user) =>
+        string.Equals(user.Role, AdminRole, StringComparison.OrdinalIgnoreCase);
+
+    private static int CountAdmins(List<StoredUser> users) => users.Count(IsAdmin);
 
     private static bool IsBcryptHash(string value) => BcryptHashPattern().IsMatch(value);
 

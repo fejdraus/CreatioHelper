@@ -3509,6 +3509,9 @@
   <data name="Users_LeaveBlankKeepPassword" xml:space="preserve">
     <value>Оставьте пустым, чтобы сохранить текущий пароль</value>
   </data>
+  <data name="Users_LastAdminRoleLocked" xml:space="preserve">
+    <value>Это последний администратор, поэтому роль изменить нельзя</value>
+  </data>
   <data name="Users_Role" xml:space="preserve">
     <value>Роль</value>
   </data>

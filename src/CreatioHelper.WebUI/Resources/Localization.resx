@@ -3617,6 +3617,9 @@
   <data name="Users_LeaveBlankKeepPassword" xml:space="preserve">
     <value>Leave blank to keep current password</value>
   </data>
+  <data name="Users_LastAdminRoleLocked" xml:space="preserve">
+    <value>This is the last administrator, so the role cannot be changed</value>
+  </data>
   <data name="Users_Role" xml:space="preserve">
     <value>Role</value>
   </data>

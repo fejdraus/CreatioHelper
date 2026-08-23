@@ -143,7 +143,8 @@
         {
             { x => x.IsEditMode, true },
             { x => x.EditUsername, user.Username },
-            { x => x.EditRole, user.Role }
+            { x => x.EditRole, user.Role },
+            { x => x.IsLastAdminAccount, IsLastAdmin(user) }
         };
         var options = new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true };
         var dialog = await DialogService.ShowAsync<AddUserDialog>(L["Users_Edit"], parameters, options);
