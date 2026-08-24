@@ -274,8 +274,6 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-app.Services.GetService<CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterKeyAutoAcceptHandler>();
-
 // Resolving it applies the configured process priority; as a lazy singleton it
 // would otherwise never be constructed and the setting would stay inert
 app.Services.GetService<CreatioHelper.Infrastructure.Services.Sync.SystemControl.IProcessPriorityService>();

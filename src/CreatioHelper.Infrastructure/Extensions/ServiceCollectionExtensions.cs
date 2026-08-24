@@ -114,7 +114,6 @@ public static class ServiceCollectionExtensions
             services.AddHostedService<ClusterMembershipSyncService>();
         }
         services.AddSingleton<IClusterKeyService, ClusterKeyService>();
-        services.AddSingleton<ClusterKeyAutoAcceptHandler>();
 
         return services;
     }
