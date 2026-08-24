@@ -337,7 +337,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     {
         EnsureInitialized();
 
-        var hadInMemory = _devices.TryRemove(deviceId, out var removed);
+        var hadInMemory = _devices.TryRemove(deviceId, out _);
 
         foreach (var folder in _folders.Values)
         {
@@ -345,25 +345,10 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
 
         bool hadInConfig;
-        string tombstoneName;
-        var tombstoneTime = DateTime.UtcNow;
-        var tombstoneVersion = await _store.GetMaxDeviceVersionAsync(deviceId) + 1;
-
         lock (_configLock)
         {
-            var configDevice = _config!.Devices.FirstOrDefault(d =>
+            hadInConfig = _config!.Devices.Any(d =>
                 string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase));
-            hadInConfig = configDevice != null;
-
-            tombstoneName = removed?.DeviceName ?? string.Empty;
-            if (string.IsNullOrWhiteSpace(tombstoneName))
-            {
-                tombstoneName = configDevice?.Name ?? string.Empty;
-            }
-            if (string.IsNullOrWhiteSpace(tombstoneName))
-            {
-                tombstoneName = deviceId;
-            }
 
             _config.Devices.RemoveAll(d => d.Id == deviceId);
 
@@ -371,26 +356,10 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             {
                 folder.Devices.RemoveAll(d => d.Id == deviceId);
             }
-
-            if (_clusterMode)
-            {
-                AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime, tombstoneVersion);
-            }
         }
 
         _deviceStats.TryRemove(deviceId, out _);
         await _store.DeleteDeviceAsync(deviceId);
-        if (_clusterMode)
-        {
-            await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
-            {
-                Id = deviceId,
-                Name = tombstoneName,
-                Time = tombstoneTime,
-                Address = string.Empty,
-                StateVersion = tombstoneVersion
-            });
-        }
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
