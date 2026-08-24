@@ -245,9 +245,9 @@ public class AuthService : IAuthService
                 return true;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Session validation failed
+            _logger.LogDebug(ex, "Session validation failed");
         }
 
         ClearAuthorizationHeader();
@@ -277,9 +277,9 @@ public class AuthService : IAuthService
                 return result?.Role;
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore - role will default
+            _logger.LogDebug(ex, "Failed to fetch role; defaulting");
         }
         return null;
     }
