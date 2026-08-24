@@ -183,6 +183,12 @@
 
             var devices = await ApiClient.GetDevicesAsync();
             State.Devices = devices;
+
+            var connections = await ApiClient.GetConnectionsAsync();
+            foreach (var connection in connections)
+            {
+                State.UpdateConnection(connection);
+            }
         }
         catch (Exception ex)
         {
