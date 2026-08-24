@@ -32,6 +32,7 @@ public class ClusterMember
     public List<string> Addresses { get; set; } = new();
     public string ApiAddress { get; set; } = "";
     public DateTime AdmittedAt { get; set; }
+    public long StateVersion { get; set; }
 }
 
 public class ClusterJoinDecision
@@ -45,6 +46,7 @@ public class ClusterTombstone
     public string DeviceId { get; set; } = "";
     public string DeviceName { get; set; } = "";
     public DateTime DeletedAt { get; set; }
+    public long StateVersion { get; set; }
 }
 
 public class ClusterPairingAck

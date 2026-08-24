@@ -117,11 +117,33 @@ public class ConfigurationStore : IConfigurationStore
     public async Task<IReadOnlyList<ConfigXmlDevice>> GetDevicesAsync()
     {
         await using var connection = await OpenAsync();
-        var rows = await connection.QueryAsync<string>("SELECT data FROM config_devices");
-        return rows.Select(json => Deserialize<ConfigXmlDevice>(json))
-            .Where(d => d != null)
-            .Select(d => d!)
-            .ToList();
+        var rows = (await connection.QueryAsync<(string Data, long StateVersion)>(
+            "SELECT data AS Data, state_version AS StateVersion FROM config_devices")).ToList();
+        var devices = new List<ConfigXmlDevice>();
+        foreach (var row in rows)
+        {
+            var device = Deserialize<ConfigXmlDevice>(row.Data);
+            if (device == null)
+            {
+                continue;
+            }
+            device.StateVersion = row.StateVersion;
+            devices.Add(device);
+        }
+        return devices;
+    }
+
+    public async Task<long> GetMaxDeviceVersionAsync(string deviceId)
+    {
+        await using var connection = await OpenAsync();
+        var value = await connection.ExecuteScalarAsync<long?>(
+            @"SELECT MAX(v) FROM (
+                  SELECT state_version AS v FROM config_devices WHERE device_id = @deviceId
+                  UNION ALL
+                  SELECT state_version AS v FROM config_ignored_devices WHERE device_id = @deviceId
+              ) AS t",
+            new { deviceId });
+        return value ?? 0;
     }
 
     public async Task UpsertDeviceAsync(ConfigXmlDevice device)
@@ -133,6 +155,8 @@ public class ConfigurationStore : IConfigurationStore
               ON CONFLICT (device_id) DO UPDATE SET
                   name = excluded.name,
                   admitted_at = excluded.admitted_at,
+                  state_version = CASE WHEN excluded.state_version > config_devices.state_version
+                                       THEN excluded.state_version ELSE config_devices.state_version END,
                   paused = excluded.paused,
                   introducer = excluded.introducer,
                   data = excluded.data",
@@ -141,7 +165,7 @@ public class ConfigurationStore : IConfigurationStore
                 DeviceId = device.Id,
                 Name = device.Name,
                 AdmittedAt = ToNullable(device.AdmittedAt),
-                StateVersion = 0L,
+                StateVersion = device.StateVersion,
                 device.Paused,
                 device.Introducer,
                 Data = Serialize(device)
@@ -262,7 +286,8 @@ public class ConfigurationStore : IConfigurationStore
     {
         await using var connection = await OpenAsync();
         var rows = await connection.QueryAsync<ConfigXmlIgnoredDevice>(
-            @"SELECT device_id AS Id, name AS Name, deleted_at AS Time, address AS Address
+            @"SELECT device_id AS Id, name AS Name, deleted_at AS Time, address AS Address,
+                     state_version AS StateVersion
               FROM config_ignored_devices");
         return rows.ToList();
     }
@@ -272,13 +297,15 @@ public class ConfigurationStore : IConfigurationStore
         await using var connection = await OpenAsync();
         await connection.ExecuteAsync(
             @"INSERT INTO config_ignored_devices (device_id, name, deleted_at, address, state_version)
-              VALUES (@Id, @Name, @Time, @Address, 0)
+              VALUES (@Id, @Name, @Time, @Address, @StateVersion)
               ON CONFLICT (device_id) DO UPDATE SET
                   name = excluded.name,
                   deleted_at = CASE WHEN excluded.deleted_at > config_ignored_devices.deleted_at
                                     THEN excluded.deleted_at ELSE config_ignored_devices.deleted_at END,
+                  state_version = CASE WHEN excluded.state_version > config_ignored_devices.state_version
+                                       THEN excluded.state_version ELSE config_ignored_devices.state_version END,
                   address = excluded.address",
-            new { tombstone.Id, tombstone.Name, tombstone.Time, tombstone.Address });
+            new { tombstone.Id, tombstone.Name, tombstone.Time, tombstone.Address, tombstone.StateVersion });
     }
 
     public async Task<bool> RemoveIgnoredDeviceAsync(string deviceId)

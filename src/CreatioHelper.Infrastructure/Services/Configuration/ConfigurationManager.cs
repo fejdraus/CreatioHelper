@@ -344,6 +344,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         bool hadInConfig;
         string tombstoneName;
         var tombstoneTime = DateTime.UtcNow;
+        var tombstoneVersion = await _store.GetMaxDeviceVersionAsync(deviceId) + 1;
 
         lock (_configLock)
         {
@@ -368,7 +369,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
                 folder.Devices.RemoveAll(d => d.Id == deviceId);
             }
 
-            AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime);
+            AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime, tombstoneVersion);
         }
 
         _deviceStats.TryRemove(deviceId, out _);
@@ -378,7 +379,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             Id = deviceId,
             Name = tombstoneName,
             Time = tombstoneTime,
-            Address = string.Empty
+            Address = string.Empty,
+            StateVersion = tombstoneVersion
         });
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
@@ -391,7 +393,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         return hadInMemory || hadInConfig;
     }
 
-    private void AddIgnoredDeviceLocked(string deviceId, string name, DateTime time)
+    private void AddIgnoredDeviceLocked(string deviceId, string name, DateTime time, long stateVersion)
     {
         _config!.RemoteIgnoredDevices ??= new ConfigXmlRemoteIgnoredDevices();
 
@@ -405,21 +407,31 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             {
                 existing.Time = time;
             }
+            if (stateVersion > existing.StateVersion)
+            {
+                existing.StateVersion = stateVersion;
+            }
         }
         else
         {
-            list.Add(new ConfigXmlIgnoredDevice { Id = deviceId, Name = name, Time = time });
+            list.Add(new ConfigXmlIgnoredDevice { Id = deviceId, Name = name, Time = time, StateVersion = stateVersion });
         }
     }
 
-    public async Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time)
+    public Task<long> GetMaxDeviceVersionAsync(string deviceId)
+    {
+        EnsureInitialized();
+        return _store.GetMaxDeviceVersionAsync(deviceId);
+    }
+
+    public async Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time, long stateVersion)
     {
         EnsureInitialized();
 
         var tombstoneName = string.IsNullOrWhiteSpace(name) ? deviceId : name;
         lock (_configLock)
         {
-            AddIgnoredDeviceLocked(deviceId, tombstoneName, time);
+            AddIgnoredDeviceLocked(deviceId, tombstoneName, time, stateVersion);
         }
 
         await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
@@ -427,7 +439,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             Id = deviceId,
             Name = tombstoneName,
             Time = time,
-            Address = string.Empty
+            Address = string.Empty,
+            StateVersion = stateVersion
         });
     }
 
@@ -683,6 +696,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
         device.Addresses = config.Addresses?.ToList() ?? new List<string> { "dynamic" };
         device.AdmittedAt = config.AdmittedAt == default ? null : config.AdmittedAt;
+        device.StateVersion = config.StateVersion;
 
         return device;
     }
@@ -707,7 +721,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             RemoteGUIPort = device.RemoteGUIPort,
             NumConnections = device.NumConnections,
             CertificateName = device.CertificateName,
-            AdmittedAt = device.AdmittedAt ?? default
+            AdmittedAt = device.AdmittedAt ?? default,
+            StateVersion = device.StateVersion
         };
     }
 

@@ -95,7 +95,8 @@ public class ClusterMembershipService : IClusterMembershipService
                 DeviceName = device.DeviceName,
                 Addresses = device.Addresses.ToList(),
                 ApiAddress = ResolveApiAddress(device.DeviceId, device.Addresses) ?? "",
-                AdmittedAt = device.AdmittedAt ?? DateTime.MinValue
+                AdmittedAt = device.AdmittedAt ?? DateTime.MinValue,
+                StateVersion = device.StateVersion
             });
         }
 
@@ -151,6 +152,7 @@ public class ClusterMembershipService : IClusterMembershipService
 
         if (!string.IsNullOrWhiteSpace(remote.DeviceId))
         {
+            remote.StateVersion = await _configManager.GetMaxDeviceVersionAsync(remote.DeviceId) + 1;
             await _configManager.RemoveIgnoredDeviceAsync(remote.DeviceId);
         }
 
@@ -399,7 +401,8 @@ public class ClusterMembershipService : IClusterMembershipService
             {
                 DeviceId = d.Id,
                 DeviceName = d.Name,
-                DeletedAt = d.Time
+                DeletedAt = d.Time,
+                StateVersion = d.StateVersion
             })
             .ToList();
     }
@@ -430,11 +433,11 @@ public class ClusterMembershipService : IClusterMembershipService
             var devices = await _syncEngine.GetDevicesAsync();
             var present = devices.FirstOrDefault(d =>
                 string.Equals(d.DeviceId, tombstone.DeviceId, StringComparison.OrdinalIgnoreCase));
-            if (present != null && (present.AdmittedAt ?? DateTime.MinValue) > deletedAt)
+            if (present != null && present.StateVersion > tombstone.StateVersion)
             {
                 _logger.LogInformation(
-                    "Ignoring stale tombstone for {DeviceId} (admitted {AdmittedAt:o} newer than deleted {DeletedAt:o})",
-                    tombstone.DeviceId, present.AdmittedAt, deletedAt);
+                    "Ignoring stale tombstone for {DeviceId} (present version {PresentVersion} newer than deleted version {DeletedVersion})",
+                    tombstone.DeviceId, present.StateVersion, tombstone.StateVersion);
                 continue;
             }
 
@@ -442,7 +445,7 @@ public class ClusterMembershipService : IClusterMembershipService
             _pendingService.RemovePendingDevice(tombstone.DeviceId);
 
             var name = string.IsNullOrWhiteSpace(tombstone.DeviceName) ? tombstone.DeviceId : tombstone.DeviceName;
-            await _configManager.AddIgnoredDeviceAsync(tombstone.DeviceId, name, deletedAt);
+            await _configManager.AddIgnoredDeviceAsync(tombstone.DeviceId, name, deletedAt, tombstone.StateVersion);
         }
     }
 
@@ -483,17 +486,17 @@ public class ClusterMembershipService : IClusterMembershipService
             var ignored = await _configManager.GetIgnoredDevicesAsync();
             var tomb = ignored.FirstOrDefault(d =>
                 string.Equals(d.Id, member.DeviceId, StringComparison.OrdinalIgnoreCase));
-            var tombstoneTime = tomb?.Time ?? DateTime.MaxValue;
+            var tombstoneVersion = tomb?.StateVersion ?? long.MaxValue;
 
-            if (member.AdmittedAt <= tombstoneTime)
+            if (member.StateVersion <= tombstoneVersion)
             {
                 _logger.LogDebug("Skipping tombstoned device {DeviceId} during roster merge", member.DeviceId);
                 return false;
             }
 
             _logger.LogInformation(
-                "Approval overrides tombstone for {DeviceId} (admitted {AdmittedAt:o} newer than deleted {DeletedAt:o})",
-                member.DeviceId, member.AdmittedAt, tombstoneTime);
+                "Approval overrides tombstone for {DeviceId} (version {MemberVersion} newer than deleted version {DeletedVersion})",
+                member.DeviceId, member.StateVersion, tombstoneVersion);
             await _configManager.RemoveIgnoredDeviceAsync(member.DeviceId);
         }
 
@@ -514,9 +517,22 @@ public class ClusterMembershipService : IClusterMembershipService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            if (merged.Count != existing.Addresses.Count)
+            var addressesChanged = merged.Count != existing.Addresses.Count;
+            if (addressesChanged)
             {
                 existing.Addresses = merged;
+            }
+
+            var adoptsVersion = member.StateVersion > existing.StateVersion;
+            if (adoptsVersion)
+            {
+                existing.StateVersion = member.StateVersion;
+                existing.AdmittedAt = member.AdmittedAt == default ? existing.AdmittedAt : member.AdmittedAt;
+            }
+
+            if (addressesChanged || adoptsVersion)
+            {
+                await _configManager.UpsertDeviceAsync(existing);
             }
 
             return false;
@@ -529,12 +545,9 @@ public class ClusterMembershipService : IClusterMembershipService
             name,
             addresses: member.Addresses.Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList());
 
-        var intent = member.AdmittedAt == default ? DateTime.UtcNow : member.AdmittedAt;
-        if (admitted.AdmittedAt != intent)
-        {
-            admitted.AdmittedAt = intent;
-            await _configManager.UpsertDeviceAsync(admitted);
-        }
+        admitted.AdmittedAt = member.AdmittedAt == default ? DateTime.UtcNow : member.AdmittedAt;
+        admitted.StateVersion = member.StateVersion;
+        await _configManager.UpsertDeviceAsync(admitted);
 
         _logger.LogInformation("Cluster key admitted device {DeviceId} ({DeviceName})", member.DeviceId, name);
         return true;
