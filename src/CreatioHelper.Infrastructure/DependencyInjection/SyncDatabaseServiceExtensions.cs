@@ -63,8 +63,9 @@ public static class SyncDatabaseServiceExtensions
         {
             var configXmlService = provider.GetRequiredService<IConfigXmlService>();
             var store = provider.GetRequiredService<IConfigurationStore>();
+            var clusterMode = CreatioHelper.Infrastructure.Services.Configuration.ClusterModeSettings.IsClusterMode(configuration);
             var logger = provider.GetRequiredService<ILogger<SyncConfigManager>>();
-            return new SyncConfigManager(configXmlService, store, logger);
+            return new SyncConfigManager(configXmlService, store, clusterMode, logger);
         });
 
         // File metadata repository - still uses SQLite for file index

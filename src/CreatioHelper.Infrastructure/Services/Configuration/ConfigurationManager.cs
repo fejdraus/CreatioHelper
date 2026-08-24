@@ -16,6 +16,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     private readonly IConfigXmlService _configXmlService;
     private readonly IConfigurationStore _store;
     private readonly ILogger<ConfigurationManager> _logger;
+    private readonly bool _clusterMode;
     private readonly object _configLock = new();
 
     // In-memory cache of configuration
@@ -42,10 +43,12 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     public ConfigurationManager(
         IConfigXmlService configXmlService,
         IConfigurationStore store,
+        bool clusterMode,
         ILogger<ConfigurationManager> logger)
     {
         _configXmlService = configXmlService;
         _store = store;
+        _clusterMode = clusterMode;
         _logger = logger;
     }
 
@@ -369,19 +372,25 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
                 folder.Devices.RemoveAll(d => d.Id == deviceId);
             }
 
-            AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime, tombstoneVersion);
+            if (_clusterMode)
+            {
+                AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime, tombstoneVersion);
+            }
         }
 
         _deviceStats.TryRemove(deviceId, out _);
         await _store.DeleteDeviceAsync(deviceId);
-        await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
+        if (_clusterMode)
         {
-            Id = deviceId,
-            Name = tombstoneName,
-            Time = tombstoneTime,
-            Address = string.Empty,
-            StateVersion = tombstoneVersion
-        });
+            await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
+            {
+                Id = deviceId,
+                Name = tombstoneName,
+                Time = tombstoneTime,
+                Address = string.Empty,
+                StateVersion = tombstoneVersion
+            });
+        }
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {

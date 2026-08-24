@@ -22,6 +22,7 @@ public class SyncEngine : ISyncEngine, IDisposable
     private readonly SyncthingGlobalDiscovery _globalDiscovery;
     private readonly ISyncDatabase _database;
     private readonly IConfigurationManager _configManager;
+    private readonly CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterMembershipRegistry? _clusterMembership;
     private readonly IEventLogger _eventLogger;
     private readonly IStatisticsCollector _statisticsCollector;
     private readonly FileWatcher _fileWatcher;
@@ -89,8 +90,10 @@ public class SyncEngine : ISyncEngine, IDisposable
         IScanProgressService? scanProgressService = null,
         IVersionerFactory? versionerFactory = null,
         FolderScanQueue? scanQueue = null,
-        Transfer.IIgnoreDeletesHandler? ignoreDeletesHandler = null)
+        Transfer.IIgnoreDeletesHandler? ignoreDeletesHandler = null,
+        CreatioHelper.Infrastructure.Services.DeviceManagement.ClusterMembershipRegistry? clusterMembership = null)
     {
+        _clusterMembership = clusterMembership;
         _logger = logger;
         _scanQueue = scanQueue;
         _ignoreDeletesHandler = ignoreDeletesHandler;
@@ -124,7 +127,10 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
         _statistics.StartTime = DateTime.UtcNow;
         _statusTimer = new Timer(UpdateStatistics, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
-        _protocol.IsDeviceAllowed = deviceId => !_configManager.IsDeviceIgnored(deviceId);
+        _protocol.IsDeviceAllowed = deviceId =>
+            _clusterMembership is { Active: true }
+                ? _clusterMembership.IsMember(deviceId)
+                : !_configManager.IsDeviceIgnored(deviceId);
         _protocol.DeviceConnected += OnDeviceConnected;
         _protocol.DeviceDisconnected += OnDeviceDisconnected;
         _protocol.IndexReceived += OnIndexReceived;
@@ -305,6 +311,49 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Removed device {DeviceId} ({Name})", deviceId, device?.DeviceName ?? deviceId);
         return true;
     }
+    public async Task<bool> ConnectPeerAsync(string deviceId, string name, List<string>? addresses = null)
+    {
+        if (string.Equals(deviceId, _configuration.DeviceId, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        if (!_devices.TryGetValue(deviceId, out var device))
+        {
+            device = new SyncDevice(deviceId, name);
+            if (addresses != null)
+            {
+                foreach (var address in addresses)
+                {
+                    device.AddAddress(address);
+                }
+            }
+            _devices[deviceId] = device;
+        }
+        return await ConnectToDeviceAsync(device, _cancellationTokenSource.Token);
+    }
+
+    public async Task<bool> DisconnectPeerAsync(string deviceId)
+    {
+        if (string.Equals(deviceId, _configuration.DeviceId, StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+        var removed = _devices.TryRemove(deviceId, out var device);
+        try
+        {
+            await _protocol.DisconnectAsync(deviceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error disconnecting peer {DeviceId}", deviceId);
+        }
+        foreach (var folder in _folders.Values)
+        {
+            folder.RemoveDevice(deviceId);
+        }
+        return removed;
+    }
+
     public async Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive")
     {
         if (!Directory.Exists(path))

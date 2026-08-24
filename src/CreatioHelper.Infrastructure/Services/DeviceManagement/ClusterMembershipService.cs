@@ -22,6 +22,7 @@ public class ClusterMembershipService : IClusterMembershipService
     private readonly ClusterKeyConfiguration _config;
     private readonly SyncConfiguration _syncConfig;
     private readonly int _agentHttpPort;
+    private readonly bool _clusterMode;
 
     private readonly ConcurrentDictionary<string, string> _apiAddresses = new(StringComparer.OrdinalIgnoreCase);
 
@@ -47,9 +48,10 @@ public class ClusterMembershipService : IClusterMembershipService
         _config = config.Value;
         _syncConfig = syncConfig;
         _agentHttpPort = ResolveAgentPort(configuration);
+        _clusterMode = CreatioHelper.Infrastructure.Services.Configuration.ClusterModeSettings.IsClusterMode(configuration);
     }
 
-    public bool IsEnabled => _clusterKeyService.IsEnabled;
+    public bool IsEnabled => _clusterKeyService.IsEnabled && _clusterMode;
 
     public ClusterMember GetLocalMember()
     {

@@ -353,7 +353,8 @@ public static class SyncServiceExtensions
                 certificate,
                 provider.GetService<ScanningNs.IScanProgressService>(),
                 scanQueue: provider.GetRequiredService<FolderScanQueue>(),
-                ignoreDeletesHandler: provider.GetService<Services.Sync.Transfer.IIgnoreDeletesHandler>()));
+                ignoreDeletesHandler: provider.GetService<Services.Sync.Transfer.IIgnoreDeletesHandler>(),
+                clusterMembership: provider.GetService<Services.DeviceManagement.ClusterMembershipRegistry>()));
 
         // Honours the folder's <ignoreDelete> setting when applying remote deletes
         services.AddSingleton<Services.Sync.Transfer.IIgnoreDeletesHandler,

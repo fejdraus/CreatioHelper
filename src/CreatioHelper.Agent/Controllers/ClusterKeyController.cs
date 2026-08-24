@@ -103,6 +103,11 @@ public class ClusterKeyController : ControllerBase
     [AllowAnonymous]
     public IActionResult Challenge([FromBody] ChallengeRequest request)
     {
+        if (!_membership.IsEnabled)
+        {
+            return NotFound();
+        }
+
         if (string.IsNullOrWhiteSpace(request.DeviceId))
             return BadRequest(new { error = "DeviceId is required" });
 
@@ -121,6 +126,11 @@ public class ClusterKeyController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Verify([FromBody] VerifyRequest request, CancellationToken cancellationToken)
     {
+        if (!_membership.IsEnabled)
+        {
+            return NotFound();
+        }
+
         if (string.IsNullOrWhiteSpace(request.Nonce) ||
             string.IsNullOrWhiteSpace(request.DeviceId) ||
             string.IsNullOrWhiteSpace(request.HmacProof))
@@ -193,6 +203,11 @@ public class ClusterKeyController : ControllerBase
     [Authorize(Roles = Roles.MonitorRoles)]
     public async Task<IActionResult> Roster(CancellationToken cancellationToken)
     {
+        if (!_membership.IsEnabled)
+        {
+            return NotFound();
+        }
+
         return Ok(await _membership.BuildRosterAsync(cancellationToken));
     }
 
