@@ -166,7 +166,13 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             _folders[folder.Id] = folder;
         }
 
-        // Build device cache
+        var ignoredIds = _config.RemoteIgnoredDevices?.Devices
+            .Select(d => d.Id)
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase) ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        _config.Devices.RemoveAll(d => ignoredIds.Contains(d.Id));
+
         foreach (var deviceConfig in _config.Devices)
         {
             var device = ConvertToSyncDevice(deviceConfig);
@@ -308,10 +314,22 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     {
         EnsureInitialized();
 
+        bool ignored;
+        lock (_configLock)
+        {
+            ignored = _config!.RemoteIgnoredDevices?.Devices
+                .Any(d => string.Equals(d.Id, device.DeviceId, StringComparison.OrdinalIgnoreCase)) ?? false;
+        }
+
+        if (ignored)
+        {
+            _logger.LogDebug("Ignoring upsert for tombstoned device {DeviceId}", device.DeviceId);
+            return;
+        }
+
         var isNew = !_devices.ContainsKey(device.DeviceId);
         _devices[device.DeviceId] = device;
 
-        // Update config.xml structure
         lock (_configLock)
         {
             var configDevice = ConvertToConfigXmlDevice(device);
@@ -340,36 +358,48 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             device.DeviceId, device.DeviceName, isNew ? "added" : "updated");
     }
 
-    public async Task DeleteDeviceAsync(string deviceId)
+    public async Task<bool> DeleteDeviceAsync(string deviceId)
     {
         EnsureInitialized();
 
-        if (!_devices.TryRemove(deviceId, out _))
-        {
-            _logger.LogWarning("Device {DeviceId} not found for deletion", deviceId);
-            return;
-        }
+        var hadInMemory = _devices.TryRemove(deviceId, out var removed);
 
-        // Remove device from all folders
         foreach (var folder in _folders.Values)
         {
             folder.Devices.Remove(deviceId);
         }
 
+        bool hadInConfig;
+
         lock (_configLock)
         {
-            _config!.Devices.RemoveAll(d => d.Id == deviceId);
+            var configDevice = _config!.Devices.FirstOrDefault(d =>
+                string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase));
+            hadInConfig = configDevice != null;
 
-            // Also remove from folder device lists
+            var tombstoneName = removed?.DeviceName;
+            if (string.IsNullOrWhiteSpace(tombstoneName))
+            {
+                tombstoneName = configDevice?.Name;
+            }
+            if (string.IsNullOrWhiteSpace(tombstoneName))
+            {
+                tombstoneName = deviceId;
+            }
+
+            _config.Devices.RemoveAll(d => d.Id == deviceId);
+
             foreach (var folder in _config.Folders)
             {
                 folder.Devices.RemoveAll(d => d.Id == deviceId);
             }
+
+            AddIgnoredDeviceLocked(deviceId, tombstoneName, DateTime.UtcNow);
         }
 
         _deviceStats.TryRemove(deviceId, out _);
         _isDirty = true;
-        await SaveIfNeededAsync();
+        await SaveAsync();
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -378,6 +408,99 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         });
 
         _logger.LogInformation("Device {DeviceId} deleted", deviceId);
+        return hadInMemory || hadInConfig;
+    }
+
+    private void AddIgnoredDeviceLocked(string deviceId, string name, DateTime time)
+    {
+        _config!.RemoteIgnoredDevices ??= new ConfigXmlRemoteIgnoredDevices();
+
+        var list = _config.RemoteIgnoredDevices.Devices;
+        var existing = list.FirstOrDefault(d => string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase));
+
+        if (existing != null)
+        {
+            existing.Name = name;
+            existing.Time = time;
+        }
+        else
+        {
+            list.Add(new ConfigXmlIgnoredDevice { Id = deviceId, Name = name, Time = time });
+        }
+    }
+
+    public async Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time)
+    {
+        EnsureInitialized();
+
+        lock (_configLock)
+        {
+            AddIgnoredDeviceLocked(deviceId, string.IsNullOrWhiteSpace(name) ? deviceId : name, time);
+        }
+
+        _isDirty = true;
+        await SaveAsync();
+    }
+
+    public async Task<bool> RemoveIgnoredDeviceAsync(string deviceId)
+    {
+        EnsureInitialized();
+
+        int removedCount;
+        lock (_configLock)
+        {
+            removedCount = _config!.RemoteIgnoredDevices?.Devices
+                .RemoveAll(d => string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase)) ?? 0;
+        }
+
+        if (removedCount > 0)
+        {
+            _isDirty = true;
+            await SaveIfNeededAsync();
+        }
+
+        return removedCount > 0;
+    }
+
+    public Task<IReadOnlyList<ConfigXmlIgnoredDevice>> GetIgnoredDevicesAsync()
+    {
+        EnsureInitialized();
+
+        lock (_configLock)
+        {
+            var list = _config!.RemoteIgnoredDevices?.Devices.ToList() ?? new List<ConfigXmlIgnoredDevice>();
+            return Task.FromResult<IReadOnlyList<ConfigXmlIgnoredDevice>>(list);
+        }
+    }
+
+    public bool IsDeviceIgnored(string deviceId)
+    {
+        EnsureInitialized();
+
+        lock (_configLock)
+        {
+            return _config!.RemoteIgnoredDevices?.Devices
+                .Any(d => string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase)) ?? false;
+        }
+    }
+
+    public async Task<int> PruneIgnoredDevicesAsync(DateTime olderThanUtc)
+    {
+        EnsureInitialized();
+
+        int removedCount;
+        lock (_configLock)
+        {
+            removedCount = _config!.RemoteIgnoredDevices?.Devices.RemoveAll(d => d.Time < olderThanUtc) ?? 0;
+        }
+
+        if (removedCount > 0)
+        {
+            _isDirty = true;
+            await SaveIfNeededAsync();
+        }
+
+        return removedCount;
     }
 
     public Task<IReadOnlyList<SyncDevice>> GetDevicesForFolderAsync(string folderId)

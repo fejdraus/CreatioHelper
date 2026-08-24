@@ -229,6 +229,12 @@ public class SyncEngine : ISyncEngine, IDisposable
             }
         }
 
+        if (_configManager.IsDeviceIgnored(deviceId))
+        {
+            _logger.LogDebug("Refusing to add tombstoned device {DeviceId}", deviceId);
+            return _devices.TryGetValue(deviceId, out var existingIgnored) ? existingIgnored : device;
+        }
+
         _devices[deviceId] = device;
         try
         {
@@ -256,11 +262,7 @@ public class SyncEngine : ISyncEngine, IDisposable
             _logger.LogWarning("Cannot remove local device {DeviceId}", deviceId);
             return false;
         }
-        if (!_devices.TryRemove(deviceId, out var device))
-        {
-            _logger.LogWarning("Device {DeviceId} not found for removal", deviceId);
-            return false;
-        }
+        var wasKnown = _devices.TryRemove(deviceId, out var device);
         try
         {
             await _protocol.DisconnectAsync(deviceId);
@@ -273,16 +275,21 @@ public class SyncEngine : ISyncEngine, IDisposable
         {
             folder.RemoveDevice(deviceId);
         }
+        var removedFromConfig = false;
         try
         {
-            await _configManager.DeleteDeviceAsync(deviceId);
-            _logger.LogInformation("Removed device {DeviceId} ({Name}) from config", deviceId, device.DeviceName);
+            removedFromConfig = await _configManager.DeleteDeviceAsync(deviceId);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to remove device {DeviceId} from config", deviceId);
         }
-        _logger.LogInformation("Removed device {DeviceId} ({Name})", deviceId, device.DeviceName);
+        if (!wasKnown && !removedFromConfig)
+        {
+            _logger.LogWarning("Device {DeviceId} not found for removal", deviceId);
+            return false;
+        }
+        _logger.LogInformation("Removed device {DeviceId} ({Name})", deviceId, device?.DeviceName ?? deviceId);
         return true;
     }
     public async Task<SyncFolder> AddFolderAsync(string folderId, string label, string path, string type = "sendreceive")

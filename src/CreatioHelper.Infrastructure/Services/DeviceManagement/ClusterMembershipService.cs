@@ -14,6 +14,7 @@ public class ClusterMembershipService : IClusterMembershipService
     private readonly ILogger<ClusterMembershipService> _logger;
     private readonly IClusterKeyService _clusterKeyService;
     private readonly ISyncEngine _syncEngine;
+    private readonly CreatioHelper.Application.Interfaces.IConfigurationManager _configManager;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IDiscoveryManager _discoveryManager;
     private readonly ClusterKeyConfiguration _config;
@@ -26,6 +27,7 @@ public class ClusterMembershipService : IClusterMembershipService
         ILogger<ClusterMembershipService> logger,
         IClusterKeyService clusterKeyService,
         ISyncEngine syncEngine,
+        CreatioHelper.Application.Interfaces.IConfigurationManager configManager,
         IHttpClientFactory httpClientFactory,
         IDiscoveryManager discoveryManager,
         IOptions<ClusterKeyConfiguration> config,
@@ -35,6 +37,7 @@ public class ClusterMembershipService : IClusterMembershipService
         _logger = logger;
         _clusterKeyService = clusterKeyService;
         _syncEngine = syncEngine;
+        _configManager = configManager;
         _httpClientFactory = httpClientFactory;
         _discoveryManager = discoveryManager;
         _config = config.Value;
@@ -76,6 +79,11 @@ public class ClusterMembershipService : IClusterMembershipService
                 continue;
             }
 
+            if (_configManager.IsDeviceIgnored(device.DeviceId))
+            {
+                continue;
+            }
+
             roster.Add(new ClusterMember
             {
                 DeviceId = device.DeviceId,
@@ -92,12 +100,18 @@ public class ClusterMembershipService : IClusterMembershipService
         ClusterMember remote,
         CancellationToken cancellationToken = default)
     {
+        if (!string.IsNullOrWhiteSpace(remote.DeviceId))
+        {
+            await _configManager.RemoveIgnoredDeviceAsync(remote.DeviceId);
+        }
+
         await MergeMemberAsync(remote, cancellationToken);
 
         return new ClusterPairingAck
         {
             Self = GetLocalMember(),
-            Roster = await BuildRosterAsync(cancellationToken)
+            Roster = await BuildRosterAsync(cancellationToken),
+            Tombstones = await GetTombstonesAsync()
         };
     }
 
@@ -193,7 +207,8 @@ public class ClusterMembershipService : IClusterMembershipService
             {
                 Success = true,
                 Remote = remote,
-                Roster = ack?.Roster ?? new List<ClusterMember>()
+                Roster = ack?.Roster ?? new List<ClusterMember>(),
+                Tombstones = ack?.Tombstones ?? new List<ClusterTombstone>()
             };
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -215,6 +230,9 @@ public class ClusterMembershipService : IClusterMembershipService
         {
             return report;
         }
+
+        var retentionDays = Math.Max(1, _config.TombstoneRetentionDays);
+        await _configManager.PruneIgnoredDevicesAsync(DateTime.UtcNow.AddDays(-retentionDays));
 
         var localId = _syncEngine.DeviceId;
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -252,6 +270,8 @@ public class ClusterMembershipService : IClusterMembershipService
             }
 
             report.TargetsPaired++;
+
+            await ApplyTombstonesAsync(result.Tombstones, cancellationToken);
 
             if (await MergeMemberAsync(result.Remote, cancellationToken))
             {
@@ -311,6 +331,49 @@ public class ClusterMembershipService : IClusterMembershipService
         return added;
     }
 
+    public async Task<List<ClusterTombstone>> GetTombstonesAsync()
+    {
+        var ignored = await _configManager.GetIgnoredDevicesAsync();
+        return ignored
+            .Where(d => !string.IsNullOrWhiteSpace(d.Id))
+            .Select(d => new ClusterTombstone
+            {
+                DeviceId = d.Id,
+                DeviceName = d.Name,
+                DeletedAt = d.Time
+            })
+            .ToList();
+    }
+
+    public async Task ApplyTombstonesAsync(
+        IEnumerable<ClusterTombstone> tombstones,
+        CancellationToken cancellationToken = default)
+    {
+        if (tombstones == null)
+        {
+            return;
+        }
+
+        var localId = _syncEngine.DeviceId;
+
+        foreach (var tombstone in tombstones)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (string.IsNullOrWhiteSpace(tombstone.DeviceId) ||
+                string.Equals(tombstone.DeviceId, localId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            await _syncEngine.RemoveDeviceAsync(tombstone.DeviceId);
+
+            var deletedAt = tombstone.DeletedAt == default ? DateTime.UtcNow : tombstone.DeletedAt;
+            var name = string.IsNullOrWhiteSpace(tombstone.DeviceName) ? tombstone.DeviceId : tombstone.DeviceName;
+            await _configManager.AddIgnoredDeviceAsync(tombstone.DeviceId, name, deletedAt);
+        }
+    }
+
     public string? ResolveApiAddress(string deviceId, IEnumerable<string>? addresses = null)
     {
         if (!string.IsNullOrWhiteSpace(deviceId) && _apiAddresses.TryGetValue(deviceId, out var known))
@@ -340,6 +403,12 @@ public class ClusterMembershipService : IClusterMembershipService
         if (string.IsNullOrWhiteSpace(member.DeviceId) ||
             string.Equals(member.DeviceId, _syncEngine.DeviceId, StringComparison.OrdinalIgnoreCase))
         {
+            return false;
+        }
+
+        if (_configManager.IsDeviceIgnored(member.DeviceId))
+        {
+            _logger.LogDebug("Skipping tombstoned device {DeviceId} during roster merge", member.DeviceId);
             return false;
         }
 
@@ -431,7 +500,7 @@ public class ClusterMembershipService : IClusterMembershipService
 
     private List<string> BuildLocalAddresses()
     {
-        var host = ExtractHost(BuildLocalApiAddress()) ?? Environment.MachineName;
+        var host = ExtractHost(BuildLocalApiAddress()) ?? ResolveLocalHost();
         var addresses = new List<string>();
 
         foreach (var listen in _syncConfig.ListenAddresses)
@@ -451,7 +520,43 @@ public class ClusterMembershipService : IClusterMembershipService
     private string BuildLocalApiAddress()
     {
         var advertised = NormalizeApiAddress(_config.AdvertisedApiAddress);
-        return advertised ?? $"http://{Environment.MachineName}:{_agentHttpPort}";
+        return advertised ?? $"http://{ResolveLocalHost()}:{_agentHttpPort}";
+    }
+
+    private static string ResolveLocalHost()
+    {
+        try
+        {
+            foreach (var ni in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+            {
+                if (ni.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up ||
+                    ni.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback)
+                {
+                    continue;
+                }
+
+                foreach (var unicast in ni.GetIPProperties().UnicastAddresses)
+                {
+                    var ip = unicast.Address;
+                    if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork ||
+                        System.Net.IPAddress.IsLoopback(ip))
+                    {
+                        continue;
+                    }
+
+                    var value = ip.ToString();
+                    if (IsRoutableHost(value) && !value.StartsWith("169.254", StringComparison.Ordinal))
+                    {
+                        return value;
+                    }
+                }
+            }
+        }
+        catch (System.Net.NetworkInformation.NetworkInformationException)
+        {
+        }
+
+        return Environment.MachineName;
     }
 
     private static string? NormalizeApiAddress(string? address)

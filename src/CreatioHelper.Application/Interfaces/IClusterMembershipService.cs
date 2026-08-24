@@ -16,6 +16,10 @@ public interface IClusterMembershipService
 
     Task<List<string>> MergeRosterAsync(IEnumerable<ClusterMember> members, CancellationToken cancellationToken = default);
 
+    Task<List<ClusterTombstone>> GetTombstonesAsync();
+
+    Task ApplyTombstonesAsync(IEnumerable<ClusterTombstone> tombstones, CancellationToken cancellationToken = default);
+
     string? ResolveApiAddress(string deviceId, IEnumerable<string>? addresses = null);
 }
 
@@ -27,10 +31,18 @@ public class ClusterMember
     public string ApiAddress { get; set; } = "";
 }
 
+public class ClusterTombstone
+{
+    public string DeviceId { get; set; } = "";
+    public string DeviceName { get; set; } = "";
+    public DateTime DeletedAt { get; set; }
+}
+
 public class ClusterPairingAck
 {
     public ClusterMember Self { get; set; } = new();
     public List<ClusterMember> Roster { get; set; } = new();
+    public List<ClusterTombstone> Tombstones { get; set; } = new();
 }
 
 public class ClusterPairingResult
@@ -39,6 +51,7 @@ public class ClusterPairingResult
     public string? Error { get; set; }
     public ClusterMember? Remote { get; set; }
     public List<ClusterMember> Roster { get; set; } = new();
+    public List<ClusterTombstone> Tombstones { get; set; } = new();
 }
 
 public class ClusterJoinReport

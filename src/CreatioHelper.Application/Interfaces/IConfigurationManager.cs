@@ -97,12 +97,22 @@ public interface IConfigurationManager
     /// <summary>
     /// Delete a device
     /// </summary>
-    Task DeleteDeviceAsync(string deviceId);
+    Task<bool> DeleteDeviceAsync(string deviceId);
 
     /// <summary>
     /// Get devices for a specific folder
     /// </summary>
     Task<IReadOnlyList<SyncDevice>> GetDevicesForFolderAsync(string folderId);
+
+    Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time);
+
+    Task<bool> RemoveIgnoredDeviceAsync(string deviceId);
+
+    Task<IReadOnlyList<ConfigXmlIgnoredDevice>> GetIgnoredDevicesAsync();
+
+    bool IsDeviceIgnored(string deviceId);
+
+    Task<int> PruneIgnoredDevicesAsync(DateTime olderThanUtc);
 
     /// <summary>
     /// Update device last seen time (in memory, batched to config.xml periodically)
