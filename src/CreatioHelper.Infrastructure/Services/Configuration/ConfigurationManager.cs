@@ -346,7 +346,14 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
 
         _isDirty = true;
-        await SaveIfNeededAsync();
+        if (isNew)
+        {
+            await SaveAsync();
+        }
+        else
+        {
+            await SaveIfNeededAsync();
+        }
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {

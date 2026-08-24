@@ -108,16 +108,8 @@ public class ClusterMembershipService : IClusterMembershipService
     {
         if (!string.IsNullOrWhiteSpace(remote.DeviceId))
         {
-            if (_configManager.IsDeviceIgnored(remote.DeviceId))
-            {
-                _logger.LogInformation(
-                    "Cluster join request from {DeviceId} held for approval (device is tombstoned)",
-                    remote.DeviceId);
-                return new ClusterJoinDecision { Pending = true };
-            }
-
             var devices = await _syncEngine.GetDevicesAsync();
-            var alreadyKnown = devices.Any(d =>
+            var alreadyKnown = !_configManager.IsDeviceIgnored(remote.DeviceId) && devices.Any(d =>
                 string.Equals(d.DeviceId, remote.DeviceId, StringComparison.OrdinalIgnoreCase));
 
             if (alreadyKnown)
@@ -135,13 +127,10 @@ public class ClusterMembershipService : IClusterMembershipService
                 };
             }
 
-            if (!_config.AutoAcceptDevices)
-            {
-                _logger.LogInformation(
-                    "Cluster join request from {DeviceId} held for approval (manual mode)",
-                    remote.DeviceId);
-                return new ClusterJoinDecision { Pending = true };
-            }
+            _logger.LogInformation(
+                "Cluster join request from {DeviceId} held for approval",
+                remote.DeviceId);
+            return new ClusterJoinDecision { Pending = true };
         }
 
         return new ClusterJoinDecision

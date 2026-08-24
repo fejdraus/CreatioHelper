@@ -51,8 +51,7 @@ public class ClusterKeyController : ControllerBase
             hasKey = !string.IsNullOrWhiteSpace(_config.Key),
             seedAddresses = _config.SeedAddresses,
             shareRoster = _config.ShareRoster,
-            rosterSyncIntervalMinutes = _config.RosterSyncIntervalMinutes,
-            autoAcceptDevices = _config.AutoAcceptDevices
+            rosterSyncIntervalMinutes = _config.RosterSyncIntervalMinutes
         });
     }
 
@@ -80,13 +79,8 @@ public class ClusterKeyController : ControllerBase
             _config.SeedAddresses = request.SeedAddresses;
         }
 
-        if (request.AutoAcceptDevices.HasValue)
-        {
-            _config.AutoAcceptDevices = request.AutoAcceptDevices.Value;
-        }
-
-        _logger.LogInformation("Cluster key configuration updated at runtime (enabled={Enabled}, hasKey={HasKey}, seeds={Seeds}, autoAccept={AutoAccept})",
-            _config.Enabled, !string.IsNullOrWhiteSpace(_config.Key), _config.SeedAddresses.Count, _config.AutoAcceptDevices);
+        _logger.LogInformation("Cluster key configuration updated at runtime (enabled={Enabled}, hasKey={HasKey}, seeds={Seeds})",
+            _config.Enabled, !string.IsNullOrWhiteSpace(_config.Key), _config.SeedAddresses.Count);
 
         if (_membership.IsEnabled)
         {
@@ -220,8 +214,6 @@ public class ClusterKeyConfigRequest
     public string? Key { get; set; }
 
     public List<string>? SeedAddresses { get; set; }
-
-    public bool? AutoAcceptDevices { get; set; }
 }
 
 public class ChallengeRequest
