@@ -30,6 +30,19 @@ public static class EventTypeDisplay
             EventType.DownloadProgress => localizer["EventType_Downloading"],
             EventType.FolderScanProgress => localizer["EventType_Scanning"],
             EventType.DiscoveryCompleted => localizer["EventType_DiscoveryCompleted"],
+            EventType.RemoteIndexUpdated => localizer["EventType_IndexUpdated"],
+            EventType.LocalIndexUpdated => localizer["EventType_IndexUpdated"],
+            EventType.RemoteDownloadProgress => localizer["EventType_Downloading"],
+            EventType.DeviceDiscovered => localizer["EventType_DeviceDiscovered"],
+            EventType.DeviceRejected => localizer["EventType_Rejected"],
+            EventType.FolderRejected => localizer["EventType_Rejected"],
+            EventType.FolderSummary => localizer["EventType_Summary"],
+            EventType.ListenAddressesChanged => localizer["EventType_AddressesChanged"],
+            EventType.LoginAttempt => localizer["EventType_LoginAttempt"],
+            EventType.Failure => localizer["EventType_Failure"],
+            EventType.PendingDevicesChanged => localizer["EventType_Pending"],
+            EventType.PendingFoldersChanged => localizer["EventType_Pending"],
+            EventType.ClusterConfigReceived => localizer["EventType_ClusterConfig"],
             _ => type.ToString()
         };
     }

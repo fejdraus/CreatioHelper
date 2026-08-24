@@ -12,7 +12,7 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="_displayName"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_displayName"
                           Label="@L["WebServer_DisplayName"]"
                           Required="true"
                           RequiredError="@L["WebServer_DisplayNameRequired"]"
@@ -20,7 +20,7 @@
                           Immediate="true"
                           Class="mb-4" />
 
-            <MudSelect T="string"
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string"
                        Value="_type"
                        ValueChanged="OnTypeChanged"
                        Label="@L["WebServer_ManagedBy"]"
@@ -29,7 +29,7 @@
                 <MudSelectItem Value="@("Service")">@L["WebServer_TypeService"]</MudSelectItem>
             </MudSelect>
 
-            <MudSelect T="string"
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" T="string"
                        @bind-SelectedValues="_selectedFolderIds"
                        MultiSelection="true"
                        MultiSelectionTextFunc="@GetLinkedFoldersText"
@@ -41,7 +41,7 @@
                 }
             </MudSelect>
 
-            <MudTextField @bind-Value="_serviceName"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_serviceName"
                           Label="@(_type == "IIS" ? L["WebServer_IisSiteName"] : L["WebServer_ServiceName"])"
                           Required="true"
                           RequiredError="@L["WebServer_HostNameRequired"]"
@@ -51,7 +51,7 @@
 
             @if (_type == "IIS")
             {
-                <MudTextField @bind-Value="_appPool"
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_appPool"
                               Label="@L["WebServer_AppPool"]"
                               HelperText="@L["WebServer_AppPoolHint"]"
                               ReadOnly="true"
@@ -62,7 +62,7 @@
     <DialogActions>
         @if (_type == "IIS")
         {
-            <MudButton Variant="Variant.Outlined"
+            <MudButton Size="Size.Small" Variant="Variant.Outlined"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Search"
                        Class="mr-auto"
@@ -71,8 +71,8 @@
                 @L["WebServer_DetectByFolder"]
             </MudButton>
         }
-        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@(!_isValid || _saving)"
                    OnClick="Submit">

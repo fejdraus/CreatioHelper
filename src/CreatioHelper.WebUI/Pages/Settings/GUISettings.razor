@@ -3,7 +3,9 @@
 @inject ILocalizationService LocalizationService
 @inject IApiClient ApiClient
 @inject ISnackbar Snackbar
-@inject Blazored.LocalStorage.ILocalStorageService LocalStorage
+@inject IBrowserStorageService LocalStorage
+@inject IUserPreferences Prefs
+@inject INotificationService Notifications
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
 @inject NavigationManager Navigation
@@ -16,9 +18,9 @@
         <MudPaper Elevation="2" Class="pa-4 mb-4">
         <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Language"]</MudText>
 
-        <MudSelect @bind-Value="_language"
+        <MudSelect Margin="Margin.Dense" @bind-Value="_language"
                Label="@L["Settings_Language"]"
-               Variant="Variant.Filled"
+               Variant="Variant.Outlined"
 >
         <MudSelectItem Value="@("en")">English</MudSelectItem>
         <MudSelectItem Value="@("ru")">Русский</MudSelectItem>
@@ -33,14 +35,6 @@
 
         <div class="settings-fields">
             <div class="settings-field">
-            <MudSwitch @bind-Value="_showTransferChart"
-                   Color="Color.Primary"
-                   Label="@L["Settings_ShowTransferChart"]" />
-        <MudText Typo="Typo.caption" Color="Color.Default" Class="mb-3">
-            @L["Settings_ShowTransferChartHint"]
-        </MudText>
-            </div>
-            <div class="settings-field">
             <MudSwitch @bind-Value="_showRecentEvents"
                    Color="Color.Primary"
                    Label="@L["Settings_ShowRecentEvents"]" />
@@ -49,9 +43,9 @@
         </MudText>
             </div>
             <div class="settings-field">
-            <MudNumericField @bind-Value="_maxRecentEvents"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_maxRecentEvents"
                              Label="@L["Settings_MaxRecentEvents"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="5"
                              Max="50"
                              Class="mt-3"
@@ -102,9 +96,9 @@
 
         <div class="settings-fields">
             <div class="settings-field">
-            <MudSelect @bind-Value="_dateFormat"
+            <MudSelect Margin="Margin.Dense" @bind-Value="_dateFormat"
                    Label="@L["Settings_DateFormat"]"
-                   Variant="Variant.Filled"
+                   Variant="Variant.Outlined"
                    Class="mb-3">
             <MudSelectItem Value="@("short")">@L["Settings_DateShort"] (01/20/26)</MudSelectItem>
             <MudSelectItem Value="@("medium")">@L["Settings_DateMedium"] (Jan 20, 2026)</MudSelectItem>
@@ -113,9 +107,9 @@
             </MudSelect>
             </div>
             <div class="settings-field">
-            <MudSelect @bind-Value="_sizeFormat"
+            <MudSelect Margin="Margin.Dense" @bind-Value="_sizeFormat"
                    Label="@L["Settings_SizeFormat"]"
-                   Variant="Variant.Filled">
+                   Variant="Variant.Outlined">
             <MudSelectItem Value="@("binary")">@L["Settings_SizeBinary"] (KiB, MiB, GiB)</MudSelectItem>
             <MudSelectItem Value="@("decimal")">@L["Settings_SizeDecimal"] (KB, MB, GB)</MudSelectItem>
             </MudSelect>
@@ -125,10 +119,10 @@
 </div>
 
 <div class="d-flex justify-end gap-2 settings-actions">
-    <MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
+    <MudButton Size="Size.Small" Variant="Variant.Filled" OnClick="ResetToDefaults">
         @L["Settings_ResetDefaults"]
     </MudButton>
-    <MudButton Variant="Variant.Filled"
+    <MudButton Size="Size.Small" Variant="Variant.Filled"
                Color="Color.Primary"
                OnClick="SaveSettingsAsync"
                Disabled="@_isSaving">
@@ -148,7 +142,6 @@
     private string _language = "en";
 
     // Dashboard
-    private bool _showTransferChart = true;
     private bool _showRecentEvents = true;
     private int _maxRecentEvents = 10;
 
@@ -171,7 +164,6 @@
     {
         _language = await LocalStorage.GetItemAsync<string>("gui_language") ?? DetectCulture();
         _initialLanguage = _language;
-        _showTransferChart = await LocalStorage.GetItemAsync<bool?>("gui_showTransferChart") ?? true;
         _showRecentEvents = await LocalStorage.GetItemAsync<bool?>("gui_showRecentEvents") ?? true;
         _maxRecentEvents = await LocalStorage.GetItemAsync<int?>("gui_maxRecentEvents") ?? 10;
         _notifyOnSyncComplete = await LocalStorage.GetItemAsync<bool?>("gui_notifyOnSyncComplete") ?? true;
@@ -190,7 +182,6 @@
         try
         {
             await LocalStorage.SetItemAsync("gui_language", _language);
-            await LocalStorage.SetItemAsync("gui_showTransferChart", _showTransferChart);
             await LocalStorage.SetItemAsync("gui_showRecentEvents", _showRecentEvents);
             await LocalStorage.SetItemAsync("gui_maxRecentEvents", _maxRecentEvents);
             await LocalStorage.SetItemAsync("gui_notifyOnSyncComplete", _notifyOnSyncComplete);
@@ -199,6 +190,17 @@
             await LocalStorage.SetItemAsync("gui_notifyOnPendingDevice", _notifyOnPendingDevice);
             await LocalStorage.SetItemAsync("gui_dateFormat", _dateFormat);
             await LocalStorage.SetItemAsync("gui_sizeFormat", _sizeFormat);
+
+            await Prefs.ReloadAsync();
+
+            if (_notifyOnSyncComplete || _notifyOnDeviceConnect || _notifyOnError || _notifyOnPendingDevice)
+            {
+                var permission = await Notifications.GetPermissionAsync();
+                if (permission == "default")
+                {
+                    await Notifications.RequestPermissionAsync();
+                }
+            }
 
             // Apply language change (requires page reload)
             if (_language != _initialLanguage)
@@ -231,7 +233,6 @@
     private async Task ResetToDefaults()
     {
         _language = "en";
-        _showTransferChart = true;
         _showRecentEvents = true;
         _maxRecentEvents = 10;
         _notifyOnSyncComplete = true;

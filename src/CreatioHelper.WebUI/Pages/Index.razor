@@ -5,6 +5,7 @@
 @inject IStringLocalizer<Localization> L
 @inject IDialogService DialogService
 @inject ISignalRService SignalR
+@inject IUserPreferences Prefs
 @implements IDisposable
 
 <PageTitle>@L["Dashboard_Title"] - CreatioHelper Agent</PageTitle>
@@ -143,7 +144,7 @@
         @if (State.Folders.Length > 6)
         {
             <MudItem xs="12">
-                <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/folders">
+                <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Href="/folders">
                     @L["Common_ViewAll"] (@State.Folders.Length)
                 </MudButton>
             </MudItem>
@@ -152,6 +153,8 @@
 </MudGrid>
 
 @* Recent Activity *@
+@if (Prefs.ShowRecentEvents)
+{
 <MudText Typo="Typo.h5" Class="mt-6 mb-3">@L["Nav_Events"]</MudText>
 <MudPaper Elevation="2" Class="pa-4">
     @if (State.RecentEvents.Count == 0)
@@ -161,7 +164,7 @@
     else
     {
         <MudList T="SyncEvent" Dense="true">
-            @foreach (var evt in State.RecentEvents.Take(10))
+            @foreach (var evt in State.RecentEvents.Take(Prefs.MaxRecentEvents))
             {
                 <MudListItem>
                     <div class="d-flex align-center">
@@ -179,11 +182,12 @@
                 </MudListItem>
             }
         </MudList>
-        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="/monitoring/events" Class="mt-2">
+        <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Href="/monitoring/events" Class="mt-2">
             @L["Common_ViewAll"]
         </MudButton>
     }
 </MudPaper>
+}
 
 @* System Info *@
 @if (State.SystemStatus != null)
@@ -232,6 +236,8 @@
         SignalR.OnFolderStatusChanged += OnFolderStatusChanged;
         SignalR.OnSystemStatusChanged += OnSystemStatusChanged;
         SignalR.OnConnectionChanged += OnConnectionChanged;
+        Prefs.Changed += OnStateChanged;
+        await Prefs.EnsureLoadedAsync();
         UpdateCounts();
         await LoadFolderStatusesAsync();
         await LoadDashboardExtrasAsync();
@@ -419,6 +425,7 @@
         _pageCts.Cancel();
         _pageCts.Dispose();
         State.OnChange -= OnStateChanged;
+        Prefs.Changed -= OnStateChanged;
         SignalR.OnFolderStatusChanged -= OnFolderStatusChanged;
         SignalR.OnSystemStatusChanged -= OnSystemStatusChanged;
         SignalR.OnConnectionChanged -= OnConnectionChanged;

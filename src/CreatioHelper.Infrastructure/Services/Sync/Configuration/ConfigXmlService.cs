@@ -256,7 +256,7 @@ public class ConfigXmlService : IConfigXmlService
         var syncConfig = new SyncConfiguration
         {
             DeviceId = config.Devices.FirstOrDefault()?.Id ?? string.Empty,
-            DeviceName = config.Devices.FirstOrDefault()?.Name ?? Environment.MachineName,
+            DeviceName = Environment.MachineName,
             Port = ExtractPort(config.Options.ListenAddresses.FirstOrDefault() ?? "default"),
             GlobalAnnounceEnabled = config.Options.GlobalAnnounceEnabled,
             LocalAnnounceEnabled = config.Options.LocalAnnounceEnabled,

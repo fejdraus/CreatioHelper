@@ -11,7 +11,7 @@
     </TitleContent>
     <DialogContent>
         <MudForm @ref="_form" @bind-IsValid="_isValid">
-            <MudTextField @bind-Value="_username"
+            <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_username"
                           Label="@L["Users_Username"]"
                           Required="true"
                           RequiredError="@L["Users_UsernameRequired"]"
@@ -21,7 +21,7 @@
 
             @if (!IsEditMode)
             {
-                <MudTextField @bind-Value="_password"
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_password"
                               Label="@L["Users_Password"]"
                               InputType="InputType.Password"
                               Required="true"
@@ -31,14 +31,14 @@
             }
             else
             {
-                <MudTextField @bind-Value="_password"
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_password"
                               Label="@L["Users_NewPasswordOptional"]"
                               InputType="InputType.Password"
                               HelperText="@L["Users_LeaveBlankKeepPassword"]"
                               Class="mb-4" />
             }
 
-            <MudSelect @bind-Value="_role"
+            <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_role"
                        Label="@L["Users_Role"]"
                        Required="true"
                        Disabled="@IsLastAdminAccount"
@@ -52,8 +52,8 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@(!_isValid || _saving)"
                    OnClick="Submit">

@@ -4825,4 +4825,163 @@
   <data name="Common_Columns" xml:space="preserve">
     <value>Столбцы</value>
   </data>
+  <data name="MudDataGrid_Unsort" xml:space="preserve">
+    <value>Без сортировки</value>
+  </data>
+  <data name="MudDataGrid_Sort" xml:space="preserve">
+    <value>Сортировать</value>
+  </data>
+  <data name="MudDataGrid_Hide" xml:space="preserve">
+    <value>Скрыть</value>
+  </data>
+  <data name="MudDataGrid_ShowColumnOptions" xml:space="preserve">
+    <value>Параметры столбца</value>
+  </data>
+  <data name="MudDataGrid_Columns" xml:space="preserve">
+    <value>Столбцы</value>
+  </data>
+  <data name="MudDataGrid_Column" xml:space="preserve">
+    <value>Столбец</value>
+  </data>
+  <data name="MudDataGrid_Filter" xml:space="preserve">
+    <value>Фильтр</value>
+  </data>
+  <data name="MudDataGrid_Group" xml:space="preserve">
+    <value>Группировать</value>
+  </data>
+  <data name="MudDataGrid_Ungroup" xml:space="preserve">
+    <value>Разгруппировать</value>
+  </data>
+  <data name="MudDataGrid_Loading" xml:space="preserve">
+    <value>Загрузка…</value>
+  </data>
+  <data name="MudDataGrid_NoRecordsFound" xml:space="preserve">
+    <value>Записи не найдены</value>
+  </data>
+  <data name="MudDataGrid_Apply" xml:space="preserve">
+    <value>Применить</value>
+  </data>
+  <data name="MudDataGrid_Cancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="MudDataGrid_Clear" xml:space="preserve">
+    <value>Очистить</value>
+  </data>
+  <data name="MudDataGrid_ClearFilter" xml:space="preserve">
+    <value>Очистить фильтр</value>
+  </data>
+  <data name="MudDataGrid_AddFilter" xml:space="preserve">
+    <value>Добавить фильтр</value>
+  </data>
+  <data name="MudDataGrid_RemoveFilter" xml:space="preserve">
+    <value>Убрать фильтр</value>
+  </data>
+  <data name="MudDataGrid_OpenFilters" xml:space="preserve">
+    <value>Открыть фильтры</value>
+  </data>
+  <data name="MudDataGrid_Value" xml:space="preserve">
+    <value>Значение</value>
+  </data>
+  <data name="MudDataGrid_FilterValue" xml:space="preserve">
+    <value>Значение фильтра</value>
+  </data>
+  <data name="MudDataGrid_Operator" xml:space="preserve">
+    <value>Оператор</value>
+  </data>
+  <data name="MudDataGrid_Contains" xml:space="preserve">
+    <value>содержит</value>
+  </data>
+  <data name="MudDataGrid_NotContains" xml:space="preserve">
+    <value>не содержит</value>
+  </data>
+  <data name="MudDataGrid_Equals" xml:space="preserve">
+    <value>равно</value>
+  </data>
+  <data name="MudDataGrid_NotEquals" xml:space="preserve">
+    <value>не равно</value>
+  </data>
+  <data name="MudDataGrid_StartsWith" xml:space="preserve">
+    <value>начинается с</value>
+  </data>
+  <data name="MudDataGrid_EndsWith" xml:space="preserve">
+    <value>заканчивается на</value>
+  </data>
+  <data name="MudDataGrid_IsEmpty" xml:space="preserve">
+    <value>пусто</value>
+  </data>
+  <data name="MudDataGrid_IsNotEmpty" xml:space="preserve">
+    <value>не пусто</value>
+  </data>
+  <data name="MudDataGrid_Is" xml:space="preserve">
+    <value>равно</value>
+  </data>
+  <data name="MudDataGrid_IsNot" xml:space="preserve">
+    <value>не равно</value>
+  </data>
+  <data name="MudDataGrid_IsAfter" xml:space="preserve">
+    <value>после</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrAfter" xml:space="preserve">
+    <value>не раньше</value>
+  </data>
+  <data name="MudDataGrid_IsBefore" xml:space="preserve">
+    <value>до</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrBefore" xml:space="preserve">
+    <value>не позже</value>
+  </data>
+  <data name="EventType_IndexUpdated" xml:space="preserve">
+    <value>Индекс обновлён</value>
+  </data>
+  <data name="EventType_DeviceDiscovered" xml:space="preserve">
+    <value>Найдено устройство</value>
+  </data>
+  <data name="EventType_Rejected" xml:space="preserve">
+    <value>Отклонено</value>
+  </data>
+  <data name="EventType_Summary" xml:space="preserve">
+    <value>Сводка папки</value>
+  </data>
+  <data name="EventType_AddressesChanged" xml:space="preserve">
+    <value>Адреса изменены</value>
+  </data>
+  <data name="EventType_LoginAttempt" xml:space="preserve">
+    <value>Попытка входа</value>
+  </data>
+  <data name="EventType_Failure" xml:space="preserve">
+    <value>Сбой</value>
+  </data>
+  <data name="EventType_Pending" xml:space="preserve">
+    <value>Ожидают</value>
+  </data>
+  <data name="EventType_ClusterConfig" xml:space="preserve">
+    <value>Конфиг кластера</value>
+  </data>
+  <data name="EventDesc_FolderScan" xml:space="preserve">
+    <value>Сканирование «{0}» завершено: {1} файлов</value>
+  </data>
+  <data name="EventDesc_IndexReceived" xml:space="preserve">
+    <value>Получен индекс от {0}: {1} файлов</value>
+  </data>
+  <data name="EventDesc_IndexUpdatedLocal" xml:space="preserve">
+    <value>Локальный индекс обновлён для «{0}»</value>
+  </data>
+  <data name="Notify_SyncCompleteTitle" xml:space="preserve">
+    <value>Синхронизация завершена</value>
+  </data>
+  <data name="Notify_SyncCompleteBody" xml:space="preserve">
+    <value>Папка '{0}' синхронизирована</value>
+  </data>
+  <data name="Notify_DeviceConnectTitle" xml:space="preserve">
+    <value>Устройство подключено</value>
+  </data>
+  <data name="Notify_ErrorTitle" xml:space="preserve">
+    <value>Ошибка синхронизации</value>
+  </data>
+  <data name="Notify_PendingDeviceTitle" xml:space="preserve">
+    <value>Новое устройство</value>
+  </data>
+  <data name="Notify_PendingDeviceBody" xml:space="preserve">
+    <value>Устройство запрашивает подключение</value>
+  </data>
 </root>

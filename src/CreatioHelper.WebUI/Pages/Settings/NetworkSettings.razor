@@ -22,15 +22,15 @@ else if (_config != null)
 
         <div class="settings-fields">
             <div class="settings-field">
-            <MudTextField @bind-Value="_syncProtocolListen"
+            <MudTextField Margin="Margin.Dense" @bind-Value="_syncProtocolListen"
                           Label="@L["Settings_Network_SyncProtocol"]"
-                          Variant="Variant.Filled"
+                          Variant="Variant.Outlined"
                           HelperText="@L["Settings_Network_SyncProtocolDesc"]" />
             </div>
             <div class="settings-field">
-            <MudTextField @bind-Value="_guiAddress"
+            <MudTextField Margin="Margin.Dense" @bind-Value="_guiAddress"
                           Label="@L["Settings_Network_GuiAddress"]"
-                          Variant="Variant.Filled"
+                          Variant="Variant.Outlined"
                           HelperText="@L["Settings_Network_GuiAddressDesc"]" />
             </div>
         </div>
@@ -77,25 +77,25 @@ else if (_config != null)
 
             <div class="settings-fields">
                 <div class="settings-field">
-                <MudNumericField @bind-Value="_natLeaseMinutes"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_natLeaseMinutes"
                                  Label="@L["Settings_Network_NatLeaseMins"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="5"
                                  Max="1440"
                                  HelperText="@L["Settings_Network_NatLeaseMinsDesc"]" />
                 </div>
                 <div class="settings-field">
-                <MudNumericField @bind-Value="_natRenewalMinutes"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_natRenewalMinutes"
                                  Label="@L["Settings_Network_NatRenewalMins"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="1"
                                  Max="120"
                                  HelperText="@L["Settings_Network_NatRenewalMinsDesc"]" />
                 </div>
                 <div class="settings-field">
-                <MudNumericField @bind-Value="_natTimeoutSeconds"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_natTimeoutSeconds"
                                  Label="@L["Settings_Network_NatTimeoutSecs"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="5"
                                  Max="60"
                                  HelperText="@L["Settings_Network_NatTimeoutSecsDesc"]" />
@@ -108,16 +108,16 @@ else if (_config != null)
 
     <div class="settings-fields">
         <div class="settings-field">
-        <MudTextField @bind-Value="_stunServers"
+        <MudTextField Margin="Margin.Dense" @bind-Value="_stunServers"
                       Label="@L["Settings_Network_StunServers"]"
                       Lines="3"
-                      Variant="Variant.Filled"
+                      Variant="Variant.Outlined"
                       HelperText="@L["Settings_Network_StunServersDesc"]" />
         </div>
         <div class="settings-field">
-        <MudNumericField @bind-Value="_stunKeepaliveSeconds"
+        <MudNumericField Margin="Margin.Dense" @bind-Value="_stunKeepaliveSeconds"
                          Label="@L["Settings_Network_StunKeepalive"]"
-                         Variant="Variant.Filled"
+                         Variant="Variant.Outlined"
                          Min="10"
                          Max="300"
                          Class="mt-3"
@@ -154,9 +154,9 @@ else if (_config != null)
 @if (_globalAnnounceEnabled)
 {
     <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_GlobalDiscoveryServers"]</MudText>
-    <MudTextField @bind-Value="_globalAnnounceServers"
+    <MudTextField Margin="Margin.Dense" @bind-Value="_globalAnnounceServers"
                   Lines="3"
-                  Variant="Variant.Filled"
+                  Variant="Variant.Outlined"
                   HelperText="@L["Settings_Network_GlobalDiscoveryServersDesc"]" />
 }
 
@@ -166,23 +166,23 @@ else if (_config != null)
 
             <div class="settings-fields">
                 <div class="settings-field">
-                <MudNumericField @bind-Value="_localAnnouncePort"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_localAnnouncePort"
                                  Label="@L["Settings_Network_LocalAnnouncePort"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="1024"
                                  Max="65535"
                                  HelperText="@L["Settings_Network_LocalAnnouncePortDesc"]" />
                 </div>
                 <div class="settings-field">
-                <MudTextField @bind-Value="_localAnnounceMCAddr"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_localAnnounceMCAddr"
                               Label="@L["Settings_Network_MulticastAddress"]"
-                              Variant="Variant.Filled"
+                              Variant="Variant.Outlined"
                               HelperText="@L["Settings_Network_MulticastAddressDesc"]" />
                 </div>
                 <div class="settings-field">
-                <MudNumericField @bind-Value="_announceIntervalS"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_announceIntervalS"
                                  Label="@L["Settings_Network_AnnounceInterval"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="10"
                                  Max="3600"
                                  HelperText="@L["Settings_Network_AnnounceIntervalDesc"]" />
@@ -229,15 +229,15 @@ else if (_config != null)
     <MudText Typo="Typo.subtitle2" Class="mb-2">@L["Settings_Network_RelayServers"]</MudText>
     <div class="settings-fields">
         <div class="settings-field">
-        <MudTextField @bind-Value="_relayServers"
+        <MudTextField Margin="Margin.Dense" @bind-Value="_relayServers"
                       Lines="3"
-                      Variant="Variant.Filled"
+                      Variant="Variant.Outlined"
                       HelperText="@L["Settings_Network_RelayServersDesc"]" />
         </div>
         <div class="settings-field">
-        <MudNumericField @bind-Value="_relayReconnectIntervalM"
+        <MudNumericField Margin="Margin.Dense" @bind-Value="_relayReconnectIntervalM"
                          Label="@L["Settings_Network_RelayReconnectInterval"]"
-                         Variant="Variant.Filled"
+                         Variant="Variant.Outlined"
                          Min="1"
                          Max="60"
                          Class="mt-3"
@@ -252,16 +252,16 @@ else if (_config != null)
 
         <div class="settings-fields">
             <div class="settings-field">
-            <MudNumericField @bind-Value="_maxSendKbps"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_maxSendKbps"
                              Label="@L["Settings_Network_MaxSendKbps"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="0"
                              HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </div>
             <div class="settings-field">
-            <MudNumericField @bind-Value="_maxRecvKbps"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_maxRecvKbps"
                              Label="@L["Settings_Network_MaxRecvKbps"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="0"
                              HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </div>
@@ -282,23 +282,23 @@ else if (_config != null)
 
         <div class="settings-fields">
             <div class="settings-field">
-            <MudNumericField @bind-Value="_maxConcurrentIncoming"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_maxConcurrentIncoming"
                              Label="@L["Settings_Network_MaxIncoming"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="0"
                              HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </div>
             <div class="settings-field">
-            <MudNumericField @bind-Value="_maxConcurrentOutgoing"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_maxConcurrentOutgoing"
                              Label="@L["Settings_Network_MaxOutgoing"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="0"
                              HelperText="@L["Settings_Network_UnlimitedHint"]" />
             </div>
             <div class="settings-field">
-            <MudNumericField @bind-Value="_reconnectionIntervalS"
+            <MudNumericField Margin="Margin.Dense" @bind-Value="_reconnectionIntervalS"
                              Label="@L["Settings_Network_ReconnectInterval"]"
-                             Variant="Variant.Filled"
+                             Variant="Variant.Outlined"
                              Min="10"
                              HelperText="@L["Settings_Network_ReconnectIntervalDesc"]" />
             </div>
@@ -307,10 +307,10 @@ else if (_config != null)
     </div>
 
     <div class="d-flex justify-end gap-2 settings-actions">
-<MudButton Variant="Variant.Filled" OnClick="ResetToDefaults">
+<MudButton Size="Size.Small" Variant="Variant.Filled" OnClick="ResetToDefaults">
     @L["Common_ResetDefaults"]
 </MudButton>
-<MudButton Variant="Variant.Filled"
+<MudButton Size="Size.Small" Variant="Variant.Filled"
            Color="Color.Primary"
            OnClick="SaveSettingsAsync"
            Disabled="@_isSaving">

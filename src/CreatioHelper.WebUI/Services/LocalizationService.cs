@@ -1,5 +1,4 @@
 using System.Globalization;
-using Blazored.LocalStorage;
 using Microsoft.JSInterop;
 
 namespace CreatioHelper.WebUI.Services;
@@ -27,7 +26,7 @@ public interface ILocalizationService
 
 public class LocalizationService : ILocalizationService
 {
-    private readonly ILocalStorageService _localStorage;
+    private readonly IBrowserStorageService _localStorage;
     private readonly IJSRuntime _jsRuntime;
     private const string StorageKey = "gui_language";
     private const string DefaultCulture = "en";
@@ -44,7 +43,7 @@ public class LocalizationService : ILocalizationService
 
     public string CurrentCulture { get; private set; } = DefaultCulture;
 
-    public LocalizationService(ILocalStorageService localStorage, IJSRuntime jsRuntime)
+    public LocalizationService(IBrowserStorageService localStorage, IJSRuntime jsRuntime)
     {
         _localStorage = localStorage;
         _jsRuntime = jsRuntime;

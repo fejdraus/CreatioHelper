@@ -263,13 +263,13 @@
                 <MudItem xs="12">
                     <MudPaper Class="pa-4">
                         <div class="d-flex gap-3 flex-wrap">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="@(_device.Paused ? Color.Success : Color.Warning)"
                                        StartIcon="@(_device.Paused ? Icons.Material.Filled.PlayArrow : Icons.Material.Filled.Pause)"
                                        OnClick="@TogglePause">
                                 @(_device.Paused ? L["DeviceDetails_Resume"] : L["DeviceDetails_Pause"])
                             </MudButton>
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Error"
                                        StartIcon="@Icons.Material.Filled.Delete"
                                        OnClick="@RemoveDevice">

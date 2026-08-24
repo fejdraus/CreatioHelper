@@ -10,12 +10,12 @@
     </TitleContent>
     <DialogContent>
         <div class="d-flex align-center gap-2 mb-3">
-            <MudTextField @bind-Value="_current"
+            <MudTextField Margin="Margin.Dense" @bind-Value="_current"
                           Label="@L["FolderBrowser_CurrentPath"]"
-                          Variant="Variant.Filled"
+                          Variant="Variant.Outlined"
                           Immediate="true"
                           Class="flex-grow-1" />
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => LoadAsync(_current))">
+            <MudButton Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" OnClick="@(() => LoadAsync(_current))">
                 @L["FolderBrowser_Go"]
             </MudButton>
         </div>
@@ -50,8 +50,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@string.IsNullOrWhiteSpace(_current)"
                    OnClick="Select">

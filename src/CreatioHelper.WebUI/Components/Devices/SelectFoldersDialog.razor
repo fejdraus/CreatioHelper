@@ -46,15 +46,15 @@
                     @_selectedFolders.Count of @Folders.Length folder(s) selected
                 </MudText>
                 <MudButtonGroup Size="Size.Small" Variant="Variant.Text">
-                    <MudButton OnClick="SelectAll">Select All</MudButton>
-                    <MudButton OnClick="SelectNone">Select None</MudButton>
+                    <MudButton Size="Size.Small" OnClick="SelectAll">Select All</MudButton>
+                    <MudButton Size="Size.Small" OnClick="SelectNone">Select None</MudButton>
                 </MudButtonGroup>
             </div>
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
+        <MudButton Size="Size.Small" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Size="Size.Small" Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="Submit"
                    Disabled="@(_selectedFolders.Count == 0)">

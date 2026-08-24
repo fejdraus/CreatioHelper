@@ -38,8 +38,10 @@ public class EventsController : ControllerBase
         [FromQuery] string? type = null,
         [FromQuery] string? folder = null,
         [FromQuery] string? device = null,
+        [FromQuery] string? search = null,
         [FromQuery] string? sort = null,
         [FromQuery] string? dir = null,
+        [FromQuery] string? filters = null,
         CancellationToken cancellationToken = default)
     {
         try
@@ -47,7 +49,7 @@ public class EventsController : ControllerBase
             var safeOffset = Math.Max(0, offset);
             var safeLimit = Math.Max(1, Math.Min(limit, 500));
 
-            var (total, items) = await _eventStore.LoadPageAsync(safeOffset, safeLimit, type, folder, device, sort, dir, cancellationToken);
+            var (total, items) = await _eventStore.LoadPageAsync(safeOffset, safeLimit, type, folder, device, search, sort, dir, filters, cancellationToken);
 
             var mapped = items.Select(e => new
             {

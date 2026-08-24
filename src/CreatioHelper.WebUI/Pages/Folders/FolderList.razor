@@ -13,7 +13,7 @@
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Folders_Title"]</MudText>
-    <MudButton Variant="Variant.Filled"
+    <MudButton Size="Size.Small" Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Add"
                OnClick="@AddFolder">
@@ -40,7 +40,7 @@ else if (State.Folders.Length == 0)
         <MudText Color="Color.Default" Class="mb-4">
             @L["Folders_AddFolderHint"]
         </MudText>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="@AddFolder">

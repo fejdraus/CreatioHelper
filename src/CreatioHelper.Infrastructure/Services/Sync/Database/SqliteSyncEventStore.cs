@@ -98,6 +98,106 @@ public class SqliteSyncEventStore : ISyncEventStore
         return events;
     }
 
+    private static void BuildColumnFilters(string? filtersJson, List<string> conditions, List<(string Name, object Value)> parameters)
+    {
+        if (string.IsNullOrWhiteSpace(filtersJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(filtersJson);
+            var index = 0;
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                var field = element.TryGetProperty("f", out var f) ? f.GetString() : null;
+                var op = element.TryGetProperty("o", out var o) ? o.GetString() : null;
+                var value = element.TryGetProperty("v", out var v) ? v.GetString() : null;
+
+                if (string.IsNullOrEmpty(field) || !AllowedFilterFields.Contains(field) || string.IsNullOrEmpty(op))
+                {
+                    continue;
+                }
+
+                var name = "@flt" + index;
+                switch (op)
+                {
+                    case "contains":
+                        conditions.Add($"{field} LIKE {name}");
+                        parameters.Add((name, "%" + value + "%"));
+                        break;
+                    case "not contains":
+                        conditions.Add($"{field} NOT LIKE {name}");
+                        parameters.Add((name, "%" + value + "%"));
+                        break;
+                    case "equals":
+                        conditions.Add($"{field} = {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "not equals":
+                        conditions.Add($"{field} <> {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "starts with":
+                        conditions.Add($"{field} LIKE {name}");
+                        parameters.Add((name, value + "%"));
+                        break;
+                    case "ends with":
+                        conditions.Add($"{field} LIKE {name}");
+                        parameters.Add((name, "%" + value));
+                        break;
+                    case "is empty":
+                        conditions.Add($"({field} IS NULL OR {field} = '')");
+                        break;
+                    case "is not empty":
+                        conditions.Add($"({field} IS NOT NULL AND {field} <> '')");
+                        break;
+                    case "is after":
+                        conditions.Add($"{field} > {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "is on or after":
+                        conditions.Add($"{field} >= {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "is before":
+                        conditions.Add($"{field} < {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "is on or before":
+                        conditions.Add($"{field} <= {name}");
+                        parameters.Add((name, (object?)value ?? string.Empty));
+                        break;
+                    case "is":
+                        conditions.Add($"{field} LIKE {name}");
+                        parameters.Add((name, DatePrefix(value) + "%"));
+                        break;
+                    case "is not":
+                        conditions.Add($"{field} NOT LIKE {name}");
+                        parameters.Add((name, DatePrefix(value) + "%"));
+                        break;
+                    default:
+                        continue;
+                }
+
+                index++;
+            }
+        }
+        catch (JsonException)
+        {
+        }
+    }
+
+    private static string DatePrefix(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+        return value.Length >= 10 ? value[..10] : value;
+    }
+
     private static string ResolveSortColumn(string? sort) => sort switch
     {
         "type" => "event_type",
@@ -106,20 +206,31 @@ public class SqliteSyncEventStore : ISyncEventStore
         _ => "id"
     };
 
+    private static readonly HashSet<string> AllowedFilterFields = new(StringComparer.Ordinal)
+    {
+        "event_type", "folder_id", "device_id", "file_name", "event_data", "timestamp"
+    };
+
     public async Task<(int Total, List<SyncEvent> Items)> LoadPageAsync(
         int offset,
         int limit,
         string? eventType,
         string? folderId,
         string? deviceId,
+        string? search = null,
         string? sort = null,
         string? dir = null,
+        string? filters = null,
         CancellationToken cancellationToken = default)
     {
         using var connection = new SqliteConnection(_connectionString);
         await connection.OpenAsync(cancellationToken);
 
+        var hasSearch = !string.IsNullOrWhiteSpace(search);
+
+        var filterParams = new List<(string Name, object Value)>();
         var conditions = new List<string>();
+        BuildColumnFilters(filters, conditions, filterParams);
         if (!string.IsNullOrWhiteSpace(eventType) && eventType != "all")
         {
             conditions.Add("event_type = @type");
@@ -131,6 +242,10 @@ public class SqliteSyncEventStore : ISyncEventStore
         if (!string.IsNullOrWhiteSpace(deviceId) && deviceId != "all")
         {
             conditions.Add("device_id = @device");
+        }
+        if (hasSearch)
+        {
+            conditions.Add("(event_type LIKE @search OR folder_id LIKE @search OR device_id LIKE @search OR file_name LIKE @search OR event_data LIKE @search)");
         }
 
         var whereClause = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : string.Empty;
@@ -148,6 +263,14 @@ public class SqliteSyncEventStore : ISyncEventStore
             if (!string.IsNullOrWhiteSpace(deviceId) && deviceId != "all")
             {
                 command.Parameters.AddWithValue("@device", deviceId);
+            }
+            if (hasSearch)
+            {
+                command.Parameters.AddWithValue("@search", "%" + search + "%");
+            }
+            foreach (var (name, value) in filterParams)
+            {
+                command.Parameters.AddWithValue(name, value);
             }
         }
 

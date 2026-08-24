@@ -157,7 +157,7 @@
                                 <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
                                 @L["Common_Errors"] (@((_status?.Errors ?? 0) + (_status?.PullErrors ?? 0)))
                             </MudText>
-                            <MudButton Variant="Variant.Text" Color="Color.Primary"
+                            <MudButton Size="Size.Small" Variant="Variant.Text" Color="Color.Primary"
                                        Href="@($"/folders/{FolderId}/errors")">
                                 @L["FolderDetails_ViewErrors"]
                             </MudButton>

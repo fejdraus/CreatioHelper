@@ -52,8 +52,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@L["Common_Cancel"]</MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["Common_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    Disabled="@(_adding || _selectedItems.Count == 0)"
                    OnClick="AddSelected">

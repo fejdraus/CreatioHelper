@@ -83,19 +83,19 @@
     <MudText Typo="Typo.h4" Class="ws-header__title">@L["WebServer_Title"]</MudText>
 
     <div class="ws-header__actions">
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Secondary"
                    StartIcon="@Icons.Material.Filled.TravelExplore"
                    OnClick="DiscoverSites">
             @L["WebServer_DiscoverSites"]
         </MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Add"
                    OnClick="AddSite">
             @L["WebServer_AddSite"]
         </MudButton>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Default"
                    StartIcon="@Icons.Material.Filled.Refresh"
                    OnClick="@(() => Refresh(showLoading: true))">
@@ -121,7 +121,7 @@ else if (_sites.Count == 0)
     <MudPaper Elevation="2" Class="pa-8 d-flex flex-column align-center">
         <MudIcon Icon="@Icons.Material.Filled.Dns" Size="Size.Large" Class="mb-2" />
         <MudText Typo="Typo.body1" Class="mb-4">@L["WebServer_NoConfiguredSites"]</MudText>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSite">
+        <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="AddSite">
             @L["WebServer_AddSite"]
         </MudButton>
     </MudPaper>

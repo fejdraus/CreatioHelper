@@ -355,11 +355,12 @@ public class SyncthingSystemController : ControllerBase
         [FromQuery] string? facility = null,
         [FromQuery] string? search = null,
         [FromQuery] string? sort = null,
-        [FromQuery] string? dir = null)
+        [FromQuery] string? dir = null,
+        [FromQuery] string? filters = null)
     {
         try
         {
-            var items = ReadLogPage(Math.Max(0, offset), Math.Clamp(limit, 1, 500), level, facility, search, sort, dir, out var total);
+            var items = ReadLogPage(Math.Max(0, offset), Math.Clamp(limit, 1, 500), level, facility, search, sort, dir, filters, out var total);
             return Ok(new { total, items });
         }
         catch (Exception ex)
@@ -373,7 +374,86 @@ public class SyncthingSystemController : ControllerBase
     /// Read the newest N entries (shared with the plain-text log endpoints).
     /// </summary>
     private List<LogEntry> ReadLogEntries(int limit)
-        => ReadLogPage(0, limit, null, null, null, null, null, out _);
+        => ReadLogPage(0, limit, null, null, null, null, null, null, out _);
+
+    private static readonly HashSet<string> AllowedLogFilterFields = new(StringComparer.Ordinal)
+    {
+        "timestamp", "level", "facility", "message"
+    };
+
+    private static void BuildLogFilters(string? filtersJson, List<string> conditions, List<(string Name, object Value)> parameters)
+    {
+        if (string.IsNullOrWhiteSpace(filtersJson))
+        {
+            return;
+        }
+
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(filtersJson);
+            var index = 0;
+            foreach (var element in document.RootElement.EnumerateArray())
+            {
+                var field = element.TryGetProperty("f", out var f) ? f.GetString() : null;
+                var op = element.TryGetProperty("o", out var o) ? o.GetString() : null;
+                var value = element.TryGetProperty("v", out var v) ? v.GetString() : null;
+
+                if (string.IsNullOrEmpty(field) || !AllowedLogFilterFields.Contains(field) || string.IsNullOrEmpty(op))
+                {
+                    continue;
+                }
+
+                var name = "$flt" + index;
+                switch (op)
+                {
+                    case "contains":
+                        conditions.Add($"{field} LIKE {name}"); parameters.Add((name, "%" + value + "%")); break;
+                    case "not contains":
+                        conditions.Add($"{field} NOT LIKE {name}"); parameters.Add((name, "%" + value + "%")); break;
+                    case "equals":
+                        conditions.Add($"{field} = {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "not equals":
+                        conditions.Add($"{field} <> {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "starts with":
+                        conditions.Add($"{field} LIKE {name}"); parameters.Add((name, value + "%")); break;
+                    case "ends with":
+                        conditions.Add($"{field} LIKE {name}"); parameters.Add((name, "%" + value)); break;
+                    case "is empty":
+                        conditions.Add($"({field} IS NULL OR {field} = '')"); break;
+                    case "is not empty":
+                        conditions.Add($"({field} IS NOT NULL AND {field} <> '')"); break;
+                    case "is after":
+                        conditions.Add($"{field} > {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "is on or after":
+                        conditions.Add($"{field} >= {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "is before":
+                        conditions.Add($"{field} < {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "is on or before":
+                        conditions.Add($"{field} <= {name}"); parameters.Add((name, (object?)value ?? string.Empty)); break;
+                    case "is":
+                        conditions.Add($"{field} LIKE {name}"); parameters.Add((name, LogDatePrefix(value) + "%")); break;
+                    case "is not":
+                        conditions.Add($"{field} NOT LIKE {name}"); parameters.Add((name, LogDatePrefix(value) + "%")); break;
+                    default:
+                        continue;
+                }
+
+                index++;
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+        }
+    }
+
+    private static string LogDatePrefix(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return string.Empty;
+        }
+        return value.Length >= 10 ? value[..10] : value;
+    }
 
     private static string ResolveLogSortColumn(string? sort) => sort switch
     {
@@ -386,7 +466,7 @@ public class SyncthingSystemController : ControllerBase
     /// <summary>
     /// Read a page of log entries from the database with optional level/facility/search filters.
     /// </summary>
-    private List<LogEntry> ReadLogPage(int offset, int limit, string? level, string? facility, string? search, string? sort, string? dir, out int total)
+    private List<LogEntry> ReadLogPage(int offset, int limit, string? level, string? facility, string? search, string? sort, string? dir, string? filters, out int total)
     {
         var entries = new List<LogEntry>();
         total = 0;
@@ -403,7 +483,9 @@ public class SyncthingSystemController : ControllerBase
             var hasFacility = !string.IsNullOrWhiteSpace(facility) && facility != "all";
             var hasSearch = !string.IsNullOrWhiteSpace(search);
 
+            var filterParams = new List<(string Name, object Value)>();
             var conditions = new List<string>();
+            BuildLogFilters(filters, conditions, filterParams);
             if (!string.IsNullOrEmpty(levelAbbreviation)) conditions.Add("level = $level");
             if (hasFacility) conditions.Add("facility = $facility");
             if (hasSearch) conditions.Add("message LIKE $search");
@@ -422,6 +504,10 @@ public class SyncthingSystemController : ControllerBase
                 if (hasSearch)
                 {
                     var p = cmd.CreateParameter(); p.ParameterName = "$search"; p.Value = "%" + search + "%"; cmd.Parameters.Add(p);
+                }
+                foreach (var (name, value) in filterParams)
+                {
+                    var p = cmd.CreateParameter(); p.ParameterName = name; p.Value = value; cmd.Parameters.Add(p);
                 }
             }
 

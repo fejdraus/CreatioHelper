@@ -45,7 +45,7 @@
                                  Max="30"
                                  Class="ml-6"
                                  Style="width: 110px;"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Margin="Margin.Dense"
                                  Disabled="@(!_includeLogs)" />
             </div>
@@ -134,13 +134,13 @@
 }
 
 <div class="d-flex justify-end gap-2">
-    <MudButton Variant="Variant.Filled"
+    <MudButton Size="Size.Small" Variant="Variant.Filled"
                StartIcon="@Icons.Material.Filled.Preview"
                OnClick="PreviewBundle"
                Disabled="@_isGenerating">
         @L["SupportBundle_Preview"]
     </MudButton>
-    <MudButton Variant="Variant.Filled"
+    <MudButton Size="Size.Small" Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Download"
                OnClick="GenerateAndDownload"

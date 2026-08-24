@@ -18,7 +18,7 @@
             @* ===== GENERAL TAB ===== *@
             <MudTabPanel Text="@L["FolderDialog_TabGeneral"]" Icon="@Icons.Material.Filled.Info" Class="pa-4">
                 <MudForm @ref="_form" @bind-IsValid="@_isValid">
-                    <MudTextField @bind-Value="_folderId"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_folderId"
                                   Label="@L["FolderDialog_FolderId"]"
                                   HelperText="@(IsEditMode ? L["FolderDialog_FolderIdHintEdit"] : L["FolderDialog_FolderIdHint"])"
                                   Required="true"
@@ -28,12 +28,12 @@
                                   Validation="@(new Func<string, string?>(ValidateFolderId))"
                                   Class="mb-4" />
 
-                    <MudTextField @bind-Value="_label"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_label"
                                   Label="@L["FolderDialog_FolderLabel"]"
                                   HelperText="@L["FolderDialog_FolderLabelHint"]"
                                   Class="mb-4" />
 
-                    <MudTextField @bind-Value="_path"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_path"
                                   Label="@L["FolderDialog_FolderPath"]"
                                   HelperText="@L["FolderDialog_FolderPathHint"]"
                                   Required="true"
@@ -77,7 +77,7 @@
 
             @* ===== FILE VERSIONING TAB ===== *@
             <MudTabPanel Text="@L["FolderDialog_TabVersioning"]" Icon="@Icons.Material.Filled.History" Class="pa-4">
-                <MudSelect @bind-Value="_versioningType"
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_versioningType"
                            Label="@L["FolderDialog_VersioningType"]"
                            HelperText="@L["FolderDialog_VersioningTypeHint"]"
                            Class="mb-4">
@@ -90,12 +90,12 @@
 
                 @if (_versioningType != "none")
                 {
-                    <MudTextField @bind-Value="_versioningPath"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_versioningPath"
                                   Label="@L["FolderDialog_VersionsPath"]"
                                   HelperText="@L["FolderDialog_VersionsPathHint"]"
                                   Class="mb-4" />
 
-                    <MudNumericField @bind-Value="_cleanupIntervalS"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_cleanupIntervalS"
                                      Label="@L["FolderDialog_CleanupInterval"]"
                                      HelperText="@L["FolderDialog_CleanupIntervalHint"]"
                                      Min="0"
@@ -104,7 +104,7 @@
 
                 @if (_versioningType == "trashcan")
                 {
-                    <MudNumericField @bind-Value="_cleanoutDays"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_cleanoutDays"
                                      Label="@L["FolderDialog_CleanOutAfter"]"
                                      HelperText="@L["FolderDialog_CleanOutAfterHint"]"
                                      Min="0"
@@ -112,13 +112,13 @@
                 }
                 else if (_versioningType == "simple")
                 {
-                    <MudNumericField @bind-Value="_keepVersions"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_keepVersions"
                                      Label="@L["FolderDialog_KeepVersions"]"
                                      HelperText="@L["FolderDialog_KeepVersionsHint"]"
                                      Min="1"
                                      Class="mb-4" />
 
-                    <MudNumericField @bind-Value="_cleanoutDays"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_cleanoutDays"
                                      Label="@L["FolderDialog_CleanOutAfter"]"
                                      HelperText="@L["FolderDialog_CleanOutAfterHintSimple"]"
                                      Min="0"
@@ -126,7 +126,7 @@
                 }
                 else if (_versioningType == "staggered")
                 {
-                    <MudNumericField @bind-Value="_maxAgeDays"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_maxAgeDays"
                                      Label="@L["FolderDialog_MaxAge"]"
                                      HelperText="@L["FolderDialog_MaxAgeHint"]"
                                      Min="0"
@@ -134,7 +134,7 @@
                 }
                 else if (_versioningType == "external")
                 {
-                    <MudTextField @bind-Value="_externalCommand"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_externalCommand"
                                   Label="@L["FolderDialog_Command"]"
                                   HelperText="@L["FolderDialog_CommandHint"]"
                                   Class="mb-4" />
@@ -145,7 +145,7 @@
             <MudTabPanel Text="@L["FolderDialog_TabAdvanced"]" Icon="@Icons.Material.Filled.Settings" Class="pa-4">
                 @* Folder Type *@
                 <MudText Typo="Typo.subtitle2" Class="mb-2">@L["FolderDialog_FolderType"]</MudText>
-                <MudSelect @bind-Value="_folderType"
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_folderType"
                            Label="@L["FolderDialog_FolderType"]"
                            HelperText="@L["FolderDialog_FolderTypeHint"]"
                            Class="mb-4">
@@ -155,7 +155,7 @@
                     <MudSelectItem Value="@("receiveencrypted")">@L["FolderDialog_TypeReceiveEncrypted"]</MudSelectItem>
                 </MudSelect>
 
-                <MudSelect @bind-Value="_pullOrder"
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_pullOrder"
                            Label="@L["FolderDialog_PullOrder"]"
                            HelperText="@L["FolderDialog_PullOrderHint"]"
                            Disabled="@(_folderType == "sendonly")"
@@ -183,7 +183,7 @@
 
                 @if (_fsWatcherEnabled)
                 {
-                    <MudNumericField @bind-Value="_fsWatcherDelayS"
+                    <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_fsWatcherDelayS"
                                      Label="@L["FolderDialog_FsWatcherDelay"]"
                                      HelperText="@L["FolderDialog_FsWatcherDelayHint"]"
                                      Min="0.01"
@@ -191,7 +191,7 @@
                                      Class="mb-4" />
                 }
 
-                <MudNumericField @bind-Value="_rescanIntervalS"
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_rescanIntervalS"
                                  Label="@L["FolderDialog_RescanInterval"]"
                                  HelperText="@L["FolderDialog_RescanIntervalHint"]"
                                  Min="0"
@@ -204,13 +204,13 @@
 
                 <MudGrid>
                     <MudItem xs="8">
-                        <MudNumericField @bind-Value="_minDiskFreeValue"
+                        <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_minDiskFreeValue"
                                          Label="@L["FolderDialog_MinDiskFree"]"
                                          Min="0"
                                          Class="mb-4" />
                     </MudItem>
                     <MudItem xs="4">
-                        <MudSelect @bind-Value="_minDiskFreeUnit" Label="@L["FolderDialog_Unit"]" Class="mb-4">
+                        <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_minDiskFreeUnit" Label="@L["FolderDialog_Unit"]" Class="mb-4">
                             <MudSelectItem Value="@("%")">%</MudSelectItem>
                             <MudSelectItem Value="@("kB")">kB</MudSelectItem>
                             <MudSelectItem Value="@("MB")">MB</MudSelectItem>
@@ -247,13 +247,13 @@
                     @L["FolderDialog_AutoNormalizeHint"]
                 </MudText>
 
-                <MudNumericField @bind-Value="_maxConflicts"
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_maxConflicts"
                                  Label="@L["FolderDialog_MaxConflicts"]"
                                  HelperText="@L["FolderDialog_MaxConflictsHint"]"
                                  Min="-1"
                                  Class="mb-4" />
 
-                <MudNumericField @bind-Value="_maxConcurrentWrites"
+                <MudNumericField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_maxConcurrentWrites"
                                  Label="@L["FolderDialog_MaxConcurrentWrites"]"
                                  HelperText="@L["FolderDialog_MaxConcurrentWritesHint"]"
                                  Min="1"
@@ -276,8 +276,8 @@
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@L["FolderDialog_Cancel"]</MudButton>
-        <MudButton Color="Color.Primary"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["FolderDialog_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="Submit"
                    Disabled="@(!_isValid || _isSubmitting)">

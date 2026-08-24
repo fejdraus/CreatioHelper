@@ -39,7 +39,7 @@
             <DataAnnotationsValidator />
 
             <MudStack Spacing="3">
-                <MudTextField @bind-Value="_loginModel.Username"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_loginModel.Username"
                               Label="@L["Login_Username"]"
                               Variant="Variant.Outlined"
                               InputType="InputType.Text"
@@ -48,7 +48,7 @@
                               Disabled="@_isLoading"
                               Class="rounded-lg" />
 
-                <MudTextField @bind-Value="_loginModel.Password"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_loginModel.Password"
                               Label="@L["Login_Password"]"
                               Variant="Variant.Outlined"
                               InputType="@(_showPassword ? InputType.Text : InputType.Password)"
@@ -64,7 +64,7 @@
                            Variant="Variant.Filled"
                            Color="Color.Primary"
                            FullWidth="true"
-                           Size="Size.Large"
+                           Size="Size.Small"
                            Disabled="@_isLoading"
                            Class="mt-2">
                     @if (_isLoading)
@@ -88,13 +88,13 @@
         <MudExpansionPanels Elevation="0">
             <MudExpansionPanel Text="@L["Login_LoginWithApiKey"]" Dense="true">
                 <MudStack Spacing="3" Class="pb-3">
-                    <MudTextField @bind-Value="_apiKey"
+                    <MudTextField Margin="Margin.Dense" @bind-Value="_apiKey"
                                   Label="@L["Login_ApiKey"]"
                                   Variant="Variant.Outlined"
                                   InputType="InputType.Password"
                                   Disabled="@_isLoading" />
 
-                    <MudButton Variant="Variant.Outlined"
+                    <MudButton Size="Size.Small" Variant="Variant.Outlined"
                                Color="Color.Primary"
                                FullWidth="true"
                                OnClick="HandleApiKeyLogin"

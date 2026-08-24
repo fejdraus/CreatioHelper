@@ -18,7 +18,9 @@ public interface ISyncEventStore
         string? eventType,
         string? folderId,
         string? deviceId,
+        string? search = null,
         string? sort = null,
         string? dir = null,
+        string? filters = null,
         CancellationToken cancellationToken = default);
 }

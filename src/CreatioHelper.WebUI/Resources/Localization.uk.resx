@@ -4433,4 +4433,163 @@
   <data name="Common_Columns" xml:space="preserve">
     <value>Стовпці</value>
   </data>
+  <data name="MudDataGrid_Unsort" xml:space="preserve">
+    <value>Без сортування</value>
+  </data>
+  <data name="MudDataGrid_Sort" xml:space="preserve">
+    <value>Сортувати</value>
+  </data>
+  <data name="MudDataGrid_Hide" xml:space="preserve">
+    <value>Сховати</value>
+  </data>
+  <data name="MudDataGrid_ShowColumnOptions" xml:space="preserve">
+    <value>Параметри стовпця</value>
+  </data>
+  <data name="MudDataGrid_Columns" xml:space="preserve">
+    <value>Стовпці</value>
+  </data>
+  <data name="MudDataGrid_Column" xml:space="preserve">
+    <value>Стовпець</value>
+  </data>
+  <data name="MudDataGrid_Filter" xml:space="preserve">
+    <value>Фільтр</value>
+  </data>
+  <data name="MudDataGrid_Group" xml:space="preserve">
+    <value>Групувати</value>
+  </data>
+  <data name="MudDataGrid_Ungroup" xml:space="preserve">
+    <value>Розгрупувати</value>
+  </data>
+  <data name="MudDataGrid_Loading" xml:space="preserve">
+    <value>Завантаження…</value>
+  </data>
+  <data name="MudDataGrid_NoRecordsFound" xml:space="preserve">
+    <value>Записів не знайдено</value>
+  </data>
+  <data name="MudDataGrid_Apply" xml:space="preserve">
+    <value>Застосувати</value>
+  </data>
+  <data name="MudDataGrid_Cancel" xml:space="preserve">
+    <value>Скасувати</value>
+  </data>
+  <data name="MudDataGrid_Clear" xml:space="preserve">
+    <value>Очистити</value>
+  </data>
+  <data name="MudDataGrid_ClearFilter" xml:space="preserve">
+    <value>Очистити фільтр</value>
+  </data>
+  <data name="MudDataGrid_AddFilter" xml:space="preserve">
+    <value>Додати фільтр</value>
+  </data>
+  <data name="MudDataGrid_RemoveFilter" xml:space="preserve">
+    <value>Прибрати фільтр</value>
+  </data>
+  <data name="MudDataGrid_OpenFilters" xml:space="preserve">
+    <value>Відкрити фільтри</value>
+  </data>
+  <data name="MudDataGrid_Value" xml:space="preserve">
+    <value>Значення</value>
+  </data>
+  <data name="MudDataGrid_FilterValue" xml:space="preserve">
+    <value>Значення фільтра</value>
+  </data>
+  <data name="MudDataGrid_Operator" xml:space="preserve">
+    <value>Оператор</value>
+  </data>
+  <data name="MudDataGrid_Contains" xml:space="preserve">
+    <value>містить</value>
+  </data>
+  <data name="MudDataGrid_NotContains" xml:space="preserve">
+    <value>не містить</value>
+  </data>
+  <data name="MudDataGrid_Equals" xml:space="preserve">
+    <value>дорівнює</value>
+  </data>
+  <data name="MudDataGrid_NotEquals" xml:space="preserve">
+    <value>не дорівнює</value>
+  </data>
+  <data name="MudDataGrid_StartsWith" xml:space="preserve">
+    <value>починається з</value>
+  </data>
+  <data name="MudDataGrid_EndsWith" xml:space="preserve">
+    <value>закінчується на</value>
+  </data>
+  <data name="MudDataGrid_IsEmpty" xml:space="preserve">
+    <value>порожньо</value>
+  </data>
+  <data name="MudDataGrid_IsNotEmpty" xml:space="preserve">
+    <value>не порожньо</value>
+  </data>
+  <data name="MudDataGrid_Is" xml:space="preserve">
+    <value>дорівнює</value>
+  </data>
+  <data name="MudDataGrid_IsNot" xml:space="preserve">
+    <value>не дорівнює</value>
+  </data>
+  <data name="MudDataGrid_IsAfter" xml:space="preserve">
+    <value>після</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrAfter" xml:space="preserve">
+    <value>не раніше</value>
+  </data>
+  <data name="MudDataGrid_IsBefore" xml:space="preserve">
+    <value>до</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrBefore" xml:space="preserve">
+    <value>не пізніше</value>
+  </data>
+  <data name="EventType_IndexUpdated" xml:space="preserve">
+    <value>Індекс оновлено</value>
+  </data>
+  <data name="EventType_DeviceDiscovered" xml:space="preserve">
+    <value>Знайдено пристрій</value>
+  </data>
+  <data name="EventType_Rejected" xml:space="preserve">
+    <value>Відхилено</value>
+  </data>
+  <data name="EventType_Summary" xml:space="preserve">
+    <value>Зведення папки</value>
+  </data>
+  <data name="EventType_AddressesChanged" xml:space="preserve">
+    <value>Адреси змінено</value>
+  </data>
+  <data name="EventType_LoginAttempt" xml:space="preserve">
+    <value>Спроба входу</value>
+  </data>
+  <data name="EventType_Failure" xml:space="preserve">
+    <value>Збій</value>
+  </data>
+  <data name="EventType_Pending" xml:space="preserve">
+    <value>Очікують</value>
+  </data>
+  <data name="EventType_ClusterConfig" xml:space="preserve">
+    <value>Конфіг кластера</value>
+  </data>
+  <data name="EventDesc_FolderScan" xml:space="preserve">
+    <value>Сканування «{0}» завершено: {1} файлів</value>
+  </data>
+  <data name="EventDesc_IndexReceived" xml:space="preserve">
+    <value>Отримано індекс від {0}: {1} файлів</value>
+  </data>
+  <data name="EventDesc_IndexUpdatedLocal" xml:space="preserve">
+    <value>Локальний індекс оновлено для «{0}»</value>
+  </data>
+  <data name="Notify_SyncCompleteTitle" xml:space="preserve">
+    <value>Синхронізацію завершено</value>
+  </data>
+  <data name="Notify_SyncCompleteBody" xml:space="preserve">
+    <value>Папку '{0}' синхронізовано</value>
+  </data>
+  <data name="Notify_DeviceConnectTitle" xml:space="preserve">
+    <value>Пристрій підключено</value>
+  </data>
+  <data name="Notify_ErrorTitle" xml:space="preserve">
+    <value>Помилка синхронізації</value>
+  </data>
+  <data name="Notify_PendingDeviceTitle" xml:space="preserve">
+    <value>Новий пристрій</value>
+  </data>
+  <data name="Notify_PendingDeviceBody" xml:space="preserve">
+    <value>Пристрій запитує підключення</value>
+  </data>
 </root>

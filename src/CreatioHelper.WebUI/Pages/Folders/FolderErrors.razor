@@ -19,7 +19,7 @@
                 <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" Color="Color.Error" />
                 @L["FolderErrors_Title"]
             </MudText>
-            <MudButton Variant="Variant.Filled"
+            <MudButton Size="Size.Small" Variant="Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Refresh"
                        OnClick="@LoadDataAsync">
@@ -79,7 +79,7 @@
             @L["FolderErrors_HelpText"]
         </MudText>
 
-        <MudButton Variant="Variant.Text"
+        <MudButton Size="Size.Small" Variant="Variant.Text"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Sync"
                    OnClick="@RescanFolder"

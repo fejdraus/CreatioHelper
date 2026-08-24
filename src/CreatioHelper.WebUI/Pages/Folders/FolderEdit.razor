@@ -30,25 +30,25 @@
                 <!-- General Settings -->
                 <MudText Typo="Typo.h6" Class="mb-3">@L["FolderEdit_General"]</MudText>
 
-                <MudTextField @bind-Value="_folder.Label"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_folder.Label"
                               Label="@L["FolderEdit_FolderLabel"]"
                               HelperText="@L["FolderEdit_FolderLabelDesc"]"
-                              Variant="Variant.Filled"
+                              Variant="Variant.Outlined"
                               Class="mb-3" />
 
-                <MudTextField @bind-Value="_folder.Path"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_folder.Path"
                               Label="@L["FolderEdit_FolderPath"]"
                               HelperText="@L["FolderEdit_FolderPathDesc"]"
-                              Variant="Variant.Filled"
+                              Variant="Variant.Outlined"
                               Required="true"
                               RequiredError="@L["FolderEdit_PathRequired"]"
                               Class="mb-3"
                               Disabled="true" />
 
-                <MudSelect @bind-Value="_folder.Type"
+                <MudSelect Margin="Margin.Dense" @bind-Value="_folder.Type"
                            Label="@L["FolderEdit_FolderType"]"
                            HelperText="@L["FolderEdit_FolderTypeDesc"]"
-                           Variant="Variant.Filled"
+                           Variant="Variant.Outlined"
                            Class="mb-3">
                     <MudSelectItem Value="@("sendreceive")">@L["FolderEdit_Type_SendReceive"]</MudSelectItem>
                     <MudSelectItem Value="@("sendonly")">@L["FolderEdit_Type_SendOnly"]</MudSelectItem>
@@ -66,18 +66,18 @@
                            Color="Color.Primary"
                            Class="mb-3" />
 
-                <MudNumericField @bind-Value="_folder.FsWatcherDelayS"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_folder.FsWatcherDelayS"
                                  Label="@L["FolderEdit_FsWatcherDelay"]"
                                  HelperText="@L["FolderEdit_FsWatcherDelayDesc"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="0.1"
                                  Max="300"
                                  Class="mb-3"
                                  Disabled="@(!_folder.FsWatcherEnabled)" />
 
-                <MudNumericField @bind-Value="_folder.RescanIntervalS"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_folder.RescanIntervalS"
                                  Label="@L["FolderEdit_RescanInterval"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="0"
                                  Max="86400"
                                  Class="mb-3"
@@ -103,10 +103,10 @@
                            Color="Color.Primary"
                            Class="mb-3" />
 
-                <MudSelect @bind-Value="_folder.Order"
+                <MudSelect Margin="Margin.Dense" @bind-Value="_folder.Order"
                            Label="@L["FolderEdit_PullOrder"]"
                            HelperText="@L["FolderEdit_PullOrderDesc"]"
-                           Variant="Variant.Filled"
+                           Variant="Variant.Outlined"
                            Class="mb-3">
                     <MudSelectItem Value="@("random")">@L["FolderEdit_PullOrder_Random"]</MudSelectItem>
                     <MudSelectItem Value="@("alphabetic")">@L["FolderEdit_PullOrder_Alphabetic"]</MudSelectItem>
@@ -116,9 +116,9 @@
                     <MudSelectItem Value="@("newestFirst")">@L["FolderEdit_PullOrder_NewestFirst"]</MudSelectItem>
                 </MudSelect>
 
-                <MudNumericField @bind-Value="_folder.MaxConflicts"
+                <MudNumericField Margin="Margin.Dense" @bind-Value="_folder.MaxConflicts"
                                  Label="@L["FolderEdit_MaxConflicts"]"
-                                 Variant="Variant.Filled"
+                                 Variant="Variant.Outlined"
                                  Min="-1"
                                  Max="1000"
                                  Class="mb-3"
@@ -132,9 +132,9 @@
                     @L["FolderEdit_VersioningDesc"]
                 </MudText>
 
-                <MudSelect @bind-Value="_versioningType"
+                <MudSelect Margin="Margin.Dense" @bind-Value="_versioningType"
                            Label="@L["FolderEdit_VersioningType"]"
-                           Variant="Variant.Filled"
+                           Variant="Variant.Outlined"
                            Class="mb-3"
                            HelperText="@L["FolderEdit_VersioningTypeDesc"]">
                     <MudSelectItem Value="@("")">@L["FolderEdit_Versioning_None"]</MudSelectItem>
@@ -147,9 +147,9 @@
                 @if (!string.IsNullOrEmpty(_versioningType))
                 {
                     <!-- Common versioning options -->
-                    <MudTextField @bind-Value="_versioningPath"
+                    <MudTextField Margin="Margin.Dense" @bind-Value="_versioningPath"
                                   Label="@L["FolderEdit_StaggeredPath"]"
-                                  Variant="Variant.Filled"
+                                  Variant="Variant.Outlined"
                                   Class="mb-3"
                                   HelperText="@L["FolderEdit_StaggeredPathDesc"]" />
 
@@ -159,9 +159,9 @@
                             <MudAlert Severity="Severity.Info" Class="mb-3">
                                 @L["FolderEdit_TrashcanInfo"]
                             </MudAlert>
-                            <MudNumericField @bind-Value="_trashcanCleanoutDays"
+                            <MudNumericField Margin="Margin.Dense" @bind-Value="_trashcanCleanoutDays"
                                              Label="@L["FolderEdit_TrashcanDays"]"
-                                             Variant="Variant.Filled"
+                                             Variant="Variant.Outlined"
                                              Min="0"
                                              Max="365"
                                              Class="mb-3"
@@ -172,16 +172,16 @@
                             <MudAlert Severity="Severity.Info" Class="mb-3">
                                 @L["FolderEdit_SimpleInfo"]
                             </MudAlert>
-                            <MudNumericField @bind-Value="_simpleKeep"
+                            <MudNumericField Margin="Margin.Dense" @bind-Value="_simpleKeep"
                                              Label="@L["FolderEdit_SimpleKeep"]"
-                                             Variant="Variant.Filled"
+                                             Variant="Variant.Outlined"
                                              Min="1"
                                              Max="100"
                                              Class="mb-3"
                                              HelperText="@L["FolderEdit_SimpleKeepDesc"]" />
-                            <MudNumericField @bind-Value="_simpleCleanoutDays"
+                            <MudNumericField Margin="Margin.Dense" @bind-Value="_simpleCleanoutDays"
                                              Label="@L["FolderEdit_SimpleCleanoutDays"]"
-                                             Variant="Variant.Filled"
+                                             Variant="Variant.Outlined"
                                              Min="0"
                                              Max="365"
                                              Class="mb-3"
@@ -192,9 +192,9 @@
                             <MudAlert Severity="Severity.Info" Class="mb-3">
                                 @L["FolderEdit_StaggeredInfo"]
                             </MudAlert>
-                            <MudNumericField @bind-Value="_staggeredMaxAgeDays"
+                            <MudNumericField Margin="Margin.Dense" @bind-Value="_staggeredMaxAgeDays"
                                              Label="@L["FolderEdit_StaggeredMaxAge"]"
-                                             Variant="Variant.Filled"
+                                             Variant="Variant.Outlined"
                                              Min="1"
                                              Max="3650"
                                              Class="mb-3"
@@ -205,9 +205,9 @@
                             <MudAlert Severity="Severity.Warning" Class="mb-3">
                                 @L["FolderEdit_ExternalInfo"]
                             </MudAlert>
-                            <MudTextField @bind-Value="_externalCommand"
+                            <MudTextField Margin="Margin.Dense" @bind-Value="_externalCommand"
                                           Label="@L["FolderEdit_ExternalCommand"]"
-                                          Variant="Variant.Filled"
+                                          Variant="Variant.Outlined"
                                           Required="@(_versioningType == "external")"
                                           RequiredError="@L["FolderEdit_ExternalCommandRequired"]"
                                           Class="mb-3"
@@ -220,7 +220,7 @@
 
                 <!-- Actions -->
                 <div class="d-flex gap-3">
-                    <MudButton Variant="Variant.Filled"
+                    <MudButton Size="Size.Small" Variant="Variant.Filled"
                                Color="Color.Primary"
                                OnClick="@SaveAsync"
                                Disabled="@(!_isValid || _saving)">
@@ -230,7 +230,7 @@
                         }
                         @L["FolderEdit_Save"]
                     </MudButton>
-                    <MudButton Variant="Variant.Filled"
+                    <MudButton Size="Size.Small" Variant="Variant.Filled"
                                Color="Color.Default"
                                OnClick="@Cancel">
                         @L["FolderEdit_Cancel"]
@@ -238,7 +238,7 @@
 
                     <MudSpacer />
 
-                    <MudButton Variant="Variant.Text"
+                    <MudButton Size="Size.Small" Variant="Variant.Text"
                                Color="Color.Warning"
                                OnClick="@(() => _folder.Paused = !_folder.Paused)">
                         @(_folder.Paused ? L["Action_Resume"] : L["Action_Pause"])

@@ -1,4 +1,3 @@
-using Blazored.LocalStorage;
 using Microsoft.JSInterop;
 
 namespace CreatioHelper.WebUI.Services;
@@ -28,7 +27,7 @@ public interface IThemeService
 public class ThemeService : IThemeService
 {
     private const string ThemeModeKey = "themeMode";
-    private readonly ILocalStorageService _localStorage;
+    private readonly IBrowserStorageService _localStorage;
     private readonly IJSRuntime _jsRuntime;
     private ThemeMode _currentMode = ThemeMode.Dark;
     private bool _isDarkMode = true;
@@ -38,7 +37,7 @@ public class ThemeService : IThemeService
     public ThemeMode CurrentMode => _currentMode;
     public event Action<bool>? OnThemeChanged;
 
-    public ThemeService(ILocalStorageService localStorage, IJSRuntime jsRuntime)
+    public ThemeService(IBrowserStorageService localStorage, IJSRuntime jsRuntime)
     {
         _localStorage = localStorage;
         _jsRuntime = jsRuntime;
@@ -128,8 +127,7 @@ public class ThemeService : IThemeService
     {
         try
         {
-            return await _jsRuntime.InvokeAsync<bool>("eval",
-                "window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches");
+            return await _jsRuntime.InvokeAsync<bool>("creatioBrowser.prefersDarkColorScheme");
         }
         catch
         {

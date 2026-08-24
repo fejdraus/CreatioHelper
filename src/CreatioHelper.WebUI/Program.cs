@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using System.Globalization;
-using Blazored.LocalStorage;
 using CreatioHelper.WebUI;
 using CreatioHelper.WebUI.Services;
 using Microsoft.AspNetCore.Components.Web;
@@ -38,12 +37,18 @@ builder.Services.AddMudServices(config =>
     config.SnackbarConfiguration.SnackbarVariant = Variant.Filled;
 });
 
-// Blazored LocalStorage for settings persistence
-builder.Services.AddBlazoredLocalStorage();
+// Custom MudBlazor translations (e.g. DataGrid column menu)
+builder.Services.AddScoped<MudBlazor.MudLocalizer, CreatioHelper.WebUI.MudLocalization.CreatioMudLocalizer>();
+
+// Browser localStorage access wrapped in a first-party service
+builder.Services.AddScoped<IBrowserStorageService, BrowserStorageService>();
+builder.Services.AddScoped<IUserPreferences, UserPreferencesService>();
 
 // Application services
 builder.Services.AddScoped<CreatioHelper.WebUI.Services.IConfiguration, SignalRConfiguration>();
 builder.Services.AddScoped<IApiClient, ApiClient>();
+builder.Services.AddScoped<IFileDownloadService, FileDownloadService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISignalRService, SignalRService>();
 builder.Services.AddScoped<IThemeService, ThemeService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -55,6 +60,8 @@ var host = builder.Build();
 
 // Initialize localization from saved settings before app runs
 await SetCultureFromStorageAsync(host.Services);
+
+await host.Services.GetRequiredService<IUserPreferences>().EnsureLoadedAsync();
 
 await host.Services.GetRequiredService<IAuthService>().RestoreSessionAsync();
 

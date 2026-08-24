@@ -17,7 +17,7 @@
             @* ===== GENERAL TAB ===== *@
             <MudTabPanel Text="@L["DeviceDialog_TabGeneral"]" Icon="@Icons.Material.Filled.Info" Class="pa-4">
                 <MudForm @ref="_form" @bind-IsValid="@_isValid">
-                    <MudTextField @bind-Value="_deviceId"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_deviceId"
                                   Label="@L["DeviceDialog_DeviceId"]"
                                   HelperText="@(IsEditMode ? L["DeviceDialog_DeviceIdCannotChange"] : L["DeviceDialog_DeviceIdHelper"])"
                                   Required="true"
@@ -28,12 +28,12 @@
                                   Class="mb-4"
                                   Style="font-family: monospace;" />
 
-                    <MudTextField @bind-Value="_name"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_name"
                                   Label="@L["DeviceDialog_DeviceName"]"
                                   HelperText="@L["DeviceDialog_DeviceNameHelper"]"
                                   Class="mb-4" />
 
-                    <MudTextField @bind-Value="_addressesText"
+                    <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_addressesText"
                                   Label="@L["DeviceDialog_Addresses"]"
                                   HelperText="@L["DeviceDialog_AddressesHelper"]"
                                   Placeholder="dynamic"
@@ -72,7 +72,7 @@
 
             @* ===== ADVANCED TAB ===== *@
             <MudTabPanel Text="@L["DeviceDialog_TabAdvanced"]" Icon="@Icons.Material.Filled.Settings" Class="pa-4">
-                <MudSelect @bind-Value="_compression"
+                <MudSelect Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_compression"
                            Label="@L["DeviceDialog_Compression"]"
                            HelperText="@L["DeviceDialog_CompressionHelper"]"
                            Class="mb-4">
@@ -114,7 +114,7 @@
 
                 <MudDivider Class="my-4" />
 
-                <MudTextField @bind-Value="_allowedNetworksText"
+                <MudTextField Margin="Margin.Dense" Variant="Variant.Outlined" @bind-Value="_allowedNetworksText"
                               Label="@L["DeviceDialog_AllowedNetworks"]"
                               HelperText="@L["DeviceDialog_AllowedNetworksHelper"]"
                               Placeholder="192.168.0.0/16, 10.0.0.0/8"
@@ -123,8 +123,8 @@
         </MudTabs>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">@L["DeviceDialog_Cancel"]</MudButton>
-        <MudButton Color="Color.Primary"
+        <MudButton Size="Size.Small" OnClick="Cancel">@L["DeviceDialog_Cancel"]</MudButton>
+        <MudButton Size="Size.Small" Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="Submit"
                    Disabled="@(!_isValid || _isSubmitting)">

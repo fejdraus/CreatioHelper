@@ -4541,4 +4541,163 @@
   <data name="Common_Columns" xml:space="preserve">
     <value>Columns</value>
   </data>
+  <data name="MudDataGrid_Unsort" xml:space="preserve">
+    <value>Unsort</value>
+  </data>
+  <data name="MudDataGrid_Sort" xml:space="preserve">
+    <value>Sort</value>
+  </data>
+  <data name="MudDataGrid_Hide" xml:space="preserve">
+    <value>Hide</value>
+  </data>
+  <data name="MudDataGrid_ShowColumnOptions" xml:space="preserve">
+    <value>Column options</value>
+  </data>
+  <data name="MudDataGrid_Columns" xml:space="preserve">
+    <value>Columns</value>
+  </data>
+  <data name="MudDataGrid_Column" xml:space="preserve">
+    <value>Column</value>
+  </data>
+  <data name="MudDataGrid_Filter" xml:space="preserve">
+    <value>Filter</value>
+  </data>
+  <data name="MudDataGrid_Group" xml:space="preserve">
+    <value>Group</value>
+  </data>
+  <data name="MudDataGrid_Ungroup" xml:space="preserve">
+    <value>Ungroup</value>
+  </data>
+  <data name="MudDataGrid_Loading" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="MudDataGrid_NoRecordsFound" xml:space="preserve">
+    <value>No records found</value>
+  </data>
+  <data name="MudDataGrid_Apply" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="MudDataGrid_Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="MudDataGrid_Clear" xml:space="preserve">
+    <value>Clear</value>
+  </data>
+  <data name="MudDataGrid_ClearFilter" xml:space="preserve">
+    <value>Clear filter</value>
+  </data>
+  <data name="MudDataGrid_AddFilter" xml:space="preserve">
+    <value>Add filter</value>
+  </data>
+  <data name="MudDataGrid_RemoveFilter" xml:space="preserve">
+    <value>Remove filter</value>
+  </data>
+  <data name="MudDataGrid_OpenFilters" xml:space="preserve">
+    <value>Open filters</value>
+  </data>
+  <data name="MudDataGrid_Value" xml:space="preserve">
+    <value>Value</value>
+  </data>
+  <data name="MudDataGrid_FilterValue" xml:space="preserve">
+    <value>Filter value</value>
+  </data>
+  <data name="MudDataGrid_Operator" xml:space="preserve">
+    <value>Operator</value>
+  </data>
+  <data name="MudDataGrid_Contains" xml:space="preserve">
+    <value>contains</value>
+  </data>
+  <data name="MudDataGrid_NotContains" xml:space="preserve">
+    <value>not contains</value>
+  </data>
+  <data name="MudDataGrid_Equals" xml:space="preserve">
+    <value>equals</value>
+  </data>
+  <data name="MudDataGrid_NotEquals" xml:space="preserve">
+    <value>not equals</value>
+  </data>
+  <data name="MudDataGrid_StartsWith" xml:space="preserve">
+    <value>starts with</value>
+  </data>
+  <data name="MudDataGrid_EndsWith" xml:space="preserve">
+    <value>ends with</value>
+  </data>
+  <data name="MudDataGrid_IsEmpty" xml:space="preserve">
+    <value>is empty</value>
+  </data>
+  <data name="MudDataGrid_IsNotEmpty" xml:space="preserve">
+    <value>is not empty</value>
+  </data>
+  <data name="MudDataGrid_Is" xml:space="preserve">
+    <value>is</value>
+  </data>
+  <data name="MudDataGrid_IsNot" xml:space="preserve">
+    <value>is not</value>
+  </data>
+  <data name="MudDataGrid_IsAfter" xml:space="preserve">
+    <value>is after</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrAfter" xml:space="preserve">
+    <value>is on or after</value>
+  </data>
+  <data name="MudDataGrid_IsBefore" xml:space="preserve">
+    <value>is before</value>
+  </data>
+  <data name="MudDataGrid_IsOnOrBefore" xml:space="preserve">
+    <value>is on or before</value>
+  </data>
+  <data name="EventType_IndexUpdated" xml:space="preserve">
+    <value>Index updated</value>
+  </data>
+  <data name="EventType_DeviceDiscovered" xml:space="preserve">
+    <value>Device found</value>
+  </data>
+  <data name="EventType_Rejected" xml:space="preserve">
+    <value>Rejected</value>
+  </data>
+  <data name="EventType_Summary" xml:space="preserve">
+    <value>Folder summary</value>
+  </data>
+  <data name="EventType_AddressesChanged" xml:space="preserve">
+    <value>Addresses changed</value>
+  </data>
+  <data name="EventType_LoginAttempt" xml:space="preserve">
+    <value>Login attempt</value>
+  </data>
+  <data name="EventType_Failure" xml:space="preserve">
+    <value>Failure</value>
+  </data>
+  <data name="EventType_Pending" xml:space="preserve">
+    <value>Pending</value>
+  </data>
+  <data name="EventType_ClusterConfig" xml:space="preserve">
+    <value>Cluster config</value>
+  </data>
+  <data name="EventDesc_FolderScan" xml:space="preserve">
+    <value>Scan of '{0}' completed: {1} files</value>
+  </data>
+  <data name="EventDesc_IndexReceived" xml:space="preserve">
+    <value>Received index from {0}: {1} files</value>
+  </data>
+  <data name="EventDesc_IndexUpdatedLocal" xml:space="preserve">
+    <value>Local index updated for '{0}'</value>
+  </data>
+  <data name="Notify_SyncCompleteTitle" xml:space="preserve">
+    <value>Sync complete</value>
+  </data>
+  <data name="Notify_SyncCompleteBody" xml:space="preserve">
+    <value>Folder '{0}' finished syncing</value>
+  </data>
+  <data name="Notify_DeviceConnectTitle" xml:space="preserve">
+    <value>Device connected</value>
+  </data>
+  <data name="Notify_ErrorTitle" xml:space="preserve">
+    <value>Sync error</value>
+  </data>
+  <data name="Notify_PendingDeviceTitle" xml:space="preserve">
+    <value>New device</value>
+  </data>
+  <data name="Notify_PendingDeviceBody" xml:space="preserve">
+    <value>A device is requesting to connect</value>
+  </data>
 </root>

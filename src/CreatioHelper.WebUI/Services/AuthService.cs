@@ -1,6 +1,5 @@
 using System.Net.Http.Json;
 using System.Net.Http.Headers;
-using Blazored.LocalStorage;
 
 namespace CreatioHelper.WebUI.Services;
 
@@ -34,7 +33,7 @@ public class AuthService : IAuthService
     private const string RoleKey = "userRole";
 
     private readonly HttpClient _httpClient;
-    private readonly ILocalStorageService _localStorage;
+    private readonly IBrowserStorageService _localStorage;
     private readonly ILogger<AuthService> _logger;
 
     private bool _isAuthenticated;
@@ -52,7 +51,7 @@ public class AuthService : IAuthService
 
     public event Action<bool>? OnAuthStateChanged;
 
-    public AuthService(HttpClient httpClient, ILocalStorageService localStorage, ILogger<AuthService> logger)
+    public AuthService(HttpClient httpClient, IBrowserStorageService localStorage, ILogger<AuthService> logger)
     {
         _httpClient = httpClient;
         _localStorage = localStorage;

@@ -29,7 +29,7 @@
                     @* Quick Add Pattern Row *@
                     <MudGrid Class="mb-4">
                         <MudItem xs="10">
-                            <MudTextField @bind-Value="_newPattern"
+                            <MudTextField Margin="Margin.Dense" @bind-Value="_newPattern"
                                           Label="Add Pattern"
                                           Placeholder="*.tmp, .git, **/node_modules"
                                           Variant="Variant.Outlined"
@@ -39,7 +39,7 @@
                                           AdornmentIcon="@Icons.Material.Filled.Add" />
                         </MudItem>
                         <MudItem xs="2" Class="d-flex align-center">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        OnClick="AddPattern"
                                        Disabled="@string.IsNullOrWhiteSpace(_newPattern)"
@@ -127,7 +127,7 @@
 
                     @if (_showRawEditor)
                     {
-                        <MudTextField @bind-Value="_ignoreText"
+                        <MudTextField Margin="Margin.Dense" @bind-Value="_ignoreText"
                                       Label="Raw Ignore Patterns"
                                       Variant="Variant.Outlined"
                                       Lines="10"
@@ -153,7 +153,7 @@
                     <MudText Typo="Typo.subtitle2" Class="mb-2">Test Pattern Match</MudText>
                     <MudGrid Class="mb-4">
                         <MudItem xs="10">
-                            <MudTextField @bind-Value="_testPath"
+                            <MudTextField Margin="Margin.Dense" @bind-Value="_testPath"
                                           Label="Test File Path"
                                           Placeholder="path/to/file.tmp"
                                           Variant="Variant.Outlined"
@@ -163,7 +163,7 @@
                                           AdornmentIcon="@Icons.Material.Filled.Search" />
                         </MudItem>
                         <MudItem xs="2" Class="d-flex align-center">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        OnClick="TestPattern"
                                        Disabled="@string.IsNullOrWhiteSpace(_testPath)"
@@ -345,8 +345,8 @@
         }
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
-        <MudButton Color="Color.Primary"
+        <MudButton Size="Size.Small" OnClick="Cancel">Cancel</MudButton>
+        <MudButton Size="Size.Small" Color="Color.Primary"
                    Variant="Variant.Filled"
                    OnClick="Save"
                    Disabled="@(_isLoading || _isSaving)">

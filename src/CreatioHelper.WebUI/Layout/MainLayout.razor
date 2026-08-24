@@ -9,6 +9,8 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
+@inject IUserPreferences Prefs
+@inject INotificationService Notifications
 
 <MudLayout Class="@(_isDarkMode ? "theme-dark" : "theme-light")">
     <MudAppBar Elevation="1">
@@ -256,7 +258,42 @@
     {
         State.AddEvent(evt);
         UpdateSyncStatus();
+        _ = MaybeNotifyAsync(evt);
         InvokeAsync(StateHasChanged);
+    }
+
+    private async Task MaybeNotifyAsync(SyncEvent evt)
+    {
+        string? title = null;
+        string body = string.Empty;
+
+        if (evt.Type == EventType.StateChanged
+            && string.Equals(evt.To, "idle", StringComparison.OrdinalIgnoreCase)
+            && Prefs.NotifyOnSyncComplete)
+        {
+            title = L["Notify_SyncCompleteTitle"];
+            body = L["Notify_SyncCompleteBody", evt.FolderId ?? string.Empty];
+        }
+        else if (evt.Type == EventType.DeviceConnected && Prefs.NotifyOnDeviceConnect)
+        {
+            title = L["Notify_DeviceConnectTitle"];
+            body = evt.Summary;
+        }
+        else if ((evt.Type == EventType.Failure || evt.Type == EventType.FolderErrors) && Prefs.NotifyOnError)
+        {
+            title = L["Notify_ErrorTitle"];
+            body = string.IsNullOrEmpty(evt.Error) ? evt.Summary : evt.Error;
+        }
+        else if (evt.Type == EventType.PendingDevicesChanged && Prefs.NotifyOnPendingDevice)
+        {
+            title = L["Notify_PendingDeviceTitle"];
+            body = L["Notify_PendingDeviceBody"];
+        }
+
+        if (title != null)
+        {
+            await Notifications.ShowAsync(title, body, evt.Type.ToString());
+        }
     }
 
     private void OnConnectionChanged(ConnectionInfo info)

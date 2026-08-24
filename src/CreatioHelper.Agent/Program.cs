@@ -11,6 +11,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.Security.Cryptography;
 using System.Text;
 using Serilog;
+using Serilog.Sinks.Graylog;
 using Microsoft.AspNetCore.Authorization;
 
 ThreadPool.GetMinThreads(out _, out var minCompletionPortThreads);
@@ -34,6 +35,28 @@ builder.Host.UseSerilog((context, configuration) =>
         .Enrich.With(new CreatioHelper.Agent.Logging.SensitiveQueryStringEnricher())
         .WriteTo.Sink(new CreatioHelper.Agent.Logging.SqliteLogSink(
             CreatioHelper.Agent.Logging.SystemLogStore.DatabasePath));
+
+    var graylog = context.Configuration.GetSection("Graylog");
+    if (graylog.GetValue<bool>("Enabled") && !string.IsNullOrWhiteSpace(graylog["Host"]))
+    {
+        var transport = Enum.TryParse<Serilog.Sinks.Graylog.Core.Transport.TransportType>(
+            graylog["TransportType"], true, out var parsedTransport)
+            ? parsedTransport
+            : Serilog.Sinks.Graylog.Core.Transport.TransportType.Udp;
+
+        var minimumLevel = Enum.TryParse<Serilog.Events.LogEventLevel>(
+            graylog["MinimumLevel"], true, out var parsedLevel)
+            ? parsedLevel
+            : Serilog.Events.LogEventLevel.Information;
+
+        configuration.WriteTo.Graylog(new Serilog.Sinks.Graylog.GraylogSinkOptions
+        {
+            HostnameOrAddress = graylog["Host"],
+            Port = graylog.GetValue<int?>("Port") ?? 12201,
+            TransportType = transport,
+            MinimumLogEventLevel = minimumLevel
+        });
+    }
 });
 
 var appInsightsConnectionString = builder.Configuration["ApplicationInsights:ConnectionString"]

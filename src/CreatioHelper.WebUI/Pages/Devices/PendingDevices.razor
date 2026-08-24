@@ -26,7 +26,7 @@
 
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["PendingDevices_Title"]</MudText>
-    <MudButton Variant="Variant.Filled"
+    <MudButton Size="Size.Small" Variant="Variant.Filled"
                Color="Color.Primary"
                StartIcon="@Icons.Material.Filled.Refresh"
                OnClick="LoadPendingDevicesAsync"
@@ -62,9 +62,9 @@
         <MudGrid>
             <MudItem xs="12" md="6">
                 <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AutoAcceptDefaultFolders"]</MudText>
-                <MudTextField @bind-Value="_defaultFolderPath"
+                <MudTextField Margin="Margin.Dense" @bind-Value="_defaultFolderPath"
                               Placeholder="@L["PendingDevices_AutoAcceptDefaultFoldersDesc"]"
-                              Variant="Variant.Filled"
+                              Variant="Variant.Outlined"
                               Adornment="Adornment.Start"
                               AdornmentIcon="@Icons.Material.Filled.Folder"
                               HelperText="@L["PendingDevices_AutoAcceptAllowListDesc"]"
@@ -130,7 +130,7 @@ else if (_pendingDevices.Length == 0)
         <MudText Color="Color.Secondary" Class="mb-4">
             @L["PendingDevices_NoHistory"]
         </MudText>
-        <MudButton Variant="Variant.Filled"
+        <MudButton Size="Size.Small" Variant="Variant.Filled"
                    Color="Color.Primary"
                    StartIcon="@Icons.Material.Filled.Devices"
                    Href="/devices">
@@ -262,7 +262,7 @@ else
                     <MudText Typo="Typo.subtitle2" Class="mb-2">@L["PendingDevices_AcceptDevice"]</MudText>
                     <MudGrid>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Success"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.Check"
@@ -275,7 +275,7 @@ else
                             </MudText>
                         </MudItem>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Info"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.AutoAwesome"
@@ -288,7 +288,7 @@ else
                             </MudText>
                         </MudItem>
                         <MudItem xs="12" sm="6" md="4">
-                            <MudButton Variant="Variant.Filled"
+                            <MudButton Size="Size.Small" Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        FullWidth="true"
                                        StartIcon="@Icons.Material.Filled.FolderShared"

@@ -5,7 +5,7 @@
 @inject NavigationManager Navigation
 @inject IStringLocalizer<Localization> L
 @inject IErrorMessageHelper ErrorHelper
-@inject IJSRuntime JS
+@inject IFileDownloadService DownloadService
 @implements IDisposable
 
 <PageTitle>@L["Events_Title"] - CreatioHelper Agent</PageTitle>
@@ -18,102 +18,45 @@
         overflow: hidden;
     }
 
-    .event-viewer-container {
-        display: flex;
-        flex-direction: column;
+    .events-fill .mud-table {
         flex: 1 1 auto;
         min-height: 0;
-        position: relative;
-    }
-
-    .event-grid-header {
-        display: grid;
-        gap: 8px;
-        align-items: center;
-        padding: 8px 12px;
-        border-bottom: 1px solid var(--mud-palette-divider);
-        background: var(--mud-palette-surface);
-        font-weight: 600;
-        font-size: 0.8125rem;
-    }
-
-    .event-grid-header .col-sortable {
-        cursor: pointer;
-        user-select: none;
         display: flex;
-        align-items: center;
-        gap: 4px;
+        flex-direction: column;
     }
 
-    .event-grid-header .col-sortable:hover {
-        color: var(--mud-palette-primary);
-    }
-
-    .event-viewer {
+    .events-fill .mud-table .mud-table-container {
         flex: 1 1 auto;
         min-height: 0;
         overflow-y: auto;
-    }
-
-    .event-row {
-        display: grid;
-        gap: 8px;
-        align-items: center;
-        padding: 6px 12px;
-        border-bottom: 1px solid var(--mud-palette-lines-default);
-    }
-
-    .event-row:hover {
-        background: var(--mud-palette-action-default-hover);
     }
 
     .event-details {
         overflow-wrap: anywhere;
     }
 
-    .event-loadmore {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px;
-        border-top: 1px solid var(--mud-palette-divider);
+    .events-fill .mud-data-grid .mud-toolbar {
+        min-height: 36px;
+        height: 36px;
     }
 
-    .event-empty-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        pointer-events: none;
+    .events-fill .mud-data-grid .mud-toolbar .mud-toolbar-content {
+        height: 36px;
+        min-height: 36px;
     }
 </style>
 
 <div class="events-fill">
 <div class="d-flex align-center mb-4">
     <MudText Typo="Typo.h4" Class="flex-grow-1">@L["Events_Title"]</MudText>
-    <div class="d-flex align-center gap-2 gradient-controls">
-        <MudMenu Icon="@Icons.Material.Filled.ViewColumn" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight" Label="@L["Common_Columns"]">
-            @foreach (var col in _columns)
-            {
-                <MudMenuItem OnClick="@(() => ToggleColumn(col.Key))">
-                    <div class="d-flex align-center gap-2">
-                        <MudIcon Size="Size.Small"
-                                 Icon="@(col.Visible ? Icons.Material.Filled.CheckBox : Icons.Material.Filled.CheckBoxOutlineBlank)" />
-                        <span>@col.Label</span>
-                    </div>
-                </MudMenuItem>
-            }
-        </MudMenu>
+    <div class="gradient-controls">
         <MudSwitch @bind-Value="_liveUpdates"
                    Color="Color.Primary"
                    Label="@L["Events_LiveUpdates"]" />
     </div>
 </div>
 
-<MudPaper Elevation="2" Class="pa-4 mb-4">
+<MudPaper Elevation="2" Class="pa-4 mb-2">
     <MudGrid>
         <MudItem xs="12" md="4">
             <MudSelect T="string"
@@ -121,7 +64,8 @@
                        ValueChanged="OnEventTypeChanged"
                        Label="@L["Events_FilterByType"]"
                        Variant="Variant.Outlined"
-                       Dense="true">
+                       Dense="true"
+                       Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">@L["Events_AllTypes"]</MudSelectItem>
                 <MudSelectItem Value="@("StateChanged")">@L["EventType_StateChanged"]</MudSelectItem>
                 <MudSelectItem Value="@("ItemStarted")">@L["EventType_ItemStarted"]</MudSelectItem>
@@ -138,7 +82,8 @@
                        ValueChanged="OnFolderChanged"
                        Label="@L["Common_Folder"]"
                        Variant="Variant.Outlined"
-                       Dense="true">
+                       Dense="true"
+                       Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">@L["Events_AllFolders"]</MudSelectItem>
                 @foreach (var folder in _folders)
                 {
@@ -152,7 +97,8 @@
                        ValueChanged="OnDeviceChanged"
                        Label="@L["Common_Device"]"
                        Variant="Variant.Outlined"
-                       Dense="true">
+                       Dense="true"
+                       Margin="Margin.Dense">
                 <MudSelectItem Value="@("all")">@L["Events_AllDevices"]</MudSelectItem>
                 @foreach (var device in _devices)
                 {
@@ -163,150 +109,102 @@
     </MudGrid>
 </MudPaper>
 
-<MudPaper Elevation="2" Class="event-viewer-container">
-    <div class="event-grid-header" style="grid-template-columns:@GridTemplate();">
-        @foreach (var col in VisibleColumns)
-        {
-            if (col.Sortable)
-            {
-                <div class="col-sortable" @onclick="@(() => SortBy(col.Key))">
-                    <span>@col.Label</span>
-                    @if (_sortColumn == col.Key)
-                    {
-                        <MudIcon Size="Size.Small"
-                                 Icon="@(_sortDir == "asc" ? Icons.Material.Filled.ArrowUpward : Icons.Material.Filled.ArrowDownward)" />
-                    }
-                </div>
-            }
-            else
-            {
-                <div>@col.Label</div>
-            }
-        }
-        <div></div>
-    </div>
-
-    <div class="event-viewer" @ref="_scrollContainer">
-        <Virtualize Items="_events" Context="evt" ItemSize="44">
-            <div class="event-row" style="grid-template-columns:@GridTemplate();">
-                @foreach (var col in VisibleColumns)
-                {
-                    <div class="@(col.Key == "data" ? "event-details" : "")">
-                        @switch (col.Key)
-                        {
-                            case "time":
-                                <MudText Typo="Typo.body2">@LocalTimeConverter.ToLocal(evt.Timestamp).ToString("HH:mm:ss")</MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Default">@LocalTimeConverter.ToLocal(evt.Timestamp).ToString("yyyy-MM-dd")</MudText>
-                                break;
-                            case "type":
-                                <MudChip T="string" Size="Size.Small" Color="@GetEventColor(evt)" Variant="Variant.Outlined">
-                                    @GetEventTypeDisplay(evt.Type)
-                                </MudChip>
-                                break;
-                            case "data":
-                                @GetEventDescription(evt)
-                                break;
-                        }
-                    </div>
-                }
-                <div>
-                    @if (CanNavigate(evt))
+<div class="d-flex flex-column" style="flex:1 1 auto; min-height:0;">
+    <MudDataGrid T="SyncEvent"
+                 @ref="_grid"
+                 VirtualizeServerData="LoadServerData"
+                 Dense="true"
+                 Hover="true"
+                 FixedHeader="true"
+                 Virtualize="true"
+                 SortMode="SortMode.Single"
+                 Filterable="true"
+                 FilterMode="DataGridFilterMode.ColumnFilterMenu"
+                 ShowMenuIcon="true"
+                 Height="100%"
+                 Elevation="2">
+        <ToolBarContent>
+            <MudSpacer />
+            <MudIconButton Icon="@Icons.Material.Filled.Download"
+                           Size="Size.Small"
+                           OnClick="DownloadEvents"
+                           aria-label="@L["SystemLog_Download"]" />
+            <MudIconButton Icon="@Icons.Material.Filled.Refresh"
+                           Size="Size.Small"
+                           OnClick="ReloadGrid"
+                           aria-label="@L["SystemLog_Refresh"]" />
+        </ToolBarContent>
+        <Columns>
+            <PropertyColumn Property="x => x.Timestamp" Title="@_timeLabel"
+                            Sortable="true" Hideable="true" Filterable="true"
+                            InitialDirection="SortDirection.Descending"
+                            SortBy="@_noClientSort" HeaderStyle="width: 160px;">
+                <CellTemplate>
+                    <MudText Typo="Typo.body2">@LocalTimeConverter.ToLocal(context.Item.Timestamp).ToString("HH:mm:ss")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Default">@DateFormatter.FormatDate(LocalTimeConverter.ToLocal(context.Item.Timestamp))</MudText>
+                </CellTemplate>
+            </PropertyColumn>
+            <PropertyColumn Property="x => x.RawType" Title="@_typeLabel"
+                            Sortable="true" Hideable="true" Filterable="false"
+                            SortBy="@_noClientSort" HeaderStyle="width: 180px; white-space: nowrap;">
+                <CellTemplate>
+                    <MudChip T="string" Size="Size.Small" Color="@GetEventColor(context.Item)" Variant="Variant.Outlined">
+                        @GetEventTypeDisplay(context.Item.Type)
+                    </MudChip>
+                </CellTemplate>
+            </PropertyColumn>
+            <TemplateColumn Title="@_dataLabel" Sortable="false" Filterable="false" Hideable="true">
+                <CellTemplate>
+                    <span class="event-details">@GetEventDescription(context.Item)</span>
+                </CellTemplate>
+            </TemplateColumn>
+            <TemplateColumn Sortable="false" Filterable="false" Hideable="false" HeaderStyle="width: 50px;">
+                <CellTemplate>
+                    @if (CanNavigate(context.Item))
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.OpenInNew"
                                        Size="Size.Small"
-                                       OnClick="@(() => NavigateToRelated(evt))" />
+                                       OnClick="@(() => NavigateToRelated(context.Item))" />
                     }
-                </div>
-            </div>
-        </Virtualize>
-    </div>
-
-    @if (_loadingMore || (!_hasMore && _events.Count > 0))
-    {
-        <div class="event-loadmore">
-            @if (_loadingMore)
-            {
-                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                <MudText Typo="Typo.body2" Color="Color.Default">@L["Common_Loading"]</MudText>
-            }
-            else
-            {
-                <MudText Typo="Typo.body2" Color="Color.Default">@L["Events_AllLoaded"]</MudText>
-            }
-        </div>
-    }
-
-    @if (_initialLoaded && _events.Count == 0)
-    {
-        <div class="event-empty-overlay">
-            <MudIcon Icon="@Icons.Material.Filled.EventNote" Size="Size.Large" Color="Color.Default" Class="mb-4" />
-            <MudText Typo="Typo.h6" Class="mb-2">@L["Events_NoEvents"]</MudText>
-            <MudText Color="Color.Default">@L["Events_WaitingForEvents"]</MudText>
-        </div>
-    }
-</MudPaper>
+                </CellTemplate>
+            </TemplateColumn>
+        </Columns>
+    </MudDataGrid>
+</div>
 </div>
 
 @code {
-    private const int BatchSize = 60;
-
-    private sealed class Column
-    {
-        public string Key { get; init; } = "";
-        public string Label { get; init; } = "";
-        public bool Sortable { get; init; }
-        public string Width { get; init; } = "1fr";
-        public bool Visible { get; set; } = true;
-    }
+    private readonly Func<SyncEvent, object?> _noClientSort = _ => 0;
 
     private readonly CancellationTokenSource _pageCts = new();
 
+    private MudDataGrid<SyncEvent>? _grid;
+
     private bool _liveUpdates = true;
-    private bool _initialLoaded;
-    private bool _loadingMore;
-    private bool _hasMore = true;
 
     private string _selectedEventType = "all";
     private string _selectedFolder = "all";
     private string _selectedDevice = "all";
+    private string _searchText = string.Empty;
 
-    private string _sortColumn = "time";
-    private string _sortDir = "desc";
-
-    private List<Column> _columns = new();
+    private string _timeLabel = "";
+    private string _typeLabel = "";
+    private string _dataLabel = "";
 
     private FolderConfig[] _folders = [];
     private DeviceConfig[] _devices = [];
 
-    private readonly List<SyncEvent> _events = new();
-    private int _totalEvents;
-
     private volatile bool _liveDirty;
     private System.Threading.Timer? _liveTimer;
 
-    private ElementReference _scrollContainer;
-    private DotNetObjectReference<Events>? _selfRef;
-    private int _scrollHandle;
-
-    private IEnumerable<Column> VisibleColumns => _columns.Where(c => c.Visible);
-
-    private string GridTemplate()
-    {
-        var widths = string.Join(" ", VisibleColumns.Select(c => c.Width));
-        return string.IsNullOrEmpty(widths) ? "48px" : widths + " 48px";
-    }
-
     protected override async Task OnInitializedAsync()
     {
-        _columns = new()
-        {
-            new Column { Key = "time", Label = L["Events_Time"], Sortable = true, Width = "160px" },
-            new Column { Key = "type", Label = L["Events_EventType"], Sortable = true, Width = "140px" },
-            new Column { Key = "data", Label = L["Events_Data"], Sortable = false, Width = "minmax(0,1fr)" },
-        };
+        _timeLabel = L["Events_Time"];
+        _typeLabel = L["Events_EventType"];
+        _dataLabel = L["Events_Data"];
 
         SignalR.OnSyncEvent += OnSyncEvent;
-        _liveTimer = new System.Threading.Timer(_ => LiveTick(), null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        _liveTimer = new System.Threading.Timer(_ => LiveTick(), null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
 
         try
         {
@@ -321,51 +219,54 @@
             if (ErrorHelper.IsAuthenticationError(ex))
             {
                 Navigation.NavigateTo("/login", forceLoad: true);
-                return;
+            }
+        }
+    }
+
+    private async Task<GridData<SyncEvent>> LoadServerData(GridStateVirtualize<SyncEvent> state, CancellationToken token)
+    {
+        var sortColumn = "time";
+        var sortDir = "desc";
+        var sort = state.SortDefinitions?.FirstOrDefault();
+        if (sort is not null)
+        {
+            sortColumn = sort.SortBy switch { "RawType" => "type", _ => "time" };
+            sortDir = sort.Descending ? "desc" : "asc";
+        }
+
+        string? filtersJson = null;
+        if (state.FilterDefinitions is not null && state.FilterDefinitions.Any())
+        {
+            var list = new List<object>();
+            foreach (var fd in state.FilterDefinitions)
+            {
+                if (fd.Column?.PropertyName != "Timestamp")
+                {
+                    continue;
+                }
+                var value = fd.Value is DateTime dt
+                    ? dt.ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss")
+                    : fd.Value?.ToString();
+                list.Add(new { f = "timestamp", o = fd.Operator, v = value });
+            }
+            if (list.Count > 0)
+            {
+                filtersJson = System.Text.Json.JsonSerializer.Serialize(list);
             }
         }
 
-        await LoadInitial();
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (_scrollHandle != 0 || string.IsNullOrEmpty(_scrollContainer.Id))
-        {
-            return;
-        }
-
-        try
-        {
-            _selfRef ??= DotNetObjectReference.Create(this);
-            _scrollHandle = await JS.InvokeAsync<int>(
-                "creatioInfiniteScroll.attach",
-                _scrollContainer,
-                _selfRef,
-                nameof(OnScrolledNearBottom),
-                1.5);
-        }
-        catch (JSException)
-        {
-        }
-    }
-
-    private async Task LoadInitial()
-    {
         try
         {
             var (total, items) = await ApiClient.GetEventsPageAsync(
-                0, BatchSize, _selectedEventType, _selectedFolder, _selectedDevice, _sortColumn, _sortDir, _pageCts.Token);
+                state.StartIndex, state.Count,
+                _selectedEventType, _selectedFolder, _selectedDevice, _searchText,
+                sortColumn, sortDir, filtersJson, token);
 
-            _events.Clear();
-            _events.AddRange(items);
-            _totalEvents = total;
-            _hasMore = _events.Count < total;
-            _initialLoaded = true;
-            StateHasChanged();
+            return new GridData<SyncEvent> { Items = items, TotalItems = total };
         }
         catch (OperationCanceledException)
         {
+            return new GridData<SyncEvent> { Items = Array.Empty<SyncEvent>(), TotalItems = 0 };
         }
         catch (Exception ex)
         {
@@ -373,54 +274,8 @@
             {
                 Navigation.NavigateTo("/login", forceLoad: true);
             }
+            return new GridData<SyncEvent> { Items = Array.Empty<SyncEvent>(), TotalItems = 0 };
         }
-    }
-
-    [JSInvokable]
-    public async Task<bool> OnScrolledNearBottom()
-    {
-        if (!_hasMore || _loadingMore)
-        {
-            return false;
-        }
-
-        _loadingMore = true;
-        StateHasChanged();
-
-        try
-        {
-            var (total, items) = await ApiClient.GetEventsPageAsync(
-                _events.Count, BatchSize, _selectedEventType, _selectedFolder, _selectedDevice, _sortColumn, _sortDir, _pageCts.Token);
-
-            if (items.Length == 0)
-            {
-                _hasMore = false;
-            }
-            else
-            {
-                _events.AddRange(items);
-                _totalEvents = total;
-                _hasMore = _events.Count < total;
-            }
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        catch (Exception ex)
-        {
-            if (ErrorHelper.IsAuthenticationError(ex))
-            {
-                Navigation.NavigateTo("/login", forceLoad: true);
-                return false;
-            }
-        }
-        finally
-        {
-            _loadingMore = false;
-            StateHasChanged();
-        }
-
-        return _hasMore;
     }
 
     private void OnSyncEvent(SyncEvent evt)
@@ -433,102 +288,65 @@
 
     private void LiveTick()
     {
-        if (!_liveDirty || !_liveUpdates)
+        if (!_liveDirty || !_liveUpdates || _grid is null)
         {
             return;
         }
 
-        InvokeAsync(async () =>
-        {
-            if (!await IsScrolledToTop())
-            {
-                return;
-            }
-
-            _liveDirty = false;
-            await LoadInitial();
-        });
-    }
-
-    private async Task<bool> IsScrolledToTop()
-    {
-        try
-        {
-            return await JS.InvokeAsync<bool>("eval", "(document.querySelector('.event-viewer')?.scrollTop ?? 999) < 40");
-        }
-        catch
-        {
-            return true;
-        }
-    }
-
-    private async Task SortBy(string column)
-    {
-        if (_sortColumn == column)
-        {
-            _sortDir = _sortDir == "asc" ? "desc" : "asc";
-        }
-        else
-        {
-            _sortColumn = column;
-            _sortDir = "desc";
-        }
-
-        _hasMore = true;
-        await LoadInitial();
-        await ScrollToTop();
-    }
-
-    private void ToggleColumn(string key)
-    {
-        var col = _columns.FirstOrDefault(c => c.Key == key);
-        if (col is null)
-        {
-            return;
-        }
-
-        if (col.Visible && _columns.Count(c => c.Visible) <= 1)
-        {
-            return;
-        }
-
-        col.Visible = !col.Visible;
-        StateHasChanged();
+        _liveDirty = false;
+        InvokeAsync(async () => await _grid.ReloadServerData());
     }
 
     private async Task OnEventTypeChanged(string value)
     {
         _selectedEventType = value;
-        await ReloadFromFilter();
+        await ReloadGrid();
     }
 
     private async Task OnFolderChanged(string value)
     {
         _selectedFolder = value;
-        await ReloadFromFilter();
+        await ReloadGrid();
     }
 
     private async Task OnDeviceChanged(string value)
     {
         _selectedDevice = value;
-        await ReloadFromFilter();
+        await ReloadGrid();
     }
 
-    private async Task ReloadFromFilter()
+    private async Task OnFilterChanged()
     {
-        _hasMore = true;
-        await LoadInitial();
-        await ScrollToTop();
+        await ReloadGrid();
     }
 
-    private async Task ScrollToTop()
+    private async Task ReloadGrid()
+    {
+        if (_grid is not null)
+        {
+            await _grid.ReloadServerData();
+        }
+    }
+
+    private async Task DownloadEvents()
     {
         try
         {
-            await JS.InvokeVoidAsync("eval", "document.querySelector('.event-viewer')?.scrollTo(0, 0)");
+            var (_, items) = await ApiClient.GetEventsPageAsync(
+                0, 5000, _selectedEventType, _selectedFolder, _selectedDevice, _searchText, "time", "desc");
+
+            var content = string.Join("\n", items.Select(e =>
+                $"{LocalTimeConverter.ToLocal(e.Timestamp):yyyy-MM-dd HH:mm:ss} [{GetEventTypeDisplay(e.Type)}] {GetEventDescription(e)}"));
+
+            var fileName = $"creatiohelper-events-{DateTime.Now:yyyyMMdd-HHmmss}.txt";
+            await DownloadService.SaveTextAsync(fileName, content);
         }
-        catch
+        catch (Exception ex)
         {
+            if (ErrorHelper.IsAuthenticationError(ex))
+            {
+                Navigation.NavigateTo("/login", forceLoad: true);
+            }
         }
     }
 
@@ -579,6 +397,9 @@
             EventType.LocalChangeDetected => L["EventDesc_LocalChange", evt.FileName ?? ""],
             EventType.RemoteChangeDetected => L["EventDesc_RemoteChange", evt.FileName ?? "", deviceDisplay],
             EventType.ConfigSaved => L["EventDesc_ConfigSaved"],
+            EventType.FolderScanProgress => L["EventDesc_FolderScan", folderDisplay, evt.GetDataValue("TotalFiles")],
+            EventType.RemoteIndexUpdated => L["EventDesc_IndexReceived", deviceDisplay, evt.GetDataValue("FileCount")],
+            EventType.LocalIndexUpdated => L["EventDesc_IndexUpdatedLocal", folderDisplay],
             EventType.DiscoveryCompleted => GetDiscoveryCompletedDescription(evt, folderDisplay),
             EventType.Unknown => !string.IsNullOrEmpty(evt.Message) ? evt.Message : $"{L["EventDesc_UnknownEvent"]}: {evt.RawType}",
             _ => !string.IsNullOrEmpty(evt.Message) ? evt.Message : evt.RawType
@@ -631,12 +452,5 @@
         _pageCts.Dispose();
         SignalR.OnSyncEvent -= OnSyncEvent;
         _liveTimer?.Dispose();
-
-        if (_scrollHandle != 0)
-        {
-            _ = JS.InvokeVoidAsync("creatioInfiniteScroll.detach", _scrollHandle);
-        }
-
-        _selfRef?.Dispose();
     }
 }
