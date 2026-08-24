@@ -348,6 +348,10 @@ public class ConfigurationStore : IConfigurationStore
 
     public Task SetOptionsAsync(ConfigXmlOptions options) => SetSingletonAsync("options", options);
 
+    public Task<string?> GetClusterKeyAsync() => GetSingletonAsync<string>("cluster_key");
+
+    public Task SetClusterKeyAsync(string key) => SetSingletonAsync("cluster_key", key);
+
     public Task<ConfigXmlGui?> GetGuiAsync() => GetSingletonAsync<ConfigXmlGui>("gui");
 
     public Task SetGuiAsync(ConfigXmlGui gui) => SetSingletonAsync("gui", gui);

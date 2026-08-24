@@ -1,6 +1,8 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Configuration;
 using CreatioHelper.Infrastructure.Services.Configuration.Store;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -13,17 +15,23 @@ public class ClusterMembershipSyncService : BackgroundService
 
     private readonly IClusterMembershipService _membership;
     private readonly ISyncEngine _syncEngine;
-    private readonly IConfigurationManager _configManager;
+    private readonly CreatioHelper.Application.Interfaces.IConfigurationManager _configManager;
     private readonly IConfigurationStore _store;
     private readonly ClusterMembershipRegistry _registry;
+    private readonly ClusterKeyProvider _keyProvider;
+    private readonly ClusterKeyConfiguration _keyConfig;
+    private readonly IConfiguration _configuration;
     private readonly ILogger<ClusterMembershipSyncService> _logger;
 
     public ClusterMembershipSyncService(
         IClusterMembershipService membership,
         ISyncEngine syncEngine,
-        IConfigurationManager configManager,
+        CreatioHelper.Application.Interfaces.IConfigurationManager configManager,
         IConfigurationStore store,
         ClusterMembershipRegistry registry,
+        ClusterKeyProvider keyProvider,
+        ClusterKeyConfiguration keyConfig,
+        IConfiguration configuration,
         ILogger<ClusterMembershipSyncService> logger)
     {
         _membership = membership;
@@ -31,12 +39,15 @@ public class ClusterMembershipSyncService : BackgroundService
         _configManager = configManager;
         _store = store;
         _registry = registry;
+        _keyProvider = keyProvider;
+        _keyConfig = keyConfig;
+        _configuration = configuration;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        if (!_membership.IsEnabled)
+        if (!ClusterModeSettings.IsClusterMode(_configuration))
         {
             return;
         }
@@ -46,6 +57,11 @@ public class ClusterMembershipSyncService : BackgroundService
             await Task.Delay(InitialDelay, stoppingToken);
         }
         catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        if (!await ResolveClusterKeyAsync())
         {
             return;
         }
@@ -76,6 +92,38 @@ public class ClusterMembershipSyncService : BackgroundService
                 break;
             }
         }
+    }
+
+    private async Task<bool> ResolveClusterKeyAsync()
+    {
+        var localKey = _keyConfig.Key;
+        var dbKey = await _store.GetClusterKeyAsync();
+
+        if (string.IsNullOrWhiteSpace(dbKey))
+        {
+            if (string.IsNullOrWhiteSpace(localKey))
+            {
+                _logger.LogError(
+                    "Cluster mode is enabled but no cluster key is configured and none exists in the shared database; cannot join");
+                return false;
+            }
+            await _store.SetClusterKeyAsync(localKey);
+            _keyProvider.Set(localKey);
+            _logger.LogInformation("Seeded cluster key into the shared database");
+            return true;
+        }
+
+        if (!string.IsNullOrWhiteSpace(localKey) &&
+            !string.Equals(localKey, dbKey, StringComparison.Ordinal))
+        {
+            _logger.LogError(
+                "Configured cluster key does not match the shared database; refusing to join");
+            return false;
+        }
+
+        _keyProvider.Set(dbKey);
+        _logger.LogInformation("Loaded cluster key from the shared database");
+        return true;
     }
 
     private async Task RegisterSelfAsync(CancellationToken cancellationToken)

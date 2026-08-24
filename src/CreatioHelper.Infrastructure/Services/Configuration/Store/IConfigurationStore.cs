@@ -38,6 +38,10 @@ public interface IConfigurationStore
 
     Task SetOptionsAsync(ConfigXmlOptions options);
 
+    Task<string?> GetClusterKeyAsync();
+
+    Task SetClusterKeyAsync(string key);
+
     Task<ConfigXmlGui?> GetGuiAsync();
 
     Task SetGuiAsync(ConfigXmlGui gui);
