@@ -1,21 +1,21 @@
 using System.Collections.Concurrent;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Configuration.Store;
 using Microsoft.Extensions.Logging;
 
 namespace CreatioHelper.Infrastructure.Services.Configuration;
 
 /// <summary>
-/// Unified configuration manager using config.xml as the single source of truth.
-/// Like Syncthing, folder and device configurations are stored in config.xml,
-/// while runtime statistics are kept in memory.
-/// Supports hot-reload via FileSystemWatcher (like Syncthing's lib/config/wrapper.go).
+/// Unified configuration manager backed by a transactional database store.
+/// Folder and device configurations are persisted per-entity in the store, while
+/// runtime statistics are kept in memory. Legacy config.xml is imported once on startup.
 /// </summary>
 public class ConfigurationManager : IConfigurationManager, IDisposable
 {
     private readonly IConfigXmlService _configXmlService;
+    private readonly IConfigurationStore _store;
     private readonly ILogger<ConfigurationManager> _logger;
-    private readonly SemaphoreSlim _saveLock = new(1, 1);
     private readonly object _configLock = new();
 
     // In-memory cache of configuration
@@ -23,19 +23,10 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     private readonly ConcurrentDictionary<string, SyncFolder> _folders = new();
     private readonly ConcurrentDictionary<string, SyncDevice> _devices = new();
 
-    // Runtime statistics (not persisted to config.xml)
+    // Runtime statistics (not persisted)
     private readonly ConcurrentDictionary<string, FolderRuntimeStatistics> _folderStats = new();
     private readonly ConcurrentDictionary<string, DeviceRuntimeStatistics> _deviceStats = new();
 
-    // Dirty flag for batched saves
-    private volatile bool _isDirty;
-    private DateTime _lastSaveTime = DateTime.UtcNow;
-
-    // Hot-reload support
-    private FileSystemWatcher? _configFileWatcher;
-    private DateTime _lastExternalChange = DateTime.MinValue;
-    private readonly TimeSpan _debounceInterval = TimeSpan.FromMilliseconds(500);
-    private volatile bool _isReloading;
     private bool _disposed;
 
     /// <summary>
@@ -50,9 +41,11 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     public ConfigurationManager(
         IConfigXmlService configXmlService,
+        IConfigurationStore store,
         ILogger<ConfigurationManager> logger)
     {
         _configXmlService = configXmlService;
+        _store = store;
         _logger = logger;
     }
 
@@ -60,40 +53,23 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Initializing ConfigurationManager from config.xml");
+        _logger.LogInformation("Initializing ConfigurationManager from the configuration store");
 
         try
         {
-            if (_configXmlService.ConfigExists())
+            await _store.InitializeAsync();
+
+            if (await _store.IsEmptyAsync())
             {
-                _config = await _configXmlService.LoadAsync(cancellationToken);
-            }
-            else
-            {
-                _logger.LogInformation("Config file not found, will be created on first save");
-                _config = new ConfigXml
-                {
-                    Version = 37,
-                    Folders = new List<ConfigXmlFolder>(),
-                    Devices = new List<ConfigXmlDevice>(),
-                    Gui = new ConfigXmlGui
-                    {
-                        Enabled = true,
-                        Address = "127.0.0.1:8384"
-                    },
-                    Options = new ConfigXmlOptions()
-                };
+                await SeedStoreAsync(cancellationToken);
             }
 
-            // Build in-memory caches
+            _config = await _store.LoadFullAsync();
             RebuildCaches();
 
             _logger.LogInformation(
                 "ConfigurationManager initialized with {FolderCount} folders and {DeviceCount} devices",
                 _folders.Count, _devices.Count);
-
-            // Initialize file watcher for hot-reload
-            InitializeConfigFileWatcher();
         }
         catch (Exception ex)
         {
@@ -102,39 +78,39 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
     }
 
-    private void InitializeConfigFileWatcher()
+    private async Task SeedStoreAsync(CancellationToken cancellationToken)
     {
-        var configDir = _configXmlService.GetConfigDirectory();
-        _configFileWatcher = new FileSystemWatcher(configDir, "config.xml");
-        _configFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
-        _configFileWatcher.Changed += OnConfigFileChanged;
-        _configFileWatcher.EnableRaisingEvents = true;
-        _logger.LogInformation("Config file watcher initialized for {Path}", configDir);
-    }
-
-    private async void OnConfigFileChanged(object sender, FileSystemEventArgs e)
-    {
-        // Debounce - ignore changes within 500ms
-        var now = DateTime.UtcNow;
-        if ((now - _lastExternalChange) < _debounceInterval) return;
-        if (_isReloading) return;
-
-        _lastExternalChange = now;
-        await Task.Delay(_debounceInterval); // Wait for file to be fully written
-
-        try
+        if (_configXmlService.ConfigExists())
         {
-            _isReloading = true;
-            _logger.LogInformation("Config file changed externally, reloading...");
-            await ReloadAsync();
+            var legacy = await _configXmlService.LoadAsync(cancellationToken);
+            await _store.ImportAsync(legacy);
+            _logger.LogInformation(
+                "Imported legacy config.xml into the store ({Folders} folders, {Devices} devices)",
+                legacy.Folders.Count, legacy.Devices.Count);
+
+            try
+            {
+                var migratedPath = _configXmlService.ConfigPath + ".migrated";
+                File.Move(_configXmlService.ConfigPath, migratedPath, overwrite: true);
+                _logger.LogInformation("Renamed legacy config to {Path}", migratedPath);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not rename legacy config.xml after import");
+            }
         }
-        catch (Exception ex)
+        else
         {
-            _logger.LogError(ex, "Failed to reload config after external change");
-        }
-        finally
-        {
-            _isReloading = false;
+            var seed = new ConfigXml
+            {
+                Version = 51,
+                Folders = new List<ConfigXmlFolder>(),
+                Devices = new List<ConfigXmlDevice>(),
+                Gui = new ConfigXmlGui { Enabled = true, Address = "127.0.0.1:8384" },
+                Options = new ConfigXmlOptions()
+            };
+            await _store.ImportAsync(seed);
+            _logger.LogInformation("Seeded an empty configuration into the store");
         }
     }
 
@@ -212,10 +188,9 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         var isNew = !_folders.ContainsKey(folder.Id);
         _folders[folder.Id] = folder;
 
-        // Update config.xml structure
+        var configFolder = ConvertToConfigXmlFolder(folder);
         lock (_configLock)
         {
-            var configFolder = ConvertToConfigXmlFolder(folder);
             var existingIndex = _config!.Folders.FindIndex(f => f.Id == folder.Id);
 
             if (existingIndex >= 0)
@@ -228,8 +203,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             }
         }
 
-        _isDirty = true;
-        await SaveIfNeededAsync();
+        await _store.UpsertFolderAsync(configFolder);
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -257,8 +231,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
 
         _folderStats.TryRemove(folderId, out _);
-        _isDirty = true;
-        await SaveIfNeededAsync();
+        await _store.DeleteFolderAsync(folderId);
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -330,9 +303,9 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         var isNew = !_devices.ContainsKey(device.DeviceId);
         _devices[device.DeviceId] = device;
 
+        var configDevice = ConvertToConfigXmlDevice(device);
         lock (_configLock)
         {
-            var configDevice = ConvertToConfigXmlDevice(device);
             var existingIndex = _config!.Devices.FindIndex(d => d.Id == device.DeviceId);
 
             if (existingIndex >= 0)
@@ -345,15 +318,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             }
         }
 
-        _isDirty = true;
-        if (isNew)
-        {
-            await SaveAsync();
-        }
-        else
-        {
-            await SaveIfNeededAsync();
-        }
+        await _store.UpsertDeviceAsync(configDevice);
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -377,6 +342,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
 
         bool hadInConfig;
+        string tombstoneName;
+        var tombstoneTime = DateTime.UtcNow;
 
         lock (_configLock)
         {
@@ -384,10 +351,10 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
                 string.Equals(d.Id, deviceId, StringComparison.OrdinalIgnoreCase));
             hadInConfig = configDevice != null;
 
-            var tombstoneName = removed?.DeviceName;
+            tombstoneName = removed?.DeviceName ?? string.Empty;
             if (string.IsNullOrWhiteSpace(tombstoneName))
             {
-                tombstoneName = configDevice?.Name;
+                tombstoneName = configDevice?.Name ?? string.Empty;
             }
             if (string.IsNullOrWhiteSpace(tombstoneName))
             {
@@ -401,12 +368,18 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
                 folder.Devices.RemoveAll(d => d.Id == deviceId);
             }
 
-            AddIgnoredDeviceLocked(deviceId, tombstoneName, DateTime.UtcNow);
+            AddIgnoredDeviceLocked(deviceId, tombstoneName, tombstoneTime);
         }
 
         _deviceStats.TryRemove(deviceId, out _);
-        _isDirty = true;
-        await SaveAsync();
+        await _store.DeleteDeviceAsync(deviceId);
+        await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
+        {
+            Id = deviceId,
+            Name = tombstoneName,
+            Time = tombstoneTime,
+            Address = string.Empty
+        });
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -443,13 +416,19 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     {
         EnsureInitialized();
 
+        var tombstoneName = string.IsNullOrWhiteSpace(name) ? deviceId : name;
         lock (_configLock)
         {
-            AddIgnoredDeviceLocked(deviceId, string.IsNullOrWhiteSpace(name) ? deviceId : name, time);
+            AddIgnoredDeviceLocked(deviceId, tombstoneName, time);
         }
 
-        _isDirty = true;
-        await SaveAsync();
+        await _store.AddIgnoredDeviceAsync(new ConfigXmlIgnoredDevice
+        {
+            Id = deviceId,
+            Name = tombstoneName,
+            Time = time,
+            Address = string.Empty
+        });
     }
 
     public async Task<bool> RemoveIgnoredDeviceAsync(string deviceId)
@@ -465,8 +444,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
         if (removedCount > 0)
         {
-            _isDirty = true;
-            await SaveIfNeededAsync();
+            await _store.RemoveIgnoredDeviceAsync(deviceId);
         }
 
         return removedCount > 0;
@@ -506,8 +484,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
 
         if (removedCount > 0)
         {
-            _isDirty = true;
-            await SaveIfNeededAsync();
+            await _store.PruneIgnoredDevicesAsync(olderThanUtc);
         }
 
         return removedCount;
@@ -580,8 +557,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             _config!.Gui = gui;
         }
 
-        _isDirty = true;
-        await SaveIfNeededAsync();
+        await _store.SetGuiAsync(gui);
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -606,8 +582,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             _config!.Options = options;
         }
 
-        _isDirty = true;
-        await SaveIfNeededAsync();
+        await _store.SetOptionsAsync(options);
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
@@ -615,33 +590,17 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         });
     }
 
-    public async Task SaveAsync(CancellationToken cancellationToken = default)
+    public Task SaveAsync(CancellationToken cancellationToken = default)
     {
         EnsureInitialized();
-
-        await _saveLock.WaitAsync(cancellationToken);
-        try
-        {
-            lock (_configLock)
-            {
-                _configXmlService.SaveAsync(_config!, cancellationToken).GetAwaiter().GetResult();
-            }
-
-            _isDirty = false;
-            _lastSaveTime = DateTime.UtcNow;
-            _logger.LogDebug("Configuration saved to config.xml");
-        }
-        finally
-        {
-            _saveLock.Release();
-        }
+        return Task.CompletedTask;
     }
 
     public async Task ReloadAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Reloading configuration from config.xml");
+        _logger.LogInformation("Reloading configuration from the store");
 
-        var newConfig = await _configXmlService.LoadAsync(cancellationToken);
+        var newConfig = await _store.LoadFullAsync();
 
         lock (_configLock)
         {
@@ -649,21 +608,11 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         }
 
         RebuildCaches();
-        _isDirty = false;
 
         OnConfigurationChanged(new ConfigurationChangedEventArgs
         {
             ChangeType = ConfigurationChangeType.FullReload
         });
-    }
-
-    private async Task SaveIfNeededAsync()
-    {
-        // Debounce saves - don't save more than once per second
-        if (_isDirty && (DateTime.UtcNow - _lastSaveTime).TotalSeconds >= 1)
-        {
-            await SaveAsync();
-        }
     }
 
     #endregion
@@ -773,8 +722,5 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-
-        _configFileWatcher?.Dispose();
-        _saveLock.Dispose();
     }
 }

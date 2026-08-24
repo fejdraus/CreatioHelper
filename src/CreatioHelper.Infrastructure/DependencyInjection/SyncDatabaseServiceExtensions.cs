@@ -1,5 +1,6 @@
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Configuration.Store;
 using CreatioHelper.Infrastructure.Services.Sync.Database;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,12 +42,29 @@ public static class SyncDatabaseServiceExtensions
             return new SqliteBlockInfoRepository(logger, connectionString);
         });
         
-        // ConfigurationManager - uses config.xml for folders/devices (like Syncthing)
+        // Configuration store (Dapper + FluentMigrator): SQLite standalone by default, shared Postgres later
+        services.AddSingleton<IDbConnectionFactory>(provider =>
+        {
+            var storage = configuration.GetSection(StorageOptions.SectionName).Get<StorageOptions>() ?? new StorageOptions();
+            var storageProvider = storage.ResolveProvider();
+            var connectionString = storage.ConnectionString;
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                var dir = provider.GetRequiredService<IConfigXmlService>().GetConfigDirectory();
+                connectionString = DbConnectionFactory.BuildDefaultSqliteConnectionString(dir);
+            }
+            return new DbConnectionFactory(storageProvider, connectionString);
+        });
+        services.AddSingleton<ConfigDatabaseInitializer>();
+        services.AddSingleton<IConfigurationStore, ConfigurationStore>();
+
+        // ConfigurationManager - backed by the transactional store; imports legacy config.xml once
         services.AddSingleton<ISyncConfigManager>(provider =>
         {
             var configXmlService = provider.GetRequiredService<IConfigXmlService>();
+            var store = provider.GetRequiredService<IConfigurationStore>();
             var logger = provider.GetRequiredService<ILogger<SyncConfigManager>>();
-            return new SyncConfigManager(configXmlService, logger);
+            return new SyncConfigManager(configXmlService, store, logger);
         });
 
         // File metadata repository - still uses SQLite for file index

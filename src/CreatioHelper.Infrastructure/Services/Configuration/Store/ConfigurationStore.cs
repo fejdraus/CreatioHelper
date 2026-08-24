@@ -151,8 +151,12 @@ public class ConfigurationStore : IConfigurationStore
     public async Task<bool> DeleteDeviceAsync(string deviceId)
     {
         await using var connection = await OpenAsync();
+        await using var transaction = await connection.BeginTransactionAsync();
+        await connection.ExecuteAsync(
+            "DELETE FROM config_folder_devices WHERE device_id = @deviceId", new { deviceId }, transaction);
         var affected = await connection.ExecuteAsync(
-            "DELETE FROM config_devices WHERE device_id = @deviceId", new { deviceId });
+            "DELETE FROM config_devices WHERE device_id = @deviceId", new { deviceId }, transaction);
+        await transaction.CommitAsync();
         return affected > 0;
     }
 
