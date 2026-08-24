@@ -185,18 +185,3 @@ public enum ConnectionType
     RelayClient,
     RelayServer
 }
-
-public class ClusterKeyConfig
-{
-    public bool Enabled { get; set; }
-    public bool HasKey { get; set; }
-    public List<string> SeedAddresses { get; set; } = new();
-    public bool ShareRoster { get; set; }
-    public int RosterSyncIntervalMinutes { get; set; }
-    public bool AutoAcceptDevices { get; set; }
-}
-
-public class ClusterKeyConfigUpdate
-{
-    public bool? AutoAcceptDevices { get; set; }
-}

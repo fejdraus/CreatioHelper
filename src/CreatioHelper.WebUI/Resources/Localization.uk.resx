@@ -4592,21 +4592,6 @@
   <data name="Notify_PendingDeviceBody" xml:space="preserve">
     <value>Пристрій запитує підключення</value>
   </data>
-  <data name="Settings_Cluster_Title" xml:space="preserve">
-    <value>Сполучення кластера</value>
-  </data>
-  <data name="Settings_Cluster_AutoAccept" xml:space="preserve">
-    <value>Автоматично приймати пристрої за ключем кластера</value>
-  </data>
-  <data name="Settings_Cluster_AutoAcceptDesc" xml:space="preserve">
-    <value>Увімк.: новий пристрій із ключем кластера приєднується автоматично; вилучений пристрій усе одно потребує підтвердження. Вимк.: будь-який пристрій із ключем очікує ручного підтвердження в розділі «Пристрої в очікуванні».</value>
-  </data>
-  <data name="Settings_Cluster_AutoAcceptOn" xml:space="preserve">
-    <value>Автоприйняття увімкнено</value>
-  </data>
-  <data name="Settings_Cluster_AutoAcceptOff" xml:space="preserve">
-    <value>Ручне підтвердження увімкнено</value>
-  </data>
   <data name="Msg_ClusterJoinRequested" xml:space="preserve">
     <value>Пристрій {0} запитує вступ до кластера</value>
   </data>

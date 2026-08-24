@@ -304,21 +304,6 @@ else if (_config != null)
             </div>
         </div>
     </MudPaper>
-
-    @if (_clusterConfigLoaded)
-    {
-    <MudPaper Elevation="2" Class="pa-4 mb-4">
-        <MudText Typo="Typo.h6" Class="mb-4">@L["Settings_Cluster_Title"]</MudText>
-        <div class="settings-fields">
-            <div class="settings-field">
-                <MudSwitch T="bool" @bind-Value="_autoAcceptDevices" @bind-Value:after="SaveAutoAcceptAsync"
-                           Color="Color.Primary" Disabled="@_isSavingCluster"
-                           Label="@L["Settings_Cluster_AutoAccept"]" />
-                <MudText Typo="Typo.caption">@L["Settings_Cluster_AutoAcceptDesc"]</MudText>
-            </div>
-        </div>
-    </MudPaper>
-    }
     </div>
 
     <div class="d-flex justify-end gap-2 settings-actions">
@@ -343,10 +328,6 @@ else if (_config != null)
     private bool _isLoading;
     private bool _isSaving;
     private SystemConfig? _config;
-
-    private bool _autoAcceptDevices = true;
-    private bool _isSavingCluster;
-    private bool _clusterConfigLoaded;
 
     // Listening addresses
     private string _syncProtocolListen = "tcp://0.0.0.0:22000";
@@ -390,44 +371,6 @@ else if (_config != null)
     protected override async Task OnInitializedAsync()
     {
 await LoadSettingsAsync();
-await LoadClusterConfigAsync();
-    }
-
-    private async Task LoadClusterConfigAsync()
-    {
-        try
-        {
-            var cluster = await ApiClient.GetClusterKeyConfigAsync();
-            if (cluster != null)
-            {
-                _autoAcceptDevices = cluster.AutoAcceptDevices;
-                _clusterConfigLoaded = true;
-                StateHasChanged();
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.Error.WriteLine($"Cluster key config unavailable: {ex.Message}");
-        }
-    }
-
-    private async Task SaveAutoAcceptAsync()
-    {
-        _isSavingCluster = true;
-        try
-        {
-            await ApiClient.UpdateClusterKeyConfigAsync(new ClusterKeyConfigUpdate { AutoAcceptDevices = _autoAcceptDevices });
-            Snackbar.Add(_autoAcceptDevices ? L["Settings_Cluster_AutoAcceptOn"] : L["Settings_Cluster_AutoAcceptOff"], Severity.Success);
-        }
-        catch (Exception ex)
-        {
-            _autoAcceptDevices = !_autoAcceptDevices;
-            Snackbar.Add(string.Format(L["Msg_SaveFailed"], ErrorHelper.GetUserFriendlyMessage(ex)), Severity.Error);
-        }
-        finally
-        {
-            _isSavingCluster = false;
-        }
     }
 
     private async Task LoadSettingsAsync()

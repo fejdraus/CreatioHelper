@@ -49,10 +49,6 @@ public interface IApiClient
     Task AcceptDeviceAsync(string deviceId);
     Task RejectDeviceAsync(string deviceId);
 
-    // Cluster key
-    Task<ClusterKeyConfig?> GetClusterKeyConfigAsync();
-    Task UpdateClusterKeyConfigAsync(ClusterKeyConfigUpdate update);
-
     // Events
     Task<SyncEvent[]> GetEventsAsync(int since = 0, int limit = 100, string? filter = null, CancellationToken cancellationToken = default);
     Task<(int Total, SyncEvent[] Items)> GetEventsPageAsync(int offset, int limit, string? type, string? folder, string? device, string? search = null, string? sort = null, string? dir = null, string? filters = null, CancellationToken cancellationToken = default);
@@ -295,17 +291,6 @@ public class ApiClient : IApiClient
     public async Task RejectDeviceAsync(string deviceId)
     {
         await _httpClient.DeleteAsync($"/rest/cluster/pending/devices/{Uri.EscapeDataString(deviceId)}");
-    }
-
-    public async Task<ClusterKeyConfig?> GetClusterKeyConfigAsync()
-    {
-        return await _httpClient.GetFromJsonAsync<ClusterKeyConfig>("/rest/cluster/key/config");
-    }
-
-    public async Task UpdateClusterKeyConfigAsync(ClusterKeyConfigUpdate update)
-    {
-        var response = await _httpClient.PutAsJsonAsync("/rest/cluster/key/config", update);
-        response.EnsureSuccessStatusCode();
     }
 
     #endregion
