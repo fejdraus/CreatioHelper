@@ -59,6 +59,8 @@ public class BepProtocol : ISyncProtocol, IDisposable
     
     public string DeviceId { get; }
 
+    public Func<string, bool>? IsDeviceAllowed { get; set; }
+
     public Task StartListeningAsync()
     {
         _listener = new TcpListener(System.Net.IPAddress.Any, _port);
@@ -695,6 +697,14 @@ public class BepProtocol : ISyncProtocol, IDisposable
             }
 
             _logger.LogInformation("Incoming TLS connection from device {DeviceId}", deviceId);
+
+            if (IsDeviceAllowed != null && !IsDeviceAllowed(deviceId))
+            {
+                _logger.LogInformation("Rejecting BEP connection from removed device {DeviceId}", deviceId);
+                sslStream.Dispose();
+                tcpClient.Dispose();
+                return;
+            }
 
             var connection = new BepConnection(deviceId, tcpClient, sslStream, _logger, isOutgoing: false);
 

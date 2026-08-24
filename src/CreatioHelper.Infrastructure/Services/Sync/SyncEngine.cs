@@ -124,6 +124,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
         _statistics.StartTime = DateTime.UtcNow;
         _statusTimer = new Timer(UpdateStatistics, null, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(30));
+        _protocol.IsDeviceAllowed = deviceId => !_configManager.IsDeviceIgnored(deviceId);
         _protocol.DeviceConnected += OnDeviceConnected;
         _protocol.DeviceDisconnected += OnDeviceDisconnected;
         _protocol.IndexReceived += OnIndexReceived;
@@ -221,6 +222,18 @@ public class SyncEngine : ISyncEngine, IDisposable
     {
         var device = new SyncDevice(deviceId, name);
         device.CertificateFingerprint = certificateFingerprint ?? string.Empty;
+
+        DateTime? priorAdmitted = null;
+        if (_devices.TryGetValue(deviceId, out var priorInMemory))
+        {
+            priorAdmitted = priorInMemory.AdmittedAt;
+        }
+        if (priorAdmitted == null)
+        {
+            var priorInConfig = await _configManager.GetDeviceAsync(deviceId);
+            priorAdmitted = priorInConfig?.AdmittedAt;
+        }
+        device.AdmittedAt = priorAdmitted ?? DateTime.UtcNow;
         if (addresses != null)
         {
             foreach (var address in addresses)

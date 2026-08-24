@@ -18,4 +18,5 @@ public class ClusterKeyConfiguration
     public int InitialJoinDelaySeconds { get; set; } = 15;
     public string AdvertisedApiAddress { get; set; } = "";
     public int TombstoneRetentionDays { get; set; } = 90;
+    public bool AutoAcceptDevices { get; set; } = true;
 }

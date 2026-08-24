@@ -8,6 +8,8 @@ public interface IClusterMembershipService
 
     Task<List<ClusterMember>> BuildRosterAsync(CancellationToken cancellationToken = default);
 
+    Task<ClusterJoinDecision> RequestJoinAsync(ClusterMember remote, CancellationToken cancellationToken = default);
+
     Task<ClusterPairingAck> AcceptPairedDeviceAsync(ClusterMember remote, CancellationToken cancellationToken = default);
 
     Task<ClusterPairingResult> PairWithAsync(string apiBaseUrl, CancellationToken cancellationToken = default);
@@ -29,6 +31,13 @@ public class ClusterMember
     public string DeviceName { get; set; } = "";
     public List<string> Addresses { get; set; } = new();
     public string ApiAddress { get; set; } = "";
+    public DateTime AdmittedAt { get; set; }
+}
+
+public class ClusterJoinDecision
+{
+    public bool Pending { get; set; }
+    public ClusterPairingAck? Ack { get; set; }
 }
 
 public class ClusterTombstone
@@ -43,6 +52,7 @@ public class ClusterPairingAck
     public ClusterMember Self { get; set; } = new();
     public List<ClusterMember> Roster { get; set; } = new();
     public List<ClusterTombstone> Tombstones { get; set; } = new();
+    public bool Pending { get; set; }
 }
 
 public class ClusterPairingResult
@@ -52,6 +62,7 @@ public class ClusterPairingResult
     public ClusterMember? Remote { get; set; }
     public List<ClusterMember> Roster { get; set; } = new();
     public List<ClusterTombstone> Tombstones { get; set; } = new();
+    public bool Pending { get; set; }
 }
 
 public class ClusterJoinReport

@@ -40,6 +40,11 @@ public interface IPendingService
     bool RejectPendingDevice(string deviceId);
 
     /// <summary>
+    /// Remove a device from the pending list without rejecting or blocking it.
+    /// </summary>
+    bool RemovePendingDevice(string deviceId);
+
+    /// <summary>
     /// Check if a device is pending.
     /// </summary>
     bool IsDevicePending(string deviceId);
@@ -116,6 +121,8 @@ public class PendingDevice
     public string? IntroducedBy { get; init; }
     public int ConnectionAttempts { get; set; }
     public DateTime? LastSeenAt { get; set; }
+    public List<string> Addresses { get; init; } = new();
+    public string? ApiAddress { get; init; }
 }
 
 /// <summary>
@@ -291,6 +298,20 @@ public class PendingService : IPendingService
         {
             _config.RejectedDevices.Add(deviceId);
             _logger.LogInformation("Rejected pending device {DeviceId}", deviceId);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <inheritdoc />
+    public bool RemovePendingDevice(string deviceId)
+    {
+        ArgumentNullException.ThrowIfNull(deviceId);
+
+        if (_pendingDevices.TryRemove(deviceId, out _))
+        {
+            _logger.LogInformation("Removed pending device {DeviceId} after cluster admission", deviceId);
             return true;
         }
 

@@ -295,6 +295,9 @@ public class ConfigXmlDevice
 
     [XmlElement("ignoredFolder")]
     public List<ConfigXmlIgnoredFolder> IgnoredFolders { get; set; } = new();
+
+    [XmlElement("admittedAt")]
+    public DateTime AdmittedAt { get; set; }
 }
 
 /// <summary>

@@ -2,6 +2,7 @@ using CreatioHelper.Agent.Authorization;
 using CreatioHelper.Agent.Hubs;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
+using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
@@ -19,6 +20,7 @@ public class ClusterKeyController : ControllerBase
 {
     private readonly IClusterKeyService _clusterKeyService;
     private readonly IClusterMembershipService _membership;
+    private readonly IPendingService _pendingService;
     private readonly ClusterKeyConfiguration _config;
     private readonly IHubContext<SyncHub> _hubContext;
     private readonly ILogger<ClusterKeyController> _logger;
@@ -26,12 +28,14 @@ public class ClusterKeyController : ControllerBase
     public ClusterKeyController(
         IClusterKeyService clusterKeyService,
         IClusterMembershipService membership,
+        IPendingService pendingService,
         ClusterKeyConfiguration config,
         IHubContext<SyncHub> hubContext,
         ILogger<ClusterKeyController> logger)
     {
         _clusterKeyService = clusterKeyService;
         _membership = membership;
+        _pendingService = pendingService;
         _config = config;
         _hubContext = hubContext;
         _logger = logger;
@@ -47,7 +51,8 @@ public class ClusterKeyController : ControllerBase
             hasKey = !string.IsNullOrWhiteSpace(_config.Key),
             seedAddresses = _config.SeedAddresses,
             shareRoster = _config.ShareRoster,
-            rosterSyncIntervalMinutes = _config.RosterSyncIntervalMinutes
+            rosterSyncIntervalMinutes = _config.RosterSyncIntervalMinutes,
+            autoAcceptDevices = _config.AutoAcceptDevices
         });
     }
 
@@ -75,8 +80,13 @@ public class ClusterKeyController : ControllerBase
             _config.SeedAddresses = request.SeedAddresses;
         }
 
-        _logger.LogInformation("Cluster key configuration updated at runtime (enabled={Enabled}, hasKey={HasKey}, seeds={Seeds})",
-            _config.Enabled, !string.IsNullOrWhiteSpace(_config.Key), _config.SeedAddresses.Count);
+        if (request.AutoAcceptDevices.HasValue)
+        {
+            _config.AutoAcceptDevices = request.AutoAcceptDevices.Value;
+        }
+
+        _logger.LogInformation("Cluster key configuration updated at runtime (enabled={Enabled}, hasKey={HasKey}, seeds={Seeds}, autoAccept={AutoAccept})",
+            _config.Enabled, !string.IsNullOrWhiteSpace(_config.Key), _config.SeedAddresses.Count, _config.AutoAcceptDevices);
 
         if (_membership.IsEnabled)
         {
@@ -129,24 +139,47 @@ public class ClusterKeyController : ControllerBase
         if (!isValid)
             return Unauthorized(new { error = "Cluster key verification failed" });
 
-        _logger.LogInformation("Cluster key verified for device {DeviceId}, auto-accepting", request.DeviceId);
-
-        var ack = await _membership.AcceptPairedDeviceAsync(new ClusterMember
+        var member = new ClusterMember
         {
             DeviceId = request.DeviceId,
             DeviceName = request.DeviceName ?? request.DeviceId,
             Addresses = request.Addresses ?? new List<string>(),
             ApiAddress = request.ApiAddress ?? ""
-        }, cancellationToken);
+        };
 
-        // Notify connected UI clients via SignalR
+        var decision = await _membership.RequestJoinAsync(member, cancellationToken);
+
+        if (decision.Pending)
+        {
+            _logger.LogInformation("Cluster key verified for device {DeviceId}, awaiting approval", request.DeviceId);
+
+            _pendingService.AddPendingDevice(new PendingDevice
+            {
+                DeviceId = request.DeviceId,
+                Name = request.DeviceName ?? request.DeviceId,
+                Address = request.Addresses?.FirstOrDefault(),
+                Addresses = request.Addresses ?? new List<string>(),
+                ApiAddress = request.ApiAddress
+            });
+
+            _ = _hubContext.Clients.Group("sync-events").SendAsync("ClusterDeviceJoinRequested", new
+            {
+                deviceId = request.DeviceId,
+                timestamp = DateTime.UtcNow
+            }, cancellationToken);
+
+            return Ok(new ClusterPairingAck { Pending = true });
+        }
+
+        _logger.LogInformation("Cluster key verified for device {DeviceId}, admitted", request.DeviceId);
+
         _ = _hubContext.Clients.Group("sync-events").SendAsync("ClusterKeyPairingCompleted", new
         {
             deviceId = request.DeviceId,
             timestamp = DateTime.UtcNow
         }, cancellationToken);
 
-        return Ok(ack);
+        return Ok(decision.Ack);
     }
 
     [HttpPost("join")]
@@ -187,6 +220,8 @@ public class ClusterKeyConfigRequest
     public string? Key { get; set; }
 
     public List<string>? SeedAddresses { get; set; }
+
+    public bool? AutoAcceptDevices { get; set; }
 }
 
 public class ChallengeRequest

@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -14,11 +15,16 @@ namespace CreatioHelper.Agent.Controllers;
 public class SyncthingClusterController : ControllerBase
 {
     private readonly IPendingService _pendingService;
+    private readonly IClusterMembershipService _membership;
     private readonly ILogger<SyncthingClusterController> _logger;
 
-    public SyncthingClusterController(IPendingService pendingService, ILogger<SyncthingClusterController> logger)
+    public SyncthingClusterController(
+        IPendingService pendingService,
+        IClusterMembershipService membership,
+        ILogger<SyncthingClusterController> logger)
     {
         _pendingService = pendingService;
+        _membership = membership;
         _logger = logger;
     }
 
@@ -70,6 +76,57 @@ public class SyncthingClusterController : ControllerBase
         {
             return NotFound(new { error = "pending device not found" });
         }
+    }
+
+    /// <summary>
+    /// Approve a pending device: admit it into the cluster and propagate the approval.
+    /// POST /rest/cluster/pending/devices/{deviceId}/accept
+    /// </summary>
+    [HttpPost("pending/devices/{deviceId}/accept")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public async Task<ActionResult> AcceptPendingDevice(string deviceId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(deviceId))
+            return BadRequest(new { error = "deviceId is required" });
+
+        var pending = _pendingService.GetPendingDevice(deviceId);
+        if (pending == null)
+            return NotFound(new { error = "pending device not found" });
+
+        await _membership.AcceptPairedDeviceAsync(new ClusterMember
+        {
+            DeviceId = pending.DeviceId,
+            DeviceName = pending.Name,
+            Addresses = pending.Addresses,
+            ApiAddress = pending.ApiAddress ?? string.Empty
+        }, cancellationToken);
+
+        _pendingService.ApprovePendingDevice(deviceId);
+
+        _logger.LogInformation("Approved pending device {DeviceId}", deviceId);
+        return Ok(new { ok = "pending device approved" });
+    }
+
+    /// <summary>
+    /// Delete (reject) pending device by path segment.
+    /// DELETE /rest/cluster/pending/devices/{deviceId}
+    /// </summary>
+    [HttpDelete("pending/devices/{deviceId}")]
+    [Authorize(Roles = Roles.WriteRoles)]
+    public ActionResult DeletePendingDeviceByPath(string deviceId)
+    {
+        if (string.IsNullOrEmpty(deviceId))
+            return BadRequest(new { error = "deviceId is required" });
+
+        var rejected = _pendingService.RejectPendingDevice(deviceId);
+
+        if (rejected)
+        {
+            _logger.LogInformation("Rejected pending device {DeviceId}", deviceId);
+            return Ok(new { ok = "pending device removed" });
+        }
+
+        return NotFound(new { error = "pending device not found" });
     }
 
     /// <summary>

@@ -421,7 +421,10 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
         if (existing != null)
         {
             existing.Name = name;
-            existing.Time = time;
+            if (time > existing.Time)
+            {
+                existing.Time = time;
+            }
         }
         else
         {
@@ -723,6 +726,7 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             config.CertificateName);
 
         device.Addresses = config.Addresses?.ToList() ?? new List<string> { "dynamic" };
+        device.AdmittedAt = config.AdmittedAt == default ? null : config.AdmittedAt;
 
         return device;
     }
@@ -746,7 +750,8 @@ public class ConfigurationManager : IConfigurationManager, IDisposable
             Untrusted = device.Untrusted,
             RemoteGUIPort = device.RemoteGUIPort,
             NumConnections = device.NumConnections,
-            CertificateName = device.CertificateName
+            CertificateName = device.CertificateName,
+            AdmittedAt = device.AdmittedAt ?? default
         };
     }
 

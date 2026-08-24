@@ -36,6 +36,7 @@ public class SyncDevice : AggregateRoot
     public string? ConnectionType { get; set; } // TCP, QUIC, Relay etc.
     public string? LastAddress { get; set; } // Last known connection address
     public DateTime? LastConnected { get; set; } // Last successful connection
+    public DateTime? AdmittedAt { get; set; }
     
     // Compatibility properties for old code
     public bool IsConnected => Status == DeviceStatus.Connected;

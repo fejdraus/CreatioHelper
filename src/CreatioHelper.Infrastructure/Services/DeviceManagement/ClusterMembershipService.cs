@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using CreatioHelper.Infrastructure.Services.Network.Discovery;
+using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,6 +18,7 @@ public class ClusterMembershipService : IClusterMembershipService
     private readonly CreatioHelper.Application.Interfaces.IConfigurationManager _configManager;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IDiscoveryManager _discoveryManager;
+    private readonly IPendingService _pendingService;
     private readonly ClusterKeyConfiguration _config;
     private readonly SyncConfiguration _syncConfig;
     private readonly int _agentHttpPort;
@@ -30,6 +32,7 @@ public class ClusterMembershipService : IClusterMembershipService
         CreatioHelper.Application.Interfaces.IConfigurationManager configManager,
         IHttpClientFactory httpClientFactory,
         IDiscoveryManager discoveryManager,
+        IPendingService pendingService,
         IOptions<ClusterKeyConfiguration> config,
         SyncConfiguration syncConfig,
         IConfiguration configuration)
@@ -40,6 +43,7 @@ public class ClusterMembershipService : IClusterMembershipService
         _configManager = configManager;
         _httpClientFactory = httpClientFactory;
         _discoveryManager = discoveryManager;
+        _pendingService = pendingService;
         _config = config.Value;
         _syncConfig = syncConfig;
         _agentHttpPort = ResolveAgentPort(configuration);
@@ -56,7 +60,8 @@ public class ClusterMembershipService : IClusterMembershipService
                 ? Environment.MachineName
                 : _syncConfig.DeviceName,
             Addresses = BuildLocalAddresses(),
-            ApiAddress = BuildLocalApiAddress()
+            ApiAddress = BuildLocalApiAddress(),
+            AdmittedAt = DateTime.UtcNow
         };
     }
 
@@ -89,17 +94,72 @@ public class ClusterMembershipService : IClusterMembershipService
                 DeviceId = device.DeviceId,
                 DeviceName = device.DeviceName,
                 Addresses = device.Addresses.ToList(),
-                ApiAddress = ResolveApiAddress(device.DeviceId, device.Addresses) ?? ""
+                ApiAddress = ResolveApiAddress(device.DeviceId, device.Addresses) ?? "",
+                AdmittedAt = device.AdmittedAt ?? DateTime.MinValue
             });
         }
 
         return roster;
     }
 
+    public async Task<ClusterJoinDecision> RequestJoinAsync(
+        ClusterMember remote,
+        CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(remote.DeviceId))
+        {
+            if (_configManager.IsDeviceIgnored(remote.DeviceId))
+            {
+                _logger.LogInformation(
+                    "Cluster join request from {DeviceId} held for approval (device is tombstoned)",
+                    remote.DeviceId);
+                return new ClusterJoinDecision { Pending = true };
+            }
+
+            var devices = await _syncEngine.GetDevicesAsync();
+            var alreadyKnown = devices.Any(d =>
+                string.Equals(d.DeviceId, remote.DeviceId, StringComparison.OrdinalIgnoreCase));
+
+            if (alreadyKnown)
+            {
+                await MergeMemberAsync(remote, cancellationToken);
+                return new ClusterJoinDecision
+                {
+                    Pending = false,
+                    Ack = new ClusterPairingAck
+                    {
+                        Self = GetLocalMember(),
+                        Roster = await BuildRosterAsync(cancellationToken),
+                        Tombstones = await GetTombstonesAsync()
+                    }
+                };
+            }
+
+            if (!_config.AutoAcceptDevices)
+            {
+                _logger.LogInformation(
+                    "Cluster join request from {DeviceId} held for approval (manual mode)",
+                    remote.DeviceId);
+                return new ClusterJoinDecision { Pending = true };
+            }
+        }
+
+        return new ClusterJoinDecision
+        {
+            Pending = false,
+            Ack = await AcceptPairedDeviceAsync(remote, cancellationToken)
+        };
+    }
+
     public async Task<ClusterPairingAck> AcceptPairedDeviceAsync(
         ClusterMember remote,
         CancellationToken cancellationToken = default)
     {
+        if (remote.AdmittedAt == default)
+        {
+            remote.AdmittedAt = DateTime.UtcNow;
+        }
+
         if (!string.IsNullOrWhiteSpace(remote.DeviceId))
         {
             await _configManager.RemoveIgnoredDeviceAsync(remote.DeviceId);
@@ -189,6 +249,16 @@ public class ClusterMembershipService : IClusterMembershipService
             }
 
             var ack = await verifyResponse.Content.ReadFromJsonAsync<ClusterPairingAck>(cancellationToken);
+
+            if (ack?.Pending == true)
+            {
+                return new ClusterPairingResult
+                {
+                    Success = false,
+                    Pending = true,
+                    Error = "Awaiting approval on remote node"
+                };
+            }
 
             var remote = ack?.Self ?? new ClusterMember { DeviceId = challenge.DeviceId };
             if (string.IsNullOrWhiteSpace(remote.DeviceId))
@@ -366,9 +436,22 @@ public class ClusterMembershipService : IClusterMembershipService
                 continue;
             }
 
-            await _syncEngine.RemoveDeviceAsync(tombstone.DeviceId);
-
             var deletedAt = tombstone.DeletedAt == default ? DateTime.UtcNow : tombstone.DeletedAt;
+
+            var devices = await _syncEngine.GetDevicesAsync();
+            var present = devices.FirstOrDefault(d =>
+                string.Equals(d.DeviceId, tombstone.DeviceId, StringComparison.OrdinalIgnoreCase));
+            if (present != null && (present.AdmittedAt ?? DateTime.MinValue) > deletedAt)
+            {
+                _logger.LogInformation(
+                    "Ignoring stale tombstone for {DeviceId} (admitted {AdmittedAt:o} newer than deleted {DeletedAt:o})",
+                    tombstone.DeviceId, present.AdmittedAt, deletedAt);
+                continue;
+            }
+
+            await _syncEngine.RemoveDeviceAsync(tombstone.DeviceId);
+            _pendingService.RemovePendingDevice(tombstone.DeviceId);
+
             var name = string.IsNullOrWhiteSpace(tombstone.DeviceName) ? tombstone.DeviceId : tombstone.DeviceName;
             await _configManager.AddIgnoredDeviceAsync(tombstone.DeviceId, name, deletedAt);
         }
@@ -408,13 +491,27 @@ public class ClusterMembershipService : IClusterMembershipService
 
         if (_configManager.IsDeviceIgnored(member.DeviceId))
         {
-            _logger.LogDebug("Skipping tombstoned device {DeviceId} during roster merge", member.DeviceId);
-            return false;
+            var ignored = await _configManager.GetIgnoredDevicesAsync();
+            var tomb = ignored.FirstOrDefault(d =>
+                string.Equals(d.Id, member.DeviceId, StringComparison.OrdinalIgnoreCase));
+            var tombstoneTime = tomb?.Time ?? DateTime.MaxValue;
+
+            if (member.AdmittedAt <= tombstoneTime)
+            {
+                _logger.LogDebug("Skipping tombstoned device {DeviceId} during roster merge", member.DeviceId);
+                return false;
+            }
+
+            _logger.LogInformation(
+                "Approval overrides tombstone for {DeviceId} (admitted {AdmittedAt:o} newer than deleted {DeletedAt:o})",
+                member.DeviceId, member.AdmittedAt, tombstoneTime);
+            await _configManager.RemoveIgnoredDeviceAsync(member.DeviceId);
         }
 
         cancellationToken.ThrowIfCancellationRequested();
 
         RememberApiAddress(member.DeviceId, member.ApiAddress);
+        _pendingService.RemovePendingDevice(member.DeviceId);
 
         var devices = await _syncEngine.GetDevicesAsync();
         var existing = devices.FirstOrDefault(d =>
@@ -438,10 +535,17 @@ public class ClusterMembershipService : IClusterMembershipService
 
         var name = string.IsNullOrWhiteSpace(member.DeviceName) ? member.DeviceId : member.DeviceName;
 
-        await _syncEngine.AddDeviceAsync(
+        var admitted = await _syncEngine.AddDeviceAsync(
             member.DeviceId,
             name,
             addresses: member.Addresses.Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList());
+
+        var intent = member.AdmittedAt == default ? DateTime.UtcNow : member.AdmittedAt;
+        if (admitted.AdmittedAt != intent)
+        {
+            admitted.AdmittedAt = intent;
+            await _configManager.UpsertDeviceAsync(admitted);
+        }
 
         _logger.LogInformation("Cluster key admitted device {DeviceId} ({DeviceName})", member.DeviceId, name);
         return true;
