@@ -846,6 +846,11 @@ public class SyncthingSystemController : ControllerBase
 
         foreach (var device in devices)
         {
+            if (string.Equals(device.DeviceId, _syncEngine.DeviceId, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             connections[device.DeviceId] = new
             {
                 at = device.LastSeen?.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),

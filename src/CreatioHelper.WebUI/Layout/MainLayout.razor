@@ -189,6 +189,15 @@
             {
                 State.UpdateConnection(connection);
             }
+
+            var folderStatuses = await Task.WhenAll(folders.Select(f => ApiClient.GetFolderStatusAsync(f.Id)));
+            foreach (var folderStatus in folderStatuses)
+            {
+                if (folderStatus != null)
+                {
+                    State.UpdateFolderStatus(folderStatus);
+                }
+            }
         }
         catch (Exception ex)
         {
