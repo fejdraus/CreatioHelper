@@ -326,7 +326,25 @@ else
     {
         State.OnChange += OnStateChanged;
         SignalR.OnSyncEvent += OnSyncEvent;
+        SignalR.OnClusterJoinRequested += OnClusterJoinRequested;
         await LoadPendingDevicesAsync();
+    }
+
+    private async void OnClusterJoinRequested(string deviceId)
+    {
+        await InvokeAsync(async () =>
+        {
+            try
+            {
+                _pendingDevices = await ApiClient.GetPendingDevicesAsync();
+                Snackbar.Add(L["Msg_ClusterJoinRequested", deviceId.Length > 7 ? deviceId[..7] : deviceId], Severity.Info);
+                StateHasChanged();
+            }
+            catch (Exception ex)
+            {
+                Console.Error.WriteLine($"Failed to refresh pending devices: {ex.Message}");
+            }
+        });
     }
 
     private async void OnSyncEvent(SyncEvent evt)
@@ -646,5 +664,6 @@ else
     {
         State.OnChange -= OnStateChanged;
         SignalR.OnSyncEvent -= OnSyncEvent;
+        SignalR.OnClusterJoinRequested -= OnClusterJoinRequested;
     }
 }

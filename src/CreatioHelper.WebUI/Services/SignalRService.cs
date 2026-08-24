@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CreatioHelper.WebUI.Models;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -18,6 +19,7 @@ public interface ISignalRService : IAsyncDisposable
     event Action<string>? OnLogMessage;
     event Action<LogEntry>? OnLogEntry;
     event Action<bool>? OnConnectionStateChanged;
+    event Action<string>? OnClusterJoinRequested;
 
     Task ConnectAsync(CancellationToken cancellationToken = default);
     Task DisconnectAsync();
@@ -41,6 +43,7 @@ public class SignalRService : ISignalRService
     public event Action<string>? OnLogMessage;
     public event Action<LogEntry>? OnLogEntry;
     public event Action<bool>? OnConnectionStateChanged;
+    public event Action<string>? OnClusterJoinRequested;
 
     public SignalRService(IConfiguration configuration, IAuthService authService)
     {
@@ -94,6 +97,14 @@ public class SignalRService : ISignalRService
         _hubConnection.On<LogEntry>("LogEntry", entry =>
         {
             OnLogEntry?.Invoke(entry);
+        });
+
+        _hubConnection.On<JsonElement>("ClusterDeviceJoinRequested", payload =>
+        {
+            var deviceId = payload.TryGetProperty("deviceId", out var idProp)
+                ? idProp.GetString() ?? string.Empty
+                : string.Empty;
+            OnClusterJoinRequested?.Invoke(deviceId);
         });
 
         _hubConnection.Reconnecting += (error) =>

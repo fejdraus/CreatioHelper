@@ -4700,4 +4700,22 @@
   <data name="Notify_PendingDeviceBody" xml:space="preserve">
     <value>A device is requesting to connect</value>
   </data>
+  <data name="Settings_Cluster_Title" xml:space="preserve">
+    <value>Cluster pairing</value>
+  </data>
+  <data name="Settings_Cluster_AutoAccept" xml:space="preserve">
+    <value>Auto-accept devices by cluster key</value>
+  </data>
+  <data name="Settings_Cluster_AutoAcceptDesc" xml:space="preserve">
+    <value>On: a new device presenting the cluster key joins automatically; a removed device still needs approval. Off: every device with the key waits for manual approval under Pending devices.</value>
+  </data>
+  <data name="Settings_Cluster_AutoAcceptOn" xml:space="preserve">
+    <value>Auto-accept enabled</value>
+  </data>
+  <data name="Settings_Cluster_AutoAcceptOff" xml:space="preserve">
+    <value>Manual approval enabled</value>
+  </data>
+  <data name="Msg_ClusterJoinRequested" xml:space="preserve">
+    <value>Device {0} requests to join the cluster</value>
+  </data>
 </root>
