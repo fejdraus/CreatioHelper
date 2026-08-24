@@ -192,7 +192,9 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddSingleton<CreatioHelper.Agent.Services.LoginRateLimiter>();
 
-builder.Services.AddSingleton<CreatioHelper.Agent.Services.IUserStore, CreatioHelper.Agent.Services.JsonFileUserStore>();
+builder.Services.AddSingleton<CreatioHelper.Agent.Services.JsonFileUserStore>();
+builder.Services.AddSingleton<CreatioHelper.Agent.Services.DbUserStore>();
+builder.Services.AddSingleton<CreatioHelper.Agent.Services.IUserStore, CreatioHelper.Agent.Services.CompositeUserStore>();
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructureServices(builder.Configuration);
