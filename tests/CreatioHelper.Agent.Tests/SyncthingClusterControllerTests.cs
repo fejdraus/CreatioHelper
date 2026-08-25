@@ -1,4 +1,5 @@
 using CreatioHelper.Agent.Controllers;
+using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync.DeviceManagement;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
@@ -9,14 +10,17 @@ namespace CreatioHelper.Agent.Tests;
 public class SyncthingClusterControllerTests
 {
     private readonly Mock<IPendingService> _pendingServiceMock;
+    private readonly Mock<IClusterMembershipService> _membershipMock;
     private readonly Mock<ILogger<SyncthingClusterController>> _loggerMock;
     private readonly SyncthingClusterController _controller;
 
     public SyncthingClusterControllerTests()
     {
         _pendingServiceMock = new Mock<IPendingService>();
+        _membershipMock = new Mock<IClusterMembershipService>();
         _loggerMock = new Mock<ILogger<SyncthingClusterController>>();
-        _controller = new SyncthingClusterController(_pendingServiceMock.Object, _loggerMock.Object);
+        _controller = new SyncthingClusterController(
+            _pendingServiceMock.Object, _membershipMock.Object, _loggerMock.Object);
     }
 
     #region GetPendingDevices Tests
