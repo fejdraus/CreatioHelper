@@ -109,7 +109,6 @@ public static class ServiceCollectionExtensions
             services.AddSingleton<IOptions<ClusterKeyConfiguration>>(
                 new OptionsWrapper<ClusterKeyConfiguration>(clusterKeyConfig));
             services.AddSingleton<ClusterMembershipRegistry>();
-            services.AddSingleton<ClusterKeyProvider>();
             services.AddSingleton<IClusterMembershipService, ClusterMembershipService>();
             services.AddHostedService<ClusterMembershipSyncService>();
         }

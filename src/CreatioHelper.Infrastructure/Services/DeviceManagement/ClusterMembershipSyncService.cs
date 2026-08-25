@@ -18,8 +18,6 @@ public class ClusterMembershipSyncService : BackgroundService
     private readonly CreatioHelper.Application.Interfaces.IConfigurationManager _configManager;
     private readonly IConfigurationStore _store;
     private readonly ClusterMembershipRegistry _registry;
-    private readonly ClusterKeyProvider _keyProvider;
-    private readonly ClusterKeyConfiguration _keyConfig;
     private readonly IConfiguration _configuration;
     private readonly ILogger<ClusterMembershipSyncService> _logger;
 
@@ -29,8 +27,6 @@ public class ClusterMembershipSyncService : BackgroundService
         CreatioHelper.Application.Interfaces.IConfigurationManager configManager,
         IConfigurationStore store,
         ClusterMembershipRegistry registry,
-        ClusterKeyProvider keyProvider,
-        ClusterKeyConfiguration keyConfig,
         IConfiguration configuration,
         ILogger<ClusterMembershipSyncService> logger)
     {
@@ -39,8 +35,6 @@ public class ClusterMembershipSyncService : BackgroundService
         _configManager = configManager;
         _store = store;
         _registry = registry;
-        _keyProvider = keyProvider;
-        _keyConfig = keyConfig;
         _configuration = configuration;
         _logger = logger;
     }
@@ -57,11 +51,6 @@ public class ClusterMembershipSyncService : BackgroundService
             await Task.Delay(InitialDelay, stoppingToken);
         }
         catch (OperationCanceledException)
-        {
-            return;
-        }
-
-        if (!await ResolveClusterKeyAsync())
         {
             return;
         }
@@ -94,46 +83,22 @@ public class ClusterMembershipSyncService : BackgroundService
         }
     }
 
-    private async Task<bool> ResolveClusterKeyAsync()
-    {
-        var localKey = _keyConfig.Key;
-        var dbKey = await _store.GetClusterKeyAsync();
-
-        if (string.IsNullOrWhiteSpace(dbKey))
-        {
-            if (string.IsNullOrWhiteSpace(localKey))
-            {
-                _logger.LogError(
-                    "Cluster mode is enabled but no cluster key is configured and none exists in the shared database; cannot join");
-                return false;
-            }
-            await _store.SetClusterKeyAsync(localKey);
-            _keyProvider.Set(localKey);
-            _logger.LogInformation("Seeded cluster key into the shared database");
-            return true;
-        }
-
-        if (!string.IsNullOrWhiteSpace(localKey) &&
-            !string.Equals(localKey, dbKey, StringComparison.Ordinal))
-        {
-            _logger.LogError(
-                "Configured cluster key does not match the shared database; refusing to join");
-            return false;
-        }
-
-        _keyProvider.Set(dbKey);
-        _logger.LogInformation("Loaded cluster key from the shared database");
-        return true;
-    }
-
     private async Task RegisterSelfAsync(CancellationToken cancellationToken)
     {
         var local = _membership.GetLocalMember();
-        var existing = await _configManager.GetDeviceAsync(local.DeviceId);
+        var members = await _store.GetDevicesAsync();
+        if (members.Any(d => string.Equals(d.Id, local.DeviceId, StringComparison.OrdinalIgnoreCase)))
+        {
+            _logger.LogInformation(
+                "Already a member of the shared cluster database: {DeviceId} ({Name})",
+                local.DeviceId, local.DeviceName);
+            return;
+        }
+
         var self = new SyncDevice(local.DeviceId, local.DeviceName)
         {
             Addresses = local.Addresses.ToList(),
-            AdmittedAt = existing?.AdmittedAt ?? DateTime.UtcNow
+            AdmittedAt = DateTime.UtcNow
         };
         await _configManager.UpsertDeviceAsync(self);
         _logger.LogInformation(
