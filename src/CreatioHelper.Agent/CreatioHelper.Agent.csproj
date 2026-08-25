@@ -31,7 +31,7 @@
 
     <!-- Application Insights for telemetry -->
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" Version="3.1.2" />
-    <PackageReference Include="OpenTelemetry.Api" Version="1.17.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.18.0" />
 
     <!-- JWT Authentication -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />

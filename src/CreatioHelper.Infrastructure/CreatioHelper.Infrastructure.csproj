@@ -9,7 +9,7 @@
 
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
-    <PackageReference Include="Google.Protobuf" Version="3.35.1" />
+    <PackageReference Include="Google.Protobuf" Version="3.36.0" />
     <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="All" />
 
     <!-- Phase 4: AES-SIV encryption for encrypted folders (RFC 5297) -->
@@ -27,15 +27,15 @@
     <PackageReference Include="Microsoft.Web.Administration" Version="11.1.0" />
     <PackageReference Include="System.Diagnostics.PerformanceCounter" Version="10.0.11" />
     <PackageReference Include="System.Management.Automation" Version="7.6.5" />
-    <PackageReference Include="StackExchange.Redis" Version="3.1.13" />
+    <PackageReference Include="StackExchange.Redis" Version="3.1.31" />
     <PackageReference Include="Microsoft.AspNetCore.SignalR.Core" Version="1.2.12" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.11" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.26.300" />
     <PackageReference Include="System.DirectoryServices.Protocols" Version="10.0.11" />
-    <PackageReference Include="Dapper" Version="2.1.66" />
-    <PackageReference Include="FluentMigrator.Runner" Version="6.2.0" />
+    <PackageReference Include="Dapper" Version="2.1.79" />
+    <PackageReference Include="FluentMigrator.Runner" Version="8.0.1" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
 
     <!-- Prometheus metrics for monitoring -->
