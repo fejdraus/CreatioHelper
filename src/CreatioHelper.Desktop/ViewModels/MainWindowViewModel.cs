@@ -702,6 +702,12 @@ public partial class MainWindowViewModel : ObservableObject
         await _operationsService.StartOperation(this, CompileMode.Fast);
     }
 
+    [RelayCommand]
+    private async Task StartExtra()
+    {
+        await _operationsService.StartOperation(this, CompileMode.Extra);
+    }
+
     public bool SupportsFastCompile
     {
         get
@@ -2632,6 +2638,7 @@ public partial class MainWindowViewModel : ObservableObject
         ["schema_regeneration"]      = "Regeneration",
         ["schema_rebuild_workspace"] = "Rebuild Workspace",
         ["schema_compile_all"]       = "Compile All",
+        ["schema_compile_extra"]     = "Extra Compile",
         ["schema_compile_fast"]      = "Fast Compile",
         ["schema_compile"]           = "Compile",
         ["creatio_to_fs"]            = "Creatio to FS",

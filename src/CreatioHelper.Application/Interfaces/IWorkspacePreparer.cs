@@ -17,6 +17,8 @@ public interface IWorkspacePreparer
     bool SupportsFastCompile(string sitePath);
 
     int CompileAll(string sitePath);
+
+    int CompileExtra(string sitePath);
     int DeletePackages(string sitePath, string packageList);
     int LoadLicResponse(string sitePath, string licFilePath);
     int RestoreConfiguration(string sitePath, string backupPath, bool installPackageData = true, bool ignoreSqlScriptBackwardCompatibilityCheck = false);

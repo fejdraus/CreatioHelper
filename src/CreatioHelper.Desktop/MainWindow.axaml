@@ -175,7 +175,7 @@
                              IsEnabled="{Binding AreControlsEnabled}"
                              Width="140"
                              Height="32"
-                             ToolTip.Tip="Click: incremental install. Dropdown: fast compile or full rebuild.">
+                             ToolTip.Tip="Click: incremental install. Dropdown: fast compile, full rebuild, or extra compile.">
                     <SplitButton.Flyout>
                         <MenuFlyout Placement="Bottom">
                             <MenuItem Header="Start (Fast Compile)"
@@ -184,7 +184,11 @@
                                       ToolTip.Tip="Fast compile of changed schemas: Build + BuildConfiguration -force=False. Requires Creatio 8.0.10 or later."/>
                             <MenuItem Header="Start (Compile All)"
                                       Command="{Binding StartFullCommand}"
-                                      ToolTip.Tip="Full rebuild: RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True"/>
+                                      IsEnabled="{Binding SupportsFastCompile}"
+                                      ToolTip.Tip="Full rebuild of all schemas: Rebuild + BuildConfiguration -force=True. Requires Creatio 8.0.10 or later."/>
+                            <MenuItem Header="Start (Extra Compile)"
+                                      Command="{Binding StartExtraCommand}"
+                                      ToolTip.Tip="Extra self-healing rebuild — regenerates, recompiles and rebuilds everything: RegenerateSchemaSources + RebuildWorkspace + BuildConfiguration -force=True"/>
                         </MenuFlyout>
                     </SplitButton.Flyout>
                 </SplitButton>

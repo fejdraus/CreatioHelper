@@ -6,5 +6,6 @@ public enum CompileMode
     Incremental,
     Fast,
     Full,
+    Extra,
     None
 }

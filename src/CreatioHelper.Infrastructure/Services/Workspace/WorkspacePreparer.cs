@@ -490,7 +490,52 @@ public class WorkspacePreparer : IWorkspacePreparer
         return RunWorkspaceConsole(sitePath, arguments, consoleDir);
     }
 
+    private int RunRebuildOperation(string sitePath)
+    {
+        if (string.IsNullOrEmpty(sitePath)) throw new ArgumentNullException(nameof(sitePath));
+
+        sitePath = sitePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string consoleExePath = GetWorkspaceConsoleExePath(sitePath);
+
+        if (!File.Exists(consoleExePath))
+        {
+            _output.WriteLine($"Executable not found: {consoleExePath}");
+            return 0;
+        }
+
+        string? consoleDir = Path.GetDirectoryName(consoleExePath);
+        if (consoleDir == null)
+        {
+            return 0;
+        }
+
+        var appDirectory = Path.GetDirectoryName(Environment.ProcessPath) ?? Environment.CurrentDirectory;
+        string logPath = Path.Combine(appDirectory, "WSCLog");
+        _output.WriteLine($"Path to log file: {logPath}");
+        string webAppPath = GetWebAppPath(sitePath);
+        string configPath = GetConfigurationPath(sitePath);
+        string arguments = $"-operation=\"Rebuild\" -workspaceName=\"Default\" -webApplicationPath=\"{SafePath(sitePath)}\" -destinationPath=\"{SafePath(webAppPath)}\" -configurationPath=\"{SafePath(configPath)}\" -confRuntimeParentDirectory=\"{SafePath(webAppPath)}\" -logPath=\"{SafePath(logPath)}\" -autoExit=\"true\"";
+        _output.WriteLine("Starting Compile all: server assembly (all schemas)...");
+        return RunWorkspaceConsole(sitePath, arguments, consoleDir);
+    }
+
     public int CompileAll(string sitePath)
+    {
+        if (!SupportsFastCompile(sitePath))
+        {
+            _output.WriteLine($"[WARN] Compile all requires Creatio {Constants.MinimumVersionForFastCompile} or later; falling back to Extra Compile.");
+            return CompileExtra(sitePath);
+        }
+
+        int rebuildCode = RunRebuildOperation(sitePath);
+        if (rebuildCode != 0)
+        {
+            return rebuildCode;
+        }
+        return BuildConfiguration(sitePath, force: true);
+    }
+
+    public int CompileExtra(string sitePath)
     {
         int code = RegenerateSchemaSources(sitePath);
         if (code != 0)

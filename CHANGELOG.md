@@ -1,5 +1,17 @@
 # Changelog
 
+## Desktop v1.2.0 · CLI v1.1.0
+
+### Common (Desktop + CLI)
+
+**Compile All now matches the web *Compile all* button; new *Extra Compile* mode**
+
+- **Compile All** now compiles through the same web facade the Creatio *Compile all* button uses: `Rebuild` + `BuildConfiguration -force=True`, a full rebuild of all schemas. Requires **Creatio 8.0.10 or later** (the `Rebuild` operation does not exist in earlier versions); it falls back to *Extra Compile* on older versions.
+- **Extra Compile** is the previous full-rebuild chain, now a mode of its own: `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`. It regenerates every schema source from metadata (self-healing) and works on all versions.
+- On **Creatio 8.0.10+** all four modes are available (Compile, Fast Compile, Compile All, Extra Compile); on older versions only the two documented modes are available (Compile, Extra Compile).
+- Desktop: new **Start (Compile All)** item in the Start dropdown; the former full-rebuild item is renamed **Start (Extra Compile)**. The main Start click is unchanged.
+- CLI: new `--compile extra` value; `--compile full` now maps to the web *Compile all*.
+
 ## v1.0.32
 
 ### Common (Desktop + CLI)

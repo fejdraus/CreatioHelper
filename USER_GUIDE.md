@@ -26,7 +26,9 @@ Upon launching CreatioHelper, you will see:
 - **Control Buttons:**
 
   - **Start** *(click)*: Incremental install — packages + `BuildConfiguration -force=False`. Faster iteration.
-  - **Start → Start (Compile All)** *(dropdown)*: Full rebuild — `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`.
+  - **Start → Start (Fast Compile)** *(dropdown)*: Fast compile of changed schemas — `Build` + `BuildConfiguration -force=False`. Requires Creatio 8.0.10+.
+  - **Start → Start (Compile All)** *(dropdown)*: Full rebuild of all schemas — `Rebuild` + `BuildConfiguration -force=True`. Requires Creatio 8.0.10+.
+  - **Start → Start (Extra Compile)** *(dropdown)*: Extra self-healing rebuild — `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True`. Works on all versions.
   - **Stop:** Aborts ongoing operations.
   - **Refresh Status:** Checks the status of remote servers (IIS Site/Pool).
   - **Log Output:** Displays progress and errors.
@@ -82,7 +84,17 @@ Changes are saved to the file as you type. A connection string missing from the 
    5. Redis cache flush (if Redis is configured).
    6. IIS Site/Pool restart.
 
-   **Dropdown → Start (Compile All) — Full rebuild:**
+   **Dropdown → Start (Compile All) — Full rebuild (Creatio 8.0.10+):**
+
+   1. IIS Site/Pool stop.
+   2. Pre-deletion of packages.
+   3. Installation of new packages.
+   4. `Rebuild`.
+   5. `BuildConfiguration -force=True`.
+   6. Redis cache flush (if Redis is configured).
+   7. IIS Site/Pool restart.
+
+   **Dropdown → Start (Extra Compile) — Extra self-healing rebuild (all versions):**
 
    1. IIS Site/Pool stop.
    2. Pre-deletion of packages.
@@ -97,10 +109,12 @@ Changes are saved to the file as you type. A connection string missing from the 
 
 ### Schema Rebuild without Packages
 
-When no packages or deletions are specified, the same two modes apply:
+When no packages or deletions are specified, the same modes apply:
 
-- **Start (click):** `BuildConfiguration -force=False` — fast incremental compile.
-- **Start (Compile All):** `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True` — full rebuild.
+- **Start (click):** incremental compile.
+- **Start (Fast Compile):** `Build` + `BuildConfiguration -force=False` — changed schemas (Creatio 8.0.10+).
+- **Start (Compile All):** `Rebuild` + `BuildConfiguration -force=True` — all schemas (Creatio 8.0.10+).
+- **Start (Extra Compile):** `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True` — extra self-healing rebuild.
 
 ---
 

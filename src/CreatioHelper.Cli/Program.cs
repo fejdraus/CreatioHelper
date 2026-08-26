@@ -626,6 +626,7 @@ internal static class CliEntryPoint
         return (value?.ToLowerInvariant()) switch
         {
             "full" => CompileMode.Full,
+            "extra" => CompileMode.Extra,
             "incremental" => CompileMode.Incremental,
             "fast" => CompileMode.Fast,
             "none" => CompileMode.None,
@@ -673,8 +674,9 @@ internal static class CliEntryPoint
         Console.WriteLine("  --delete-after  \"A,B\"        Delete packages after installation");
         Console.WriteLine("  --prevalidate true|false     Prevalidate before install");
         Console.WriteLine("  --reset-unlocked-flags       Reset IsLocked/IsChanged on unlocked packages (locked are reset by default)");
-        Console.WriteLine("  --compile incremental|fast|full   Compile strategy (default: full if packages, incremental otherwise)");
-        Console.WriteLine("                                    fast requires Creatio 8.0.10 or later");
+        Console.WriteLine("  --compile incremental|fast|full|extra   Compile strategy (default: full if packages, incremental otherwise)");
+        Console.WriteLine("                                    fast and full use web Build/Rebuild and require Creatio 8.0.10 or later");
+        Console.WriteLine("                                    extra is a documented full self-healing rebuild on any version");
         Console.WriteLine("  --sync none|files|syncthing  Sync mode for multi-server");
         Console.WriteLine("  --sync-folders \"A,B\"          Relative folder paths to sync (e.g. \"Terrasoft.Configuration,Terrasoft.WebApp/conf\")");
         Console.WriteLine("  --server \"name=X,...\"         Add target server (repeatable; replaces ServerList from settings)");

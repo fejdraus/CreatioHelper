@@ -83,6 +83,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                                      !string.IsNullOrWhiteSpace(packagesAfter);
 
                 bool fullRebuild = options.Compile == CompileMode.Full;
+                bool extraCompile = options.Compile == CompileMode.Extra;
                 bool fastCompile = options.Compile == CompileMode.Fast;
 
                 _output.WriteLine("Prepare WorkspaceConsole ...");
@@ -160,6 +161,11 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     {
                         _output.WriteLine("Compiling to verify configuration integrity before the next stage...");
                         return RunLightCompile();
+                    }
+
+                    if (extraCompile)
+                    {
+                        return ExecutePreparerAction(() => preparer.CompileExtra(sitePath), "[ERROR] Extra compile failed.", cancellationToken);
                     }
 
                     if (!fullRebuild)
@@ -320,9 +326,13 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                     ui.OnStopButtonEnabledChanged(true);
 
-                    if (fullRebuild)
+                    if (extraCompile)
                     {
-                        _output.WriteLine("Performing schema regeneration and full compilation (Compile All)...");
+                        _output.WriteLine("Performing schema regeneration and full compilation (Extra Compile)...");
+                    }
+                    else if (fullRebuild)
+                    {
+                        _output.WriteLine("Performing full compilation of all schemas (Compile All)...");
                     }
                     else if (fastCompile)
                     {
@@ -334,7 +344,14 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     }
 
                     bool success = false;
-                    if (fullRebuild)
+                    if (extraCompile)
+                    {
+                        _metricsService.Measure("schema_compile_extra", () =>
+                        {
+                            success = ExecutePreparerAction(() => preparer.CompileExtra(sitePath), "[ERROR] Extra compile failed.", cancellationToken);
+                        });
+                    }
+                    else if (fullRebuild)
                     {
                         _metricsService.Measure("schema_compile_all", () =>
                         {
@@ -582,6 +599,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                         success = options.Compile switch
                         {
                             CompileMode.Full => ExecutePreparerAction(() => preparer.CompileAll(sitePath), "[ERROR] Compile all failed.", cancellationToken),
+                            CompileMode.Extra => ExecutePreparerAction(() => preparer.CompileExtra(sitePath), "[ERROR] Extra compile failed.", cancellationToken),
                             CompileMode.Fast => ExecutePreparerAction(() => preparer.CompileFast(sitePath), "[ERROR] Fast compile failed.", cancellationToken),
                             _ => ExecutePreparerAction(() => preparer.Compile(sitePath), "[ERROR] Compile failed.", cancellationToken)
                         };

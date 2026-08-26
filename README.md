@@ -66,9 +66,10 @@ Settings are kept in memory unless you create an empty `settings.json` next to t
 
   | Mode | Chain | Notes |
   |---|---|---|
-  | **Compile** (default click) | `RegenerateSchemaSources` + `BuildConfiguration -force=False` | Regenerates every schema source from its metadata, then compiles. Thorough and self-healing for stale metadata. |
+  | **Compile** (default click) | `Build` + `BuildConfiguration -force=False` on Creatio 8.0.10+, else `RegenerateSchemaSources` + `BuildConfiguration -force=False` | Incremental compile of changed schemas. On 8.0.10+ it uses the same `Build` operation as the web *Compile* button; on older versions it regenerates every schema source from metadata first (self-healing). |
   | **Fast Compile** (dropdown) | `Build` + `BuildConfiguration -force=False` | Compiles only the changed schemas — the same operation behind the Creatio web *Compile* button. Roughly 3x faster than *Compile* on a large configuration. Requires **Creatio 8.0.10+**; disabled on older versions. |
-  | **Compile All** (dropdown) | `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True` | Full rebuild of all schemas plus full client content. |
+  | **Compile All** (dropdown) | `Rebuild` + `BuildConfiguration -force=True` | Full rebuild of all schemas — the same operation behind the Creatio web *Compile all* button. Requires **Creatio 8.0.10+**; falls back to *Extra Compile* on older versions. |
+  | **Extra Compile** (dropdown) | `RegenerateSchemaSources` + `RebuildWorkspace` + `BuildConfiguration -force=True` | Extra self-healing rebuild — regenerates every schema source from metadata, then a full server and client rebuild. Works on all versions. |
 
 - **Configuration Rollback**: Roll back to the state before the last package installation. Creatio writes a configuration backup automatically on every install (`conf/backup`); this exposes it as a one-click rollback that stops the site, restores, compiles, clears Redis and starts back up. Shows which packages will be reverted or removed before you confirm. Requires **Creatio 8.0.2+**.
 - **Connection Strings Editor**: Edit `ConnectionStrings.config` of the selected site through a form instead of raw XML
@@ -133,7 +134,7 @@ creatio-helper-cli lic request [options]              # Save license request fil
 | `--delete-after "A,B"` | Delete packages after installation |
 | `--prevalidate true\|false` | Prevalidate before install |
 | `--reset-unlocked-flags` | Also reset `IsLocked`/`IsChanged` on unlocked packages (locked are reset by default during install) |
-| `--compile incremental\|fast\|full\|none` | Compile strategy. `fast` compiles only changed schemas and requires Creatio 8.0.10+ (falls back to `incremental` with a warning on older versions); `none` skips compilation entirely — useful for file-sync-only runs |
+| `--compile incremental\|fast\|full\|extra\|none` | Compile strategy. `fast` (changed schemas) and `full` (all schemas) use the web-facade `Build`/`Rebuild` operations and require Creatio 8.0.10+ (`fast` falls back to `incremental`, `full` to `extra`, with a warning, on older versions); `extra` is a documented full self-healing rebuild available on all versions; `none` skips compilation entirely — useful for file-sync-only runs |
 | `--sync none\|files\|syncthing` | Sync mode for multi-server |
 | `--server "name=X,..."` | Add a target server (repeatable; if any `--server` is present, replaces the `ServerList` from `--settings`). See keys below. |
 **`--server` keys:**
@@ -185,6 +186,12 @@ creatio-helper-cli --iis-site AstanaMotors --compile incremental --no-redis-clea
 
 # Fast compile of changed schemas only (Creatio 8.0.10+)
 creatio-helper-cli --iis-site AstanaMotors --compile fast
+
+# Full rebuild of all schemas — the web "Compile all" button (Creatio 8.0.10+)
+creatio-helper-cli --iis-site AstanaMotors --compile full
+
+# Extra self-healing rebuild — regenerate, recompile and rebuild everything (any version)
+creatio-helper-cli --iis-site AstanaMotors --compile extra
 
 # Show what the last package installation backed up, then roll it back
 creatio-helper-cli restore --list --iis-site AstanaMotors
