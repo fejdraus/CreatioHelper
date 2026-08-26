@@ -18,5 +18,4 @@ public class ClusterMember
     public List<string> Addresses { get; set; } = new();
     public string ApiAddress { get; set; } = "";
     public DateTime AdmittedAt { get; set; }
-    public long StateVersion { get; set; }
 }

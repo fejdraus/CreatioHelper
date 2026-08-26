@@ -80,7 +80,6 @@ public class ClusterMembershipService : IClusterMembershipService
 
         if (!string.IsNullOrWhiteSpace(remote.DeviceId))
         {
-            remote.StateVersion = await _configManager.GetMaxDeviceVersionAsync(remote.DeviceId) + 1;
             await _configManager.RemoveIgnoredDeviceAsync(remote.DeviceId);
         }
 
@@ -126,20 +125,6 @@ public class ClusterMembershipService : IClusterMembershipService
 
         if (_configManager.IsDeviceIgnored(member.DeviceId))
         {
-            var ignored = await _configManager.GetIgnoredDevicesAsync();
-            var tomb = ignored.FirstOrDefault(d =>
-                string.Equals(d.Id, member.DeviceId, StringComparison.OrdinalIgnoreCase));
-            var tombstoneVersion = tomb?.StateVersion ?? long.MaxValue;
-
-            if (member.StateVersion <= tombstoneVersion)
-            {
-                _logger.LogDebug("Skipping tombstoned device {DeviceId} during roster merge", member.DeviceId);
-                return false;
-            }
-
-            _logger.LogInformation(
-                "Approval overrides tombstone for {DeviceId} (version {MemberVersion} newer than deleted version {DeletedVersion})",
-                member.DeviceId, member.StateVersion, tombstoneVersion);
             await _configManager.RemoveIgnoredDeviceAsync(member.DeviceId);
         }
 
@@ -160,21 +145,13 @@ public class ClusterMembershipService : IClusterMembershipService
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
 
-            var addressesChanged = merged.Count != existing.Addresses.Count;
-            if (addressesChanged)
+            if (merged.Count != existing.Addresses.Count)
             {
                 existing.Addresses = merged;
-            }
-
-            var adoptsVersion = member.StateVersion > existing.StateVersion;
-            if (adoptsVersion)
-            {
-                existing.StateVersion = member.StateVersion;
-                existing.AdmittedAt = member.AdmittedAt == default ? existing.AdmittedAt : member.AdmittedAt;
-            }
-
-            if (addressesChanged || adoptsVersion)
-            {
+                if (member.AdmittedAt != default)
+                {
+                    existing.AdmittedAt = member.AdmittedAt;
+                }
                 await _configManager.UpsertDeviceAsync(existing);
             }
 
@@ -189,7 +166,6 @@ public class ClusterMembershipService : IClusterMembershipService
             addresses: member.Addresses.Where(a => !string.IsNullOrWhiteSpace(a)).Distinct().ToList());
 
         admitted.AdmittedAt = member.AdmittedAt == default ? DateTime.UtcNow : member.AdmittedAt;
-        admitted.StateVersion = member.StateVersion;
         await _configManager.UpsertDeviceAsync(admitted);
 
         _logger.LogInformation("Cluster key admitted device {DeviceId} ({DeviceName})", member.DeviceId, name);

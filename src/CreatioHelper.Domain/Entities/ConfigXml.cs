@@ -298,9 +298,6 @@ public class ConfigXmlDevice
 
     [XmlElement("admittedAt")]
     public DateTime AdmittedAt { get; set; }
-
-    [XmlElement("stateVersion")]
-    public long StateVersion { get; set; }
 }
 
 /// <summary>
@@ -604,9 +601,6 @@ public class ConfigXmlIgnoredDevice
 
     [XmlAttribute("address")]
     public string Address { get; set; } = string.Empty;
-
-    [XmlAttribute("stateVersion")]
-    public long StateVersion { get; set; }
 }
 
 /// <summary>

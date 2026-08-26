@@ -99,14 +99,12 @@ public interface IConfigurationManager
     /// </summary>
     Task<bool> DeleteDeviceAsync(string deviceId);
 
-    Task<long> GetMaxDeviceVersionAsync(string deviceId);
-
     /// <summary>
     /// Get devices for a specific folder
     /// </summary>
     Task<IReadOnlyList<SyncDevice>> GetDevicesForFolderAsync(string folderId);
 
-    Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time, long stateVersion);
+    Task AddIgnoredDeviceAsync(string deviceId, string name, DateTime time);
 
     Task<bool> RemoveIgnoredDeviceAsync(string deviceId);
 

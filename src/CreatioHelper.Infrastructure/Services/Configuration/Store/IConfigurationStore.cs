@@ -14,8 +14,6 @@ public interface IConfigurationStore
 
     Task<IReadOnlyList<ConfigXmlDevice>> GetDevicesAsync();
 
-    Task<long> GetMaxDeviceVersionAsync(string deviceId);
-
     Task UpsertDeviceAsync(ConfigXmlDevice device);
 
     Task<bool> DeleteDeviceAsync(string deviceId);
