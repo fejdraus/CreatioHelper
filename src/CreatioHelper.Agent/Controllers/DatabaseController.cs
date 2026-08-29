@@ -1,4 +1,6 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Controllers.Handlers;
+
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Infrastructure.Services.Sync.Scanning;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +20,7 @@ public class DatabaseController : ControllerBase
     private readonly ISyncEngine _syncEngine;
     private readonly IScanProgressService _scanProgressService;
     private readonly ILogger<DatabaseController> _logger;
+    private readonly DatabaseFileHandlers _fileHandlers;
 
     public DatabaseController(
         ISyncEngine syncEngine,
@@ -27,7 +30,9 @@ public class DatabaseController : ControllerBase
         _syncEngine = syncEngine;
         _scanProgressService = scanProgressService;
         _logger = logger;
+        _fileHandlers = new DatabaseFileHandlers(syncEngine);
     }
+
 
     /// <summary>
     /// Get folder status - 100% Syncthing compatible
@@ -147,136 +152,16 @@ public class DatabaseController : ControllerBase
     /// </summary>
     [HttpGet("browse")]
     [Authorize(Roles = Roles.ReadRoles)]
-    public async Task<ActionResult<object>> Browse([FromQuery] string folder, [FromQuery] string? prefix, [FromQuery] bool dirsonly = false)
-    {
-        if (string.IsNullOrEmpty(folder))
-            return BadRequest(new { error = "folder parameter required" });
+    public Task<ActionResult<object>> Browse([FromQuery] string folder, [FromQuery] string? prefix, [FromQuery] bool dirsonly = false)
+        => _fileHandlers.BrowseAsync(folder, prefix, dirsonly);
 
-        // Validate prefix path to prevent path traversal attacks
-        if (!string.IsNullOrEmpty(prefix) && (prefix.Contains("..") || Path.IsPathRooted(prefix)))
-            return BadRequest(new { error = "Invalid prefix path" });
 
-        var folderInfo = await _syncEngine.GetFolderAsync(folder);
-        if (folderInfo == null)
-            return NotFound(new { error = "folder not found" });
-
-        var basePath = folderInfo.Path;
-        var searchPath = string.IsNullOrEmpty(prefix) ? basePath : Path.Combine(basePath, prefix);
-
-        // Additional check: ensure resolved path is within the folder
-        var searchFullPath = Path.GetFullPath(searchPath);
-        var folderFullPath = Path.GetFullPath(basePath);
-
-        // Normalize folder path to end with separator for accurate prefix matching
-        if (!folderFullPath.EndsWith(Path.DirectorySeparatorChar))
-            folderFullPath += Path.DirectorySeparatorChar;
-
-        // Path must equal the folder or start with folder + separator
-        if (!searchFullPath.Equals(folderFullPath.TrimEnd(Path.DirectorySeparatorChar), StringComparison.OrdinalIgnoreCase) &&
-            !searchFullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { error = "Invalid prefix path" });
-
-        var entries = new List<object>();
-
-        if (Directory.Exists(searchPath))
-        {
-            var directoryInfo = new DirectoryInfo(searchPath);
-            
-            // Add directories
-            foreach (var dir in directoryInfo.GetDirectories())
-            {
-                entries.Add(new
-                {
-                    name = dir.Name,
-                    type = "directory",
-                    size = 0,
-                    modified = dir.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                });
-            }
-
-            // Add files (unless dirsonly is true)
-            if (!dirsonly)
-            {
-                foreach (var file in directoryInfo.GetFiles())
-                {
-                    entries.Add(new
-                    {
-                        name = file.Name,
-                        type = "file",
-                        size = file.Length,
-                        modified = file.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
-                    });
-                }
-            }
-        }
-
-        return Ok(entries.ToArray());
-    }
-
-    /// <summary>
-    /// Get file information - 100% Syncthing compatible
-    /// GET /rest/db/file?folder=default&file=path/to/file
-    /// </summary>
     [HttpGet("file")]
     [Authorize(Roles = Roles.ReadRoles)]
-    public async Task<ActionResult<object>> GetFile([FromQuery] string folder, [FromQuery] string file)
-    {
-        if (string.IsNullOrEmpty(folder) || string.IsNullOrEmpty(file))
-            return BadRequest(new { error = "folder and file parameters required" });
+    public Task<ActionResult<object>> GetFile([FromQuery] string folder, [FromQuery] string file)
+        => _fileHandlers.GetFileAsync(folder, file);
 
-        // Validate file path to prevent path traversal attacks
-        if (file.Contains("..") || Path.IsPathRooted(file))
-            return BadRequest(new { error = "Invalid file path" });
 
-        var folderInfo = await _syncEngine.GetFolderAsync(folder);
-        if (folderInfo == null)
-            return NotFound(new { error = "folder not found" });
-
-        var filePath = Path.Combine(folderInfo.Path, file);
-
-        // Additional check: ensure resolved path is within the folder
-        var fullPath = Path.GetFullPath(filePath);
-        var folderFullPath = Path.GetFullPath(folderInfo.Path);
-
-        // Normalize folder path to end with separator for accurate prefix matching
-        if (!folderFullPath.EndsWith(Path.DirectorySeparatorChar))
-            folderFullPath += Path.DirectorySeparatorChar;
-
-        // Path must start with folder + separator (files cannot equal folder path)
-        if (!fullPath.StartsWith(folderFullPath, StringComparison.OrdinalIgnoreCase))
-            return BadRequest(new { error = "Invalid file path" });
-
-        if (!System.IO.File.Exists(filePath))
-            return NotFound(new { error = "file not found" });
-
-        var fileInfo = new FileInfo(filePath);
-        
-        return Ok(new
-        {
-            availability = new[] { _syncEngine.DeviceId },
-            blocksHash = Array.Empty<byte>(),
-            deleted = false,
-            invalid = false,
-            localFlags = 0,
-            modified = fileInfo.LastWriteTimeUtc.ToString("yyyy-MM-ddTHH:mm:ss.fffZ"),
-            modifiedBy = _syncEngine.DeviceId,
-            name = file,
-            noPermissions = false,
-            numBlocks = 1,
-            permissions = "0644",
-            platform = new { },
-            sequence = 1000,
-            size = fileInfo.Length,
-            type = "file",
-            version = new
-            {
-                counters = new[]
-                {
-                    new { id = 1, value = 1 }
-                }
-            }
-        });
-    }
 
     /// <summary>
     /// Scan folder - 100% Syncthing compatible

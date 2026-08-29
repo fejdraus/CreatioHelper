@@ -1,4 +1,6 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Controllers.Handlers;
+
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +20,7 @@ public class SecurityController : ControllerBase
     private readonly ICertificateManager _certificateManager;
     private readonly ISecurityAuditor _securityAuditor;
     private readonly ILogger<SecurityController> _logger;
+    private readonly SecurityCertificateHandlers _certificateHandlers;
 
     public SecurityController(
         ICertificateManager certificateManager,
@@ -27,6 +30,8 @@ public class SecurityController : ControllerBase
         _certificateManager = certificateManager;
         _securityAuditor = securityAuditor;
         _logger = logger;
+        _certificateHandlers = new SecurityCertificateHandlers(
+            certificateManager, securityAuditor, logger, LoadCertificateFromStorageAsync);
     }
 
     /// <summary>
@@ -318,94 +323,24 @@ public class SecurityController : ControllerBase
     /// </summary>
     [HttpPost("certificates/{deviceId}/renew")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public async Task<IActionResult> RenewCertificate(
+    public Task<IActionResult> RenewCertificate(
         string deviceId,
         [FromBody] RenewCertificateRequest request,
         CancellationToken cancellationToken = default)
-    {
-        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-        var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+        => _certificateHandlers.RenewCertificateAsync(deviceId, request, cancellationToken);
 
-        if (device?.Certificate == null)
-        {
-            return NotFound(new { error = "Device not found or certificate missing" });
-        }
-
-        var currentCertificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
-        if (currentCertificate == null)
-        {
-            return StatusCode(500, new { error = "Could not load certificate from storage" });
-        }
-
-        var newCertificate = await _certificateManager.RenewCertificateIfNeededAsync(
-            currentCertificate,
-            request.CommonName,
-            request.ValidityDays,
-            request.RenewalThresholdDays,
-            cancellationToken);
-
-        var renewed = newCertificate?.Thumbprint != currentCertificate.Thumbprint;
-
-        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-        {
-            EventType = SecurityEventType.CertificateRenewed,
-            DeviceId = deviceId,
-            Severity = SecuritySeverity.Info,
-            Message = renewed
-                ? $"Certificate renewed for device {deviceId}"
-                : $"Certificate renewal not needed for device {deviceId}"
-        }, cancellationToken);
-
-        return Ok(new {
-            success = true,
-            message = renewed ? "Certificate renewed successfully" : "Certificate renewal not needed",
-            renewed,
-            renewalRequired = device.RequiresCertificateRenewal(request.RenewalThresholdDays)
-        });
-    }
 
     /// <summary>
     /// Экспортировать сертификат
     /// </summary>
     [HttpPost("certificates/{deviceId}/export")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public async Task<IActionResult> ExportCertificate(
+    public Task<IActionResult> ExportCertificate(
         string deviceId,
         [FromBody] ExportCertificateRequest request,
         CancellationToken cancellationToken = default)
-    {
-        var trustedDevices = await _certificateManager.GetTrustedDevicesAsync(cancellationToken);
-        var device = trustedDevices.FirstOrDefault(d => d.DeviceId == deviceId);
+        => _certificateHandlers.ExportCertificateAsync(deviceId, request, cancellationToken);
 
-        if (device?.Certificate == null)
-        {
-            return NotFound(new { error = "Device not found or certificate missing" });
-        }
-
-        var certificate = await LoadCertificateFromStorageAsync(device, cancellationToken);
-        if (certificate == null)
-        {
-            return StatusCode(500, new { error = "Could not load certificate from storage" });
-        }
-
-        var exportedData = await _certificateManager.ExportCertificateAsync(
-            certificate, request.Format, request.Password, cancellationToken);
-
-        await _securityAuditor.LogSecurityEventAsync(new SecurityEvent
-        {
-            EventType = SecurityEventType.ConfigurationChanged,
-            DeviceId = deviceId,
-            Severity = SecuritySeverity.Info,
-            Message = $"Certificate exported for device {deviceId} in format {request.Format}"
-        }, cancellationToken);
-
-        return Ok(new {
-            success = true,
-            message = "Certificate exported successfully",
-            format = request.Format.ToString(),
-            certificateData = Convert.ToBase64String(exportedData)
-        });
-    }
 
     /// <summary>
     /// Load certificate from storage for a trusted device

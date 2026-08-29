@@ -1,4 +1,6 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Controllers.Handlers;
+
 using CreatioHelper.Agent.Services;
 using CreatioHelper.Agent.Syncthing;
 using CreatioHelper.Application.DTOs;
@@ -24,6 +26,9 @@ public class SyncthingConfigController : ControllerBase
     private readonly IConfiguration _configuration;
     private readonly IConfigXmlService _configXmlService;
     private readonly WebSiteRegistryService _webSiteRegistry;
+    private readonly SyncthingConfigDeviceHandlers _deviceHandlers;
+    private readonly SyncthingConfigUpdateHandlers _updateHandlers;
+
 
     // Store default ignore lines in memory (in production, this would be persisted)
     private static string[] _defaultIgnoreLines = Array.Empty<string>();
@@ -40,6 +45,8 @@ public class SyncthingConfigController : ControllerBase
         _configuration = configuration;
         _configXmlService = configXmlService;
         _webSiteRegistry = webSiteRegistry;
+        _deviceHandlers = new SyncthingConfigDeviceHandlers(syncEngine, logger);
+        _updateHandlers = new SyncthingConfigUpdateHandlers(syncEngine, logger, SaveConfigurationToXmlAsync);
     }
 
     /// <summary>
@@ -62,69 +69,9 @@ public class SyncthingConfigController : ControllerBase
     /// </summary>
     [HttpPut]
     [Authorize(Roles = Roles.WriteRoles)]
-    public async Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
-    {
-        _logger.LogInformation("Received full configuration update, applying changes");
+    public Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
+        => _updateHandlers.UpdateConfigAsync(config);
 
-        // Apply folder changes
-        if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var folderJson in foldersElement.EnumerateArray())
-            {
-                try
-                {
-                    var folderConfig = ParseFolderConfiguration(folderJson);
-                    var existing = await _syncEngine.GetFolderAsync(folderConfig.Id);
-                    if (existing == null)
-                        await _syncEngine.AddFolderAsync(folderConfig);
-                    else
-                        await _syncEngine.UpdateFolderAsync(folderConfig);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error applying folder config from PUT /rest/config");
-                }
-            }
-        }
-
-        // Apply device changes
-        if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var deviceJson in devicesElement.EnumerateArray())
-            {
-                try
-                {
-                    var deviceId = deviceJson.GetProperty("deviceID").GetString();
-                    if (string.IsNullOrEmpty(deviceId)) continue;
-
-                    var devices = await _syncEngine.GetDevicesAsync();
-                    if (!devices.Any(d => d.DeviceId == deviceId))
-                    {
-                        var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
-                        var addresses = new List<string> { "dynamic" };
-                        if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
-                        {
-                            addresses = addrProp.EnumerateArray()
-                                .Select(a => a.GetString())
-                                .Where(s => !string.IsNullOrEmpty(s))
-                                .Cast<string>()
-                                .ToList();
-                        }
-                        await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Error applying device config from PUT /rest/config");
-                }
-            }
-        }
-
-        // Save configuration to config.xml for persistence
-        await SaveConfigurationToXmlAsync();
-
-        return Ok(new { success = true });
-    }
 
     /// <summary>
     /// Check if configuration restart is required - 100% Syncthing compatible
@@ -389,15 +336,9 @@ public class SyncthingConfigController : ControllerBase
     /// </summary>
     [HttpDelete("devices/{id}")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public async Task<ActionResult> DeleteDevice(string id)
-    {
-        var result = await _syncEngine.RemoveDeviceAsync(id);
-        if (!result)
-            return NotFound(new { error = $"Device {id} not found or cannot be removed" });
+    public Task<ActionResult> DeleteDevice(string id)
+        => _deviceHandlers.DeleteDeviceAsync(id);
 
-        _logger.LogInformation("Device {DeviceId} deleted via API", id);
-        return Ok(new { message = $"Device {id} removed successfully" });
-    }
 
     /// <summary>
     /// Patch a device - 100% Syncthing compatible

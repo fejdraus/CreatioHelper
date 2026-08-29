@@ -1,0 +1,38 @@
+# EditorConfig is awesome: https://EditorConfig.org
+
+# Top-most EditorConfig file
+root = true
+
+# All text files: UTF-8, LF line endings, trim trailing whitespace, insert final newline.
+[*]
+charset = utf-8
+end_of_line = crlf
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown: preserve trailing whitespace (two spaces mean line break)
+[*.md]
+trim_trailing_whitespace = false
+
+# JSON: 2-space indent (industry convention)
+[*.json]
+indent_size = 2
+
+# YAML: 2-space indent (matches existing files)
+[*.{yml,yaml}]
+indent_size = 2
+
+# Batch / shell scripts: spaces, not tabs
+[*.{bat,cmd,sh}]
+end_of_line = crlf
+
+# C# specifics: file-scoped namespaces are idiomatic in this codebase
+# (see src/CreatioHelper.Agent/Program.cs, src/CreatioHelper.Cli/Program.cs).
+# dotnet format enforces the bulk; .editorconfig captures the few overrides.
+[*.cs]
+# dotnet format's whitespace / style rules handle the rest.
+# Setting dotnet_sort_system_directives_first=true matches the existing files.
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false

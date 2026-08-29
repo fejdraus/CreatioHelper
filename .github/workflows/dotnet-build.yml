@@ -27,3 +27,11 @@ jobs:
       - name: Test
         run: dotnet test CreatioHelper.sln --no-build --configuration Release --blame-hang-timeout 60s
         timeout-minutes: 10
+      # Verifies code formatting matches .editorconfig + default dotnet format rules.
+      # Currently reports existing whitespace violations in src/CreatioHelper.Shared/Utils/*
+      # and src/CreatioHelper.Contracts/Requests/* — do NOT remove `continue-on-error: true`
+      # until those files are reformatted (run `dotnet format` locally and commit the result).
+      - name: Verify formatting
+        run: dotnet format CreatioHelper.sln --verify-no-changes --no-restore
+        continue-on-error: true
+        timeout-minutes: 10

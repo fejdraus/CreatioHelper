@@ -1,4 +1,6 @@
 using CreatioHelper.Agent.Authorization;
+using CreatioHelper.Agent.Controllers.Handlers;
+
 using CreatioHelper.Agent.Syncthing;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Domain.Entities;
@@ -23,6 +25,8 @@ public class SyncthingSystemController : ControllerBase
     private readonly ILogger<SyncthingSystemController> _logger;
     private readonly IConfiguration _configuration;
     private readonly IConfigXmlService _configXmlService;
+    private readonly SyncthingSystemConfigHandlers _configHandlers;
+
 
     // Store enabled log facilities in memory (in production, this would be persisted)
     private static readonly HashSet<string> _enabledLogFacilities = new();
@@ -37,6 +41,7 @@ public class SyncthingSystemController : ControllerBase
         _logger = logger;
         _configuration = configuration;
         _configXmlService = configXmlService;
+        _configHandlers = new SyncthingSystemConfigHandlers(syncEngine, logger);
     }
 
     /// <summary>
@@ -230,66 +235,12 @@ public class SyncthingSystemController : ControllerBase
     /// <summary>
     /// Update system configuration - 100% Syncthing compatible
     /// POST /rest/system/config
-    /// </summary>
     [HttpPost("config")]
     [Authorize(Roles = Roles.WriteRoles)]
-    public async Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
-    {
-        _logger.LogInformation("Received configuration update, applying changes");
+    public Task<ActionResult> UpdateConfig([FromBody] JsonElement config)
+        => _configHandlers.UpdateConfigAsync(config);
 
-        // Apply folder changes
-        if (config.TryGetProperty("folders", out var foldersElement) && foldersElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var folderJson in foldersElement.EnumerateArray())
-            {
-                if (!folderJson.TryGetProperty("id", out var idProp)) continue;
-                var folderId = idProp.GetString();
-                if (string.IsNullOrEmpty(folderId)) continue;
 
-                var existing = await _syncEngine.GetFolderAsync(folderId);
-                if (existing == null)
-                {
-                    // Add new folder
-                    var path = folderJson.TryGetProperty("path", out var pathProp) ? pathProp.GetString() ?? "" : "";
-                    var label = folderJson.TryGetProperty("label", out var labelProp) ? labelProp.GetString() ?? folderId : folderId;
-                    var type = folderJson.TryGetProperty("type", out var typeProp) ? typeProp.GetString() ?? "sendreceive" : "sendreceive";
-                    if (!string.IsNullOrEmpty(path))
-                    {
-                        await _syncEngine.AddFolderAsync(folderId, label, path, type);
-                    }
-                }
-            }
-        }
-
-        // Apply device changes
-        if (config.TryGetProperty("devices", out var devicesElement) && devicesElement.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var deviceJson in devicesElement.EnumerateArray())
-            {
-                if (!deviceJson.TryGetProperty("deviceID", out var deviceIdProp)) continue;
-                var deviceId = deviceIdProp.GetString();
-                if (string.IsNullOrEmpty(deviceId)) continue;
-
-                var devices = await _syncEngine.GetDevicesAsync();
-                if (!devices.Any(d => d.DeviceId == deviceId))
-                {
-                    var name = deviceJson.TryGetProperty("name", out var nameProp) ? nameProp.GetString() ?? deviceId : deviceId;
-                    var addresses = new List<string> { "dynamic" };
-                    if (deviceJson.TryGetProperty("addresses", out var addrProp) && addrProp.ValueKind == JsonValueKind.Array)
-                    {
-                        addresses = addrProp.EnumerateArray()
-                            .Select(a => a.GetString())
-                            .Where(s => !string.IsNullOrEmpty(s))
-                            .Cast<string>()
-                            .ToList();
-                    }
-                    await _syncEngine.AddDeviceAsync(deviceId, name, null, addresses);
-                }
-            }
-        }
-
-        return Ok(new { success = true });
-    }
 
     /// <summary>
     /// System restart - 100% Syncthing compatible

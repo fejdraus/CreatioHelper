@@ -468,7 +468,7 @@ public class SyncEngine : ISyncEngine, IDisposable
 
         if (!string.IsNullOrEmpty(config.Order))
         {
-            existingFolder.SetPullOrder(ParsePullOrder(config.Order));
+            existingFolder.SetPullOrder(SyncScannerHelpers.ParsePullOrder(config.Order));
         }
         var wasPaused = existingFolder.IsPaused;
         if (config.Paused != wasPaused)
@@ -512,8 +512,6 @@ public class SyncEngine : ISyncEngine, IDisposable
         _logger.LogInformation("Updated folder {FolderId} ({Label}) configuration", config.Id, config.Label);
         return existingFolder;
     }
-    private static Domain.Enums.SyncPullOrder ParsePullOrder(string order) =>
-        Domain.Enums.SyncPullOrders.Parse(order);
     public async Task ShareFolderWithDeviceAsync(string folderId, string deviceId)
     {
         if (!_folders.TryGetValue(folderId, out var folder))
@@ -869,11 +867,11 @@ public class SyncEngine : ISyncEngine, IDisposable
     }
     private async Task<BepFileInfo> CreateFileInfoAsync(System.IO.FileInfo file, string relativePath)
     {
-        var blockSize = CalculateBlockSize(file.Length);
+        var blockSize = SyncScannerHelpers.CalculateBlockSize(file.Length);
         var blocks = new List<BepBlockInfo>();
         if (file.Length > 0)
         {
-            blocks = await CalculateFileBlocksAsync(file.FullName, blockSize);
+            blocks = await SyncScannerHelpers.CalculateFileBlocksAsync(file.FullName, blockSize);
         }
         return new BepFileInfo
         {
@@ -887,59 +885,10 @@ public class SyncEngine : ISyncEngine, IDisposable
             {
                 Counters = new List<BepCounter>
                 {
-                    new BepCounter { Id = StringToShortId(_configuration.DeviceId), Value = (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
+                    new BepCounter { Id = SyncScannerHelpers.StringToShortId(_configuration.DeviceId), Value = (ulong)DateTimeOffset.UtcNow.ToUnixTimeSeconds() }
                 }
             }
         };
-    }
-    private static ulong StringToShortId(string deviceIdHex)
-    {
-        try
-        {
-            var deviceId = Convert.FromHexString(deviceIdHex);
-            return System.Buffers.Binary.BinaryPrimitives.ReadUInt64BigEndian(deviceId.AsSpan(0, Math.Min(8, deviceId.Length)));
-        }
-        catch
-        {
-            return 0;
-        }
-    }
-    private static int CalculateBlockSize(long fileSize)
-    {
-        const int desiredPerFileBlocks = 2000;
-        var blockSizes = new[] { 128 * 1024, 256 * 1024, 512 * 1024, 1024 * 1024, 2048 * 1024, 4096 * 1024, 8192 * 1024, 16384 * 1024 };
-        foreach (var size in blockSizes)
-        {
-            if (fileSize < desiredPerFileBlocks * size)
-                return size;
-        }
-        return blockSizes[^1];
-    }
-    private async Task<List<BepBlockInfo>> CalculateFileBlocksAsync(string filePath, int blockSize)
-    {
-        var blocks = new List<BepBlockInfo>();
-        using var file = File.OpenRead(filePath);
-        var buffer = new byte[blockSize];
-        long offset = 0;
-
-        while (offset < file.Length)
-        {
-            var bytesToRead = (int)Math.Min(blockSize, file.Length - offset);
-            var bytesRead = await file.ReadAsync(buffer.AsMemory(0, bytesToRead));
-            if (bytesRead > 0)
-            {
-                var blockData = buffer.AsSpan(0, bytesRead).ToArray();
-                var hash = System.Security.Cryptography.SHA256.HashData(blockData);
-                blocks.Add(new BepBlockInfo
-                {
-                    Offset = offset,
-                    Size = bytesRead,
-                    Hash = hash
-                });
-                offset += bytesRead;
-            }
-        }
-        return blocks;
     }
     private void OnDeviceConnected(object? sender, DeviceConnectedEventArgs e)
     {
@@ -2070,7 +2019,7 @@ public class SyncEngine : ISyncEngine, IDisposable
         }
         if (!string.IsNullOrEmpty(xmlFolder.Order))
         {
-            folder.SetPullOrder(ParsePullOrder(xmlFolder.Order));
+            folder.SetPullOrder(SyncScannerHelpers.ParsePullOrder(xmlFolder.Order));
         }
         if (_folderStatuses.TryGetValue(folder.Id, out var status))
         {
