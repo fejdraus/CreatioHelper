@@ -82,6 +82,8 @@ public class WorkspacePreparer : IWorkspacePreparer
             : Path.Combine(sitePath, "WorkspaceConsole", "Terrasoft.Tools.WorkspaceConsole.dll.config");
         UpdateWorkspaceConsoleConfig(consoleConfigPath, connectionString, useStaticFileContent, fileDesignModeEnabled);
 
+        UnblockWorkspaceConsole(consoleConfigPath);
+
         GrantAccessViaIcacls(connectionStringsConfig, "R");
         GrantAccessViaIcacls(webConfigPath, "R");
         GrantAccessViaIcacls(consoleConfigPath, "F");
@@ -92,6 +94,21 @@ public class WorkspacePreparer : IWorkspacePreparer
         }
 
         return (true, quartzIsActiveOriginal);
+    }
+
+    private void UnblockWorkspaceConsole(string consoleConfigPath)
+    {
+        var consoleDirectory = Path.GetDirectoryName(consoleConfigPath);
+        if (string.IsNullOrEmpty(consoleDirectory))
+        {
+            return;
+        }
+
+        var removed = FileSystem.ZoneIdentifierRemover.RemoveFrom(consoleDirectory);
+        if (removed > 0)
+        {
+            _output.WriteLine($"Cleared the internet zone marker from {removed} WorkspaceConsole files; .NET refuses to load an assembly that carries it.");
+        }
     }
 
     private string GetWorkspaceConsoleExePath(string sitePath)
