@@ -126,13 +126,14 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
 
                 bool schemaRebuildPerformed = false;
                 bool serversAlreadyStopped = false;
+                var startStates = new Dictionary<string, ServerStartState>(StringComparer.OrdinalIgnoreCase);
 
                 async Task StopServersForChangeAsync(string what)
                 {
                     if (serverList.Length > 0)
                     {
                         _output.WriteLine($"Stopping ALL servers (local + remote) before {what}...");
-                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, options.SyncthingMonitor, startStates, cancellationToken).ConfigureAwait(false);
                         serversAlreadyStopped = true;
                     }
                     else
@@ -231,7 +232,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     }
 
                     _output.WriteLine("Stopping ALL servers before package installation...");
-                    await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                    await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, options.SyncthingMonitor, startStates, cancellationToken).ConfigureAwait(false);
                     serversAlreadyStopped = true;
 
                     string resetScope = options.ResetUnlockedPackageFlags ? "all packages" : "locked packages (InstallType = 1)";
@@ -316,7 +317,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     else if (options.HasRemoteServers && serverList.Length > 0)
                     {
                         _output.WriteLine("Stopping ALL servers (local + remote) before schema rebuild...");
-                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, cancellationToken).ConfigureAwait(false);
+                        await StopAllServersBeforeInstallation(manager, localServerInfo, nestedPath, serverList, options.HasRemoteServers, options.SyncthingMonitor, startStates, cancellationToken).ConfigureAwait(false);
                     }
                     else
                     {
@@ -410,7 +411,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                     {
                         if (options.Sync == SyncMode.Syncthing && OperatingSystem.IsWindows() && options.SyncthingMonitor != null)
                         {
-                            await PerformSyncthingOrchestrationAsync(manager, localServerInfo, nestedPath, serverList, options.SyncthingMonitor, cancellationToken).ConfigureAwait(false);
+                            await PerformSyncthingOrchestrationAsync(manager, localServerInfo, nestedPath, serverList, options.SyncthingMonitor, startStates, cancellationToken).ConfigureAwait(false);
                             usedSyncthingOrchestration = true;
                         }
                         else if (options.Sync == SyncMode.FileCopy)
@@ -870,8 +871,10 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         _metricsService.IncrementCounter("pool_management_completed");
     }
 
-    private async Task StopAllServersBeforeInstallation(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, bool shouldRefreshUI, CancellationToken cancellationToken)
+    private async Task StopAllServersBeforeInstallation(IIisManager manager, ServerInfo localServerInfo, string nestedPath, ServerInfo[] remoteServers, bool shouldRefreshUI, ISyncthingMonitorService? syncthingMonitor, Dictionary<string, ServerStartState> startStates, CancellationToken cancellationToken)
     {
+        await CaptureStartStatesAsync(manager, remoteServers, syncthingMonitor, startStates, cancellationToken).ConfigureAwait(false);
+
         await StopServerAsync(localServerInfo, isLocal: true, nestedPath, shouldRefreshUI, cancellationToken);
 
         foreach (var server in remoteServers)
@@ -1018,12 +1021,62 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         }
     }
 
+    private async Task CaptureStartStatesAsync(
+        IIisManager manager,
+        ServerInfo[] remoteServers,
+        ISyncthingMonitorService? syncthingMonitor,
+        Dictionary<string, ServerStartState> startStates,
+        CancellationToken cancellationToken)
+    {
+        foreach (var server in remoteServers)
+        {
+            var name = server.Name ?? string.Empty;
+            if (startStates.ContainsKey(name))
+            {
+                continue;
+            }
+
+            string? poolStatus = null;
+            string? siteStatus = null;
+
+            if (!string.IsNullOrWhiteSpace(server.PoolName))
+            {
+                var pool = await manager.GetAppPoolStatusAsync(name, server.PoolName, cancellationToken).ConfigureAwait(false);
+                poolStatus = pool.IsSuccess ? pool.Value : null;
+            }
+
+            if (!string.IsNullOrWhiteSpace(server.SiteName))
+            {
+                var site = await manager.GetWebsiteStatusAsync(name, server.SiteName, cancellationToken).ConfigureAwait(false);
+                siteStatus = site.IsSuccess ? site.Value : null;
+            }
+
+            var readiness = SyncReadiness.UpToDate;
+            if (syncthingMonitor != null)
+            {
+                try
+                {
+                    var snapshot = await syncthingMonitor.GetSyncStatusAsync(server, cancellationToken).ConfigureAwait(false);
+                    readiness = snapshot.Readiness;
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    _output.WriteLine($"[WARNING] Could not read the Syncthing state of {name} before stopping it: {ex.Message}");
+                    readiness = SyncReadiness.Unknown;
+                }
+            }
+
+            startStates[name] = new ServerStartState(readiness, poolStatus, siteStatus);
+        }
+    }
+
     private async Task PerformSyncthingOrchestrationAsync(
         IIisManager manager,
         ServerInfo localServerInfo,
         string nestedPath,
         ServerInfo[] remoteServers,
         ISyncthingMonitorService syncthingMonitor,
+        Dictionary<string, ServerStartState> startStates,
         CancellationToken cancellationToken)
     {
         _output.WriteLine("=== SYNCTHING ORCHESTRATION MODE ===");
@@ -1050,6 +1103,35 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         if (serversToMonitor.Count == 0)
         {
             _output.WriteLine("[ERROR] No servers with valid Syncthing configuration found!");
+            return;
+        }
+
+        var excluded = new List<(ServerInfo Server, SyncWaitExclusion Reason)>();
+        foreach (var server in serversToMonitor.ToList())
+        {
+            if (!startStates.TryGetValue(server.Name ?? string.Empty, out var state))
+            {
+                continue;
+            }
+
+            var reason = SyncWaitEligibility.Decide(state);
+            if (reason == SyncWaitExclusion.None)
+            {
+                continue;
+            }
+
+            excluded.Add((server, reason));
+            serversToMonitor.Remove(server);
+        }
+
+        foreach (var (server, reason) in excluded)
+        {
+            _output.WriteLine($"[INFO] Not waiting for {server.Name}: {SyncWaitEligibility.Explain(reason)}. Its pool and site are left as they were.");
+        }
+
+        if (serversToMonitor.Count == 0)
+        {
+            _output.WriteLine($"[WARNING] Every remote server was excluded from the wait ({excluded.Count} of them), so there is nothing to wait for.");
             return;
         }
 

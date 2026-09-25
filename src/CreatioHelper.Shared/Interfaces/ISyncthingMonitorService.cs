@@ -1,4 +1,4 @@
-using CreatioHelper.Domain.Entities;
+﻿using CreatioHelper.Domain.Entities;
 
 namespace CreatioHelper.Shared.Interfaces;
 
@@ -25,6 +25,11 @@ public interface ISyncthingMonitorService
     /// Returns status string: "Online", "Offline", "Syncing", "Not Configured", etc.
     /// </summary>
     Task<string> GetDeviceAndFolderStatusAsync(ServerInfo server, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Get the same status the display string is rendered from, as a value a decision can be made on.
+    /// </summary>
+    Task<SyncStatusSnapshot> GetSyncStatusAsync(ServerInfo server, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Pause synchronization for a specific folder

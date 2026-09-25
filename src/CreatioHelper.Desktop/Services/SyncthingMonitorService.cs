@@ -139,64 +139,19 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     }
         public async Task<string> GetDeviceAndFolderStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrEmpty(server.SyncthingDeviceId) || server.SyncthingFolderIds.Count == 0)
-        {
-            return "⚙️ Not Configured";
-        }
-
         try
         {
-            var deviceConnected = await IsDeviceConnectedAsync(server.SyncthingDeviceId, cancellationToken);
-            if (!deviceConnected)
+            var status = await GetSyncStatusAsync(server, cancellationToken);
+            return status.Readiness switch
             {
-                return "❌ Offline";
-            }
-            double totalCompletion = 0;
-            long totalNeedItems = 0;
-            long totalNeedBytes = 0;
-            bool anyPaused = false;
-            bool anyNotSharing = false;
-            bool anyInvalid = false;
-            foreach (var folderId in server.SyncthingFolderIds)
-            {
-                var completion = await GetRemoteDeviceCompletionAsync(
-                    folderId,
-                    server.SyncthingDeviceId,
-                    cancellationToken);
-                if (completion.RemoteState == "paused")
-                {
-                    anyPaused = true;
-                }
-                else if (completion.RemoteState == "notSharing")
-                {
-                    anyNotSharing = true;
-                }
-                else if (completion.RemoteState != "valid")
-                {
-                    anyInvalid = true;
-                }
-                totalCompletion += completion.Completion;
-                totalNeedBytes += completion.NeedBytes;
-                totalNeedItems += completion.NeedItems;
-            }
-            double avgCompletion = totalCompletion / server.SyncthingFolderIds.Count;
-            if (anyPaused)
-            {
-                return "⏸️ Paused";
-            }
-            if (anyNotSharing)
-            {
-                return "🚫 Not Sharing";
-            }
-            if (anyInvalid)
-            {
-                return "❓ Unknown";
-            }
-            if (totalNeedBytes > 0 || totalNeedItems > 0)
-            {
-                return $"🔄 Syncing ({avgCompletion:F1}%)";
-            }
-            return "✅ Up to Date";
+                SyncReadiness.NotConfigured => "⚙️ Not Configured",
+                SyncReadiness.Offline => "❌ Offline",
+                SyncReadiness.Paused => "⏸️ Paused",
+                SyncReadiness.NotSharing => "🚫 Not Sharing",
+                SyncReadiness.Unknown => "❓ Unknown",
+                SyncReadiness.Syncing => $"🔄 Syncing ({status.Completion:F1}%)",
+                _ => "✅ Up to Date"
+            };
         }
         catch (HttpRequestException)
         {
@@ -206,6 +161,73 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         {
             return $"❌ Error: {ex.Message}";
         }
+    }
+
+    public async Task<SyncStatusSnapshot> GetSyncStatusAsync(ServerInfo server, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrEmpty(server.SyncthingDeviceId) || server.SyncthingFolderIds.Count == 0)
+        {
+            return SyncStatusSnapshot.NotConfigured;
+        }
+
+        var deviceConnected = await IsDeviceConnectedAsync(server.SyncthingDeviceId, cancellationToken);
+        if (!deviceConnected)
+        {
+            return new SyncStatusSnapshot(SyncReadiness.Offline, 0);
+        }
+
+        double totalCompletion = 0;
+        long totalNeedItems = 0;
+        long totalNeedBytes = 0;
+        bool anyPaused = false;
+        bool anyNotSharing = false;
+        bool anyInvalid = false;
+        foreach (var folderId in server.SyncthingFolderIds)
+        {
+            var completion = await GetRemoteDeviceCompletionAsync(
+                folderId,
+                server.SyncthingDeviceId,
+                cancellationToken);
+            if (completion.RemoteState == "paused")
+            {
+                anyPaused = true;
+            }
+            else if (completion.RemoteState == "notSharing")
+            {
+                anyNotSharing = true;
+            }
+            else if (completion.RemoteState != "valid")
+            {
+                anyInvalid = true;
+            }
+
+            totalCompletion += completion.Completion;
+            totalNeedBytes += completion.NeedBytes;
+            totalNeedItems += completion.NeedItems;
+        }
+
+        double avgCompletion = totalCompletion / server.SyncthingFolderIds.Count;
+        if (anyPaused)
+        {
+            return new SyncStatusSnapshot(SyncReadiness.Paused, avgCompletion);
+        }
+
+        if (anyNotSharing)
+        {
+            return new SyncStatusSnapshot(SyncReadiness.NotSharing, avgCompletion);
+        }
+
+        if (anyInvalid)
+        {
+            return new SyncStatusSnapshot(SyncReadiness.Unknown, avgCompletion);
+        }
+
+        if (totalNeedBytes > 0 || totalNeedItems > 0)
+        {
+            return new SyncStatusSnapshot(SyncReadiness.Syncing, avgCompletion);
+        }
+
+        return new SyncStatusSnapshot(SyncReadiness.UpToDate, avgCompletion);
     }
         public async Task<bool> PauseFolderAsync(string folderId, CancellationToken cancellationToken = default)
     {
