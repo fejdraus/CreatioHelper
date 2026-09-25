@@ -121,7 +121,7 @@ public partial class SettingsWindow : Window
         {
             case UpdateState.Checking:
                 _viewModel.IsCheckInFlight = true;
-                _viewModel.CheckStatus = "Checking…";
+                _viewModel.CheckStatus = null;
                 _viewModel.IsStatusHighlighted = false;
                 _viewModel.ActionButtonText = "Checking…";
                 _viewModel.IsActionButtonEnabled = false;
@@ -134,8 +134,8 @@ public partial class SettingsWindow : Window
                 _viewModel.LatestVersion = available.Version;
                 _viewModel.CheckStatus = IsOperationRunning
                     ? "Update available - finish the running operation before installing"
-                    : "Update available";
-                _viewModel.IsStatusHighlighted = true;
+                    : null;
+                _viewModel.IsStatusHighlighted = IsOperationRunning;
                 _viewModel.ActionButtonText = "Install update now";
                 _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
@@ -161,8 +161,8 @@ public partial class SettingsWindow : Window
                 _viewModel.LatestVersion = ready.Version;
                 _viewModel.CheckStatus = IsOperationRunning
                     ? "Update downloaded - finish the running operation before restarting"
-                    : "Update downloaded — pending restart";
-                _viewModel.IsStatusHighlighted = true;
+                    : null;
+                _viewModel.IsStatusHighlighted = IsOperationRunning;
                 _viewModel.ActionButtonText = "Restart and apply update";
                 _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
@@ -188,7 +188,7 @@ public partial class SettingsWindow : Window
                     {
                         _viewModel.LatestVersion = _updateService.LastSeenVersion;
                     }
-                    _viewModel.CheckStatus = "Up to date";
+                    _viewModel.CheckStatus = null;
                     _viewModel.IsStatusHighlighted = false;
                 }
                 else

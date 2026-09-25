@@ -50,10 +50,6 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
         }
     }
 
-    public string OperatingSystem => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
-
-    public string Architecture => System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString();
-
     public string CurrentVersion
     {
         get => _currentVersion;

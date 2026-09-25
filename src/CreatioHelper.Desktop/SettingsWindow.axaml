@@ -6,9 +6,9 @@
         Width="450"
         MinWidth="450"
         MaxWidth="450"
-        Height="648"
-        MinHeight="648"
-        MaxHeight="648"
+        Height="516"
+        MinHeight="516"
+        MaxHeight="516"
         Title="Settings"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
@@ -167,27 +167,6 @@
                                Foreground="{DynamicResource AboutAccentBrush}"
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
-                </StackPanel>
-
-                <StackPanel Spacing="6">
-                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
-                        <Grid ColumnDefinitions="Auto,*">
-                            <TextBlock Grid.Column="0" Text="Version" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding CurrentVersion}" TextAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                        </Grid>
-                    </Border>
-                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
-                        <Grid ColumnDefinitions="Auto,*">
-                            <TextBlock Grid.Column="0" Text="Operating System" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding OperatingSystem}" TextAlignment="Right" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                        </Grid>
-                    </Border>
-                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
-                        <Grid ColumnDefinitions="Auto,*">
-                            <TextBlock Grid.Column="0" Text="Architecture" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Architecture}" TextAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"/>
-                        </Grid>
-                    </Border>
                 </StackPanel>
 
                 <Border Height="1" Background="{DynamicResource AboutDividerBrush}"/>
