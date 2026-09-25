@@ -53,7 +53,7 @@ public class LoggingFsTests : IDisposable
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("FileExists") && v.ToString()!.Contains(fileName)),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("FileExists") && v.ToString()!.Contains(fileName)),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -75,7 +75,7 @@ public class LoggingFsTests : IDisposable
             x => x.Log(
                 LogLevel.Debug,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("DirectoryExists")),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("DirectoryExists")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);

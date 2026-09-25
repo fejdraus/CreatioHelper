@@ -168,7 +168,7 @@ public class GeoIpProviderTests : IAsyncDisposable
             x => x.Log(
                 LogLevel.Warning,
                 It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((v, t) => v.ToString()!.Contains("AccountId or LicenseKey not configured")),
+                It.Is<It.IsAnyType>((v, t) => v != null && v.ToString()!.Contains("AccountId or LicenseKey not configured")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
