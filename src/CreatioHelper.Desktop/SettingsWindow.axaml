@@ -163,6 +163,7 @@
                                FontWeight="Light"
                                TextAlignment="Center"/>
                     <TextBlock Text="Creatio deployments: packages, compilation, IIS, Redis and multi-server sync"
+                               FontSize="16"
                                Foreground="{DynamicResource AboutAccentBrush}"
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
