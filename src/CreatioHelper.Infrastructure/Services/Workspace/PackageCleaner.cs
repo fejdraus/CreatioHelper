@@ -84,9 +84,102 @@ public class PackageCleaner : IPackageCleaner
                 _output.WriteLine($"  CYCLE: {cycle}");
         }
 
+        // 6. Check package structural integrity
+        result.BrokenPackageStructures = CheckPackageStructuralIntegrity(pkgPath);
+        if (result.HasBrokenPackageStructures)
+        {
+            _output.WriteLine("[ERROR] Broken package structure detected:");
+            foreach (var problem in result.BrokenPackageStructures)
+            {
+                _output.WriteLine($"  {problem}");
+            }
+            _output.WriteLine($"Found {result.BrokenPackageStructures.Count} structural problem(s). Nothing was deleted for them - restore the missing file or remove the leftovers by hand.");
+        }
+
         _output.WriteLine("[OK] Package cleaning & validation completed.");
 
         return result;
+    }
+
+    private static readonly string[] SourceContentFolders = { "Schemas", "Data", "SqlScripts", "Resources", "Assemblies" };
+
+    private static readonly Dictionary<string, string[]> RequiredItemFiles = new(StringComparer.Ordinal)
+    {
+        ["Schemas"] = new[] { "descriptor.json", "metadata.json", "properties.json" },
+        ["Data"] = new[] { "descriptor.json", "data.json" },
+        ["SqlScripts"] = new[] { "descriptor.json" }
+    };
+
+    private List<string> CheckPackageStructuralIntegrity(string pkgPath)
+    {
+        var problems = new List<string>();
+        try
+        {
+            foreach (var packageDir in Directory.EnumerateDirectories(pkgPath))
+            {
+                if (IsExcludedPath(packageDir))
+                {
+                    continue;
+                }
+
+                var packageName = Path.GetFileName(packageDir);
+                var carriesSource = SourceContentFolders.Any(f => Directory.Exists(Path.Combine(packageDir, f)));
+
+                if (carriesSource && !File.Exists(Path.Combine(packageDir, "descriptor.json")))
+                {
+                    var present = SourceContentFolders
+                        .Where(f => Directory.Exists(Path.Combine(packageDir, f)));
+                    problems.Add($"[{packageName}] the package has no descriptor.json of its own, but still holds {string.Join(", ", present)}");
+                }
+
+                foreach (var (subFolderName, requiredFiles) in RequiredItemFiles)
+                {
+                    var subFolderPath = Path.Combine(packageDir, subFolderName);
+                    if (!Directory.Exists(subFolderPath))
+                    {
+                        continue;
+                    }
+
+                    foreach (var itemDir in Directory.EnumerateDirectories(subFolderPath))
+                    {
+                        var present = Directory.EnumerateFileSystemEntries(itemDir)
+                            .Select(Path.GetFileName)
+                            .Where(name => name != null)
+                            .Select(name => name!)
+                            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+                        if (present.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        var itemName = Path.GetFileName(itemDir);
+                        var expected = requiredFiles.ToList();
+                        if (string.Equals(subFolderName, "SqlScripts", StringComparison.Ordinal))
+                        {
+                            expected.Add(itemName + ".sql");
+                        }
+
+                        var missing = expected.Where(f => !present.Contains(f)).ToList();
+                        if (missing.Count == 0)
+                        {
+                            continue;
+                        }
+
+                        var kept = present.Take(4).ToList();
+                        problems.Add(
+                            $"[{packageName}] {subFolderName}/{itemName} is missing {string.Join(", ", missing)}, "
+                            + $"but still holds {string.Join(", ", kept)}{(present.Count > kept.Count ? ", ..." : string.Empty)}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[WARNING] Error checking package structural integrity: {ex.Message}");
+        }
+
+        return problems;
     }
 
     private static readonly char[] MetadataDiffOperators = { '=', '+', '-', '~' };

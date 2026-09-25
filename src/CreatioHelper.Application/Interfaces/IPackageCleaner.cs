@@ -12,6 +12,8 @@ public class PackageCleanResult
     public int FoldersWithoutDescriptorDeleted { get; set; }
     public List<string> CircularDependencies { get; set; } = new();
     public bool HasCircularDependencies => CircularDependencies.Count > 0;
+    public List<string> BrokenPackageStructures { get; set; } = new();
+    public bool HasBrokenPackageStructures => BrokenPackageStructures.Count > 0;
 }
 
 public interface IPackageCleaner
