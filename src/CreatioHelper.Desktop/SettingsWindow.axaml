@@ -6,7 +6,9 @@
         Width="450"
         MinWidth="450"
         MaxWidth="450"
-        SizeToContent="Height"
+        Height="648"
+        MinHeight="648"
+        MaxHeight="648"
         Title="Settings"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
@@ -31,9 +33,9 @@
         </ResourceDictionary>
     </Window.Resources>
 
-    <StackPanel Margin="15" Spacing="12">
+    <Grid Margin="15" RowDefinitions="*,Auto">
 
-      <TabControl MinHeight="545">
+      <TabControl Grid.Row="0">
         <TabItem Header="Updates">
         <Border BorderBrush="{DynamicResource AboutDividerBrush}"
                 BorderThickness="1"
@@ -116,6 +118,7 @@
         </TabItem>
 
         <TabItem Header="About">
+          <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
           <Border BorderBrush="{DynamicResource AboutDividerBrush}"
                   BorderThickness="1"
                   CornerRadius="8"
@@ -235,11 +238,14 @@
                 </StackPanel>
             </StackPanel>
           </Border>
+          </ScrollViewer>
         </TabItem>
       </TabControl>
 
-        <StackPanel Orientation="Horizontal"
+        <StackPanel Grid.Row="1"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right"
+                    Margin="0,12,0,0"
                     Spacing="10">
             <Button Width="100"
                     Content="OK"
@@ -251,5 +257,5 @@
                     Click="CancelButton_Click"/>
         </StackPanel>
 
-    </StackPanel>
+    </Grid>
 </Window>
