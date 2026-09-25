@@ -159,8 +159,7 @@
                                FontSize="22"
                                FontWeight="Light"
                                TextAlignment="Center"/>
-                    <TextBlock Text="Syncthing-compatible file synchronization with Creatio management"
-                              
+                    <TextBlock Text="Creatio deployments: packages, compilation, IIS, Redis and multi-server sync"
                                Foreground="{DynamicResource AboutAccentBrush}"
                                TextWrapping="Wrap"
                                TextAlignment="Center"/>
@@ -217,7 +216,6 @@
                 </StackPanel>
 
                 <TextBlock Text="Licensed under GPL-3.0. Protocol files derived from Syncthing (MPL-2.0)."
-                          
                            Foreground="{DynamicResource AboutMutedBrush}"
                            TextWrapping="Wrap"
                            TextAlignment="Center"/>
@@ -226,7 +224,6 @@
 
                 <StackPanel Spacing="1">
                     <TextBlock Text="Powered by"
-                              
                                Foreground="{DynamicResource AboutMutedBrush}"
                                TextAlignment="Center"/>
                     <HyperlinkButton Content="Banza"

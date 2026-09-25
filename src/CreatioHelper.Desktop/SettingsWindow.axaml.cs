@@ -26,23 +26,21 @@ public partial class SettingsWindow : Window
     }
 
     private DispatcherTimer? _logoTimer;
-    private double _ring1Angle;
-    private double _ring2Angle;
+    private readonly System.Diagnostics.Stopwatch _logoClock = new();
 
     private void StartLogoAnimation()
     {
-        _logoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, OnLogoTick);
+        _logoClock.Start();
+        _logoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(16), DispatcherPriority.Render, OnLogoTick);
         _logoTimer.Start();
         Closed += (_, _) => _logoTimer?.Stop();
     }
 
     private void OnLogoTick(object? sender, EventArgs e)
     {
-        _ring1Angle = (_ring1Angle + 6d) % 360d;
-        _ring2Angle = (_ring2Angle - 8d + 360d) % 360d;
-
-        Ring1.RenderTransform = new RotateTransform(_ring1Angle);
-        Ring2.RenderTransform = new RotateTransform(_ring2Angle);
+        var seconds = _logoClock.Elapsed.TotalSeconds;
+        Ring1.RenderTransform = new RotateTransform(seconds / 2d % 1d * 360d);
+        Ring2.RenderTransform = new RotateTransform(360d - seconds / 1.5d % 1d * 360d);
     }
 
     public SettingsWindow(bool updateCheckEnabled, UpdateChannel updateChannel, IUpdateService updateService, Services.IOperationsService? operationsService = null)
