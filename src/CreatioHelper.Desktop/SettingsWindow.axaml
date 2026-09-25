@@ -11,17 +11,36 @@
         CanResize="False"
         WindowStartupLocation="CenterOwner">
 
+    <Window.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.ThemeDictionaries>
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="AboutCardBrush">#F2F3F5</SolidColorBrush>
+                    <SolidColorBrush x:Key="AboutMutedBrush">#6B7280</SolidColorBrush>
+                    <SolidColorBrush x:Key="AboutDividerBrush">#E1E3E8</SolidColorBrush>
+                </ResourceDictionary>
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="AboutCardBrush">#22262F</SolidColorBrush>
+                    <SolidColorBrush x:Key="AboutMutedBrush">#98A0AE</SolidColorBrush>
+                    <SolidColorBrush x:Key="AboutDividerBrush">#333945</SolidColorBrush>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+            <SolidColorBrush x:Key="AboutAccentBrush" Color="{DynamicResource SystemAccentColor}"/>
+            <SolidColorBrush x:Key="AboutPrimaryButtonBrush">#5A6ACF</SolidColorBrush>
+            <SolidColorBrush x:Key="AboutSecondaryButtonBrush">#8B5CF6</SolidColorBrush>
+        </ResourceDictionary>
+    </Window.Resources>
+
     <StackPanel Margin="15" Spacing="12">
 
-        <Border BorderBrush="{DynamicResource ThemeBorderBrush}"
+      <TabControl MinHeight="545">
+        <TabItem Header="Updates">
+        <Border BorderBrush="{DynamicResource AboutDividerBrush}"
                 BorderThickness="1"
-                CornerRadius="5"
-                Padding="12">
+                CornerRadius="8"
+                Padding="12"
+                Margin="0,8,0,0">
             <StackPanel Spacing="10">
-                <TextBlock Text="Updates"
-                           FontWeight="Bold"
-                           FontSize="13"
-                           Foreground="#4A90E2"/>
 
                 <Grid ColumnDefinitions="120,*" RowDefinitions="Auto,Auto,Auto">
                     <TextBlock Grid.Row="0" Grid.Column="0" Text="Current version:" VerticalAlignment="Center"/>
@@ -37,10 +56,31 @@
                                VerticalAlignment="Center"
                                Margin="0,4,0,0"/>
 
-                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding CheckStatus}"
-                               FontSize="11"
-                               Foreground="Gray"
-                               IsVisible="{Binding CheckStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                    <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                            Classes.highlight="{Binding IsStatusHighlighted}"
+                            CornerRadius="14"
+                            HorizontalAlignment="Left"
+                            Margin="0,6,0,0"
+                            IsVisible="{Binding CheckStatus, Converter={x:Static StringConverters.IsNotNullOrEmpty}}">
+                        <Border.Styles>
+                            <Style Selector="Border">
+                                <Setter Property="Background" Value="Transparent"/>
+                                <Setter Property="Padding" Value="0"/>
+                            </Style>
+                            <Style Selector="Border.highlight">
+                                <Setter Property="Background" Value="{DynamicResource UpdateBadgeBackground}"/>
+                                <Setter Property="Padding" Value="14,4"/>
+                            </Style>
+                            <Style Selector="Border > TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource AboutMutedBrush}"/>
+                            </Style>
+                            <Style Selector="Border.highlight > TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource UpdateBadgeForeground}"/>
+                                <Setter Property="FontWeight" Value="SemiBold"/>
+                            </Style>
+                        </Border.Styles>
+                        <TextBlock Text="{Binding CheckStatus}" TextWrapping="Wrap"/>
+                    </Border>
                 </Grid>
 
                 <CheckBox Content="Check for updates automatically"
@@ -73,6 +113,133 @@
                 </StackPanel>
             </StackPanel>
         </Border>
+        </TabItem>
+
+        <TabItem Header="About">
+          <Border BorderBrush="{DynamicResource AboutDividerBrush}"
+                  BorderThickness="1"
+                  CornerRadius="8"
+                  Padding="16"
+                  Margin="0,8,0,0">
+            <StackPanel Spacing="14">
+
+                <Panel Width="72" Height="72" HorizontalAlignment="Center">
+
+                    <Arc x:Name="Ring1"
+                         Stroke="{DynamicResource AboutAccentBrush}"
+                         StrokeThickness="2"
+                         StartAngle="-90"
+                         SweepAngle="100"
+                         RenderTransformOrigin="50%,50%">
+                        <Arc.RenderTransform>
+                            <RotateTransform Angle="0"/>
+                        </Arc.RenderTransform>
+                    </Arc>
+                    <Arc x:Name="Ring2"
+                         Margin="8"
+                         Stroke="{DynamicResource AboutSecondaryButtonBrush}"
+                         StrokeThickness="2"
+                         StartAngle="20"
+                         SweepAngle="90"
+                         RenderTransformOrigin="50%,50%">
+                        <Arc.RenderTransform>
+                            <RotateTransform Angle="0"/>
+                        </Arc.RenderTransform>
+                    </Arc>
+                    <PathIcon Width="26"
+                              Height="26"
+                              HorizontalAlignment="Center"
+                              VerticalAlignment="Center"
+                              Foreground="{DynamicResource AboutAccentBrush}"
+                              Data="M12,4V1L8,5l4,4V6c3.31,0,6,2.69,6,6c0,1.01-0.25,1.97-0.7,2.8l1.46,1.46C19.54,15.03,20,13.57,20,12C20,7.58,16.42,4,12,4z M12,18c-3.31,0-6-2.69-6-6c0-1.01,0.25-1.97,0.7-2.8L5.24,7.74C4.46,8.97,4,10.43,4,12c0,4.42,3.58,8,8,8v3l4-4l-4-4V18z"/>
+                </Panel>
+
+                <StackPanel Spacing="4">
+                    <TextBlock Text="CreatioHelper"
+                               FontSize="22"
+                               FontWeight="Light"
+                               TextAlignment="Center"/>
+                    <TextBlock Text="Syncthing-compatible file synchronization with Creatio management"
+                              
+                               Foreground="{DynamicResource AboutAccentBrush}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Spacing="6">
+                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Version" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding CurrentVersion}" TextAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </Grid>
+                    </Border>
+                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Operating System" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding OperatingSystem}" TextAlignment="Right" TextWrapping="Wrap" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </Grid>
+                    </Border>
+                    <Border Background="{DynamicResource AboutCardBrush}" CornerRadius="6" Padding="12,9">
+                        <Grid ColumnDefinitions="Auto,*">
+                            <TextBlock Grid.Column="0" Text="Architecture" Foreground="{DynamicResource AboutAccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Architecture}" TextAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
+
+                <Border Height="1" Background="{DynamicResource AboutDividerBrush}"/>
+
+                <StackPanel Orientation="Horizontal" Spacing="10" HorizontalAlignment="Center">
+                    <HyperlinkButton NavigateUri="https://github.com/fejdraus/CreatioHelper"
+                                     Background="{DynamicResource AboutPrimaryButtonBrush}"
+                                     Foreground="White"
+                                     Padding="14,7"
+                                     CornerRadius="4"
+                                     ToolTip.Tip="Open the project repository on GitHub">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <PathIcon Width="14" Height="14" Foreground="White"
+                                      Data="M9.4,16.6L4.8,12l4.6-4.6L8,6l-6,6l6,6L9.4,16.6z M14.6,16.6l4.6-4.6l-4.6-4.6L16,6l6,6l-6,6L14.6,16.6z"/>
+                            <TextBlock Text="GITHUB" FontWeight="SemiBold" TextDecorations="{x:Null}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </HyperlinkButton>
+                    <HyperlinkButton NavigateUri="https://github.com/fejdraus/CreatioHelper/issues"
+                                     Background="{DynamicResource AboutSecondaryButtonBrush}"
+                                     Foreground="White"
+                                     Padding="14,7"
+                                     CornerRadius="4"
+                                     ToolTip.Tip="Report a problem on GitHub">
+                        <StackPanel Orientation="Horizontal" Spacing="7">
+                            <PathIcon Width="14" Height="14" Foreground="White"
+                                      Data="M20,8h-2.81c-0.45-0.78-1.07-1.45-1.82-1.96L17,4.41L15.59,3l-2.17,2.17C12.96,5.06,12.49,5,12,5s-0.96,0.06-1.41,0.17L8.41,3L7,4.41l1.62,1.63C7.88,6.55,7.26,7.22,6.81,8H4v2h2.09C6.04,10.33,6,10.66,6,11v1H4v2h2v1c0,0.34,0.04,0.67,0.09,1H4v2h2.81c1.04,1.79,2.97,3,5.19,3s4.15-1.21,5.19-3H20v-2h-2.09c0.05-0.33,0.09-0.66,0.09-1v-1h2v-2h-2v-1c0-0.34-0.04-0.67-0.09-1H20V8z M14,16h-4v-2h4V16z M14,12h-4v-2h4V12z"/>
+                            <TextBlock Text="REPORT ISSUE" FontWeight="SemiBold" TextDecorations="{x:Null}" VerticalAlignment="Center"/>
+                        </StackPanel>
+                    </HyperlinkButton>
+                </StackPanel>
+
+                <TextBlock Text="Licensed under GPL-3.0. Protocol files derived from Syncthing (MPL-2.0)."
+                          
+                           Foreground="{DynamicResource AboutMutedBrush}"
+                           TextWrapping="Wrap"
+                           TextAlignment="Center"/>
+
+                <Border Height="1" Background="{DynamicResource AboutDividerBrush}"/>
+
+                <StackPanel Spacing="1">
+                    <TextBlock Text="Powered by"
+                              
+                               Foreground="{DynamicResource AboutMutedBrush}"
+                               TextAlignment="Center"/>
+                    <HyperlinkButton Content="Banza"
+                                     NavigateUri="https://banzait.com/"
+                                     FontWeight="Bold"
+                                     FontSize="18"
+                                     Padding="0"
+                                     HorizontalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+          </Border>
+        </TabItem>
+      </TabControl>
 
         <StackPanel Orientation="Horizontal"
                     HorizontalAlignment="Right"

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 using CreatioHelper.Application.Interfaces;
@@ -21,6 +22,27 @@ public partial class SettingsWindow : Window
         InitializeComponent();
         _viewModel = new SettingsWindowViewModel();
         DataContext = _viewModel;
+        StartLogoAnimation();
+    }
+
+    private DispatcherTimer? _logoTimer;
+    private double _ring1Angle;
+    private double _ring2Angle;
+
+    private void StartLogoAnimation()
+    {
+        _logoTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(33), DispatcherPriority.Background, OnLogoTick);
+        _logoTimer.Start();
+        Closed += (_, _) => _logoTimer?.Stop();
+    }
+
+    private void OnLogoTick(object? sender, EventArgs e)
+    {
+        _ring1Angle = (_ring1Angle + 6d) % 360d;
+        _ring2Angle = (_ring2Angle - 8d + 360d) % 360d;
+
+        Ring1.RenderTransform = new RotateTransform(_ring1Angle);
+        Ring2.RenderTransform = new RotateTransform(_ring2Angle);
     }
 
     public SettingsWindow(bool updateCheckEnabled, UpdateChannel updateChannel, IUpdateService updateService, Services.IOperationsService? operationsService = null)
@@ -36,6 +58,7 @@ public partial class SettingsWindow : Window
             LatestVersion = updateService.LastSeenVersion,
         };
         DataContext = _viewModel;
+        StartLogoAnimation();
 
         ApplyUpdateState(updateService.State);
         updateService.StateChanged += OnUpdateServiceStateChanged;
@@ -67,6 +90,7 @@ public partial class SettingsWindow : Window
             _viewModel.DownloadProgressPercent = 0;
             _viewModel.LatestVersion = null;
             _viewModel.CheckStatus = "Channel changed — click to check the selected channel.";
+            _viewModel.IsStatusHighlighted = false;
         }
     }
 
@@ -100,6 +124,7 @@ public partial class SettingsWindow : Window
             case UpdateState.Checking:
                 _viewModel.IsCheckInFlight = true;
                 _viewModel.CheckStatus = "Checking…";
+                _viewModel.IsStatusHighlighted = false;
                 _viewModel.ActionButtonText = "Checking…";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = false;
@@ -112,6 +137,7 @@ public partial class SettingsWindow : Window
                 _viewModel.CheckStatus = IsOperationRunning
                     ? "Update available - finish the running operation before installing"
                     : "Update available";
+                _viewModel.IsStatusHighlighted = true;
                 _viewModel.ActionButtonText = "Install update now";
                 _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
@@ -123,6 +149,7 @@ public partial class SettingsWindow : Window
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
                 _viewModel.CheckStatus = null;
+                _viewModel.IsStatusHighlighted = false;
                 var hasProgress = downloading.Percent >= 1;
                 _viewModel.ActionButtonText = hasProgress ? $"Downloading {downloading.Percent:F0}%" : "Downloading…";
                 _viewModel.IsActionButtonEnabled = false;
@@ -137,6 +164,7 @@ public partial class SettingsWindow : Window
                 _viewModel.CheckStatus = IsOperationRunning
                     ? "Update downloaded - finish the running operation before restarting"
                     : "Update downloaded — pending restart";
+                _viewModel.IsStatusHighlighted = true;
                 _viewModel.ActionButtonText = "Restart and apply update";
                 _viewModel.IsActionButtonEnabled = !IsOperationRunning;
                 _viewModel.IsDownloadProgressVisible = false;
@@ -154,6 +182,7 @@ public partial class SettingsWindow : Window
                 if (!string.IsNullOrEmpty(idle.Error))
                 {
                     _viewModel.CheckStatus = $"Check failed: {idle.Error}";
+                    _viewModel.IsStatusHighlighted = false;
                 }
                 else if (idle.NotAvailable)
                 {
@@ -162,6 +191,7 @@ public partial class SettingsWindow : Window
                         _viewModel.LatestVersion = _updateService.LastSeenVersion;
                     }
                     _viewModel.CheckStatus = "Up to date";
+                    _viewModel.IsStatusHighlighted = false;
                 }
                 else
                 {
@@ -170,12 +200,14 @@ public partial class SettingsWindow : Window
                         _viewModel.LatestVersion = _updateService.LastSeenVersion;
                     }
                     _viewModel.CheckStatus = null;
+                    _viewModel.IsStatusHighlighted = false;
                 }
                 break;
 
             case UpdateState.Disabled:
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.CheckStatus = "Update checks are disabled";
+                _viewModel.IsStatusHighlighted = false;
                 _viewModel.ActionButtonText = "Check for updates now";
                 _viewModel.IsActionButtonEnabled = false;
                 _viewModel.IsDownloadProgressVisible = false;

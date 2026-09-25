@@ -13,6 +13,7 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
     private string? _latestVersion;
     private string? _checkStatus;
     private bool _isCheckInFlight;
+    private bool _isStatusHighlighted;
     private string _actionButtonText = "Check for updates now";
     private bool _isActionButtonEnabled = true;
     private bool _isDownloadProgressVisible;
@@ -48,6 +49,10 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
             OnPropertyChanged();
         }
     }
+
+    public string OperatingSystem => System.Runtime.InteropServices.RuntimeInformation.OSDescription;
+
+    public string Architecture => System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString();
 
     public string CurrentVersion
     {
@@ -101,6 +106,20 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
                 return;
             }
             _isCheckInFlight = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsStatusHighlighted
+    {
+        get => _isStatusHighlighted;
+        set
+        {
+            if (_isStatusHighlighted == value)
+            {
+                return;
+            }
+            _isStatusHighlighted = value;
             OnPropertyChanged();
         }
     }

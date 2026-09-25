@@ -14,10 +14,14 @@
                  <ResourceDictionary x:Key="Light">
                      <SolidColorBrush x:Key="TextEditorBackgroundBrush">White</SolidColorBrush>
                      <SolidColorBrush x:Key="TextEditorForegroundBrush">Black</SolidColorBrush>
+                     <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#C8E6C9"/>
+                     <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#1B5E20"/>
                  </ResourceDictionary>
                  <ResourceDictionary x:Key="Dark">
                      <SolidColorBrush x:Key="TextEditorBackgroundBrush">#1E1E1E</SolidColorBrush>
                      <SolidColorBrush x:Key="TextEditorForegroundBrush">#D4D4D4</SolidColorBrush>
+                     <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#2E7D32"/>
+                     <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#E8F5E9"/>
                  </ResourceDictionary>
              </ResourceDictionary.ThemeDictionaries>
          </ResourceDictionary>

@@ -19,16 +19,6 @@
             <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
             <converters:DeleteAppVersionToVisibilityConverter x:Key="DeleteAppVersionToVisibilityConverter"/>
             <converters:NotConverter x:Key="NotConverter"/>
-            <ResourceDictionary.ThemeDictionaries>
-                <ResourceDictionary x:Key="Light">
-                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#C8E6C9"/>
-                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#1B5E20"/>
-                </ResourceDictionary>
-                <ResourceDictionary x:Key="Dark">
-                    <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#2E7D32"/>
-                    <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#E8F5E9"/>
-                </ResourceDictionary>
-            </ResourceDictionary.ThemeDictionaries>
         </ResourceDictionary>
     </Window.Resources>
 
