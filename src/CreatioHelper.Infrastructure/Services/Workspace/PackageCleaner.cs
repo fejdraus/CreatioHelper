@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using CreatioHelper.Application.Interfaces;
 using CreatioHelper.Shared.Interfaces;
 
@@ -34,7 +35,7 @@ public class PackageCleaner : IPackageCleaner
             {
                 _output.WriteLine($"  {file}");
             }
-            _output.WriteLine($"Found {result.UnresolvedMergeConflicts.Count} file(s) still holding conflict markers. Resolve them before anything else - such a file is not valid content and every other check below reads it as broken.");
+            _output.WriteLine($"Found {result.UnresolvedMergeConflicts.Count} problem(s) left by an unfinished merge. Resolve them before anything else - every other check below reads such a file as something it is not.");
         }
 
         // 0a. Validate all JSON files
@@ -212,6 +213,13 @@ public class PackageCleaner : IPackageCleaner
 
                 try
                 {
+                    var leftover = DescribeConflictLeftover(Path.GetFileName(file));
+                    if (leftover != null)
+                    {
+                        conflicted.Add($"{file}: {leftover}");
+                        continue;
+                    }
+
                     if (new FileInfo(file).Length > ConflictScanSizeLimit || LooksBinary(file))
                     {
                         continue;
@@ -235,6 +243,49 @@ public class PackageCleaner : IPackageCleaner
         }
 
         return conflicted;
+    }
+
+    private static readonly Regex SubversionRevisionCopy = new(@"\.r\d+$", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+    private static readonly Regex MergeToolCopy = new(@"_(BACKUP|BASE|LOCAL|REMOTE)_\d+", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+    private static string? DescribeConflictLeftover(string fileName)
+    {
+        if (fileName.EndsWith(".mine", StringComparison.OrdinalIgnoreCase))
+        {
+            return "a Subversion conflict copy (.mine) - the merge was never resolved";
+        }
+
+        if (fileName.EndsWith(".prej", StringComparison.OrdinalIgnoreCase))
+        {
+            return "a Subversion property conflict (.prej) - the merge was never resolved";
+        }
+
+        if (fileName.EndsWith(".working", StringComparison.OrdinalIgnoreCase))
+        {
+            return "a Subversion conflict copy (.working) - the merge was never resolved";
+        }
+
+        if (SubversionRevisionCopy.IsMatch(fileName))
+        {
+            return "a Subversion conflict copy of one revision - the merge was never resolved";
+        }
+
+        if (fileName.EndsWith(".rej", StringComparison.OrdinalIgnoreCase))
+        {
+            return "a rejected patch hunk (.rej) - the change was never applied";
+        }
+
+        if (fileName.EndsWith(".orig", StringComparison.OrdinalIgnoreCase))
+        {
+            return "a backup left by a merge tool (.orig)";
+        }
+
+        if (MergeToolCopy.IsMatch(fileName))
+        {
+            return "a working copy left by a merge tool";
+        }
+
+        return null;
     }
 
     private static bool IsRegeneratedPath(string path)
