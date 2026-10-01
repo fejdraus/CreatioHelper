@@ -25,6 +25,18 @@ public class PackageCleaner : IPackageCleaner
 
         var pkgPath = packagesPath;
 
+        // 0. Unresolved merge conflicts
+        result.UnresolvedMergeConflicts = FindUnresolvedMergeConflicts(pkgPath);
+        if (result.HasUnresolvedMergeConflicts)
+        {
+            _output.WriteLine("[ERROR] Unresolved merge conflicts detected:");
+            foreach (var file in result.UnresolvedMergeConflicts)
+            {
+                _output.WriteLine($"  {file}");
+            }
+            _output.WriteLine($"Found {result.UnresolvedMergeConflicts.Count} file(s) still holding conflict markers. Resolve them before anything else - such a file is not valid content and every other check below reads it as broken.");
+        }
+
         // 0a. Validate all JSON files
         result.InvalidOtherJsonFiles = ValidateAllJsonFiles(pkgPath);
         if (result.HasInvalidOtherJson)
@@ -180,6 +192,122 @@ public class PackageCleaner : IPackageCleaner
         }
 
         return problems;
+    }
+
+    private const int ConflictMarkerLength = 7;
+
+    private static readonly string[] MergeConflictScanExtensions =
+    {
+        ".cs", ".js", ".ts", ".less", ".css", ".json", ".sql", ".xml", ".resx",
+        ".config", ".csproj", ".props", ".targets", ".md", ".txt", ".yml", ".yaml", ".html"
+    };
+
+    private List<string> FindUnresolvedMergeConflicts(string pkgPath)
+    {
+        var conflicted = new List<string>();
+        try
+        {
+            foreach (var file in Directory.EnumerateFiles(pkgPath, "*", SearchOption.AllDirectories))
+            {
+                if (IsExcludedPath(file) || IsSkippedForConflictScan(file))
+                {
+                    continue;
+                }
+
+                if (!MergeConflictScanExtensions.Contains(Path.GetExtension(file), StringComparer.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    var blocks = FindConflictBlocks(file);
+                    if (blocks.Count > 0)
+                    {
+                        conflicted.Add($"{file}: {string.Join(", ", blocks)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _output.WriteLine($"[WARNING] Could not read {file}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[WARNING] Error scanning for merge conflicts: {ex.Message}");
+        }
+
+        return conflicted;
+    }
+
+    private static bool IsSkippedForConflictScan(string path)
+    {
+        var sep = Path.DirectorySeparatorChar;
+        return path.Contains($"{sep}node_modules{sep}", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static List<string> FindConflictBlocks(string filePath)
+    {
+        var blocks = new List<string>();
+        var openedAt = 0;
+        var separatorSeen = false;
+        var lineNumber = 0;
+
+        foreach (var line in File.ReadLines(filePath))
+        {
+            lineNumber++;
+
+            if (IsConflictMarker(line, '<'))
+            {
+                openedAt = lineNumber;
+                separatorSeen = false;
+                continue;
+            }
+
+            if (openedAt == 0)
+            {
+                continue;
+            }
+
+            if (IsConflictSeparator(line))
+            {
+                separatorSeen = true;
+                continue;
+            }
+
+            if (separatorSeen && IsConflictMarker(line, '>'))
+            {
+                blocks.Add($"lines {openedAt}-{lineNumber}");
+                openedAt = 0;
+                separatorSeen = false;
+            }
+        }
+
+        return blocks;
+    }
+
+    private static bool IsConflictMarker(string line, char marker)
+    {
+        if (line.Length < ConflictMarkerLength)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < ConflictMarkerLength; i++)
+        {
+            if (line[i] != marker)
+            {
+                return false;
+            }
+        }
+
+        return line.Length == ConflictMarkerLength || line[ConflictMarkerLength] == ' ';
+    }
+
+    private static bool IsConflictSeparator(string line)
+    {
+        return string.Equals(line.TrimEnd(), "=======", StringComparison.Ordinal);
     }
 
     private static readonly char[] MetadataDiffOperators = { '=', '+', '-', '~' };

@@ -14,6 +14,15 @@ public class PackageCleanResult
     public bool HasCircularDependencies => CircularDependencies.Count > 0;
     public List<string> BrokenPackageStructures { get; set; } = new();
     public bool HasBrokenPackageStructures => BrokenPackageStructures.Count > 0;
+    public List<string> UnresolvedMergeConflicts { get; set; } = new();
+    public bool HasUnresolvedMergeConflicts => UnresolvedMergeConflicts.Count > 0;
+
+    public bool HasIssues =>
+        HasInvalidJson ||
+        HasInvalidOtherJson ||
+        HasCircularDependencies ||
+        HasBrokenPackageStructures ||
+        HasUnresolvedMergeConflicts;
 }
 
 public interface IPackageCleaner

@@ -908,7 +908,7 @@ public partial class MainWindowViewModel : ObservableObject
                 await Task.Run(() =>
                 {
                     var cleanResult = _packageCleaner.CleanPackages(pkgPath);
-                    if (!cleanResult.HasInvalidOtherJson && !cleanResult.HasInvalidJson && !cleanResult.HasCircularDependencies)
+                    if (!cleanResult.HasIssues)
                     {
                         _output.WriteLine("No issues found.");
                     }
