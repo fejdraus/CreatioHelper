@@ -809,6 +809,14 @@ public class WorkspacePreparer : IWorkspacePreparer
         string exePath = GetWorkspaceConsoleExePath(sitePath);
         _output.WriteLine($"Running dotnet with args: {Quote(exePath)} {arguments}");
 
+        var startedAt = DateTime.Now.AddSeconds(-5);
+        int exitCode = StartWorkspaceConsole(sitePath, arguments, workingDirectory, exePath);
+        ReportWorkspaceConsoleLog(arguments, startedAt);
+        return exitCode;
+    }
+
+    private int StartWorkspaceConsole(string sitePath, string arguments, string? workingDirectory, string exePath)
+    {
         bool isUnc = OperatingSystem.IsWindows() &&
                      (exePath.StartsWith(@"\\", StringComparison.Ordinal) ||
                       exePath.StartsWith("//", StringComparison.Ordinal));
@@ -831,6 +839,66 @@ public class WorkspacePreparer : IWorkspacePreparer
             return ProcessHelper.Run("cmd.exe", $"/c pushd \"{dir}\" && dotnet \"{name}\" {arguments}", _output, null);
         }
         return ProcessHelper.Run("dotnet", $"{Quote(exePath)} {arguments}", _output, workingDirectory);
+    }
+
+    private const int MaxReportedProblems = 15;
+    private const int MaxReportedDetailLines = 3;
+
+    private void ReportWorkspaceConsoleLog(string arguments, DateTime startedAt)
+    {
+        try
+        {
+            var logDirectory = WorkspaceConsoleLogReader.ReadArgument(arguments, "logPath");
+            var operation = WorkspaceConsoleLogReader.ReadArgument(arguments, "operation");
+            if (logDirectory == null)
+            {
+                return;
+            }
+
+            var file = WorkspaceConsoleLogReader.FindLatestLog(logDirectory, operation ?? string.Empty, startedAt);
+            if (file == null)
+            {
+                _output.WriteLine("[WARN] WorkspaceConsole wrote no log file for this run.");
+                return;
+            }
+
+            var report = WorkspaceConsoleLogReader.Read(file);
+            var name = Path.GetFileName(file);
+
+            if (report.Problems.Count == 0)
+            {
+                _output.WriteLine($"[INFO] WorkspaceConsole log {name}: {report.LineCount} line(s), nothing reported as a problem.");
+                return;
+            }
+
+            _output.WriteLine($"[WARN] WorkspaceConsole log {name} reports {report.Problems.Count} problem(s) that never reached this window:");
+            foreach (var problem in report.Problems.Take(MaxReportedProblems))
+            {
+                _output.WriteLine($"  {problem.Header}");
+                foreach (var detail in problem.Details.Take(MaxReportedDetailLines))
+                {
+                    _output.WriteLine($"      {detail}");
+                }
+
+                var hidden = problem.Details.Count - MaxReportedDetailLines;
+                if (hidden > 0)
+                {
+                    _output.WriteLine($"      (+{hidden} more line(s))");
+                }
+            }
+
+            var remaining = report.Problems.Count - MaxReportedProblems;
+            if (remaining > 0)
+            {
+                _output.WriteLine($"  (+{remaining} more problem(s))");
+            }
+
+            _output.WriteLine($"  Full log: {file}");
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[WARN] Could not read the WorkspaceConsole log: {ex.Message}");
+        }
     }
 
     private static string Quote(string path) => $"\"{path}\"";
