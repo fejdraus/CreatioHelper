@@ -38,7 +38,19 @@ public class PackageCleaner : IPackageCleaner
             _output.WriteLine($"Found {result.UnresolvedMergeConflicts.Count} problem(s) left by an unfinished merge. Resolve them before anything else - every other check below reads such a file as something it is not.");
         }
 
-        // 0a. Validate all JSON files
+        // 0a. Syntax of C# and JavaScript sources
+        result.SyntaxErrors = new SourceSyntaxValidator().Validate(pkgPath);
+        if (result.HasSyntaxErrors)
+        {
+            _output.WriteLine("[ERROR] Source files that do not parse:");
+            foreach (var error in result.SyntaxErrors)
+            {
+                _output.WriteLine($"  {error}");
+            }
+            _output.WriteLine($"Found {result.SyntaxErrors.Count} file(s) with a syntax error. These would fail the compilation later, with a less specific message.");
+        }
+
+        // 0b. Validate all JSON files
         result.InvalidOtherJsonFiles = ValidateAllJsonFiles(pkgPath);
         if (result.HasInvalidOtherJson)
         {
@@ -49,7 +61,7 @@ public class PackageCleaner : IPackageCleaner
             _output.WriteLine($"Found {result.InvalidOtherJsonFiles.Count} invalid JSON file(s).");
         }
 
-        // 0b. Validate descriptor.json files (structure)
+        // 0c. Validate descriptor.json files (structure)
         result.InvalidJsonFiles = ValidateDescriptorJsonFiles(pkgPath);
         if (result.HasInvalidJson)
         {

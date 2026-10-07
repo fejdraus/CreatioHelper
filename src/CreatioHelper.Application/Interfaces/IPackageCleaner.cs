@@ -16,13 +16,16 @@ public class PackageCleanResult
     public bool HasBrokenPackageStructures => BrokenPackageStructures.Count > 0;
     public List<string> UnresolvedMergeConflicts { get; set; } = new();
     public bool HasUnresolvedMergeConflicts => UnresolvedMergeConflicts.Count > 0;
+    public List<string> SyntaxErrors { get; set; } = new();
+    public bool HasSyntaxErrors => SyntaxErrors.Count > 0;
 
     public bool HasIssues =>
         HasInvalidJson ||
         HasInvalidOtherJson ||
         HasCircularDependencies ||
         HasBrokenPackageStructures ||
-        HasUnresolvedMergeConflicts;
+        HasUnresolvedMergeConflicts ||
+        HasSyntaxErrors;
 }
 
 public interface IPackageCleaner

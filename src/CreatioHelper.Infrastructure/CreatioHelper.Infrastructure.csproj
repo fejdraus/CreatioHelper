@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <!-- Phase 1: Protobuf serialization for Syncthing wire compatibility -->
+    <PackageReference Include="Acornima" Version="1.1.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageReference Include="Google.Protobuf" Version="3.35.1" />
     <PackageReference Include="Grpc.Tools" Version="2.83.0" PrivateAssets="All" />
 

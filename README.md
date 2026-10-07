@@ -61,7 +61,8 @@ Settings are kept in memory unless you create an empty `settings.json` next to t
 - **File Design Mode**: Synchronize packages between Creatio database and filesystem
   - Download packages from Creatio DB to filesystem (Creatio → FS)
   - Upload packages from filesystem to Creatio DB (FS → Creatio)
-  - Clean & Validate package sources
+  - Clean & Validate package sources — also reports unresolved merge conflicts left in the sources by Git or SVN (conflict markers, half-finished merges and leftover `.mine`/`.r123`/`.orig`/`.rej` files), which otherwise surface much later as a compilation failure
+  - Clean & Validate also parses the C# and client schema sources and reports syntax errors with file and line, so a stray brace is caught in seconds instead of surfacing minutes later as a compilation failure. Syntax only: type and reference errors still belong to the compiler
 - **Compilation**: Compile the configuration via WorkspaceConsole integration. Every mode builds both halves — the server assembly (`conf/bin`) and the client static content (`conf/content`) — so neither is left stale.
 
   | Mode | Chain | Notes |
@@ -78,9 +79,13 @@ Settings are kept in memory unless you create an empty `settings.json` next to t
   - Redis mode selector: Single node / Cluster (Creatio 7.18.0+) / Sentinel (deprecated, hidden on 7.18.3+); cluster nodes are edited as a host:port list
   - Unknown parameters (`Pooling`, `Max Pool Size`, `maxReadPoolSize`, `useTls`, …) are preserved and editable via an **Other parameters** field per section
   - Entries missing from the file are created on save only when their fields are filled
+- **WorkspaceConsole Problem Reporting**: errors and warnings written by WorkspaceConsole into its own log file are parsed after every operation and surfaced in the application output, so a failed import or compilation no longer has to be chased down in the log on disk
 - **Live Status Bar**: Creatio version, IIS pool/site state (or service state in Folder mode) and application health for the selected site, refreshed every 10 seconds and after each deployment. Health is an HTTP check against the application itself, so it catches the case where the pool is running but the app is down.
 - **License Management**: Generate license requests and load licenses into Creatio
 - **IIS / Folder Mode**: Manage Creatio via IIS (automatic start/stop of sites and app pools) or directly via folder path without IIS
+  - The site list is searchable from inside the field itself — type any part of a site name, its physical path or its application pool to narrow it; the chevron always opens the full list
+  - **Open folder** opens the selected site's directory in the file manager
+  - The address the site is reached at is shown beside the site field, derived from the IIS bindings or, in Folder mode, from the Kestrel endpoints in `appsettings.json`. Left click opens it in the browser, right click copies it to the clipboard
 - **Redis Integration**: Check Redis status and clear cache after deployments
 - **Multi-Server Synchronization**: Apply changes across multiple Creatio instances simultaneously
   - **SFTP File Copy**: Incremental rsync-style synchronization over SSH/SFTP (SSH.NET). Works from any OS to any Linux/macOS target — only changed files are transferred (size + mtime comparison). Per-server SSH credentials (password or private key). Configurable folder list per server; leave empty to sync the entire site directory.
