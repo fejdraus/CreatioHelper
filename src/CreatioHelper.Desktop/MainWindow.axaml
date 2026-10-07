@@ -81,7 +81,7 @@
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}"
                              PlaceholderText="Enter path to Creatio application folder"
                              Margin="0,0,5,0"/>
-                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Height="32"/>
+                    <Button x:Name="BrowseSiteButton" Grid.Column="1" Content="Browse" Command="{Binding BrowseSitePathCommand}" Margin="5,0,0,0" Width="96" Height="32"/>
                 </Grid>
                 <TextBlock Text="Service Name (for service management):" Margin="0,5,0,0" />
                 <TextBox x:Name="ServiceNameTextBox" Text="{Binding ServiceName, Mode=TwoWay}"
@@ -118,6 +118,7 @@
                         IsEnabled="{Binding AreSiteOperationsEnabled}"
                         IsVisible="{Binding IsWindows}"
                         Margin="5,0,0,0"
+                        Width="96"
                         Height="32"
                         ToolTip.Tip="Open the folder of the selected site in the file manager"/>
                 </Grid>
@@ -144,7 +145,7 @@
                              PlaceholderText="Enter path to packages folder for installation"
                              Margin="0,0,5,0" />
                     <Button x:Name="BrowsePackagesButton" Grid.Column="1" Content="Browse"
-                            Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Height="32"/>
+                            Command="{Binding BrowsePackagesPathCommand}" Margin="5,0,0,0" Width="96" Height="32"/>
                 </Grid>
             </StackPanel>
 
