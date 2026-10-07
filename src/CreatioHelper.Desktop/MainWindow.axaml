@@ -91,13 +91,13 @@
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site IIS:" />
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
+                <Grid Grid.Column="0" Margin="0,0,5,0">
                 <AutoCompleteBox x:Name="IisSitesComboBox"
-                                 Grid.Column="0"
-                                 Margin="0,0,5,0"
                                  HorizontalAlignment="Stretch"
                                  IsEnabled="{Binding HasIisSites}"
                                  ItemsSource="{Binding IisSites}"
                                  SelectedItem="{Binding SelectedIisSite, Mode=TwoWay}"
+                                 Text="{Binding IisSiteText, Mode=OneWayToSource}"
                                  ValueMemberBinding="{Binding Name}"
                                  MinimumPrefixLength="0"
                                  IsTextCompletionEnabled="False"
@@ -112,6 +112,24 @@
                         </DataTemplate>
                     </AutoCompleteBox.ItemTemplate>
                 </AutoCompleteBox>
+                <Button x:Name="IisSitesDropDownButton"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        Background="Transparent"
+                        BorderThickness="0"
+                        Width="30"
+                        Height="26"
+                        Margin="0,0,2,0"
+                        Padding="0"
+                        Click="IisSitesDropDown_Click"
+                        IsEnabled="{Binding HasIisSites}"
+                        IsVisible="{Binding IsWindows}"
+                        ToolTip.Tip="Show all sites">
+                    <PathIcon Width="11"
+                              Height="11"
+                              Data="M1.72 5.22a.75.75 0 0 1 1.06 0L8 10.44l5.22-5.22a.75.75 0 1 1 1.06 1.06l-5.75 5.75a.75.75 0 0 1-1.06 0L1.72 6.28a.75.75 0 0 1 0-1.06z"/>
+                </Button>
+                </Grid>
                 <Button Grid.Column="1"
                         Content="Open folder"
                         Command="{Binding OpenSiteFolderCommand}"

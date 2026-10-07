@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -44,7 +44,7 @@ namespace CreatioHelper
             );
 
             IisSitesComboBox.ItemFilter = MatchesIisSiteSearch;
-            IisSitesComboBox.TextChanged += OnIisSiteTextChanged;
+            IisSitesComboBox.TextChanged += (_, _) => _browsingAllIisSites = false;
 
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
             var writer = provider.GetRequiredService<IOutputWriter>();
@@ -429,28 +429,24 @@ namespace CreatioHelper
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        private void OnIisSiteTextChanged(object? sender, EventArgs e)
+        private bool _browsingAllIisSites;
+
+        private void IisSitesDropDown_Click(object? sender, RoutedEventArgs e)
         {
-            if (DataContext is not MainWindowViewModel vm)
+            if (IisSitesComboBox.IsDropDownOpen)
             {
+                IisSitesComboBox.IsDropDownOpen = false;
                 return;
             }
 
-            var text = IisSitesComboBox.Text?.Trim();
-            var match = string.IsNullOrEmpty(text)
-                ? null
-                : vm.IisSites.FirstOrDefault(site =>
-                    string.Equals(site.Name, text, StringComparison.OrdinalIgnoreCase));
-
-            if (!ReferenceEquals(vm.SelectedIisSite, match))
-            {
-                vm.SelectedIisSite = match;
-            }
+            _browsingAllIisSites = true;
+            IisSitesComboBox.Focus();
+            IisSitesComboBox.IsDropDownOpen = true;
         }
 
-        private static bool MatchesIisSiteSearch(string? search, object? item)
+        private bool MatchesIisSiteSearch(string? search, object? item)
         {
-            if (string.IsNullOrWhiteSpace(search))
+            if (_browsingAllIisSites || string.IsNullOrWhiteSpace(search))
             {
                 return true;
             }

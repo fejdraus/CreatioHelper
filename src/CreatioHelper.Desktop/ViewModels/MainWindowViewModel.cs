@@ -395,7 +395,22 @@ public partial class MainWindowViewModel : ObservableObject
     private bool _isValidating;
     public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses && !_isValidating;
 
-    public bool HasResolvedSite => !string.IsNullOrWhiteSpace(GetResolvedSitePath());
+    [ObservableProperty]
+    private string? _iisSiteText;
+
+    partial void OnIisSiteTextChanged(string? value)
+    {
+        RefreshSiteOperationsAvailability();
+    }
+
+    public bool IsIisSiteTextValid =>
+        SelectedIisSite != null &&
+        string.Equals(SelectedIisSite.Name, IisSiteText?.Trim(), StringComparison.OrdinalIgnoreCase);
+
+    public bool HasResolvedSite =>
+        IsIisMode
+            ? IsIisSiteTextValid && !string.IsNullOrWhiteSpace(SelectedIisSite!.Path)
+            : !string.IsNullOrWhiteSpace(SitePath);
 
     public bool AreSiteOperationsEnabled => AreControlsEnabled && HasResolvedSite;
 
@@ -431,6 +446,7 @@ public partial class MainWindowViewModel : ObservableObject
 
     private void RefreshSiteOperationsAvailability()
     {
+        OnPropertyChanged(nameof(IsIisSiteTextValid));
         OnPropertyChanged(nameof(HasResolvedSite));
         OnPropertyChanged(nameof(AreSiteOperationsEnabled));
     }
@@ -989,7 +1005,7 @@ public partial class MainWindowViewModel : ObservableObject
     private string? GetResolvedSitePath()
     {
         if (IsIisMode)
-            return SelectedIisSite?.Path;
+            return IsIisSiteTextValid ? SelectedIisSite?.Path : null;
         return SitePath;
     }
 
