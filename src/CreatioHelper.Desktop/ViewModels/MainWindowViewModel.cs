@@ -399,6 +399,36 @@ public partial class MainWindowViewModel : ObservableObject
 
     public bool AreSiteOperationsEnabled => AreControlsEnabled && HasResolvedSite;
 
+    [RelayCommand]
+    private void OpenSiteFolder()
+    {
+        var path = GetResolvedSitePath();
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            _output.WriteLine("[WARN] No site is selected.");
+            return;
+        }
+
+        if (!Directory.Exists(path))
+        {
+            _output.WriteLine($"[ERROR] Site folder does not exist: {path}");
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = path,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Could not open {path}: {ex.Message}");
+        }
+    }
+
     private void RefreshSiteOperationsAvailability()
     {
         OnPropertyChanged(nameof(HasResolvedSite));

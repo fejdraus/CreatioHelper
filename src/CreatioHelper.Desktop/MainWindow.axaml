@@ -90,7 +90,10 @@
 
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site IIS:" />
+                <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                 <AutoCompleteBox x:Name="IisSitesComboBox"
+                                 Grid.Column="0"
+                                 Margin="0,0,5,0"
                                  HorizontalAlignment="Stretch"
                                  IsEnabled="{Binding HasIisSites}"
                                  ItemsSource="{Binding IisSites}"
@@ -109,6 +112,15 @@
                         </DataTemplate>
                     </AutoCompleteBox.ItemTemplate>
                 </AutoCompleteBox>
+                <Button Grid.Column="1"
+                        Content="Open folder"
+                        Command="{Binding OpenSiteFolderCommand}"
+                        IsEnabled="{Binding AreSiteOperationsEnabled}"
+                        IsVisible="{Binding IsWindows}"
+                        Margin="5,0,0,0"
+                        Height="32"
+                        ToolTip.Tip="Open the folder of the selected site in the file manager"/>
+                </Grid>
             </StackPanel>
 
             <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreSiteOperationsEnabled}">
