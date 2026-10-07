@@ -411,6 +411,17 @@
                         <TextBlock FontSize="12" FontWeight="SemiBold" Text="{Binding LocalAppHealth}"
                                    Foreground="{Binding LocalAppHealth, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" Spacing="4"
+                                IsVisible="{Binding HasSiteUrl}">
+                        <TextBlock FontSize="12" Foreground="Gray" Text="·" VerticalAlignment="Center"/>
+                        <HyperlinkButton Content="{Binding SiteUrl}"
+                                         NavigateUri="{Binding SiteUrl}"
+                                         FontSize="12"
+                                         Padding="0"
+                                         VerticalAlignment="Center"
+                                         ToolTip.Tip="Open the site in the browser"/>
+                    </StackPanel>
                 </StackPanel>
 
                 <HyperlinkButton Grid.Column="1"

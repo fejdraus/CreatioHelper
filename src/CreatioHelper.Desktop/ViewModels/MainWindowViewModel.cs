@@ -396,6 +396,16 @@ public partial class MainWindowViewModel : ObservableObject
     public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses && !_isValidating;
 
     [ObservableProperty]
+    private string? _siteUrl;
+
+    public bool HasSiteUrl => !string.IsNullOrWhiteSpace(SiteUrl);
+
+    partial void OnSiteUrlChanged(string? value)
+    {
+        OnPropertyChanged(nameof(HasSiteUrl));
+    }
+
+    [ObservableProperty]
     private string? _iisSiteText;
 
     partial void OnIisSiteTextChanged(string? value)
@@ -1099,6 +1109,7 @@ public partial class MainWindowViewModel : ObservableObject
         LocalAppHealth = "";
         LocalDbName = "";
         LocalRedisDb = "";
+        SiteUrl = null;
         _ = RefreshLocalStatusAsync();
     }
 
@@ -1159,7 +1170,9 @@ public partial class MainWindowViewModel : ObservableObject
                         LocalRedisDb = stores.RedisDb;
                     }, cancellationToken));
 
-                    iisPending.Add(ApplyWhenReady(CheckAppHealthAsync(BuildIisAppUrl(site), cancellationToken), StillCurrent,
+                    var iisUrl = BuildIisAppUrl(site);
+                    SiteUrl = iisUrl;
+                    iisPending.Add(ApplyWhenReady(CheckAppHealthAsync(iisUrl, cancellationToken), StillCurrent,
                         health => LocalAppHealth = health, cancellationToken));
                 }
 
@@ -1188,6 +1201,7 @@ public partial class MainWindowViewModel : ObservableObject
                     LocalRedisDb = folder.Stores.RedisDb;
                     LocalServiceStatus = string.IsNullOrWhiteSpace(serviceName) ? "" : KeepOrChecking(LocalServiceStatus);
                     LocalAppHealth = folder.AppUrl is null ? "" : probeApp ? KeepOrChecking(LocalAppHealth) : AppHealthDuringOperation;
+                    SiteUrl = folder.AppUrl;
                 });
 
                 bool StillCurrent() => !IsIisMode
