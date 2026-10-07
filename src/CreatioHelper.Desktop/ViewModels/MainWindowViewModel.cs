@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -117,6 +117,7 @@ public partial class MainWindowViewModel : ObservableObject
             {
                 OnPropertyChanged(nameof(IsBusy));
                 OnPropertyChanged(nameof(AreControlsEnabled));
+                RefreshSiteOperationsAvailability();
                 OnPropertyChanged(nameof(CanRestartLocalIis));
                 if (!_operationsService.IsBusy)
                 {
@@ -365,6 +366,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnIsLoadingServerStatusesChanged(bool value)
     {
         OnPropertyChanged(nameof(AreControlsEnabled));
+        RefreshSiteOperationsAvailability();
     }
 
     [ObservableProperty]
@@ -392,6 +394,16 @@ public partial class MainWindowViewModel : ObservableObject
     /// </summary>
     private bool _isValidating;
     public bool AreControlsEnabled => !IsBusy && !IsLoadingServerStatuses && !_isValidating;
+
+    public bool HasResolvedSite => !string.IsNullOrWhiteSpace(GetResolvedSitePath());
+
+    public bool AreSiteOperationsEnabled => AreControlsEnabled && HasResolvedSite;
+
+    private void RefreshSiteOperationsAvailability()
+    {
+        OnPropertyChanged(nameof(HasResolvedSite));
+        OnPropertyChanged(nameof(AreSiteOperationsEnabled));
+    }
 
     public string SyncModeButtonText
     {
@@ -422,6 +434,7 @@ public partial class MainWindowViewModel : ObservableObject
 
 
     public ObservableCollection<IisSiteInfo> IisSites { get; } = new();
+
     public ObservableCollection<ServerInfo> ServerList { get; } = new();
 
     [RelayCommand]
@@ -900,6 +913,7 @@ public partial class MainWindowViewModel : ObservableObject
         _output.WriteSeparator("Package cleaning & validation");
         _isValidating = true;
         OnPropertyChanged(nameof(AreControlsEnabled));
+        RefreshSiteOperationsAvailability();
 
         try
         {
@@ -920,6 +934,7 @@ public partial class MainWindowViewModel : ObservableObject
         {
             _isValidating = false;
             OnPropertyChanged(nameof(AreControlsEnabled));
+            RefreshSiteOperationsAvailability();
         }
     }
 
@@ -980,6 +995,7 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(CanRestartLocalIis));
         OnPropertyChanged(nameof(SkipServerRestartText));
         OnPropertyChanged(nameof(IsSkipServerRestartAvailable));
+        RefreshSiteOperationsAvailability();
         SaveServerSettings();
         InvalidateLocalStatus();
     }
@@ -999,6 +1015,7 @@ public partial class MainWindowViewModel : ObservableObject
     partial void OnPackagesToDeleteAfterChanged(string? value) => SaveServerSettings();
     partial void OnSitePathChanged(string? value)
     {
+        RefreshSiteOperationsAvailability();
         SaveServerSettings();
         RefreshFileDesignMode();
         SitePathWithVersion = new Version();
@@ -1015,6 +1032,7 @@ public partial class MainWindowViewModel : ObservableObject
         OnPropertyChanged(nameof(SelectedIisSiteVersion));
         OnPropertyChanged(nameof(SupportsFastCompile));
         OnPropertyChanged(nameof(CanRestartLocalIis));
+        RefreshSiteOperationsAvailability();
         SaveServerSettings();
         RefreshFileDesignMode();
         InvalidateLocalStatus();

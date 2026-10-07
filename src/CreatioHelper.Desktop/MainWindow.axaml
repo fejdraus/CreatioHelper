@@ -42,7 +42,7 @@
                 <StackPanel Grid.Column="1" Orientation="Vertical" VerticalAlignment="Center"
                             HorizontalAlignment="Center"
                             IsVisible="{Binding IsFileDesignModeEnabled}"
-                            IsEnabled="{Binding AreControlsEnabled}">
+                            IsEnabled="{Binding AreSiteOperationsEnabled}">
                     <TextBlock Text="Packages:" HorizontalAlignment="Center"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <Button Content="Creatio → FS"
@@ -65,7 +65,8 @@
                                 ToolTip.Tip="Load packages from file system to database"/>
                     </StackPanel>
                 </StackPanel>
-                <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center">
+                <StackPanel Grid.Column="2" Orientation="Vertical" VerticalAlignment="Center"
+                            IsEnabled="{Binding AreSiteOperationsEnabled}">
                     <TextBlock Text="Redis:" HorizontalAlignment="Right"/>
                     <StackPanel Orientation="Horizontal" Margin="0,5,0,0" HorizontalAlignment="Right" VerticalAlignment="Center">
                         <Button Content="Status" Command="{Binding CheckRedisStatusCommand}" Width="80" Height="32" Margin="10,0" ToolTip.Tip="Check Redis status"/>
@@ -89,25 +90,28 @@
 
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
                 <TextBlock Text="Site IIS:" />
-                <ComboBox x:Name="IisSitesComboBox"
-                          HorizontalAlignment="Stretch"
-                          IsEnabled="{Binding HasIisSites}"
-                          ItemsSource="{Binding IisSites}"
-                          SelectedItem="{Binding SelectedIisSite}"
-                          PlaceholderText="Select IIS site from the list"
-                          IsVisible="{Binding IsWindows}">
-                    <ComboBox.ItemTemplate>
-                        <DataTemplate>
+                <AutoCompleteBox x:Name="IisSitesComboBox"
+                                 HorizontalAlignment="Stretch"
+                                 IsEnabled="{Binding HasIisSites}"
+                                 ItemsSource="{Binding IisSites}"
+                                 SelectedItem="{Binding SelectedIisSite, Mode=TwoWay}"
+                                 ValueMemberBinding="{Binding Name}"
+                                 MinimumPrefixLength="0"
+                                 IsTextCompletionEnabled="False"
+                                 PlaceholderText="Select or type to search by name, path or pool"
+                                 IsVisible="{Binding IsWindows}">
+                    <AutoCompleteBox.ItemTemplate>
+                        <DataTemplate x:DataType="domain:IisSiteInfo">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="{Binding ShortName}" />
                                 <TextBlock Text="{Binding PathSuffix}" Foreground="#888888" FontSize="12" VerticalAlignment="Center" />
                             </StackPanel>
                         </DataTemplate>
-                    </ComboBox.ItemTemplate>
-                </ComboBox>
+                    </AutoCompleteBox.ItemTemplate>
+                </AutoCompleteBox>
             </StackPanel>
 
-            <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
+            <StackPanel Grid.Row="3" Margin="0,0,0,5" IsEnabled="{Binding AreSiteOperationsEnabled}">
                 <Grid ColumnDefinitions="*,Auto">
                     <TextBlock Text="Packages Path:" VerticalAlignment="Center"/>
                     <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="12" HorizontalAlignment="Right">
@@ -132,7 +136,7 @@
                 </Grid>
             </StackPanel>
 
-            <Grid Grid.Row="4" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
+            <Grid Grid.Row="4" ColumnDefinitions="*,10,*" RowDefinitions="Auto,Auto" Margin="0,0,0,5" IsEnabled="{Binding AreSiteOperationsEnabled}">
                 <Grid.IsVisible>
                     <MultiBinding Converter="{StaticResource DeleteAppVersionToVisibilityConverter}" TargetNullValue="False">
                         <Binding Path="IsIisMode"/>
@@ -162,7 +166,7 @@
                              Grid.Column="0"
                              Content="{Binding StartButtonText}"
                              Command="{Binding StartCommand}"
-                             IsEnabled="{Binding AreControlsEnabled}"
+                             IsEnabled="{Binding AreSiteOperationsEnabled}"
                              Width="140"
                              Height="32"
                              ToolTip.Tip="Click: incremental install. Dropdown: fast compile, full rebuild, or extra compile.">
@@ -208,7 +212,7 @@
                         Content="Restore"
                         Command="{Binding RestoreConfigurationCommand}"
                         IsVisible="False"
-                        IsEnabled="{Binding AreControlsEnabled}"
+                        IsEnabled="{Binding AreSiteOperationsEnabled}"
                         HorizontalAlignment="Left"
                         Width="140"
                         Height="32"
@@ -220,7 +224,7 @@
                         Grid.Column="3"
                         Content="Save Lic Request"
                         Click="SaveLicenseRequest_Click"
-                        IsEnabled="{Binding AreControlsEnabled}"
+                        IsEnabled="{Binding AreSiteOperationsEnabled}"
                         Width="135"
                         Height="32"
                         Margin="0,0,10,0"
@@ -230,7 +234,7 @@
                         Grid.Column="4"
                         Content="Load License"
                         Command="{Binding LoadLicenseCommand}"
-                        IsEnabled="{Binding AreControlsEnabled}"
+                        IsEnabled="{Binding AreSiteOperationsEnabled}"
                         Width="110"
                         Height="32"
                         Margin="0,0,10,0"
@@ -241,7 +245,7 @@
                         Content="{Binding ServerPanelButtonText}"
                         Command="{Binding ToggleServerPanelCommand}"
                         IsVisible="{Binding IsWindows}"
-                        IsEnabled="{Binding AreControlsEnabled}"
+                        IsEnabled="{Binding AreSiteOperationsEnabled}"
                         Width="130"
                         Height="32"
                         HorizontalAlignment="Right" />
@@ -390,7 +394,7 @@
             </Grid>
                 </Grid>
             </TabItem>
-            <TabItem Header="Tools">
+            <TabItem Header="Tools" IsEnabled="{Binding AreSiteOperationsEnabled}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="16,12" Spacing="12" DataContext="{Binding ScriptsVm}">
                         <Border IsVisible="{x:Static converters:PlatformInfo.IsWindows}"
@@ -756,7 +760,7 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
-            <TabItem Header="Statistics">
+            <TabItem Header="Statistics" IsEnabled="{Binding AreSiteOperationsEnabled}">
                 <Grid RowDefinitions="Auto,Auto,Auto">
                     <TextBlock Grid.Row="0"
                                Text="{Binding TotalDurationText}"

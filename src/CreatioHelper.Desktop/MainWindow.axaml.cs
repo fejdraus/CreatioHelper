@@ -43,6 +43,9 @@ namespace CreatioHelper
                 new LogLineColorizer()
             );
 
+            IisSitesComboBox.ItemFilter = MatchesIisSiteSearch;
+            IisSitesComboBox.TextChanged += OnIisSiteTextChanged;
+
             var provider = App.Services ?? throw new InvalidOperationException("Service provider not initialized");
             var writer = provider.GetRequiredService<IOutputWriter>();
             var logDisplayHelper = new UpdateLogDisplay();
@@ -424,6 +427,43 @@ namespace CreatioHelper
             }
 
             return System.Threading.Tasks.Task.CompletedTask;
+        }
+
+        private void OnIisSiteTextChanged(object? sender, EventArgs e)
+        {
+            if (DataContext is not MainWindowViewModel vm)
+            {
+                return;
+            }
+
+            var text = IisSitesComboBox.Text?.Trim();
+            var match = string.IsNullOrEmpty(text)
+                ? null
+                : vm.IisSites.FirstOrDefault(site =>
+                    string.Equals(site.Name, text, StringComparison.OrdinalIgnoreCase));
+
+            if (!ReferenceEquals(vm.SelectedIisSite, match))
+            {
+                vm.SelectedIisSite = match;
+            }
+        }
+
+        private static bool MatchesIisSiteSearch(string? search, object? item)
+        {
+            if (string.IsNullOrWhiteSpace(search))
+            {
+                return true;
+            }
+
+            if (item is not IisSiteInfo site)
+            {
+                return false;
+            }
+
+            var needle = search.Trim();
+            return site.Name.Contains(needle, StringComparison.OrdinalIgnoreCase)
+                   || site.Path.Contains(needle, StringComparison.OrdinalIgnoreCase)
+                   || site.PoolName.Contains(needle, StringComparison.OrdinalIgnoreCase);
         }
     }
 }
