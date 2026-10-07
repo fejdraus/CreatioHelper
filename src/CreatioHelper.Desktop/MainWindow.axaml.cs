@@ -3,7 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input.Platform;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
@@ -430,6 +432,46 @@ namespace CreatioHelper
         }
 
         private bool _browsingAllIisSites;
+
+        private async void SiteUrlBadge_PointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+        {
+            if (sender is not Visual visual || !e.GetCurrentPoint(visual).Properties.IsRightButtonPressed)
+            {
+                return;
+            }
+
+            e.Handled = true;
+
+            if (DataContext is not MainWindowViewModel vm || string.IsNullOrWhiteSpace(vm.SiteUrl))
+            {
+                return;
+            }
+
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+            if (clipboard is null)
+            {
+                return;
+            }
+
+            var writer = App.Services?.GetService<IOutputWriter>();
+            try
+            {
+                await clipboard.SetTextAsync(vm.SiteUrl);
+                writer?.WriteLine($"[INFO] Copied to clipboard: {vm.SiteUrl}");
+            }
+            catch (Exception ex)
+            {
+                writer?.WriteLine($"[ERROR] Could not copy the address: {ex.Message}");
+            }
+        }
+
+        private void SiteUrlBadge_Tapped(object? sender, Avalonia.Input.TappedEventArgs e)
+        {
+            if (DataContext is MainWindowViewModel vm)
+            {
+                vm.OpenSiteUrlCommand.Execute(null);
+            }
+        }
 
         private void IisSitesDropDown_Click(object? sender, RoutedEventArgs e)
         {

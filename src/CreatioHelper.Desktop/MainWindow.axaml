@@ -14,6 +14,15 @@
         MinWidth="1227" MinHeight="630"
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
+    <Window.Styles>
+        <Style Selector="Border.siteUrlBadge">
+            <Setter Property="Background" Value="{DynamicResource SiteUrlBadgeBackground}"/>
+        </Style>
+        <Style Selector="Border.siteUrlBadge:pointerover">
+            <Setter Property="Background" Value="{DynamicResource SiteUrlBadgeHoverBackground}"/>
+        </Style>
+    </Window.Styles>
+
     <Window.Resources>
         <ResourceDictionary>
             <converters:BoolToScrollBarVisibilityConverter x:Key="BoolToScrollBarVisibilityConverter"/>
@@ -76,7 +85,23 @@
             </Grid>
 
             <StackPanel Grid.Row="1" IsVisible="{Binding IsFolderMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
-                <TextBlock Text="Site Path:" />
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,4">
+                    <TextBlock Text="Site Path:" VerticalAlignment="Center"/>
+                    <Border Classes="siteUrlBadge"
+                            CornerRadius="12"
+                            Padding="12,2"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"
+                            Tapped="SiteUrlBadge_Tapped"
+                            PointerPressed="SiteUrlBadge_PointerPressed"
+                            IsVisible="{Binding HasSiteUrl}"
+                            ToolTip.Tip="Left click opens the site, right click copies the address">
+                        <TextBlock Text="{Binding SiteUrl}"
+                                   Foreground="{DynamicResource SiteUrlBadgeForeground}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                     <TextBox x:Name="SitePathTextBox" Text="{Binding SitePath, Mode=TwoWay}"
                              PlaceholderText="Enter path to Creatio application folder"
@@ -89,7 +114,23 @@
             </StackPanel>
 
             <StackPanel Grid.Row="2" IsVisible="{Binding IsIisMode}" Margin="0,0,0,5" IsEnabled="{Binding AreControlsEnabled}">
-                <TextBlock Text="Site IIS:" />
+                <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,0,0,4">
+                    <TextBlock Text="Site IIS:" VerticalAlignment="Center"/>
+                    <Border Classes="siteUrlBadge"
+                            CornerRadius="12"
+                            Padding="12,2"
+                            VerticalAlignment="Center"
+                            Cursor="Hand"
+                            Tapped="SiteUrlBadge_Tapped"
+                            PointerPressed="SiteUrlBadge_PointerPressed"
+                            IsVisible="{Binding HasSiteUrl}"
+                            ToolTip.Tip="Left click opens the site, right click copies the address">
+                        <TextBlock Text="{Binding SiteUrl}"
+                                   Foreground="{DynamicResource SiteUrlBadgeForeground}"
+                                   FontWeight="SemiBold"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                </StackPanel>
                 <Grid ColumnDefinitions="*,Auto" VerticalAlignment="Center">
                 <Grid Grid.Column="0" Margin="0,0,5,0">
                 <AutoCompleteBox x:Name="IisSitesComboBox"
@@ -412,16 +453,6 @@
                                    Foreground="{Binding LocalAppHealth, Converter={x:Static converters:StatusToColorConverter.Instance}}"/>
                     </StackPanel>
 
-                    <StackPanel Orientation="Horizontal" Spacing="4"
-                                IsVisible="{Binding HasSiteUrl}">
-                        <TextBlock FontSize="12" Foreground="Gray" Text="·" VerticalAlignment="Center"/>
-                        <HyperlinkButton Content="{Binding SiteUrl}"
-                                         NavigateUri="{Binding SiteUrl}"
-                                         FontSize="12"
-                                         Padding="0"
-                                         VerticalAlignment="Center"
-                                         ToolTip.Tip="Open the site in the browser"/>
-                    </StackPanel>
                 </StackPanel>
 
                 <HyperlinkButton Grid.Column="1"

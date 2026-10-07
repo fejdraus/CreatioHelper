@@ -408,14 +408,27 @@ public partial class MainWindowViewModel : ObservableObject
     [ObservableProperty]
     private string? _iisSiteText;
 
+    private bool _lastIisSiteTextValid = true;
+
     partial void OnIisSiteTextChanged(string? value)
     {
         RefreshSiteOperationsAvailability();
+
+        var valid = IsIisSiteTextValid;
+        if (valid == _lastIisSiteTextValid)
+        {
+            return;
+        }
+
+        _lastIisSiteTextValid = valid;
+        RefreshFileDesignMode();
+        InvalidateLocalStatus();
     }
 
     public bool IsIisSiteTextValid =>
         SelectedIisSite != null &&
-        string.Equals(SelectedIisSite.Name, IisSiteText?.Trim(), StringComparison.OrdinalIgnoreCase);
+        (IisSiteText == null ||
+         string.Equals(SelectedIisSite.Name, IisSiteText.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public bool HasResolvedSite =>
         IsIisMode
@@ -423,6 +436,29 @@ public partial class MainWindowViewModel : ObservableObject
             : !string.IsNullOrWhiteSpace(SitePath);
 
     public bool AreSiteOperationsEnabled => AreControlsEnabled && HasResolvedSite;
+
+    [RelayCommand]
+    private void OpenSiteUrl()
+    {
+        var url = SiteUrl;
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return;
+        }
+
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = url,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[ERROR] Could not open {url}: {ex.Message}");
+        }
+    }
 
     [RelayCommand]
     private void OpenSiteFolder()
