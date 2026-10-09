@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using CreatioHelper.Domain.Enums;
@@ -14,6 +14,7 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
     private string? _checkStatus;
     private bool _isCheckInFlight;
     private bool _isStatusHighlighted;
+    private bool _isUpdateAvailable;
     private string _actionButtonText = "Check for updates now";
     private bool _isActionButtonEnabled = true;
     private bool _isDownloadProgressVisible;
@@ -102,6 +103,20 @@ public class SettingsWindowViewModel : INotifyPropertyChanged
                 return;
             }
             _isCheckInFlight = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public bool IsUpdateAvailable
+    {
+        get => _isUpdateAvailable;
+        set
+        {
+            if (_isUpdateAvailable == value)
+            {
+                return;
+            }
+            _isUpdateAvailable = value;
             OnPropertyChanged();
         }
     }

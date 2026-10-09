@@ -1,4 +1,4 @@
-<Application xmlns="https://github.com/avaloniaui"
+﻿<Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="CreatioHelper.App"
              RequestedThemeVariant="Default">
@@ -16,6 +16,7 @@
                      <SolidColorBrush x:Key="TextEditorForegroundBrush">Black</SolidColorBrush>
                      <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#C8E6C9"/>
                      <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#1B5E20"/>
+                     <SolidColorBrush x:Key="UpdateBadgeHoverBackground" Color="#A5D6A7"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeBackground" Color="#BBDEFB"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeForeground" Color="#0D47A1"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeHoverBackground" Color="#90CAF9"/>
@@ -25,6 +26,7 @@
                      <SolidColorBrush x:Key="TextEditorForegroundBrush">#D4D4D4</SolidColorBrush>
                      <SolidColorBrush x:Key="UpdateBadgeBackground" Color="#2E7D32"/>
                      <SolidColorBrush x:Key="UpdateBadgeForeground" Color="#E8F5E9"/>
+                     <SolidColorBrush x:Key="UpdateBadgeHoverBackground" Color="#388E3C"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeBackground" Color="#1565C0"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeForeground" Color="#E3F2FD"/>
                      <SolidColorBrush x:Key="SiteUrlBadgeHoverBackground" Color="#1976D2"/>

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.ComponentModel;
 using Avalonia.Controls;
 using Avalonia.Media;
@@ -86,6 +86,7 @@ public partial class SettingsWindow : Window
             _viewModel.IsActionButtonEnabled = true;
             _viewModel.IsDownloadProgressVisible = false;
             _viewModel.DownloadProgressPercent = 0;
+            _viewModel.IsUpdateAvailable = false;
             _viewModel.LatestVersion = null;
             _viewModel.CheckStatus = "Channel changed — click to check the selected channel.";
             _viewModel.IsStatusHighlighted = false;
@@ -120,6 +121,7 @@ public partial class SettingsWindow : Window
         switch (state)
         {
             case UpdateState.Checking:
+                _viewModel.IsUpdateAvailable = false;
                 _viewModel.IsCheckInFlight = true;
                 _viewModel.CheckStatus = null;
                 _viewModel.IsStatusHighlighted = false;
@@ -130,6 +132,7 @@ public partial class SettingsWindow : Window
                 break;
 
             case UpdateState.Available available:
+                _viewModel.IsUpdateAvailable = true;
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = available.Version;
                 _viewModel.CheckStatus = IsOperationRunning
@@ -144,6 +147,7 @@ public partial class SettingsWindow : Window
                 break;
 
             case UpdateState.Downloading downloading:
+                _viewModel.IsUpdateAvailable = true;
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = downloading.Version;
                 _viewModel.CheckStatus = null;
@@ -157,6 +161,7 @@ public partial class SettingsWindow : Window
                 break;
 
             case UpdateState.Ready ready:
+                _viewModel.IsUpdateAvailable = true;
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.LatestVersion = ready.Version;
                 _viewModel.CheckStatus = IsOperationRunning
@@ -171,6 +176,7 @@ public partial class SettingsWindow : Window
                 break;
 
             case UpdateState.Idle idle:
+                _viewModel.IsUpdateAvailable = false;
                 _viewModel.IsCheckInFlight = false;
                 _viewModel.IsDownloadProgressVisible = false;
                 _viewModel.IsDownloadIndeterminate = false;

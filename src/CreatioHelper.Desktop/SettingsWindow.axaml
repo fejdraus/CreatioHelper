@@ -1,4 +1,4 @@
-<Window xmlns="https://github.com/avaloniaui"
+﻿<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="clr-namespace:CreatioHelper.ViewModels"
         x:Class="CreatioHelper.SettingsWindow"
@@ -12,6 +12,19 @@
         Title="Settings"
         CanResize="False"
         WindowStartupLocation="CenterOwner">
+
+    <Window.Styles>
+        <Style Selector="Border#LatestVersionBadge TextBlock">
+            <Setter Property="Foreground" Value="#4A90E2"/>
+        </Style>
+        <Style Selector="Border#LatestVersionBadge.updateAvailable">
+            <Setter Property="Background" Value="{DynamicResource UpdateBadgeBackground}"/>
+        </Style>
+        <Style Selector="Border#LatestVersionBadge.updateAvailable TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource UpdateBadgeForeground}"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+    </Window.Styles>
 
     <Window.Resources>
         <ResourceDictionary>
@@ -52,11 +65,18 @@
                                VerticalAlignment="Center"/>
 
                     <TextBlock Grid.Row="1" Grid.Column="0" Text="Latest on server:" VerticalAlignment="Center" Margin="0,4,0,0"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding LatestVersion, FallbackValue=—, TargetNullValue=—}"
-                               FontFamily="Cascadia Code,Consolas,Monospace"
-                               Foreground="#4A90E2"
-                               VerticalAlignment="Center"
-                               Margin="0,4,0,0"/>
+                    <Border Grid.Row="1" Grid.Column="1"
+                            x:Name="LatestVersionBadge"
+                            Classes.updateAvailable="{Binding IsUpdateAvailable}"
+                            CornerRadius="12"
+                            Padding="10,2"
+                            HorizontalAlignment="Left"
+                            VerticalAlignment="Center"
+                            Margin="0,4,0,0">
+                        <TextBlock Text="{Binding LatestVersion, FallbackValue=—, TargetNullValue=—}"
+                                   FontFamily="Cascadia Code,Consolas,Monospace"
+                                   VerticalAlignment="Center"/>
+                    </Border>
 
                     <Border Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                             Classes.highlight="{Binding IsStatusHighlighted}"

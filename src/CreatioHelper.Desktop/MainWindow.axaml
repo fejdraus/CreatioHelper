@@ -15,6 +15,22 @@
         Title="Creatio Helper"
         WindowStartupLocation="CenterScreen">
     <Window.Styles>
+        <Style Selector="Button.updateAvailable">
+            <Setter Property="ToolTip.Tip" Value="Update available - open Settings to install it"/>
+        </Style>
+        <Style Selector="Button.updateAvailable /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UpdateBadgeBackground}"/>
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource UpdateBadgeForeground}"/>
+            <Setter Property="TextElement.FontWeight" Value="SemiBold"/>
+        </Style>
+        <Style Selector="Button.updateAvailable:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UpdateBadgeHoverBackground}"/>
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource UpdateBadgeForeground}"/>
+        </Style>
+        <Style Selector="Button.updateAvailable:pressed /template/ ContentPresenter#PART_ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource UpdateBadgeHoverBackground}"/>
+            <Setter Property="TextElement.Foreground" Value="{DynamicResource UpdateBadgeForeground}"/>
+        </Style>
         <Style Selector="Border.siteUrlBadge">
             <Setter Property="Background" Value="{DynamicResource SiteUrlBadgeBackground}"/>
         </Style>
@@ -364,24 +380,10 @@
                               Margin="10,0,0,0"/>
                 </StackPanel>
 
-                <Border Grid.Column="1"
-                        Background="{DynamicResource UpdateBadgeBackground}"
-                        CornerRadius="14"
-                        Padding="14,4"
-                        VerticalAlignment="Center"
-                        HorizontalAlignment="Right"
-                        Margin="10,0,10,0"
-                        IsVisible="{Binding IsUpdateAvailable}"
-                        ToolTip.Tip="Open Settings to install the update">
-                    <TextBlock Text="Update available"
-                               Foreground="{DynamicResource UpdateBadgeForeground}"
-                               FontWeight="SemiBold"
-                               VerticalAlignment="Center"/>
-                </Border>
-
                 <Button Grid.Column="2"
                         x:Name="SettingsButton"
                         Content="Settings"
+                        Classes.updateAvailable="{Binding IsUpdateAvailable}"
                         Click="Settings_Click"
                         Height="32"
                         Padding="12,0"
