@@ -485,6 +485,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             ui.OnStartButtonText("Start");
             ui.OnServerControlsEnabledChanged(true);
             ui.OnStopButtonEnabledChanged(false);
+            await RefreshServerPanelAsync(options.Servers, options.HasRemoteServers).ConfigureAwait(false);
             if (!quartzIsActiveOriginal)
             {
                 string config = CreatioSiteLayout.GetRootConfigPath(sitePath);
@@ -645,6 +646,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             ui.OnStartButtonText("Start");
             ui.OnServerControlsEnabledChanged(true);
             ui.OnStopButtonEnabledChanged(false);
+            await RefreshServerPanelAsync(options.Servers, options.HasRemoteServers).ConfigureAwait(false);
             if (!quartzIsActiveOriginal)
             {
                 string config = CreatioSiteLayout.GetRootConfigPath(sitePath);
@@ -669,6 +671,23 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
             return false;
         }
         return true;
+    }
+
+    private async Task RefreshServerPanelAsync(IReadOnlyList<ServerInfo> servers, bool isServerPanelVisible)
+    {
+        if (!isServerPanelVisible || servers.Count == 0 || !OperatingSystem.IsWindows())
+        {
+            return;
+        }
+
+        try
+        {
+            await _statusService.RefreshMultipleServerStatusOnUIThreadAsync(servers.ToArray(), CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _output.WriteLine($"[WARNING] Could not refresh the server panel: {ex.Message}");
+        }
     }
 
     private async Task RefreshServerStatusIfNeededAsync(ServerInfo server, bool isServerPanelVisible, CancellationToken cancellationToken)
@@ -1181,6 +1200,8 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
                         }
                     }
 
+                    await RefreshServerStatusIfNeededAsync(completedServer, true, cancellationToken).ConfigureAwait(false);
+
                     completedServers.Add(completedServer);
                 },
                 cancellationToken);
@@ -1197,7 +1218,7 @@ public class DeploymentOrchestrator : IDeploymentOrchestrator
         _output.WriteLine($"[INFO] Successfully started {completedServers.Count} remote servers");
 
         _output.WriteLine("[INFO] Starting local server...");
-        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, false, cancellationToken).ConfigureAwait(false);
+        await PerformStartupOperationsAsync(manager, localServerInfo, nestedPath, true, cancellationToken).ConfigureAwait(false);
 
         _output.WriteLine("=== SYNCTHING ORCHESTRATION COMPLETED ===");
         _metricsService.IncrementCounter("syncthing_orchestration_completed");
