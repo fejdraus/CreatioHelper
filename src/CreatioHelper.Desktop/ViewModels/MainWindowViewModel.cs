@@ -2245,24 +2245,8 @@ public partial class MainWindowViewModel : ObservableObject
         if (server == null)
             return;
 
-        // Update folder-specific state
-        server.UpdateFolderSyncState(
-            data.Folder,
-            server.SyncthingCompletionPercent, // Keep existing completion
-            server.SyncthingNeedBytes, // Keep existing bytes
-            server.SyncthingNeedItems, // Keep existing items
-            data.To); // Update state
-
-        // Aggregated state is automatically recalculated in UpdateFolderSyncState
-        // Update status text based on aggregated state
-        server.SyncthingStatus = server.SyncthingCurrentState switch
-        {
-            "idle" => server.SyncthingCompletionPercent >= 100 ? "✅ Up to Date" : "⏸️ Idle",
-            "scanning" => "🔍 Scanning",
-            "syncing" => $"🔄 Syncing ({server.SyncthingCompletionPercent:F1}%)",
-            "error" => "❌ Error",
-            _ => server.SyncthingCurrentState
-        };
+        server.UpdateFolderState(data.Folder, data.To);
+        server.SyncthingStatus = server.DescribeSyncState();
     }
 
     /// <summary>
@@ -2278,24 +2262,14 @@ public partial class MainWindowViewModel : ObservableObject
         if (server == null)
             return;
 
-        // Update folder-specific state with new completion data
-        server.UpdateFolderSyncState(
+        server.UpdateFolderCompletion(
             data.Folder,
             data.Completion,
             data.NeedBytes,
             data.NeedItems,
-            server.SyncthingCurrentState); // Keep existing state
+            server.GetFolderSyncStates().TryGetValue(data.Folder, out var known) ? known.RemoteState : "valid");
 
-        // Aggregated values are automatically recalculated in UpdateFolderSyncState
-        // Update status text based on aggregated values
-        if (server.SyncthingNeedBytes > 0 || server.SyncthingNeedItems > 0)
-        {
-            server.SyncthingStatus = $"🔄 Syncing ({server.SyncthingCompletionPercent:F1}%)";
-        }
-        else
-        {
-            server.SyncthingStatus = "✅ Up to Date";
-        }
+        server.SyncthingStatus = server.DescribeSyncState();
 
         // Notify UI about changes to formatted property
         server.OnPropertyChanged(nameof(ServerInfo.SyncthingRemainingFormatted));
@@ -2317,14 +2291,7 @@ public partial class MainWindowViewModel : ObservableObject
             // Extract filename from path
             var fileName = System.IO.Path.GetFileName(data.Item);
 
-            // Update folder-specific state with last synced file
-            server.UpdateFolderSyncState(
-                data.Folder,
-                server.SyncthingCompletionPercent, // Keep existing values
-                server.SyncthingNeedBytes,
-                server.SyncthingNeedItems,
-                server.SyncthingCurrentState,
-                fileName); // Update last synced file
+            server.UpdateFolderLastSyncedFile(data.Folder, fileName);
         }
     }
 

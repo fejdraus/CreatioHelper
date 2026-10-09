@@ -66,7 +66,7 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                         cancellationToken);
                     folderStatuses.Add($"{folderId}: {completion.Completion:F1}%");
 
-                    server.UpdateFolderSyncState(
+                    server.UpdateFolderCompletion(
                         folderId,
                         completion.Completion,
                         completion.NeedBytes,
@@ -141,17 +141,8 @@ public class SyncthingMonitorService : ISyncthingMonitorService
     {
         try
         {
-            var status = await GetSyncStatusAsync(server, cancellationToken);
-            return status.Readiness switch
-            {
-                SyncReadiness.NotConfigured => "⚙️ Not Configured",
-                SyncReadiness.Offline => "❌ Offline",
-                SyncReadiness.Paused => "⏸️ Paused",
-                SyncReadiness.NotSharing => "🚫 Not Sharing",
-                SyncReadiness.Unknown => "❓ Unknown",
-                SyncReadiness.Syncing => $"🔄 Syncing ({status.Completion:F1}%)",
-                _ => "✅ Up to Date"
-            };
+            await GetSyncStatusAsync(server, cancellationToken);
+            return server.DescribeSyncState();
         }
         catch (HttpRequestException)
         {
@@ -173,6 +164,11 @@ public class SyncthingMonitorService : ISyncthingMonitorService
         var deviceConnected = await IsDeviceConnectedAsync(server.SyncthingDeviceId, cancellationToken);
         if (!deviceConnected)
         {
+            foreach (var folderId in server.SyncthingFolderIds)
+            {
+                server.UpdateFolderCompletion(folderId, 0, 0, 0, "offline");
+            }
+
             return new SyncStatusSnapshot(SyncReadiness.Offline, 0);
         }
 
@@ -201,10 +197,19 @@ public class SyncthingMonitorService : ISyncthingMonitorService
                 anyInvalid = true;
             }
 
+            server.UpdateFolderCompletion(
+                folderId,
+                completion.Completion,
+                completion.NeedBytes,
+                completion.NeedItems,
+                completion.RemoteState ?? "unknown");
+
             totalCompletion += completion.Completion;
             totalNeedBytes += completion.NeedBytes;
             totalNeedItems += completion.NeedItems;
         }
+
+        server.PruneStaleFolderStates();
 
         double avgCompletion = totalCompletion / server.SyncthingFolderIds.Count;
         if (anyPaused)

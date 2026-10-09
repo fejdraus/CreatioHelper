@@ -26,9 +26,14 @@ public class FolderSyncState
     public long NeedItems { get; set; } = 0;
 
     /// <summary>
-    /// Current folder state (idle, scanning, syncing, error)
+    /// Current folder state on this side (idle, scanning, syncing, error)
     /// </summary>
     public string CurrentState { get; set; } = "idle";
+
+    /// <summary>
+    /// State of this folder on the remote device (valid, paused, notSharing, offline, unknown)
+    /// </summary>
+    public string RemoteState { get; set; } = "unknown";
 
     /// <summary>
     /// Last file that was synchronized in this folder
@@ -39,5 +44,5 @@ public class FolderSyncState
     /// Returns true if this folder is fully synced (100% and valid)
     /// RemoteState "valid" means device is connected and folder is in sync
     /// </summary>
-    public bool IsFullySynced => CompletionPercent >= 100.0 && CurrentState == "valid";
+    public bool IsFullySynced => CompletionPercent >= 100.0 && RemoteState == "valid";
 }

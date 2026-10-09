@@ -147,37 +147,89 @@ public class ServerInfo : DtoServerInfo
     /// <summary>
     /// Update sync state for a specific folder
     /// </summary>
-    public void UpdateFolderSyncState(string folderId, double completionPercent, long needBytes, long needItems, string currentState, string? lastSyncedFile = null)
+    public void UpdateFolderCompletion(string folderId, double completionPercent, long needBytes, long needItems, string remoteState)
     {
-        // Validate and sanitize input values to prevent overflow/corruption
-        // Negative values indicate API errors or data corruption
         if (needBytes < 0 || needItems < 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[ServerInfo] WARNING: Invalid sync data for folder '{folderId}': NeedBytes={needBytes}, NeedItems={needItems}. Ignoring update.");
             OnInvalidSyncDataReceived?.Invoke(Name ?? "Unknown", folderId, needBytes, needItems, completionPercent);
             return;
         }
 
-        // Sanity check: completion should be 0-100
-        completionPercent = Math.Clamp(completionPercent, 0, 100);
-
-        if (!_folderSyncStates.ContainsKey(folderId))
-        {
-            _folderSyncStates[folderId] = new FolderSyncState { FolderId = folderId };
-        }
-
-        var folderState = _folderSyncStates[folderId];
-        folderState.CompletionPercent = completionPercent;
+        var folderState = GetOrCreateFolderState(folderId);
+        folderState.CompletionPercent = Math.Clamp(completionPercent, 0, 100);
         folderState.NeedBytes = needBytes;
         folderState.NeedItems = needItems;
-        folderState.CurrentState = currentState;
-        if (lastSyncedFile != null)
+        folderState.RemoteState = remoteState;
+        RecalculateAggregatedSyncState();
+    }
+
+    public void UpdateFolderState(string folderId, string currentState)
+    {
+        GetOrCreateFolderState(folderId).CurrentState = currentState;
+        RecalculateAggregatedSyncState();
+    }
+
+    public void UpdateFolderLastSyncedFile(string folderId, string? lastSyncedFile)
+    {
+        if (lastSyncedFile == null)
         {
-            folderState.LastSyncedFile = lastSyncedFile;
+            return;
         }
 
-        // Recalculate aggregated values
+        GetOrCreateFolderState(folderId).LastSyncedFile = lastSyncedFile;
         RecalculateAggregatedSyncState();
+    }
+
+    public string DescribeSyncState()
+    {
+        if (string.IsNullOrEmpty(SyncthingDeviceId) || SyncthingFolderIds.Count == 0)
+        {
+            return "⚙️ Not Configured";
+        }
+
+        if (_folderSyncStates.Count == 0)
+        {
+            return "❓ Unknown";
+        }
+
+        var states = _folderSyncStates.Values;
+        if (states.Any(f => f.RemoteState == "offline"))
+        {
+            return "❌ Offline";
+        }
+
+        if (states.Any(f => f.RemoteState == "paused"))
+        {
+            return "⏸️ Paused";
+        }
+
+        if (states.Any(f => f.RemoteState == "notSharing"))
+        {
+            return "🚫 Not Sharing";
+        }
+
+        if (states.Any(f => f.RemoteState != "valid"))
+        {
+            return "❓ Unknown";
+        }
+
+        if (SyncthingNeedBytes > 0 || SyncthingNeedItems > 0)
+        {
+            return $"🔄 Syncing ({SyncthingCompletionPercent:F1}%)";
+        }
+
+        return "✅ Up to Date";
+    }
+
+    private FolderSyncState GetOrCreateFolderState(string folderId)
+    {
+        if (!_folderSyncStates.TryGetValue(folderId, out var folderState))
+        {
+            folderState = new FolderSyncState { FolderId = folderId };
+            _folderSyncStates[folderId] = folderState;
+        }
+
+        return folderState;
     }
 
     /// <summary>
