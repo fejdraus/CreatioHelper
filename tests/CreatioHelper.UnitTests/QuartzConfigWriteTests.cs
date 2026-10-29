@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using CreatioHelper.Infrastructure.Services.Workspace;
 using CreatioHelper.Shared.Interfaces;
 using Moq;
@@ -64,14 +66,40 @@ public class QuartzConfigWriteTests
     }
 
     [SkippableFact]
-    public void UpdateOutConfig_FailsWhileAnotherProcessHoldsTheFile_WhenTheValueDiffers()
+    public void UpdateOutConfig_GivesUpWithAClearMessage_WhenTheHolderNeverLetsGo()
     {
         Skip.IfNot(OperatingSystem.IsWindows(), "File sharing rules differ outside Windows.");
 
         var path = WriteConfig(false);
         using var holder = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-        Assert.Throws<IOException>(() => Preparer().UpdateOutConfig(path, true));
+        var error = Assert.Throws<IOException>(() => Preparer().UpdateOutConfig(path, true));
+
+        Assert.Contains("after 5 attempts", error.Message);
+        Assert.Contains(path, error.Message);
+    }
+
+    [SkippableFact]
+    public void UpdateOutConfig_RidesOutABriefHold_LikeTheOneIisTakesWhileReadingTheFile()
+    {
+        Skip.IfNot(OperatingSystem.IsWindows(), "File sharing rules differ outside Windows.");
+
+        var path = WriteConfig(false);
+        var holder = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
+        var released = new ManualResetEventSlim(false);
+
+        var releasing = Task.Run(() =>
+        {
+            Thread.Sleep(150);
+            holder.Dispose();
+            released.Set();
+        });
+
+        Preparer().UpdateOutConfig(path, true);
+
+        Assert.True(released.IsSet);
+        Assert.Contains("isActive=\"true\"", ReadShared(path));
+        releasing.Wait();
     }
 
     [Fact]

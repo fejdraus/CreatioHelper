@@ -237,11 +237,40 @@ public class WorkspacePreparer : IWorkspacePreparer
         }
 
         quartzNode.SetAttribute("isActive", wanted);
-
-        using var stream = OpenShared(configPath, FileAccess.ReadWrite);
-        stream.SetLength(0);
-        xmlDoc.Save(stream);
+        SaveWhileOthersReadIt(xmlDoc, configPath);
         _output.WriteLine($"Set the Quartz scheduler to isActive={wanted} in {Path.GetFileName(configPath)}.");
+    }
+
+    private static readonly int[] WriteRetryDelaysMs = { 100, 200, 400, 800 };
+
+    private void SaveWhileOthersReadIt(XmlDocument xmlDoc, string configPath)
+    {
+        for (var attempt = 0; ; attempt++)
+        {
+            try
+            {
+                using var stream = OpenShared(configPath, FileAccess.ReadWrite);
+                stream.SetLength(0);
+                xmlDoc.Save(stream);
+                if (attempt > 0)
+                {
+                    _output.WriteLine($"[INFO] {Path.GetFileName(configPath)} was held by another process; the write went through on attempt {attempt + 1}.");
+                }
+                return;
+            }
+            catch (IOException ex)
+            {
+                if (attempt >= WriteRetryDelaysMs.Length)
+                {
+                    throw new IOException(
+                        $"Could not write {configPath} after {attempt + 1} attempts - another process keeps it open and refuses to share writing. " +
+                        "The IIS worker process reads this file while the site runs, so retrying usually gets through; it did not this time.",
+                        ex);
+                }
+
+                Thread.Sleep(WriteRetryDelaysMs[attempt]);
+            }
+        }
     }
 
     private static FileStream OpenShared(string path, FileAccess access)
