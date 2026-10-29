@@ -176,8 +176,7 @@ public class WorkspacePreparer : IWorkspacePreparer
     {
         if (string.IsNullOrEmpty(webConfigPath)) throw new ArgumentNullException(nameof(webConfigPath));
 
-        var xmlDoc = new XmlDocument();
-        xmlDoc.Load(webConfigPath);
+        var xmlDoc = LoadShared(webConfigPath);
 
         var useStaticFileContent = xmlDoc.SelectSingleNode("/configuration/appSettings/add[@key='UseStaticFileContent']") is XmlElement useStaticFileContentValue
             ? useStaticFileContentValue.GetAttribute("value")
@@ -224,14 +223,38 @@ public class WorkspacePreparer : IWorkspacePreparer
     {
         if (string.IsNullOrEmpty(configPath)) throw new ArgumentNullException(nameof(configPath));
 
+        var xmlDoc = LoadShared(configPath);
+
+        if (xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is not XmlElement quartzNode)
+        {
+            return;
+        }
+
+        var wanted = quartzIsActive.ToString().ToLowerInvariant();
+        if (string.Equals(quartzNode.GetAttribute("isActive"), wanted, StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        quartzNode.SetAttribute("isActive", wanted);
+
+        using var stream = OpenShared(configPath, FileAccess.ReadWrite);
+        stream.SetLength(0);
+        xmlDoc.Save(stream);
+        _output.WriteLine($"Set the Quartz scheduler to isActive={wanted} in {Path.GetFileName(configPath)}.");
+    }
+
+    private static FileStream OpenShared(string path, FileAccess access)
+    {
+        return new FileStream(path, FileMode.Open, access, FileShare.ReadWrite | FileShare.Delete);
+    }
+
+    private static XmlDocument LoadShared(string path)
+    {
+        using var stream = OpenShared(path, FileAccess.Read);
         var xmlDoc = new XmlDocument();
-        xmlDoc.Load(configPath);
-
-        if (xmlDoc.SelectSingleNode("//quartzConfig[@defaultScheduler='BPMonlineQuartzScheduler']/quartz") is XmlElement quartzNode)
-            quartzNode.SetAttribute("isActive", quartzIsActive.ToString().ToLowerInvariant());
-
-        xmlDoc.Save(configPath);
-        _output.WriteLine("Updated WorkspaceConsole configuration file.");
+        xmlDoc.Load(stream);
+        return xmlDoc;
     }
 
     private async Task ExecuteModifiedBatchIfNeededAsync(string sitePath, string batchFileName, string targetFileRelativePath, CancellationToken cancellationToken = default)
